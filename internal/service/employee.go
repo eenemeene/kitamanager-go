@@ -132,7 +132,7 @@ func (s *EmployeeService) Import(ctx context.Context, orgID uint, data *models.E
 					StaffCategory: c.StaffCategory,
 					Grade:         c.Grade,
 					Step:          c.Step,
-					WeeklyHours:   c.WeeklyHours,
+					WeeklyHours:   &c.WeeklyHours,
 					PayPlanID:     payPlanID,
 					Properties:    c.Properties,
 				}

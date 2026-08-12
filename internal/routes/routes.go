@@ -365,12 +365,27 @@ func Setup(r *gin.Engine, d Deps) {
 					employees.PUT("/:employeeId/contracts/batch",
 						authzMiddleware.RequirePermission(rbac.ResourceEmployeeContracts, rbac.ActionUpdate),
 						employeeHandler.BatchUpdateContracts)
+					// Intent-based contract writes. Registered before the
+					// `/:contractId` routes because gin's router would otherwise
+					// treat "boundary" as a contract id.
+					employees.POST("/:employeeId/contracts/boundary",
+						authzMiddleware.RequirePermission(rbac.ResourceEmployeeContracts, rbac.ActionUpdate),
+						employeeHandler.MoveContractBoundary)
 					employees.GET("/:employeeId/contracts/:contractId",
 						authzMiddleware.RequirePermission(rbac.ResourceEmployeeContracts, rbac.ActionRead),
 						employeeHandler.GetContract)
 					employees.PUT("/:employeeId/contracts/:contractId",
 						authzMiddleware.RequirePermission(rbac.ResourceEmployeeContracts, rbac.ActionUpdate),
 						employeeHandler.UpdateContract)
+					employees.PATCH("/:employeeId/contracts/:contractId",
+						authzMiddleware.RequirePermission(rbac.ResourceEmployeeContracts, rbac.ActionUpdate),
+						employeeHandler.CorrectContract)
+					employees.POST("/:employeeId/contracts/:contractId/amend",
+						authzMiddleware.RequirePermission(rbac.ResourceEmployeeContracts, rbac.ActionUpdate),
+						employeeHandler.AmendContract)
+					employees.POST("/:employeeId/contracts/:contractId/end",
+						authzMiddleware.RequirePermission(rbac.ResourceEmployeeContracts, rbac.ActionUpdate),
+						employeeHandler.EndContract)
 					employees.DELETE("/:employeeId/contracts/:contractId",
 						authzMiddleware.RequirePermission(rbac.ResourceEmployeeContracts, rbac.ActionDelete),
 						employeeHandler.DeleteContract)
@@ -471,12 +486,27 @@ func Setup(r *gin.Engine, d Deps) {
 					children.PUT("/:childId/contracts/batch",
 						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionUpdate),
 						childHandler.BatchUpdateContracts)
+					// Intent-based contract writes. Registered before the
+					// `/:contractId` routes because gin's router would otherwise
+					// treat "boundary" as a contract id.
+					children.POST("/:childId/contracts/boundary",
+						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionUpdate),
+						childHandler.MoveContractBoundary)
 					children.GET("/:childId/contracts/:contractId",
 						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionRead),
 						childHandler.GetContract)
 					children.PUT("/:childId/contracts/:contractId",
 						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionUpdate),
 						childHandler.UpdateContract)
+					children.PATCH("/:childId/contracts/:contractId",
+						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionUpdate),
+						childHandler.CorrectContract)
+					children.POST("/:childId/contracts/:contractId/amend",
+						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionUpdate),
+						childHandler.AmendContract)
+					children.POST("/:childId/contracts/:contractId/end",
+						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionUpdate),
+						childHandler.EndContract)
 					children.DELETE("/:childId/contracts/:contractId",
 						authzMiddleware.RequirePermission(rbac.ResourceChildContracts, rbac.ActionDelete),
 						childHandler.DeleteContract)

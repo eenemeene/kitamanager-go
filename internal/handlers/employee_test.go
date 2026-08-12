@@ -561,7 +561,7 @@ func TestEmployeeHandler_CreateContract(t *testing.T) {
 		From:          time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		To:            nil,
 		StaffCategory: "supplementary",
-		WeeklyHours:   40,
+		WeeklyHours:   float64Ptr(40),
 		Grade:         "S8a", Step: 3,
 		PayPlanID: payPlan.ID,
 	}
@@ -606,7 +606,7 @@ func TestEmployeeHandler_CreateContract_SameDay(t *testing.T) {
 		From:          sameDay,
 		To:            &sameDay,
 		StaffCategory: "qualified",
-		WeeklyHours:   8,
+		WeeklyHours:   float64Ptr(8),
 		Grade:         "S8a", Step: 3,
 		PayPlanID: payPlan.ID,
 	}
@@ -658,7 +658,7 @@ func TestEmployeeHandler_CreateContract_WrongOrg(t *testing.T) {
 		From:          time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		To:            nil,
 		StaffCategory: "qualified",
-		WeeklyHours:   40,
+		WeeklyHours:   float64Ptr(40),
 		Grade:         "S8a", Step: 3,
 		PayPlanID: payPlan.ID,
 	}
@@ -714,7 +714,7 @@ func TestEmployeeHandler_CreateContract_Overlap(t *testing.T) {
 		From:          time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
 		To:            nil,
 		StaffCategory: "qualified",
-		WeeklyHours:   40,
+		WeeklyHours:   float64Ptr(40),
 		Grade:         "S8a", Step: 3,
 		PayPlanID: payPlan.ID,
 	}
@@ -884,7 +884,7 @@ func TestEmployeeHandler_CreateContract_SectionFromWrongOrg(t *testing.T) {
 		StaffCategory: "qualified",
 		Grade:         "S8a",
 		Step:          1,
-		WeeklyHours:   39,
+		WeeklyHours:   float64Ptr(39),
 		PayPlanID:     payPlan.ID,
 	}
 
@@ -998,7 +998,7 @@ func TestEmployeeHandler_CreateContract_NonExistentSection(t *testing.T) {
 		StaffCategory: "qualified",
 		Grade:         "S8a",
 		Step:          3,
-		WeeklyHours:   39,
+		WeeklyHours:   float64Ptr(39),
 		PayPlanID:     payPlan.ID,
 	}
 
@@ -1421,7 +1421,7 @@ func TestEmployeeHandler_CreateContract_EmployeeNotFound(t *testing.T) {
 		SectionID:     sectionID,
 		From:          time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		StaffCategory: "qualified",
-		WeeklyHours:   40,
+		WeeklyHours:   float64Ptr(40),
 		Grade:         "S8a", Step: 3,
 		PayPlanID: payPlan.ID,
 	}
@@ -1451,7 +1451,7 @@ func TestEmployeeHandler_CreateContract_InvalidEmployeeID(t *testing.T) {
 		SectionID:     sectionID,
 		From:          time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		StaffCategory: "qualified",
-		WeeklyHours:   40,
+		WeeklyHours:   float64Ptr(40),
 		Grade:         "S8a", Step: 3,
 		PayPlanID: payPlan.ID,
 	}
@@ -1512,7 +1512,7 @@ func TestEmployeeHandler_CreateContract_ZeroWeeklyHours(t *testing.T) {
 		SectionID:     sectionID,
 		From:          time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		StaffCategory: "qualified",
-		WeeklyHours:   0,
+		WeeklyHours:   float64Ptr(0),
 		Grade:         "S8a", Step: 3,
 		PayPlanID: payPlan.ID,
 	}
@@ -1561,7 +1561,7 @@ func TestEmployeeHandler_CreateContract_ContractBoundaryTouch(t *testing.T) {
 		SectionID:     sectionID,
 		From:          time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		StaffCategory: "qualified",
-		WeeklyHours:   40,
+		WeeklyHours:   float64Ptr(40),
 		Grade:         "S8a", Step: 3,
 		PayPlanID: payPlan.ID,
 	}
@@ -1613,7 +1613,7 @@ func TestEmployeeHandler_CreateContract_SameDayTransitionRejected(t *testing.T) 
 		SectionID:     sectionID,
 		From:          time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC),
 		StaffCategory: "qualified",
-		WeeklyHours:   40,
+		WeeklyHours:   float64Ptr(40),
 		Grade:         "S8a", Step: 3,
 		PayPlanID: payPlan.ID,
 	}
@@ -1784,7 +1784,7 @@ func TestEmployeeHandler_CreateContract_FromAfterTo(t *testing.T) {
 		From:          time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),
 		To:            &toDate,
 		StaffCategory: "qualified",
-		WeeklyHours:   40,
+		WeeklyHours:   float64Ptr(40),
 		Grade:         "S8a", Step: 3,
 		PayPlanID: payPlan.ID,
 	}
@@ -1818,7 +1818,7 @@ func TestEmployeeHandler_CreateContract_NegativeWeeklyHours(t *testing.T) {
 		SectionID:     sectionID,
 		From:          time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		StaffCategory: "qualified",
-		WeeklyHours:   -1,
+		WeeklyHours:   float64Ptr(-1),
 		Grade:         "S8a", Step: 3,
 		PayPlanID: payPlan.ID,
 	}
@@ -1852,7 +1852,7 @@ func TestEmployeeHandler_CreateContract_WeeklyHoursOver168(t *testing.T) {
 		SectionID:     sectionID,
 		From:          time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		StaffCategory: "qualified",
-		WeeklyHours:   169,
+		WeeklyHours:   float64Ptr(169),
 		Grade:         "S8a", Step: 3,
 		PayPlanID: payPlan.ID,
 	}
@@ -1886,7 +1886,7 @@ func TestEmployeeHandler_CreateContract_InvalidStaffCategory(t *testing.T) {
 		SectionID:     sectionID,
 		From:          time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		StaffCategory: "invalid_value",
-		WeeklyHours:   40,
+		WeeklyHours:   float64Ptr(40),
 		Grade:         "S8a", Step: 3,
 		PayPlanID: payPlan.ID,
 	}

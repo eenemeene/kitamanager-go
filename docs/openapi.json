@@ -1010,6 +1010,48 @@
                 ],
                 "type": "object"
             },
+            "ChildContractAmendRequest": {
+                "properties": {
+                    "effective_from": {
+                        "example": "2025-08-01",
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "properties": {
+                        "nullable": true,
+                        "type": "object"
+                    },
+                    "section_id": {
+                        "example": 2,
+                        "type": "integer"
+                    },
+                    "to": {
+                        "example": "2025-12-31",
+                        "format": "date-time",
+                        "nullable": true,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "effective_from"
+                ],
+                "type": "object"
+            },
+            "ChildContractAmendResponse": {
+                "properties": {
+                    "closed": {
+                        "$ref": "#/components/schemas/ChildContractResponse"
+                    },
+                    "created": {
+                        "$ref": "#/components/schemas/ChildContractResponse"
+                    }
+                },
+                "required": [
+                    "closed",
+                    "created"
+                ],
+                "type": "object"
+            },
             "ChildContractBatchUpdateEntry": {
                 "properties": {
                     "from": {
@@ -1053,6 +1095,45 @@
                 "required": [
                     "updates"
                 ],
+                "type": "object"
+            },
+            "ChildContractBoundaryResponse": {
+                "properties": {
+                    "earlier": {
+                        "$ref": "#/components/schemas/ChildContractResponse"
+                    },
+                    "later": {
+                        "$ref": "#/components/schemas/ChildContractResponse"
+                    }
+                },
+                "required": [
+                    "earlier",
+                    "later"
+                ],
+                "type": "object"
+            },
+            "ChildContractCorrectRequest": {
+                "properties": {
+                    "from": {
+                        "example": "2025-01-01",
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "properties": {
+                        "nullable": true,
+                        "type": "object"
+                    },
+                    "section_id": {
+                        "example": 2,
+                        "type": "integer"
+                    },
+                    "to": {
+                        "example": "2025-12-31",
+                        "format": "date-time",
+                        "nullable": true,
+                        "type": "string"
+                    }
+                },
                 "type": "object"
             },
             "ChildContractCreateRequest": {
@@ -1558,6 +1639,40 @@
                 ],
                 "type": "object"
             },
+            "ContractBoundaryMoveRequest": {
+                "properties": {
+                    "at": {
+                        "example": "2025-09-01",
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "earlier_id": {
+                        "example": 5,
+                        "type": "integer"
+                    },
+                    "later_id": {
+                        "example": 6,
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "at",
+                    "earlier_id",
+                    "later_id"
+                ],
+                "type": "object"
+            },
+            "ContractEndRequest": {
+                "properties": {
+                    "to": {
+                        "example": "2025-12-31",
+                        "format": "date-time",
+                        "nullable": true,
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "ContractProperties": {
                 "additionalProperties": {},
                 "type": "object"
@@ -1762,6 +1877,68 @@
                 ],
                 "type": "object"
             },
+            "EmployeeContractAmendRequest": {
+                "properties": {
+                    "effective_from": {
+                        "example": "2025-08-01",
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "grade": {
+                        "example": "S8a",
+                        "type": "string"
+                    },
+                    "payplan_id": {
+                        "example": 1,
+                        "type": "integer"
+                    },
+                    "properties": {
+                        "nullable": true,
+                        "type": "object"
+                    },
+                    "section_id": {
+                        "example": 2,
+                        "type": "integer"
+                    },
+                    "staff_category": {
+                        "example": "qualified",
+                        "type": "string"
+                    },
+                    "step": {
+                        "example": 3,
+                        "type": "integer"
+                    },
+                    "to": {
+                        "example": "2025-12-31",
+                        "format": "date-time",
+                        "nullable": true,
+                        "type": "string"
+                    },
+                    "weekly_hours": {
+                        "example": 40,
+                        "type": "number"
+                    }
+                },
+                "required": [
+                    "effective_from"
+                ],
+                "type": "object"
+            },
+            "EmployeeContractAmendResponse": {
+                "properties": {
+                    "closed": {
+                        "$ref": "#/components/schemas/EmployeeContractResponse"
+                    },
+                    "created": {
+                        "$ref": "#/components/schemas/EmployeeContractResponse"
+                    }
+                },
+                "required": [
+                    "closed",
+                    "created"
+                ],
+                "type": "object"
+            },
             "EmployeeContractBatchUpdateEntry": {
                 "properties": {
                     "from": {
@@ -1832,6 +2009,65 @@
                 ],
                 "type": "object"
             },
+            "EmployeeContractBoundaryResponse": {
+                "properties": {
+                    "earlier": {
+                        "$ref": "#/components/schemas/EmployeeContractResponse"
+                    },
+                    "later": {
+                        "$ref": "#/components/schemas/EmployeeContractResponse"
+                    }
+                },
+                "required": [
+                    "earlier",
+                    "later"
+                ],
+                "type": "object"
+            },
+            "EmployeeContractCorrectRequest": {
+                "properties": {
+                    "from": {
+                        "example": "2025-01-01",
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "grade": {
+                        "example": "S8a",
+                        "type": "string"
+                    },
+                    "payplan_id": {
+                        "example": 1,
+                        "type": "integer"
+                    },
+                    "properties": {
+                        "nullable": true,
+                        "type": "object"
+                    },
+                    "section_id": {
+                        "example": 2,
+                        "type": "integer"
+                    },
+                    "staff_category": {
+                        "example": "qualified",
+                        "type": "string"
+                    },
+                    "step": {
+                        "example": 3,
+                        "type": "integer"
+                    },
+                    "to": {
+                        "example": "2025-12-31",
+                        "format": "date-time",
+                        "nullable": true,
+                        "type": "string"
+                    },
+                    "weekly_hours": {
+                        "example": 40,
+                        "type": "number"
+                    }
+                },
+                "type": "object"
+            },
             "EmployeeContractCreateRequest": {
                 "properties": {
                     "from": {
@@ -1871,6 +2107,7 @@
                         "type": "string"
                     },
                     "weekly_hours": {
+                        "description": "WeeklyHours is a pointer so that 0 — a contract kept open with no hours,\ne.g. during parental leave — is distinguishable from a client that omitted\nthe field. On a float64 `required` rejects zero values, so a legitimate\n0-hour contract could not be created at all; on a pointer it only checks\nnon-nil, which is exactly \"present\". The field therefore stays required in\nthe spec, and 0 is now expressible.",
                         "example": 40,
                         "maximum": 168,
                         "minimum": 0,
@@ -12093,6 +12330,114 @@
                 ]
             }
         },
+        "/api/v1/organizations/{orgId}/children/{childId}/contracts/boundary": {
+            "post": {
+                "description": "Move the seam between two contracts that meet: the later one starts on `at` and the\nearlier one is closed the day before. This backs the timeline drag in the UI.\n\nOne date, both sides derived on the server. The client used to compute four dates and\nsend them as a batch, which went wrong twice: it cleared the neighbour's `to`\n(dragging any but the newest boundary failed with a 409) and it wiped the\nneighbour's properties, silently recomputing its funding at the base rate.\n\nThe two contracts must actually be adjacent — the earlier one's `to` plus one day\nequals the later one's `from`. With a gap between them there are two independent\nboundaries rather than one seam, so set each end date instead. The seam must also\nleave both sides at least one day long.",
+                "parameters": [
+                    {
+                        "description": "Organization ID",
+                        "in": "path",
+                        "name": "orgId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Child ID",
+                        "in": "path",
+                        "name": "childId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ContractBoundaryMoveRequest"
+                            }
+                        }
+                    },
+                    "description": "The two contracts and the new seam date",
+                    "required": true,
+                    "x-originalParamName": "request"
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChildContractBoundaryResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Same id twice, not adjacent, wrong order, or the seam would empty one side"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Child or contract not found"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "The resulting timeline would overlap another contract (contract_overlap)"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Move the boundary between two adjacent child contracts",
+                "tags": [
+                    "children"
+                ]
+            }
+        },
         "/api/v1/organizations/{orgId}/children/{childId}/contracts/current": {
             "get": {
                 "description": "Get the currently active contract for a child",
@@ -12359,6 +12704,121 @@
                     "children"
                 ]
             },
+            "patch": {
+                "description": "Fix what a contract period records, in place. Use this when the stored facts were\nwrong — a typo'd start date, the wrong section, a care type entered incorrectly.\nUse amend instead when the facts themselves changed as of a date.\n\nThis is a true partial update: a field you omit is left exactly as it was. To clear\n`to` or `properties`, send them as null. That is the difference from the old PUT,\nwhere omitting `to` cleared it.\n\nCorrections are allowed on past contracts, including ones that already ended,\nbecause correcting history is the point. Every changed field is written to the audit\nlog with its old and new value, since a change to care type or a supplement changes\nwhat the Kita is paid.\n\nAuto-applied funding properties are re-merged only when the request touches\n`properties` or `from`, so correcting a section cannot quietly add funding keys.",
+                "parameters": [
+                    {
+                        "description": "Organization ID",
+                        "in": "path",
+                        "name": "orgId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Child ID",
+                        "in": "path",
+                        "name": "childId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Contract ID",
+                        "in": "path",
+                        "name": "contractId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChildContractCorrectRequest"
+                            }
+                        }
+                    },
+                    "description": "Fields to correct",
+                    "required": true,
+                    "x-originalParamName": "request"
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChildContractResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Invalid request (e.g. from after to, null from, dates before birthdate)"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Contract not found"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Dates overlap another contract (contract_overlap), or the contract was changed by someone else"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Correct a child contract",
+                "tags": [
+                    "children"
+                ]
+            },
             "put": {
                 "description": "Update an existing contract by ID. Date rules as for creation: both dates\ninclusive, same-day contracts allowed, no overlaps.\n\nIMPORTANT — what happens depends on when the contract started, because changing a\npast contract in place would silently recompute funding for months already billed:\n\n- started BEFORE today: the contract is AMENDED, not edited. The existing row is\nclosed with to = yesterday and a NEW contract is created starting TODAY carrying\nthe changes. Any `from` in the request is IGNORED; `to`, if given, applies to the\nnew contract, so a `to` in the past is rejected (400) as from-after-to.\n- starts TODAY or later: updated in place.\n- already ENDED (to before today): rejected with 400.\n\nSo this endpoint records a change going FORWARD. To correct a historical timeline —\nmove a boundary into the past — use the batch endpoint instead.\n\nNullable fields (`to`, `properties`) are replaced wholesale: omitting one CLEARS it.\nSend the full properties map on every update unless you mean to remove them.",
                 "parameters": [
@@ -12470,6 +12930,240 @@
                     }
                 ],
                 "summary": "Update child contract",
+                "tags": [
+                    "children"
+                ]
+            }
+        },
+        "/api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId}/amend": {
+            "post": {
+                "description": "Record that the facts changed as of a date: the addressed contract is closed the day\nbefore `effective_from`, and a successor carrying the changes starts on it. Both\ncontracts are returned, so the caller never has to guess which id it now holds.\n\n`effective_from` is honoured, including in the past — a Bescheid that arrives late is\none call. It also anchors the auto-applied funding properties, which the old PUT\nresolved at today and therefore got wrong for any backdated change that crossed a\nfunding period.\n\nFields you omit inherit from the contract being amended, which is usually what you\nwant: a new Bescheid typically changes the care type and nothing else. Send `to` as\nnull to make the successor open-ended.\n\nRejected with 400 if `effective_from` is not after the contract's start (that is a\ncorrection, so use PATCH), or if the contract already ended before it (amending would\nsilently extend a finished contract over months that were already billed).",
+                "parameters": [
+                    {
+                        "description": "Organization ID",
+                        "in": "path",
+                        "name": "orgId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Child ID",
+                        "in": "path",
+                        "name": "childId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Contract ID",
+                        "in": "path",
+                        "name": "contractId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChildContractAmendRequest"
+                            }
+                        }
+                    },
+                    "description": "Effective date and the fields that changed",
+                    "required": true,
+                    "x-originalParamName": "request"
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChildContractAmendResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "effective_from not after the start, or the contract already ended before it"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Contract not found"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "The successor would overlap another contract (contract_overlap)"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Amend a child contract from a date",
+                "tags": [
+                    "children"
+                ]
+            }
+        },
+        "/api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId}/end": {
+            "post": {
+                "description": "Record that a contract stops on a date — a child leaving — or undo that by sending\n`to` as null, which makes it ongoing again.\n\n`to` is required in the body. The old surface could only reopen a contract by\n*omitting* the field, which was indistinguishable from \"leave it alone\"; here the\nnull is explicit.\n\nReopening a contract that has a successor is a 409, not a silent overwrite.",
+                "parameters": [
+                    {
+                        "description": "Organization ID",
+                        "in": "path",
+                        "name": "orgId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Child ID",
+                        "in": "path",
+                        "name": "childId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Contract ID",
+                        "in": "path",
+                        "name": "contractId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ContractEndRequest"
+                            }
+                        }
+                    },
+                    "description": "The end date, or null to reopen",
+                    "required": true,
+                    "x-originalParamName": "request"
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChildContractResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "`to` missing, before `from`, or before the child's birthdate"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Contract not found"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Reopening would overlap a later contract (contract_overlap)"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Set or clear a child contract's end date",
                 "tags": [
                     "children"
                 ]
@@ -13859,6 +14553,114 @@
                 ]
             }
         },
+        "/api/v1/organizations/{orgId}/employees/{employeeId}/contracts/boundary": {
+            "post": {
+                "description": "Move the seam between two contracts that meet: the later one starts on `at` and the\nearlier one is closed the day before. One date, both sides derived on the server.\n\nThe two contracts must actually be adjacent — the earlier one's `to` plus one day\nequals the later one's `from`. With a gap there are two independent boundaries rather\nthan one seam, so set each end date instead. The seam must leave both sides at least\none day long, and the pay plan must cover the later contract's grade and step at its\nnew start date.",
+                "parameters": [
+                    {
+                        "description": "Organization ID",
+                        "in": "path",
+                        "name": "orgId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Employee ID",
+                        "in": "path",
+                        "name": "employeeId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ContractBoundaryMoveRequest"
+                            }
+                        }
+                    },
+                    "description": "The two contracts and the new seam date",
+                    "required": true,
+                    "x-originalParamName": "request"
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EmployeeContractBoundaryResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Same id twice, not adjacent, wrong order, seam would empty one side, or grade/step not covered at the new start"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Employee or contract not found"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "The resulting timeline would overlap another contract (contract_overlap)"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Move the boundary between two adjacent employee contracts",
+                "tags": [
+                    "employees"
+                ]
+            }
+        },
         "/api/v1/organizations/{orgId}/employees/{employeeId}/contracts/current": {
             "get": {
                 "description": "Get the currently active contract for an employee",
@@ -14125,6 +14927,121 @@
                     "employees"
                 ]
             },
+            "patch": {
+                "description": "Fix what a contract period records, in place — a typo'd start date, the wrong\nsection, a pay grade entered incorrectly. Use amend instead when the terms actually\nchanged as of a date, so the old terms stay on record for the months they applied to.\n\nA true partial update: a field you omit is left exactly as it was, and `to` or\n`properties` are cleared only by an explicit null. `weekly_hours` accepts 0 — a\ncontract with no hours (parental leave) is legitimate and the old request could not\nexpress it, because `required` rejects zero.\n\nPay-plan coverage is re-checked only when pay plan, grade, step or `from` move, so\ncorrecting a section cannot fail because the pay plan was edited years later.",
+                "parameters": [
+                    {
+                        "description": "Organization ID",
+                        "in": "path",
+                        "name": "orgId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Employee ID",
+                        "in": "path",
+                        "name": "employeeId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Contract ID",
+                        "in": "path",
+                        "name": "contractId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmployeeContractCorrectRequest"
+                            }
+                        }
+                    },
+                    "description": "Fields to correct",
+                    "required": true,
+                    "x-originalParamName": "request"
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EmployeeContractResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Invalid request (e.g. from after to, unknown pay plan, grade/step not covered)"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Contract not found"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Dates overlap another contract (contract_overlap), or the contract was changed by someone else"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Correct an employee contract",
+                "tags": [
+                    "employees"
+                ]
+            },
             "put": {
                 "description": "Update an existing contract by ID. Date rules as for creation: both dates\ninclusive, same-day contracts allowed, no overlaps.\n\nIMPORTANT — what happens depends on when the contract started, because changing a\npast contract in place would silently recompute funding for months already billed:\n\n- started BEFORE today: the contract is AMENDED, not edited. The existing row is\nclosed with to = yesterday and a NEW contract is created starting TODAY carrying\nthe changes. Any `from` in the request is IGNORED; `to`, if given, applies to the\nnew contract, so a `to` in the past is rejected (400) as from-after-to.\n- starts TODAY or later: updated in place.\n- already ENDED (to before today): rejected with 400.\n\nSo this endpoint records a change going FORWARD. To correct a historical timeline —\nmove a boundary into the past — use the batch endpoint instead.\n\nNullable fields (`to`, `properties`) are replaced wholesale: omitting one CLEARS it.\nSend the full properties map on every update unless you mean to remove them.",
                 "parameters": [
@@ -14236,6 +15153,240 @@
                     }
                 ],
                 "summary": "Update employee contract",
+                "tags": [
+                    "employees"
+                ]
+            }
+        },
+        "/api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId}/amend": {
+            "post": {
+                "description": "Record that the terms changed as of a date — a raise, a change in weekly hours, a\nmove to another section. The addressed contract is closed the day before\n`effective_from` and a successor carrying the changes starts on it; both are returned.\n\nThis is the operation to use for anything that affects pay, because it keeps the old\nterms on record for the months they applied to. `effective_from` is honoured,\nincluding in the past, and it anchors the pay-plan coverage check — the old path\nchecked at today, which accepted a backdated amendment to a grade the plan only\ngained later, and rejected one it had at the time.\n\nFields you omit inherit from the contract being amended. Send `to` as null to make\nthe successor open-ended.",
+                "parameters": [
+                    {
+                        "description": "Organization ID",
+                        "in": "path",
+                        "name": "orgId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Employee ID",
+                        "in": "path",
+                        "name": "employeeId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Contract ID",
+                        "in": "path",
+                        "name": "contractId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmployeeContractAmendRequest"
+                            }
+                        }
+                    },
+                    "description": "Effective date and the terms that changed",
+                    "required": true,
+                    "x-originalParamName": "request"
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EmployeeContractAmendResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "effective_from not after the start, contract already ended before it, or grade/step not covered at that date"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Contract not found"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "The successor would overlap another contract (contract_overlap)"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Amend an employee contract from a date",
+                "tags": [
+                    "employees"
+                ]
+            }
+        },
+        "/api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId}/end": {
+            "post": {
+                "description": "Record that a contract stops on a date — an employee leaving, or a fixed term — or\nundo that by sending `to` as null, which makes it ongoing again.\n\n`to` is required in the body: the old surface could only reopen a contract by\nomitting the field, which was indistinguishable from \"leave it alone\".",
+                "parameters": [
+                    {
+                        "description": "Organization ID",
+                        "in": "path",
+                        "name": "orgId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Employee ID",
+                        "in": "path",
+                        "name": "employeeId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Contract ID",
+                        "in": "path",
+                        "name": "contractId",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ContractEndRequest"
+                            }
+                        }
+                    },
+                    "description": "The end date, or null to reopen",
+                    "required": true,
+                    "x-originalParamName": "request"
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EmployeeContractResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "`to` missing, or before `from`"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Contract not found"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Reopening would overlap a later contract (contract_overlap)"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Set or clear an employee contract's end date",
                 "tags": [
                     "employees"
                 ]
