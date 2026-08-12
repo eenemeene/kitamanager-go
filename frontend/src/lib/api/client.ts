@@ -1,101 +1,108 @@
 import axios, { type AxiosInstance, type AxiosError } from 'axios';
 import type {
-  LoginRequest,
-  LoginResponse,
-  LoginSuccessResponse,
-  MfaVerifyRequest,
-  MfaChallengeRequest,
-  MfaChallengeResponse,
-  FactorResponse,
-  FactorListResponse,
-  FactorEnrolRequest,
-  FactorActivateRequest,
-  FactorActivateResponse,
-  FactorRegenerateRequest,
-  FactorDeleteRequest,
-  FactorLabelUpdateRequest,
+  AgeDistributionResponse,
+  AuditLogListParams,
+  AuditLogResponse,
   BackupCodesPayload,
-  Organization,
-  OrganizationCreateRequest,
-  OrganizationUpdateRequest,
-  User,
-  UserCreateRequest,
-  UserUpdateRequest,
-  Employee,
-  EmployeeCreateRequest,
-  EmployeeUpdateRequest,
-  EmployeeContract,
-  EmployeeContractCreateRequest,
-  EmployeeContractUpdateRequest,
+  BudgetItem,
+  BudgetItemCreateRequest,
+  BudgetItemDetail,
+  BudgetItemEntry,
+  BudgetItemEntryCreateRequest,
+  BudgetItemEntryUpdateRequest,
+  BudgetItemUpdateRequest,
   Child,
+  ChildAttendanceCreateRequest,
+  ChildAttendanceDailySummaryResponse,
+  ChildAttendanceResponse,
+  ChildAttendanceUpdateRequest,
+  ChildBillingHistoryResponse,
+  ChildContract,
+  ChildContractAmendRequest,
+  ChildContractAmendResponse,
+  ChildContractBoundaryResponse,
+  ChildContractCorrectRequest,
+  ChildContractCreateRequest,
   ChildCreateRequest,
   ChildUpdateRequest,
-  ChildContract,
-  ChildContractCreateRequest,
-  ChildContractUpdateRequest,
+  ChildVoucher,
+  ChildWithoutVoucherResponse,
+  ChildrenBillingSummaryResponse,
   ChildrenFundingResponse,
-  AgeDistributionResponse,
+  ContractBoundaryMoveRequest,
+  ContractEndRequest,
   ContractPropertiesDistributionResponse,
-  ChildAttendanceResponse,
-  ChildAttendanceCreateRequest,
-  ChildAttendanceUpdateRequest,
-  ChildAttendanceDailySummaryResponse,
-  Role,
-  UserOrganizationResponse,
-  UserMembershipsResponse,
+  Employee,
+  EmployeeContract,
+  EmployeeContractAmendRequest,
+  EmployeeContractAmendResponse,
+  EmployeeContractBoundaryResponse,
+  EmployeeContractCorrectRequest,
+  EmployeeContractCreateRequest,
+  EmployeeCreateRequest,
+  EmployeeStaffingHoursResponse,
+  EmployeeUpdateRequest,
+  FactorActivateRequest,
+  FactorActivateResponse,
+  FactorDeleteRequest,
+  FactorEnrolRequest,
+  FactorLabelUpdateRequest,
+  FactorListResponse,
+  FactorRegenerateRequest,
+  FactorResponse,
+  FinancialResponse,
+  ForecastRequest,
+  ForecastResponse,
+  FundingComparisonResponse,
+  FundingComparisonWrappedResponse,
   GovernmentFunding,
-  GovernmentFundingDetail,
+  GovernmentFundingBillPeriodListItem,
+  GovernmentFundingBillPeriodResponse,
+  GovernmentFundingBillResponse,
   GovernmentFundingCreateRequest,
-  GovernmentFundingUpdateRequest,
+  GovernmentFundingDetail,
   GovernmentFundingPeriod,
   GovernmentFundingPeriodCreateRequest,
   GovernmentFundingPeriodUpdateRequest,
   GovernmentFundingProperty,
   GovernmentFundingPropertyCreateRequest,
   GovernmentFundingPropertyUpdateRequest,
-  GovernmentFundingBillResponse,
-  GovernmentFundingBillPeriodListItem,
-  GovernmentFundingBillPeriodResponse,
-  FundingComparisonResponse,
-  FundingComparisonWrappedResponse,
-  ChildBillingHistoryResponse,
-  ChildrenBillingSummaryResponse,
-  ChildWithoutVoucherResponse,
-  ChildVoucher,
-  UnmatchedBillChild,
+  GovernmentFundingUpdateRequest,
+  LoginRequest,
+  LoginResponse,
+  LoginSuccessResponse,
+  MfaChallengeRequest,
+  MfaChallengeResponse,
+  MfaVerifyRequest,
+  OccupancyResponse,
+  Organization,
+  OrganizationCreateRequest,
+  OrganizationUpdateRequest,
+  PaginatedResponse,
+  PaginationParams,
   PayPlan,
-  PayPlanDetail,
   PayPlanCreateRequest,
-  PayPlanUpdateRequest,
-  PayPlanPeriod,
-  PayPlanPeriodCreateRequest,
-  PayPlanPeriodUpdateRequest,
+  PayPlanDetail,
   PayPlanEntry,
   PayPlanEntryCreateRequest,
   PayPlanEntryUpdateRequest,
-  BudgetItem,
-  BudgetItemDetail,
-  BudgetItemCreateRequest,
-  BudgetItemUpdateRequest,
-  BudgetItemEntry,
-  BudgetItemEntryCreateRequest,
-  BudgetItemEntryUpdateRequest,
-  StepPromotionsResponse,
-  StaffingHoursResponse,
-  EmployeeStaffingHoursResponse,
-  FinancialResponse,
-  OccupancyResponse,
+  PayPlanPeriod,
+  PayPlanPeriodCreateRequest,
+  PayPlanPeriodUpdateRequest,
+  PayPlanUpdateRequest,
+  Role,
   Section,
   SectionCreateRequest,
   SectionUpdateRequest,
-  ContractBatchUpdateRequest,
-  PaginatedResponse,
-  PaginationParams,
-  ForecastRequest,
-  ForecastResponse,
-  AuditLogResponse,
-  AuditLogListParams,
+  StaffingHoursResponse,
+  StepPromotionsResponse,
+  UnmatchedBillChild,
+  User,
+  UserCreateRequest,
+  UserMembershipsResponse,
+  UserOrganizationResponse,
   UserSessionsResponse,
+  UserUpdateRequest,
 } from './types';
 import { DEFAULT_PAGE_SIZE } from './types';
 
@@ -527,14 +534,79 @@ class ApiClient {
     return response.data;
   }
 
-  async updateEmployeeContract(
+  /**
+   * Corrects a employee contract in place: the recorded facts were wrong.
+   *
+   * A true partial update — a field you omit is left alone, and `to`/`properties`
+   * are cleared only by an explicit null. `weekly_hours: 0` is expressible here,
+   * which the old request could not do. Use amendEmployeeContract when the terms
+   * changed as of a date, so pay history stays correct for past months.
+   */
+  async correctEmployeeContract(
     orgId: number,
     employeeId: number,
     contractId: number,
-    data: EmployeeContractUpdateRequest
+    version: number,
+    data: EmployeeContractCorrectRequest
   ): Promise<EmployeeContract> {
-    const response = await this.client.put<EmployeeContract>(
+    const response = await this.client.patch<EmployeeContract>(
       `/organizations/${orgId}/employees/${employeeId}/contracts/${contractId}`,
+      data,
+      { headers: { 'If-Match': `"${version}"` } }
+    );
+    return response.data;
+  }
+
+  /**
+   * Amends a employee contract from a date: closes it the day before
+   * `effective_from` and creates a successor carrying the changes. Returns both.
+   *
+   * This is the operation for anything affecting pay: a raise recorded as a
+   * correction would silently restate what the employee earned last month.
+   */
+  async amendEmployeeContract(
+    orgId: number,
+    employeeId: number,
+    contractId: number,
+    version: number,
+    data: EmployeeContractAmendRequest
+  ): Promise<EmployeeContractAmendResponse> {
+    const response = await this.client.post<EmployeeContractAmendResponse>(
+      `/organizations/${orgId}/employees/${employeeId}/contracts/${contractId}/amend`,
+      data,
+      { headers: { 'If-Match': `"${version}"` } }
+    );
+    return response.data;
+  }
+
+  /** Sets or clears a employee contract's end date; `to: null` reopens it. */
+  async endEmployeeContract(
+    orgId: number,
+    employeeId: number,
+    contractId: number,
+    version: number,
+    data: ContractEndRequest
+  ): Promise<EmployeeContract> {
+    const response = await this.client.post<EmployeeContract>(
+      `/organizations/${orgId}/employees/${employeeId}/contracts/${contractId}/end`,
+      data,
+      { headers: { 'If-Match': `"${version}"` } }
+    );
+    return response.data;
+  }
+
+  /**
+   * Moves the seam between two adjacent employee contracts. One date; the server
+   * derives both sides, which is why this cannot clear the neighbour's end date
+   * or wipe its properties the way the batch payload it replaces could.
+   */
+  async moveEmployeeContractBoundary(
+    orgId: number,
+    employeeId: number,
+    data: ContractBoundaryMoveRequest
+  ): Promise<EmployeeContractBoundaryResponse> {
+    const response = await this.client.post<EmployeeContractBoundaryResponse>(
+      `/organizations/${orgId}/employees/${employeeId}/contracts/boundary`,
       data
     );
     return response.data;
@@ -554,18 +626,6 @@ class ApiClient {
       `/organizations/${orgId}/employees/${employeeId}/contracts/${contractId}`,
       { headers: { 'If-Match': `"${version}"` } }
     );
-  }
-
-  async batchUpdateEmployeeContracts(
-    orgId: number,
-    employeeId: number,
-    data: ContractBatchUpdateRequest
-  ): Promise<EmployeeContract[]> {
-    const response = await this.client.put<EmployeeContract[]>(
-      `/organizations/${orgId}/employees/${employeeId}/contracts/batch`,
-      data
-    );
-    return response.data;
   }
 
   // Children (organization-scoped)
@@ -659,14 +719,79 @@ class ApiClient {
     return response.data;
   }
 
-  async updateChildContract(
+  /**
+   * Corrects a child contract in place: the recorded facts were wrong.
+   *
+   * A true partial update — a field you omit is left alone, and `to`/`properties`
+   * are cleared only by an explicit null. Use amendChildContract instead when the
+   * facts changed as of a date, so the old ones stay on record for the months
+   * they applied to.
+   */
+  async correctChildContract(
     orgId: number,
     childId: number,
     contractId: number,
-    data: ChildContractUpdateRequest
+    version: number,
+    data: ChildContractCorrectRequest
   ): Promise<ChildContract> {
-    const response = await this.client.put<ChildContract>(
+    const response = await this.client.patch<ChildContract>(
       `/organizations/${orgId}/children/${childId}/contracts/${contractId}`,
+      data,
+      { headers: { 'If-Match': `"${version}"` } }
+    );
+    return response.data;
+  }
+
+  /**
+   * Amends a child contract from a date: closes it the day before
+   * `effective_from` and creates a successor carrying the changes. Returns both.
+   *
+   * `effective_from` is honoured, including in the past, so a Bescheid that
+   * arrives late is one call.
+   */
+  async amendChildContract(
+    orgId: number,
+    childId: number,
+    contractId: number,
+    version: number,
+    data: ChildContractAmendRequest
+  ): Promise<ChildContractAmendResponse> {
+    const response = await this.client.post<ChildContractAmendResponse>(
+      `/organizations/${orgId}/children/${childId}/contracts/${contractId}/amend`,
+      data,
+      { headers: { 'If-Match': `"${version}"` } }
+    );
+    return response.data;
+  }
+
+  /** Sets or clears a child contract's end date; `to: null` reopens it. */
+  async endChildContract(
+    orgId: number,
+    childId: number,
+    contractId: number,
+    version: number,
+    data: ContractEndRequest
+  ): Promise<ChildContract> {
+    const response = await this.client.post<ChildContract>(
+      `/organizations/${orgId}/children/${childId}/contracts/${contractId}/end`,
+      data,
+      { headers: { 'If-Match': `"${version}"` } }
+    );
+    return response.data;
+  }
+
+  /**
+   * Moves the seam between two adjacent child contracts. One date; the server
+   * derives both sides, which is why this cannot clear the neighbour's end date
+   * or wipe its properties the way the batch payload it replaces could.
+   */
+  async moveChildContractBoundary(
+    orgId: number,
+    childId: number,
+    data: ContractBoundaryMoveRequest
+  ): Promise<ChildContractBoundaryResponse> {
+    const response = await this.client.post<ChildContractBoundaryResponse>(
+      `/organizations/${orgId}/children/${childId}/contracts/boundary`,
       data
     );
     return response.data;
@@ -690,18 +815,6 @@ class ApiClient {
       `/organizations/${orgId}/children/${childId}/contracts/${contractId}`,
       { headers: { 'If-Match': `"${version}"` } }
     );
-  }
-
-  async batchUpdateChildContracts(
-    orgId: number,
-    childId: number,
-    data: ContractBatchUpdateRequest
-  ): Promise<ChildContract[]> {
-    const response = await this.client.put<ChildContract[]>(
-      `/organizations/${orgId}/children/${childId}/contracts/batch`,
-      data
-    );
-    return response.data;
   }
 
   async getChildrenFunding(orgId: number, date?: string): Promise<ChildrenFundingResponse> {

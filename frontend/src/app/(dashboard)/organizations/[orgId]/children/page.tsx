@@ -20,7 +20,8 @@ import {
   type Child,
   type ChildContract,
   type ChildContractCreateRequest,
-  type ChildContractUpdateRequest,
+  type ChildContractAmendRequest,
+  type ChildContractAmendResponse,
   type ChildFundingResponse,
   type ChildBillingSummaryEntry,
   type ContractProperties,
@@ -188,13 +189,16 @@ export default function ChildrenPage() {
 
   const createContractMutation = useContractMutation<
     ChildContractCreateRequest,
-    ChildContractUpdateRequest,
-    ChildContract
+    ChildContractAmendRequest,
+    ChildContract,
+    ChildContractAmendResponse
   >({
     createFn: (childId, data) => apiClient.createChildContract(orgId, childId, data),
-    updateFn: (childId, contractId, data) =>
-      apiClient.updateChildContract(orgId, childId, contractId, data),
-    toUpdateData: ({ from, ...rest }) => rest,
+    amendFn: (childId, contractId, version, data) =>
+      apiClient.amendChildContract(orgId, childId, contractId, version, data),
+    // The date the user picked in the dialog is the date the change takes effect,
+    // including in the past. The old code stripped it and the server used today.
+    toAmendData: ({ from, ...rest }) => ({ effective_from: from, ...rest }),
     invalidateQueryKeys: [
       queryKeys.children.all(orgId),
       queryKeys.children.allUnpaginated(orgId),
@@ -266,15 +270,15 @@ export default function ChildrenPage() {
   const adjustContractEndMutation = useMutation({
     mutationFn: ({
       childId,
-      contractId,
+      contract,
       to,
     }: {
       childId: number;
-      contractId: number;
+      contract: Pick<ChildContract, 'id' | 'version'>;
       to: string;
     }) =>
-      apiClient.updateChildContract(orgId, childId, contractId, {
-        to: formatDateForApi(to) ?? undefined,
+      apiClient.endChildContract(orgId, childId, contract.id, contract.version, {
+        to: formatDateForApi(to),
       }),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.children.all(orgId) });
@@ -295,8 +299,8 @@ export default function ChildrenPage() {
     },
   });
   const handleAdjustContractEnd = useCallback(
-    (child: Child, contractId: number, to: string) => {
-      adjustContractEndMutation.mutate({ childId: child.id, contractId, to });
+    (child: Child, contract: Pick<ChildContract, 'id' | 'version'>, to: string) => {
+      adjustContractEndMutation.mutate({ childId: child.id, contract, to });
     },
     [adjustContractEndMutation]
   );

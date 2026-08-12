@@ -4,13 +4,23 @@ import { useToast } from '@/lib/hooks/use-toast';
 
 interface HasContracts {
   id: number;
-  contracts?: { id: number; section_id: number }[];
+  contracts?: { id: number; section_id: number; version: number }[];
 }
 
 interface MoveContractConfig<T extends HasContracts> {
   orgId: number;
-  /** API call to update the contract's section. */
-  updateFn: (entityId: number, contractId: number, sectionId: number) => Promise<unknown>;
+  /**
+   * API call to correct the contract's section. `version` is the contract's
+   * optimistic-concurrency token, required by the correction endpoint: moving
+   * someone between sections must not overwrite a change another user made to
+   * the same contract in the meantime.
+   */
+  updateFn: (
+    entityId: number,
+    contractId: number,
+    sectionId: number,
+    version: number
+  ) => Promise<unknown>;
   /** Query key for the unpaginated list used for optimistic updates. */
   allUnpaginatedKey: QueryKey;
   /** Additional query keys to invalidate on settle (all, detail, contracts, etc.). */
@@ -25,6 +35,8 @@ export interface MoveContractVariables {
   entityId: number;
   contractId: number;
   sectionId: number;
+  /** The contract version as read, sent as the If-Match precondition. */
+  version: number;
 }
 
 export function useMoveContractMutation<T extends HasContracts>(config: MoveContractConfig<T>) {
@@ -34,7 +46,12 @@ export function useMoveContractMutation<T extends HasContracts>(config: MoveCont
 
   return useMutation<unknown, Error, MoveContractVariables, { previous?: T[] }>({
     mutationFn: (variables) =>
-      config.updateFn(variables.entityId, variables.contractId, variables.sectionId),
+      config.updateFn(
+        variables.entityId,
+        variables.contractId,
+        variables.sectionId,
+        variables.version
+      ),
     onMutate: async ({ entityId, contractId, sectionId }) => {
       await queryClient.cancelQueries({ queryKey: config.allUnpaginatedKey });
       const previous = queryClient.getQueryData<T[]>(config.allUnpaginatedKey);

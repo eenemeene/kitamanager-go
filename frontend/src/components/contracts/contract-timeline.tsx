@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { parseISO, addDays } from 'date-fns';
 import { getContractStatus } from '@/lib/utils/contracts';
 import { formatDateForApi } from '@/lib/utils/formatting';
-import type { ContractBatchUpdateItem } from '@/lib/api/types';
+import type { ContractBoundaryMoveRequest } from '@/lib/api/types';
 import { buildTimelineItems, type BaseContract } from './timeline-utils';
 import { TimelineSegment } from './timeline-segment';
 import { BoundaryHandle } from './boundary-handle';
@@ -13,7 +13,7 @@ import { BoundaryHandle } from './boundary-handle';
 interface ContractTimelineProps<T extends BaseContract> {
   contracts: T[];
   renderSegmentContent: (contract: T) => ReactNode;
-  onBoundaryChange: (updates: ContractBatchUpdateItem[]) => Promise<unknown>;
+  onBoundaryChange: (move: ContractBoundaryMoveRequest) => Promise<unknown>;
   isUpdating?: boolean;
 }
 
@@ -26,26 +26,27 @@ export function ContractTimeline<T extends BaseContract>({
   const t = useTranslations();
 
   const handleBoundaryChange = useCallback(
-    (upperContract: BaseContract, lowerContract: BaseContract, newTo: string, newFrom: string) => {
-      // Send BOTH dates for BOTH contracts, not just the one that moved. The
-      // batch endpoint assigns `to` unconditionally, so an entry that omits it
-      // clears it — that is how a contract is set back to ongoing. Sending only
-      // `from` for the upper contract therefore wiped its `to` whenever a third
-      // contract followed it, making it ongoing and colliding with that third
-      // contract: dragging any but the newest boundary failed with a 409.
-      const updates: ContractBatchUpdateItem[] = [
-        {
-          id: lowerContract.id,
-          from: formatDateForApi(lowerContract.from) ?? undefined,
-          to: formatDateForApi(newTo) ?? undefined,
-        },
-        {
-          id: upperContract.id,
-          from: formatDateForApi(newFrom) ?? undefined,
-          to: formatDateForApi(upperContract.to) ?? undefined,
-        },
-      ];
-      onBoundaryChange(updates);
+    (upperContract: BaseContract, lowerContract: BaseContract, _newTo: string, newFrom: string) => {
+      // One date: the seam itself. The server closes the earlier contract the day
+      // before and starts the later one on it, so `_newTo` is not sent at all —
+      // it is derivable, and sending it was the source of both boundary bugs.
+      //
+      // This used to send four dates across two contracts because the batch
+      // endpoint cleared `to` when an entry omitted it. Getting that wrong wiped
+      // the neighbour's end date (a 409 for every child with three or more
+      // contracts) and, in another version, its care type and funding
+      // supplements. Neither is expressible now.
+      //
+      // The timeline is sorted newest-first, so `lower` is the earlier contract.
+      const at = formatDateForApi(newFrom);
+      if (!at) return;
+      onBoundaryChange({
+        earlier_id: lowerContract.id,
+        later_id: upperContract.id,
+        at,
+        earlier_version: lowerContract.version,
+        later_version: upperContract.version,
+      });
     },
     [onBoundaryChange]
   );

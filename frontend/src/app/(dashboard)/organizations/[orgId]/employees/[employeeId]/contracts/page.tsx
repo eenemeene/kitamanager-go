@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { format, parseISO, subDays } from 'date-fns';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Trash2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -28,8 +29,8 @@ import { queryKeys } from '@/lib/api/queryKeys';
 import {
   type EmployeeContract,
   type EmployeeContractCreateRequest,
-  type EmployeeContractUpdateRequest,
-  type ContractBatchUpdateRequest,
+  type EmployeeContractCorrectRequest,
+  type ContractBoundaryMoveRequest,
   LOOKUP_FETCH_LIMIT,
 } from '@/lib/api/types';
 import { useForm } from 'react-hook-form';
@@ -111,14 +112,16 @@ export default function EmployeeContractsPage() {
     },
   });
 
-  const updateMutation = useResourceMutation({
+  const correctMutation = useResourceMutation({
+    // The whole contract, not just its id: correcting it needs the version as an
+    // If-Match precondition, so an edit cannot silently overwrite someone else's.
     mutationFn: ({
-      contractId,
+      contract,
       data,
     }: {
-      contractId: number;
-      data: EmployeeContractUpdateRequest;
-    }) => apiClient.updateEmployeeContract(orgId, employeeId, contractId, data),
+      contract: EmployeeContract;
+      data: EmployeeContractCorrectRequest;
+    }) => apiClient.correctEmployeeContract(orgId, employeeId, contract.id, contract.version, data),
     invalidateQueryKey: invalidateKeys,
     successMessage: t('contracts.updateSuccess'),
     errorMessage: t('common.failedToSave', { resource: 'contract' }),
@@ -143,24 +146,26 @@ export default function EmployeeContractsPage() {
 
   const contractsQueryKey = queryKeys.employees.contracts(orgId, employeeId);
 
-  const batchUpdateMutation = useMutation({
-    mutationFn: (data: ContractBatchUpdateRequest) =>
-      apiClient.batchUpdateEmployeeContracts(orgId, employeeId, data),
-    onMutate: async (newData) => {
+  const boundaryMutation = useMutation({
+    mutationFn: (move: ContractBoundaryMoveRequest) =>
+      apiClient.moveEmployeeContractBoundary(orgId, employeeId, move),
+    onMutate: async (move) => {
       await queryClient.cancelQueries({ queryKey: contractsQueryKey });
       const previous = queryClient.getQueryData<EmployeeContract[]>(contractsQueryKey);
-      queryClient.setQueryData<EmployeeContract[]>(contractsQueryKey, (old) => {
-        if (!old) return old;
-        return old.map((c) => {
-          const update = newData.updates.find((u) => u.id === c.id);
-          if (!update) return c;
-          return {
-            ...c,
-            ...(update.from !== undefined && { from: update.from }),
-            ...(update.to !== undefined && { to: update.to }),
-          };
-        });
-      });
+      // Mirror what the server will do: the later contract starts at the seam,
+      // the earlier one ends the day before. Only these two dates change, which
+      // is the point of sending one date instead of four.
+      const dayBefore =
+        formatDateForApi(format(subDays(parseISO(move.at), 1), 'yyyy-MM-dd')) ?? undefined;
+      queryClient.setQueryData<EmployeeContract[]>(contractsQueryKey, (old) =>
+        old?.map((c) =>
+          c.id === move.later_id
+            ? { ...c, from: move.at }
+            : c.id === move.earlier_id
+              ? { ...c, to: dayBefore ?? c.to }
+              : c
+        )
+      );
       return { previous };
     },
     onError: (error: unknown, _vars, context) => {
@@ -238,11 +243,15 @@ export default function EmployeeContractsPage() {
 
   const onSubmit = (data: EmployeeContractFormData) => {
     if (editingContract) {
-      updateMutation.mutate({
-        contractId: editingContract.id,
+      correctMutation.mutate({
+        contract: editingContract,
+        // section_id is included because the dialog renders a section select whose
+        // value the old payload dropped. `to` is sent as null rather than omitted
+        // when empty: omitting now means "leave alone".
         data: {
           from: formatDateForApi(data.from) || undefined,
-          to: formatDateForApi(data.to) || undefined,
+          to: formatDateForApi(data.to),
+          section_id: data.section_id,
           payplan_id: data.payplan_id,
           staff_category: data.staff_category,
           grade: data.grade,
@@ -444,8 +453,8 @@ export default function EmployeeContractsPage() {
                         </div>
                       </div>
                     )}
-                    onBoundaryChange={(updates) => batchUpdateMutation.mutateAsync({ updates })}
-                    isUpdating={batchUpdateMutation.isPending}
+                    onBoundaryChange={(move) => boundaryMutation.mutateAsync(move)}
+                    isUpdating={boundaryMutation.isPending}
                   />
                 </TabsContent>
               </>
@@ -463,7 +472,7 @@ export default function EmployeeContractsPage() {
         errors={errors}
         watch={watch}
         setValue={setValue}
-        isSaving={createMutation.isPending || updateMutation.isPending}
+        isSaving={createMutation.isPending || correctMutation.isPending}
         payPlans={payPlans}
         sections={sections}
       />

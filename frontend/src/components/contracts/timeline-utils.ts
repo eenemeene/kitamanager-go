@@ -4,6 +4,8 @@ export interface BaseContract {
   id: number;
   from: string;
   to?: string | null;
+  /** Optimistic-concurrency token, sent when a boundary drag moves this contract. */
+  version: number;
 }
 
 export type TimelineItem =

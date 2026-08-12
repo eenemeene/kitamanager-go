@@ -12845,7 +12845,9 @@ export interface components {
        * @example 2025-08-01
        */
       effective_from: string;
-      properties?: Record<string, never> | null;
+      properties?: {
+        [key: string]: unknown;
+      } | null;
       /** @example 2 */
       section_id?: number;
       /**
@@ -12888,7 +12890,9 @@ export interface components {
        * @example 2025-01-01
        */
       from?: string;
-      properties?: Record<string, never> | null;
+      properties?: {
+        [key: string]: unknown;
+      } | null;
       /** @example 2 */
       section_id?: number;
       /**
@@ -13240,7 +13244,9 @@ export interface components {
       grade?: string;
       /** @example 1 */
       payplan_id?: number;
-      properties?: Record<string, never> | null;
+      properties?: {
+        [key: string]: unknown;
+      } | null;
       /** @example 2 */
       section_id?: number;
       /** @example qualified */
@@ -13303,7 +13309,9 @@ export interface components {
       grade?: string;
       /** @example 1 */
       payplan_id?: number;
-      properties?: Record<string, never> | null;
+      properties?: {
+        [key: string]: unknown;
+      } | null;
       /** @example 2 */
       section_id?: number;
       /** @example qualified */
@@ -13546,7 +13554,9 @@ export interface components {
     FactorActivateRequest: {
       /** @example 123456 */
       code?: string;
-      webauthn_response?: Record<string, never>;
+      webauthn_response?: {
+        [key: string]: unknown;
+      };
     };
     FactorActivateResponse: {
       /** @example true */
@@ -14311,7 +14321,9 @@ export interface components {
       pending_token: string;
     };
     MFAChallengeResponse: {
-      request_options: Record<string, never>;
+      request_options: {
+        [key: string]: unknown;
+      };
     };
     MFAVerifyRequest: {
       /** @example 123456 */
@@ -14320,7 +14332,9 @@ export interface components {
       factor_id: number;
       /** @example 9ZmN...sBA */
       pending_token: string;
-      webauthn_response?: Record<string, never>;
+      webauthn_response?: {
+        [key: string]: unknown;
+      };
     };
     MessageResponse: {
       /** @example operation successful */
@@ -15123,7 +15137,9 @@ export interface components {
       voucher_number: string;
     };
     WebAuthnEnrollmentPayload: {
-      creation_options: Record<string, never>;
+      creation_options: {
+        [key: string]: unknown;
+      };
     };
   };
   responses: never;

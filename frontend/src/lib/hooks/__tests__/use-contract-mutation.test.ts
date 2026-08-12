@@ -47,14 +47,14 @@ describe('useContractMutation', () => {
 
   it('calls createFn when endCurrentContract is false', async () => {
     const createFn = jest.fn().mockResolvedValue({ id: 10, from: '2026-01-01', section_id: 1 });
-    const updateFn = jest.fn();
+    const amendFn = jest.fn();
 
     const { result } = renderHook(
       () =>
-        useContractMutation<TestCreateData, TestUpdateData, TestContract>({
+        useContractMutation<TestCreateData, TestUpdateData, TestContract, unknown>({
           createFn,
-          updateFn,
-          toUpdateData: ({ from, ...rest }) => rest,
+          amendFn,
+          toAmendData: ({ from, ...rest }) => ({ effective_from: from, ...rest }),
           invalidateQueryKeys: [['children', 1]],
         }),
       { wrapper }
@@ -74,19 +74,19 @@ describe('useContractMutation', () => {
     });
 
     expect(createFn).toHaveBeenCalledWith(5, { from: '2026-01-01', section_id: 1 });
-    expect(updateFn).not.toHaveBeenCalled();
+    expect(amendFn).not.toHaveBeenCalled();
   });
 
-  it('calls updateFn when endCurrentContract is true and active contract exists', async () => {
+  it('amends the active contract, passing its version and the chosen effective date', async () => {
     const createFn = jest.fn();
-    const updateFn = jest.fn().mockResolvedValue({ id: 11, from: '2026-01-01', section_id: 2 });
+    const amendFn = jest.fn().mockResolvedValue({ id: 11, from: '2026-01-01', section_id: 2 });
 
     const { result } = renderHook(
       () =>
-        useContractMutation<TestCreateData, TestUpdateData, TestContract>({
+        useContractMutation<TestCreateData, TestUpdateData, TestContract, unknown>({
           createFn,
-          updateFn,
-          toUpdateData: ({ from, ...rest }) => rest,
+          amendFn,
+          toAmendData: ({ from, ...rest }) => ({ effective_from: from, ...rest }),
           invalidateQueryKeys: [['children', 1]],
         }),
       { wrapper }
@@ -100,7 +100,7 @@ describe('useContractMutation', () => {
         entityId: 5,
         data: { from: '2026-06-01', section_id: 2 },
         entity: {
-          contracts: [{ id: 99, from: today, to: futureDate }],
+          contracts: [{ id: 99, version: 3, from: today, to: futureDate }],
         },
         endCurrentContract: true,
       });
@@ -110,7 +110,16 @@ describe('useContractMutation', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(updateFn).toHaveBeenCalledWith(5, 99, { section_id: 2 });
+    // The version travels as the If-Match precondition, and the form's `from`
+    // becomes effective_from instead of being stripped — the old behaviour meant
+    // the server started the successor today, ignoring the date the user picked.
+    // 2026-06-01 is the date the form supplied. It reaches the server as
+    // effective_from, where the old code stripped it and the server silently
+    // started the successor today — so the user picked one date and got another.
+    expect(amendFn).toHaveBeenCalledWith(5, 99, 3, {
+      effective_from: '2026-06-01',
+      section_id: 2,
+    });
     expect(createFn).not.toHaveBeenCalled();
   });
 
@@ -122,10 +131,10 @@ describe('useContractMutation', () => {
 
     const { result } = renderHook(
       () =>
-        useContractMutation<TestCreateData, TestUpdateData, TestContract>({
+        useContractMutation<TestCreateData, TestUpdateData, TestContract, unknown>({
           createFn,
-          updateFn: jest.fn(),
-          toUpdateData: ({ from, ...rest }) => rest,
+          amendFn: jest.fn(),
+          toAmendData: ({ from, ...rest }) => ({ effective_from: from, ...rest }),
           invalidateQueryKeys: [primaryKey, unpaginatedKey, statsKey],
           extraInvalidateKeys: (entityId) => [
             ['childContracts', 1, entityId],
@@ -166,10 +175,10 @@ describe('useContractMutation', () => {
 
     const { result } = renderHook(
       () =>
-        useContractMutation<TestCreateData, TestUpdateData, TestContract>({
+        useContractMutation<TestCreateData, TestUpdateData, TestContract, unknown>({
           createFn,
-          updateFn: jest.fn(),
-          toUpdateData: ({ from, ...rest }) => rest,
+          amendFn: jest.fn(),
+          toAmendData: ({ from, ...rest }) => ({ effective_from: from, ...rest }),
           invalidateQueryKeys: [['children', 1]],
         }),
       { wrapper }
@@ -201,14 +210,14 @@ describe('useContractMutation', () => {
     // are in the future or already ended). The hook must still create a new
     // one rather than no-op or crash trying to update nothing.
     const createFn = jest.fn().mockResolvedValue({ id: 30, from: '2026-01-01', section_id: 1 });
-    const updateFn = jest.fn();
+    const amendFn = jest.fn();
 
     const { result } = renderHook(
       () =>
-        useContractMutation<TestCreateData, TestUpdateData, TestContract>({
+        useContractMutation<TestCreateData, TestUpdateData, TestContract, unknown>({
           createFn,
-          updateFn,
-          toUpdateData: ({ from, ...rest }) => rest,
+          amendFn,
+          toAmendData: ({ from, ...rest }) => ({ effective_from: from, ...rest }),
           invalidateQueryKeys: [['children', 1]],
         }),
       { wrapper }
@@ -220,7 +229,7 @@ describe('useContractMutation', () => {
         data: { from: '2026-01-01', section_id: 1 },
         // Entity has only a past contract — no active one for "today".
         entity: {
-          contracts: [{ id: 50, from: '2020-01-01', to: '2020-06-30' }],
+          contracts: [{ id: 50, version: 3, from: '2020-01-01', to: '2020-06-30' }],
         },
         endCurrentContract: true,
       });
@@ -231,7 +240,7 @@ describe('useContractMutation', () => {
     });
 
     expect(createFn).toHaveBeenCalledWith(5, { from: '2026-01-01', section_id: 1 });
-    expect(updateFn).not.toHaveBeenCalled();
+    expect(amendFn).not.toHaveBeenCalled();
   });
 
   it('calls onSuccess callback', async () => {
@@ -240,10 +249,10 @@ describe('useContractMutation', () => {
 
     const { result } = renderHook(
       () =>
-        useContractMutation<TestCreateData, TestUpdateData, TestContract>({
+        useContractMutation<TestCreateData, TestUpdateData, TestContract, unknown>({
           createFn,
-          updateFn: jest.fn(),
-          toUpdateData: ({ from, ...rest }) => rest,
+          amendFn: jest.fn(),
+          toAmendData: ({ from, ...rest }) => ({ effective_from: from, ...rest }),
           invalidateQueryKeys: [['children', 1]],
           onSuccess,
         }),
