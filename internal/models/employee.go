@@ -146,8 +146,12 @@ type EmployeeContractResponse struct {
 	PayPlanID     uint               `json:"payplan_id" yaml:"payplan_id" example:"1"`
 	PayPlanName   *string            `json:"payplan_name,omitempty" yaml:"payplan_name" example:"TV eene meene"`
 	Properties    ContractProperties `json:"properties,omitempty" yaml:"properties"`
-	CreatedAt     time.Time          `json:"created_at" format:"date-time" yaml:"created_at"`
-	UpdatedAt     time.Time          `json:"updated_at" format:"date-time" yaml:"updated_at"`
+	// Version is the optimistic-concurrency token a client echoes back as an
+	// If-Match precondition on the next write. yaml:"-" keeps it out of the
+	// person YAML dumps: it describes a row's revision, not the contract.
+	Version   int64     `json:"version" yaml:"-" example:"3"`
+	CreatedAt time.Time `json:"created_at" format:"date-time" yaml:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" format:"date-time" yaml:"updated_at"`
 }
 
 // EmployeeListFilter represents filter options for listing employees.
@@ -179,6 +183,7 @@ func (c *EmployeeContract) ToResponse() EmployeeContractResponse {
 		WeeklyHours:   c.WeeklyHours,
 		PayPlanID:     c.PayPlanID,
 		Properties:    c.Properties,
+		Version:       c.Version,
 		CreatedAt:     c.CreatedAt,
 		UpdatedAt:     c.UpdatedAt,
 	}

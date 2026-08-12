@@ -11851,6 +11851,14 @@ export interface components {
       to: string;
       /** Format: date-time */
       updated_at: string;
+      /**
+       * @description Version is the optimistic-concurrency counter. Every write bumps it, and
+       *     updates are guarded with `WHERE id = ? AND version = ?` so a writer holding
+       *     stale data affects zero rows instead of silently overwriting a newer state.
+       *     Clients echo it back as an If-Match precondition; a contract's care type and
+       *     supplements determine its funding, so a lost update quietly changes money.
+       */
+      version: number;
     };
     ChildContractBatchUpdateEntry: {
       /**
@@ -11911,6 +11919,13 @@ export interface components {
       to: string;
       /** Format: date-time */
       updated_at: string;
+      /**
+       * @description Version is the optimistic-concurrency token a client echoes back as an
+       *     If-Match precondition on the next write. yaml:"-" keeps it out of the
+       *     person YAML dumps: it describes a row's revision, not the contract.
+       * @example 3
+       */
+      version: number;
     };
     ChildContractUpdateRequest: {
       /**
@@ -12154,6 +12169,14 @@ export interface components {
       to: string;
       /** Format: date-time */
       updated_at: string;
+      /**
+       * @description Version is the optimistic-concurrency counter. Every write bumps it, and
+       *     updates are guarded with `WHERE id = ? AND version = ?` so a writer holding
+       *     stale data affects zero rows instead of silently overwriting a newer state.
+       *     Clients echo it back as an If-Match precondition; a contract's care type and
+       *     supplements determine its funding, so a lost update quietly changes money.
+       */
+      version: number;
       /** @example 40 */
       weekly_hours: number;
     };
@@ -12246,6 +12269,13 @@ export interface components {
       to: string;
       /** Format: date-time */
       updated_at: string;
+      /**
+       * @description Version is the optimistic-concurrency token a client echoes back as an
+       *     If-Match precondition on the next write. yaml:"-" keeps it out of the
+       *     person YAML dumps: it describes a row's revision, not the contract.
+       * @example 3
+       */
+      version: number;
       /** @example 40 */
       weekly_hours: number;
     };

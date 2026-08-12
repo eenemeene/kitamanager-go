@@ -48,9 +48,22 @@ func determineAmendMode(contractFrom time.Time, contractTo *time.Time) (amendMod
 // and wraps everything else as internal.
 func contractOverlapError(err error) error {
 	if errors.Is(err, store.ErrPeriodOverlap) {
-		return apperror.Conflict(err.Error())
+		// apperror.ContractConflict carries ErrorCode "contract_overlap", so a
+		// client can tell an overlapping period apart from a stale-version
+		// conflict. Both are 409; only one is fixed by reloading and retrying.
+		return apperror.ContractConflict(err.Error())
 	}
 	return apperror.InternalWrap(err, "failed to validate contract")
+}
+
+// contractVersionConflict maps a version-guarded store update that matched no
+// rows onto a 409 the client can act on: reload the contract and reapply.
+// Distinct ErrorCode from an overlap, because the remedy is different.
+func contractVersionConflict(err error) error {
+	if errors.Is(err, store.ErrVersionConflict) {
+		return apperror.Conflict("this contract was changed by someone else — reload and try again")
+	}
+	return err
 }
 
 // mapContractDeferredOverlap translates two Postgres race outcomes into
@@ -78,7 +91,12 @@ func mapContractDeferredOverlap(err error) error {
 		return nil
 	}
 	if store.IsExclusionViolation(err) || store.IsDeadlock(err) {
-		return apperror.Conflict("contract dates overlap with an existing contract")
+		return apperror.ContractConflict("contract dates overlap with an existing contract")
+	}
+	// A version-guarded update inside the transaction surfaces here; give it the
+	// reload-and-retry message rather than letting it fall through as a 500.
+	if errors.Is(err, store.ErrVersionConflict) {
+		return contractVersionConflict(err)
 	}
 	return err
 }

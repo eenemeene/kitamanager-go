@@ -117,6 +117,7 @@ describe('SectionKanbanBoard', () => {
           {
             id: 1,
             child_id: 1,
+            version: 1,
             from: '2024-01-01T00:00:00Z',
             to: '',
             section_id: 1,
@@ -141,6 +142,7 @@ describe('SectionKanbanBoard', () => {
           {
             id: 2,
             child_id: 2,
+            version: 1,
             from: '2024-01-01T00:00:00Z',
             to: '',
             section_id: 2,
@@ -196,6 +198,7 @@ describe('SectionKanbanBoard', () => {
           {
             id: 1,
             child_id: 1,
+            version: 1,
             from: '2024-01-01T00:00:00Z',
             to: '',
             section_id: 1,
@@ -220,6 +223,7 @@ describe('SectionKanbanBoard', () => {
           {
             id: 2,
             child_id: 2,
+            version: 1,
             from: '2024-01-01T00:00:00Z',
             to: '',
             section_id: 1,

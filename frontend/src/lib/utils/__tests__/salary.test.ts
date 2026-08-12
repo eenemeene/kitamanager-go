@@ -12,6 +12,7 @@ afterAll(() => {
 const contract: EmployeeContract = {
   id: 1,
   employee_id: 1,
+  version: 1,
   from: '2025-01-01',
   to: '',
   section_id: 1,

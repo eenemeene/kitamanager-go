@@ -128,8 +128,12 @@ type ChildContractResponse struct {
 	SectionID   uint               `json:"section_id" yaml:"section_id" example:"2"`
 	SectionName *string            `json:"section_name,omitempty" yaml:"section_name" example:"Krippe"`
 	Properties  ContractProperties `json:"properties,omitempty" yaml:"properties"`
-	CreatedAt   time.Time          `json:"created_at" format:"date-time" yaml:"created_at"`
-	UpdatedAt   time.Time          `json:"updated_at" format:"date-time" yaml:"updated_at"`
+	// Version is the optimistic-concurrency token a client echoes back as an
+	// If-Match precondition on the next write. yaml:"-" keeps it out of the
+	// person YAML dumps: it describes a row's revision, not the contract.
+	Version   int64     `json:"version" yaml:"-" example:"3"`
+	CreatedAt time.Time `json:"created_at" format:"date-time" yaml:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" format:"date-time" yaml:"updated_at"`
 }
 
 func (c *ChildContract) ToResponse() ChildContractResponse {
@@ -140,6 +144,7 @@ func (c *ChildContract) ToResponse() ChildContractResponse {
 		To:         c.To,
 		SectionID:  c.SectionID,
 		Properties: c.Properties,
+		Version:    c.Version,
 		CreatedAt:  c.CreatedAt,
 		UpdatedAt:  c.UpdatedAt,
 	}

@@ -20,8 +20,14 @@ type BaseContract struct {
 	// For children: {"care_type": "ganztag", "supplements": ["ndh", "mss"]}
 	// For employees: {"benefits": ["christmas_bonus"], "employer_type": "normal"}
 	Properties ContractProperties `gorm:"serializer:json" json:"properties,omitempty"`
-	CreatedAt  time.Time          `json:"created_at" format:"date-time"`
-	UpdatedAt  time.Time          `json:"updated_at" format:"date-time"`
+	// Version is the optimistic-concurrency counter. Every write bumps it, and
+	// updates are guarded with `WHERE id = ? AND version = ?` so a writer holding
+	// stale data affects zero rows instead of silently overwriting a newer state.
+	// Clients echo it back as an If-Match precondition; a contract's care type and
+	// supplements determine its funding, so a lost update quietly changes money.
+	Version   int64     `gorm:"not null;default:1" json:"version"`
+	CreatedAt time.Time `json:"created_at" format:"date-time"`
+	UpdatedAt time.Time `json:"updated_at" format:"date-time"`
 }
 
 // GetScalarProperty returns a scalar (string) property value.
