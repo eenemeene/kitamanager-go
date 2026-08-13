@@ -70,7 +70,7 @@ test.describe('Child Contract Timeline', () => {
 
       // Timeline container should be visible
       await expect(page.getByTestId('contract-timeline')).toBeVisible({ timeout: 5000 });
-      expect(await page.getByTestId('timeline-segment').count()).toBe(1);
+      await expect(page.getByTestId('timeline-segment')).toHaveCount(1);
     } finally {
       await deleteChildViaApi(page, orgId, child.id);
     }
@@ -103,7 +103,7 @@ test.describe('Child Contract Timeline', () => {
       await expect(page.getByTestId('contract-timeline')).toBeVisible({ timeout: 5000 });
 
       // Should have 2 segments and 1 boundary handle
-      expect(await page.getByTestId('timeline-segment').count()).toBe(2);
+      await expect(page.getByTestId('timeline-segment')).toHaveCount(2);
       await expect(page.getByTestId('boundary-handle')).toBeVisible();
     } finally {
       await deleteChildViaApi(page, orgId, child.id);
@@ -138,7 +138,7 @@ test.describe('Child Contract Timeline', () => {
 
       // Should have gap, no boundary handle
       await expect(page.getByTestId('timeline-gap')).toBeVisible();
-      expect(await page.getByTestId('boundary-handle').count()).toBe(0);
+      await expect(page.getByTestId('boundary-handle')).toHaveCount(0);
     } finally {
       await deleteChildViaApi(page, orgId, child.id);
     }
@@ -187,7 +187,7 @@ test.describe('Child Contract Timeline', () => {
       // Switch to Table tab and verify dates changed — both rows should still exist
       await page.getByRole('tab', { name: /Table/i }).click();
       const tableRows = page.locator('table tbody tr');
-      expect(await tableRows.count()).toBe(2);
+      await expect(tableRows).toHaveCount(2);
     } finally {
       await deleteChildViaApi(page, orgId, child.id);
     }
@@ -234,7 +234,7 @@ test.describe('Child Contract Timeline', () => {
 
       // Should still have 2 segments (dates reverted after error)
       await expect(page.getByTestId('timeline-segment').first()).toBeVisible({ timeout: 5000 });
-      expect(await page.getByTestId('timeline-segment').count()).toBe(2);
+      await expect(page.getByTestId('timeline-segment')).toHaveCount(2);
     } finally {
       await deleteChildViaApi(page, orgId, child.id);
     }
@@ -321,8 +321,8 @@ test.describe('Child Contract Timeline', () => {
       await page.getByRole('tab', { name: /Timeline/i }).click();
       await expect(page.getByTestId('contract-timeline')).toBeVisible({ timeout: 5000 });
 
-      expect(await page.getByTestId('timeline-segment').count()).toBe(3);
-      expect(await page.getByTestId('boundary-handle').count()).toBe(2);
+      await expect(page.getByTestId('timeline-segment')).toHaveCount(3);
+      await expect(page.getByTestId('boundary-handle')).toHaveCount(2);
     } finally {
       await deleteChildViaApi(page, orgId, child.id);
     }
@@ -353,15 +353,15 @@ test.describe('Child Contract Timeline', () => {
 
       // Table tab should show 2 rows
       const tableRows = page.locator('table tbody tr');
-      expect(await tableRows.count()).toBe(2);
+      await expect(tableRows).toHaveCount(2);
 
       // Switch to Timeline
       await page.getByRole('tab', { name: /Timeline/i }).click();
-      expect(await page.getByTestId('timeline-segment').count()).toBe(2);
+      await expect(page.getByTestId('timeline-segment')).toHaveCount(2);
 
       // Switch back to Table
       await page.getByRole('tab', { name: /Table/i }).click();
-      expect(await tableRows.count()).toBe(2);
+      await expect(tableRows).toHaveCount(2);
     } finally {
       await deleteChildViaApi(page, orgId, child.id);
     }
@@ -406,7 +406,7 @@ test.describe('Employee Contract Timeline', () => {
       await expect(page.getByTestId('contract-timeline')).toBeVisible({ timeout: 5000 });
 
       // Should have 2 segments and 1 boundary handle
-      expect(await page.getByTestId('timeline-segment').count()).toBe(2);
+      await expect(page.getByTestId('timeline-segment')).toHaveCount(2);
       await expect(page.getByTestId('boundary-handle')).toBeVisible();
 
       // Employee-specific content should be visible (staff category, grade)

@@ -134,7 +134,7 @@ export function EmployeesTable({
                       onClick={() => onViewHistory(employee)}
                       title={t('employees.contractHistory')}
                       aria-label={t('employees.contractHistory')}
-                      className="hidden lg:inline-flex"
+                      className="hidden sm:inline-flex"
                     >
                       <History className="h-4 w-4" />
                     </Button>
@@ -144,7 +144,7 @@ export function EmployeesTable({
                       onClick={() => onAddContract(employee)}
                       title={t('employees.addContract')}
                       aria-label={t('employees.addContract')}
-                      className="hidden lg:inline-flex"
+                      className="hidden sm:inline-flex"
                     >
                       <FileText className="h-4 w-4" />
                     </Button>

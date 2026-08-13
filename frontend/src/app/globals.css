@@ -99,3 +99,27 @@
     @apply bg-background text-foreground;
   }
 }
+
+/*
+ * Honour the operating system's "reduce motion" setting (WCAG 2.3.3).
+ *
+ * Every animation in the app is decorative — dialogs and popovers fade and zoom
+ * in, toasts slide. None of it conveys information, so a user who has asked for
+ * less motion loses nothing by having it removed, and users prone to motion
+ * sickness or vestibular disorders gain a usable interface.
+ *
+ * It also makes interaction deterministic, which is why the Playwright device
+ * projects request it: Playwright refuses to click a moving target, and on a
+ * small viewport a popover that flips and repositions as it animates left tests
+ * retrying "element is not stable" until they timed out.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { skipWithoutRowActions } from './utils/viewport';
 import {
   login,
   createTestOrg,
@@ -227,6 +228,9 @@ test.describe('Child Contract Workflow - create child, add contract, move sectio
   test('should create child, add new contract (ending previous), move section, and verify', async ({
     page,
   }, testInfo) => {
+    // Drives the "Add Contract" dialog, which is opened by a row action the table
+    // only renders from `sm` up. Tablet and desktop run this; a phone cannot.
+    skipWithoutRowActions(test, page, 'Add Contract');
     testInfo.setTimeout(60000);
     const childName = uniqueName('Workflow');
     const child = await createChildViaApi(page, orgId, {
