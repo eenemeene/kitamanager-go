@@ -3994,7 +3994,42 @@ info:
   contact:
     email: support@kitamanager.example.com
     name: API Support
-  description: REST API for managing Users and Organizations with RBAC support
+  description: |-
+    REST API for a Kita management system: children and their care
+    contracts, employees and theirs, sections, attendance, and the
+    Berlin ISBJ funding and billing model. Organization-scoped
+    throughout, with role-based access control.
+
+    ## Authentication
+
+    Sessions are server-side. `POST /api/v1/login` sets two cookies: an
+    HttpOnly `session` cookie holding the session token, and a
+    JS-readable `csrf_token`. The token is opaque — not a JWT — and is
+    hashed before it is stored, so a leaked database row is not a usable
+    credential.
+
+    A request presents that session in one of two ways:
+
+    - **Browser** — the `session` cookie, sent automatically. Every
+    mutating request (POST, PATCH, PUT, DELETE) must also echo the
+    `csrf_token` cookie back in the `X-CSRF-Token` header, or it is
+    rejected. Reads do not need it.
+    - **CLI or server-to-server** — `Authorization: Bearer <token>` with
+    the same value the login response put in the cookie. CSRF does not
+    apply here, because a browser never attaches this header on its own.
+
+    There is no refresh endpoint: a session stays valid until logout,
+    expiry, or revocation via `/api/v1/me/sessions`.
+
+    ## Concurrency
+
+    Contract writes are guarded with optimistic concurrency. Every
+    contract response carries a `version`, and `GET` of a single contract
+    also returns it as an `ETag`. Corrections, amendments, end-date
+    changes and deletes require that value in an `If-Match` header;
+    omitting it is `428`, and a stale value is `412`. The seam-move
+    endpoint takes both contracts' versions in its body instead, because
+    it addresses two resources at once.
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
@@ -11439,8 +11474,29 @@ paths:
       - users
 securityDefinitions:
   BearerAuth:
-    description: Type "Bearer" followed by a space and JWT token.
+    description: |-
+      `Bearer <token>` where the token is the opaque session value returned
+      by login — not a JWT. Intended for CLI and server-to-server callers;
+      CSRF does not apply to it.
     in: header
     name: Authorization
+    type: apiKey
+  CookieAuth:
+    description: |-
+      Session cookie set by `POST /api/v1/login`, sent automatically by
+      browsers. Mutating requests must additionally send the CSRF header
+      below. This is what the web frontend uses.
+    in: cookie
+    name: session
+    type: apiKey
+  CsrfToken:
+    description: |-
+      Required on every mutating request made with `CookieAuth`. Its value
+      is the `csrf_token` cookie, which login sets alongside the session
+      cookie and which is deliberately readable from JavaScript so the
+      client can copy it into this header. Requests authenticated with
+      `BearerAuth` do not need it.
+    in: header
+    name: X-CSRF-Token
     type: apiKey
 swagger: "2.0"

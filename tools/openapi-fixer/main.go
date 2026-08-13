@@ -79,6 +79,8 @@ func run(inPath, outPath string) error {
 
 	markResponsePropertiesRequired(v3)
 	allowFreeFormObjectProperties(v3)
+	assignOperationIDs(v3)
+	declareContractETag(v3)
 
 	// kin-openapi marshals fields in a stable order via tagged structs;
 	// the only non-determinism left would come from unordered maps in the
@@ -96,6 +98,103 @@ func run(inPath, outPath string) error {
 		return fmt.Errorf("write %s: %w", outPath, err)
 	}
 	return nil
+}
+
+// declareContractETag documents the ETag that single-contract reads return.
+//
+// The handler sets it (see setVersionETag) because a client needs the contract's
+// version to send back as an If-Match precondition, and a header is the standard
+// place to publish it. swaggo's @Header annotation produced nothing here — it does
+// not reach the emitted spec — so the header is declared at this step instead,
+// beside the operationIds, rather than left undocumented.
+//
+// Undocumented, the concurrency contract is only half stated: the write endpoints
+// say they require If-Match without saying where its value comes from.
+func declareContractETag(doc *openapi3.T) {
+	if doc.Paths == nil {
+		return
+	}
+	const desc = "The contract's version, quoted. Echo it back as `If-Match` when correcting, " +
+		"amending, ending or deleting this contract; it is also on the body as `version`."
+	for path, item := range doc.Paths.Map() {
+		if item == nil || item.Get == nil || !strings.HasSuffix(path, "/contracts/{contractId}") {
+			continue
+		}
+		ok := item.Get.Responses.Value("200")
+		if ok == nil || ok.Value == nil {
+			continue
+		}
+		if ok.Value.Headers == nil {
+			ok.Value.Headers = openapi3.Headers{}
+		}
+		ok.Value.Headers["ETag"] = &openapi3.HeaderRef{Value: &openapi3.Header{Parameter: openapi3.Parameter{
+			Description: desc,
+			Schema:      openapi3.NewStringSchema().NewRef(),
+		}}}
+	}
+}
+
+// assignOperationIDs gives every operation a stable, readable id derived from its
+// method and path.
+//
+// swaggo only emits operationId from an explicit `@id` annotation, and this API
+// has none across 155 operations. Generators fall back to inventing names from the
+// path, which produces things like
+// `getApiV1OrganizationsOrgIdChildrenChildIdContractsContractId` and, worse, names
+// that change whenever a path does. Deriving them here keeps one rule in one place
+// and leaves the handlers uncluttered.
+//
+// The shape is method + path segments, with parameters marked "By": GET
+// /api/v1/organizations/{orgId}/children becomes `getOrganizationsByOrgIdChildren`.
+func assignOperationIDs(doc *openapi3.T) {
+	if doc.Paths == nil {
+		return
+	}
+	for path, item := range doc.Paths.Map() {
+		if item == nil {
+			continue
+		}
+		for method, op := range item.Operations() {
+			if op == nil || op.OperationID != "" {
+				continue
+			}
+			op.OperationID = operationID(method, path)
+		}
+	}
+}
+
+// operationID builds the identifier described on assignOperationIDs.
+func operationID(method, path string) string {
+	var b strings.Builder
+	b.WriteString(strings.ToLower(method))
+	for _, seg := range strings.Split(strings.TrimPrefix(path, "/"), "/") {
+		if seg == "" || seg == "api" || seg == "v1" {
+			continue
+		}
+		if strings.HasPrefix(seg, "{") {
+			b.WriteString("By")
+			seg = strings.Trim(seg, "{}")
+		}
+		b.WriteString(camel(seg))
+	}
+	return b.String()
+}
+
+// camel upper-cases the first rune and drops separators, so "government-funding"
+// becomes "GovernmentFunding".
+func camel(s string) string {
+	parts := strings.FieldsFunc(s, func(r rune) bool { return r == '-' || r == '_' || r == '.' })
+	var b strings.Builder
+	for _, p := range parts {
+		if p == "" {
+			continue
+		}
+		b.WriteString(strings.ToUpper(p[:1]))
+		if len(p) > 1 {
+			b.WriteString(p[1:])
+		}
+	}
+	return b.String()
 }
 
 // allowFreeFormObjectProperties states that an object-typed schema with no
