@@ -141,3 +141,56 @@ func TestOpt_MarshalRoundTrip(t *testing.T) {
 		t.Errorf("marshal null = %s", b)
 	}
 }
+
+// Marshalling has to preserve the three states, not just unmarshalling.
+//
+// This is the bug the PR-4 test port surfaced: an unset Opt marshalled as `null`,
+// so a Go caller that built a request struct and serialized it sent null for every
+// field it had not touched — and the service rejected the request with "from
+// cannot be null". IsZero + `omitzero` on each field is what closes it.
+func TestOpt_RoundTripsThreeStates(t *testing.T) {
+	type req struct {
+		From       Opt[time.Time]          `json:"from,omitzero"`
+		To         Opt[time.Time]          `json:"to,omitzero"`
+		Properties Opt[ContractProperties] `json:"properties,omitzero"`
+	}
+
+	when := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	in := req{
+		From: OptOf(when),          // a value
+		To:   OptNull[time.Time](), // explicitly cleared
+		// Properties left untouched
+	}
+
+	data, err := json.Marshal(in)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	// The untouched field must not appear at all; the cleared one must appear as null.
+	var wire map[string]json.RawMessage
+	if err := json.Unmarshal(data, &wire); err != nil {
+		t.Fatalf("unmarshal to map: %v", err)
+	}
+	if _, present := wire["properties"]; present {
+		t.Errorf("an untouched field must be omitted, got %s", data)
+	}
+	if string(wire["to"]) != "null" {
+		t.Errorf("an explicitly cleared field must serialize as null, got %s", data)
+	}
+
+	// And the whole thing must come back as it went in.
+	var out req
+	if err := json.Unmarshal(data, &out); err != nil {
+		t.Fatalf("round trip: %v", err)
+	}
+	if v, ok := out.From.Get(); !ok || !v.Equal(when) {
+		t.Errorf("from = %v (ok=%v), want %v", v, ok, when)
+	}
+	if !out.To.IsNull() {
+		t.Errorf("to should have round-tripped as an explicit null, got %+v", out.To)
+	}
+	if out.Properties.Set {
+		t.Errorf("properties should have round-tripped as absent, got %+v", out.Properties)
+	}
+}

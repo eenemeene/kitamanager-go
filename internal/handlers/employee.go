@@ -384,11 +384,6 @@ func (h *EmployeeHandler) GetContract(c *gin.Context) {
 // @Failure 409 {object} models.ErrorResponse "Updated dates would overlap with another contract"
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId} [put]
-func (h *EmployeeHandler) UpdateContract(c *gin.Context) {
-	handleUpdateContract(c, "employeeId", h.contractAudit(), h.service.UpdateContract,
-		func(r *models.EmployeeContractResponse) (uint, uint) { return r.ID, r.EmployeeID },
-		h.service.GetContractByID, employeeContractChanges)
-}
 
 // employeeContractChanges builds the audit diff for an employee contract. The
 // salary-bearing fields (grade, step, weekly hours, pay plan) are plain
@@ -437,18 +432,6 @@ func employeeContractChanges(before, after *models.EmployeeContractResponse) map
 // @Failure 409 {object} models.ErrorResponse "Updated dates would overlap"
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/batch [put]
-func (h *EmployeeHandler) BatchUpdateContracts(c *gin.Context) {
-	handleBatchUpdateContracts(c, "employeeId", h.contractAudit(), h.service.BatchUpdateContracts,
-		func(r *models.EmployeeContractResponse) (uint, uint) { return r.ID, r.EmployeeID },
-		h.service.GetContractByID, employeeContractChanges,
-		func(req *models.EmployeeContractBatchUpdateRequest) []uint {
-			ids := make([]uint, 0, len(req.Updates))
-			for _, u := range req.Updates {
-				ids = append(ids, u.ID)
-			}
-			return ids
-		})
-}
 
 // DeleteContract godoc
 // @Summary Delete employee contract

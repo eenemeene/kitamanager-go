@@ -391,11 +391,6 @@ func (h *ChildHandler) CreateContract(c *gin.Context) {
 // @Failure 409 {object} models.ErrorResponse "Updated dates would overlap with another contract"
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId} [put]
-func (h *ChildHandler) UpdateContract(c *gin.Context) {
-	handleUpdateContract(c, "childId", h.contractAudit(), h.service.UpdateContract,
-		func(r *models.ChildContractResponse) (uint, uint) { return r.ID, r.ChildID },
-		h.service.GetContractByID, childContractChanges)
-}
 
 // childContractChanges builds the audit diff for a child contract. Properties
 // carry the funding-relevant fields (care_type plus supplements), which is why
@@ -439,18 +434,6 @@ func childContractChanges(before, after *models.ChildContractResponse) map[strin
 // @Failure 409 {object} models.ErrorResponse "Updated dates would overlap"
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/children/{childId}/contracts/batch [put]
-func (h *ChildHandler) BatchUpdateContracts(c *gin.Context) {
-	handleBatchUpdateContracts(c, "childId", h.contractAudit(), h.service.BatchUpdateContracts,
-		func(r *models.ChildContractResponse) (uint, uint) { return r.ID, r.ChildID },
-		h.service.GetContractByID, childContractChanges,
-		func(req *models.ChildContractBatchUpdateRequest) []uint {
-			ids := make([]uint, 0, len(req.Updates))
-			for _, u := range req.Updates {
-				ids = append(ids, u.ID)
-			}
-			return ids
-		})
-}
 
 // DeleteContract godoc
 // @Summary Delete child contract

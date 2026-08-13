@@ -33,25 +33,6 @@ type ChildContractCreateRequest struct {
 	Properties ContractProperties `json:"properties,omitempty"`
 }
 
-// ChildContractUpdateRequest represents the request body for updating a child contract.
-type ChildContractUpdateRequest struct {
-	From       *time.Time         `json:"from" format:"date-time" example:"2025-01-01"`
-	To         *time.Time         `json:"to" format:"date-time" example:"2025-12-31"`
-	SectionID  *uint              `json:"section_id,omitempty" example:"2"`
-	Properties ContractProperties `json:"properties,omitempty"`
-}
-
-// ChildContractBatchUpdateEntry represents a single contract update within a batch.
-type ChildContractBatchUpdateEntry struct {
-	ID uint `json:"id" binding:"required" example:"5"`
-	ChildContractUpdateRequest
-}
-
-// ChildContractBatchUpdateRequest represents a batch of contract updates applied atomically.
-type ChildContractBatchUpdateRequest struct {
-	Updates []ChildContractBatchUpdateEntry `json:"updates" binding:"required,min=1,max=20"`
-}
-
 // ChildCreateRequest represents the request body for creating a child.
 // OrganizationID is derived from the URL path parameter.
 type ChildCreateRequest struct {

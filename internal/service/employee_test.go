@@ -1321,11 +1321,11 @@ func TestEmployeeService_UpdateContract_StaffCategory(t *testing.T) {
 	}
 
 	newCategory := "supplementary"
-	updateReq := &models.EmployeeContractUpdateRequest{
-		StaffCategory: &newCategory,
+	updateReq := &models.EmployeeContractCorrectRequest{
+		StaffCategory: models.OptOf(newCategory),
 	}
 
-	updated, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, updateReq)
+	updated, err := svc.CorrectContract(ctx, contract.ID, employee.ID, org.ID, updateReq)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1360,11 +1360,11 @@ func TestEmployeeService_UpdateContract_InvalidStaffCategory(t *testing.T) {
 	}
 
 	invalidCategory := "invalid_category"
-	updateReq := &models.EmployeeContractUpdateRequest{
-		StaffCategory: &invalidCategory,
+	updateReq := &models.EmployeeContractCorrectRequest{
+		StaffCategory: models.OptOf(invalidCategory),
 	}
 
-	_, err = svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, updateReq)
+	_, err = svc.CorrectContract(ctx, contract.ID, employee.ID, org.ID, updateReq)
 	if err == nil {
 		t.Fatal("expected error for invalid staff category, got nil")
 	}
@@ -1519,11 +1519,11 @@ func TestEmployeeService_UpdateContract_PayPlanID(t *testing.T) {
 
 	// Update to payPlan2
 	newPayPlanID := payPlan2.ID
-	updateReq := &models.EmployeeContractUpdateRequest{
-		PayPlanID: &newPayPlanID,
+	updateReq := &models.EmployeeContractCorrectRequest{
+		PayPlanID: models.OptOf(newPayPlanID),
 	}
 
-	updated, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, updateReq)
+	updated, err := svc.CorrectContract(ctx, contract.ID, employee.ID, org.ID, updateReq)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1559,11 +1559,11 @@ func TestEmployeeService_UpdateContract_PayPlanNotFound(t *testing.T) {
 
 	// Try to update to a non-existent pay plan
 	nonExistentID := uint(99999)
-	updateReq := &models.EmployeeContractUpdateRequest{
-		PayPlanID: &nonExistentID,
+	updateReq := &models.EmployeeContractCorrectRequest{
+		PayPlanID: models.OptOf(nonExistentID),
 	}
 
-	_, err = svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, updateReq)
+	_, err = svc.CorrectContract(ctx, contract.ID, employee.ID, org.ID, updateReq)
 	if err == nil {
 		t.Fatal("expected error for non-existent payplan_id, got nil")
 	}
@@ -1616,11 +1616,11 @@ func TestEmployeeService_UpdateContract_PayPlanWrongOrg(t *testing.T) {
 
 	// Try to update to org2's pay plan
 	wrongOrgPayPlanID := payPlanOrg2.ID
-	updateReq := &models.EmployeeContractUpdateRequest{
-		PayPlanID: &wrongOrgPayPlanID,
+	updateReq := &models.EmployeeContractCorrectRequest{
+		PayPlanID: models.OptOf(wrongOrgPayPlanID),
 	}
 
-	_, err = svc.UpdateContract(ctx, contract.ID, employee.ID, org1.ID, updateReq)
+	_, err = svc.CorrectContract(ctx, contract.ID, employee.ID, org1.ID, updateReq)
 	if err == nil {
 		t.Fatal("SECURITY: expected error when updating to pay plan from different org, got nil")
 	}
@@ -1729,11 +1729,11 @@ func TestEmployeeService_UpdateContract_PayPlanIDNotChangedWhenOmitted(t *testin
 
 	// Update without providing PayPlanID (should keep original)
 	newCategory := "supplementary"
-	updateReq := &models.EmployeeContractUpdateRequest{
-		StaffCategory: &newCategory,
+	updateReq := &models.EmployeeContractCorrectRequest{
+		StaffCategory: models.OptOf(newCategory),
 	}
 
-	updated, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, updateReq)
+	updated, err := svc.CorrectContract(ctx, contract.ID, employee.ID, org.ID, updateReq)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1806,12 +1806,14 @@ func TestEmployeeService_UpdateContract_AmendChangeSection(t *testing.T) {
 		t.Fatalf("failed to create contract: %v", err)
 	}
 
-	updated, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
-		SectionID: &section2.ID,
+	amendResp, err := svc.AmendContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractAmendRequest{
+		EffectiveFrom: models.Today(),
+		SectionID:     models.OptOf(section2.ID),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
+	updated := &amendResp.Created
 
 	today := models.Today()
 	yesterday := today.AddDate(0, 0, -1)
@@ -1883,12 +1885,14 @@ func TestEmployeeService_UpdateContract_AmendChangeStaffCategory(t *testing.T) {
 	}
 
 	newCategory := "supplementary"
-	updated, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
-		StaffCategory: &newCategory,
+	amendResp, err := svc.AmendContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractAmendRequest{
+		EffectiveFrom: models.Today(),
+		StaffCategory: models.OptOf(newCategory),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
+	updated := &amendResp.Created
 
 	if updated.ID == contract.ID {
 		t.Error("expected new contract ID (amend)")
@@ -1922,12 +1926,14 @@ func TestEmployeeService_UpdateContract_AmendChangePayPlan(t *testing.T) {
 		t.Fatalf("failed to create contract: %v", err)
 	}
 
-	updated, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
-		PayPlanID: &payPlan2.ID,
+	amendResp, err := svc.AmendContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractAmendRequest{
+		EffectiveFrom: models.Today(),
+		PayPlanID:     models.OptOf(payPlan2.ID),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
+	updated := &amendResp.Created
 
 	if updated.ID == contract.ID {
 		t.Error("expected new contract ID (amend)")
@@ -1962,13 +1968,15 @@ func TestEmployeeService_UpdateContract_AmendChangeGradeStep(t *testing.T) {
 
 	newGrade := "S11b"
 	newStep := 5
-	updated, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
-		Grade: &newGrade,
-		Step:  &newStep,
+	amendResp, err := svc.AmendContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractAmendRequest{
+		EffectiveFrom: models.Today(),
+		Grade:         models.OptOf(newGrade),
+		Step:          models.OptOf(newStep),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
+	updated := &amendResp.Created
 
 	if updated.ID == contract.ID {
 		t.Error("expected new contract ID (amend)")
@@ -2005,12 +2013,14 @@ func TestEmployeeService_UpdateContract_AmendChangeWeeklyHours(t *testing.T) {
 	}
 
 	newHours := 30.0
-	updated, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
-		WeeklyHours: &newHours,
+	amendResp, err := svc.AmendContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractAmendRequest{
+		EffectiveFrom: models.Today(),
+		WeeklyHours:   models.OptOf(newHours),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
+	updated := &amendResp.Created
 
 	if updated.ID == contract.ID {
 		t.Error("expected new contract ID (amend)")
@@ -2045,10 +2055,13 @@ func TestEmployeeService_UpdateContract_AmendAllFieldsCarryOver(t *testing.T) {
 	}
 
 	// Update with no fields changed (empty update) → still creates new contract via amend
-	updated, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{})
+	amendResp, err := svc.AmendContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractAmendRequest{
+		EffectiveFrom: models.Today(),
+	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
+	updated := &amendResp.Created
 
 	if updated.ID == contract.ID {
 		t.Error("expected new contract ID (amend)")
@@ -2073,79 +2086,6 @@ func TestEmployeeService_UpdateContract_AmendAllFieldsCarryOver(t *testing.T) {
 	}
 	if updated.Properties["benefit"] != "bonus" {
 		t.Errorf("Properties should carry over, got %v", updated.Properties)
-	}
-}
-
-func TestEmployeeService_UpdateContract_EndedContract(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createEmployeeService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
-
-	past := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
-	pastEnd := time.Date(2023, 12, 31, 0, 0, 0, 0, time.UTC)
-	contract, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
-		SectionID:     1,
-		From:          past,
-		To:            &pastEnd,
-		StaffCategory: "qualified",
-		WeeklyHours:   float64Ptr(39),
-		Grade:         "S8a", Step: 3,
-		PayPlanID: payPlan.ID,
-	})
-	if err != nil {
-		t.Fatalf("failed to create contract: %v", err)
-	}
-
-	newCategory := "supplementary"
-	_, err = svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
-		StaffCategory: &newCategory,
-	})
-	if err == nil {
-		t.Fatal("expected error for ended contract, got nil")
-	}
-	if !errors.Is(err, apperror.ErrBadRequest) {
-		t.Errorf("expected ErrBadRequest, got %v", err)
-	}
-}
-
-func TestEmployeeService_UpdateContract_AmendFromIgnored(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createEmployeeService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
-	section := createTestSection(t, db, "Krippe", org.ID, false)
-
-	past := models.Today().AddDate(0, -3, 0)
-	contract, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
-		SectionID:     section.ID,
-		From:          past,
-		StaffCategory: "qualified",
-		WeeklyHours:   float64Ptr(39),
-		Grade:         "S8a", Step: 3,
-		PayPlanID: payPlan.ID,
-	})
-	if err != nil {
-		t.Fatalf("failed to create contract: %v", err)
-	}
-
-	requestedFrom := time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC)
-	updated, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
-		From: &requestedFrom,
-	})
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	today := models.Today()
-	if !updated.From.Truncate(24 * time.Hour).Equal(today) {
-		t.Errorf("From = %v, want today (%v) — From should be ignored in amend mode", updated.From, today)
 	}
 }
 
@@ -2200,9 +2140,10 @@ func TestEmployeeService_UpdateContract_AmendOverlapConflict(t *testing.T) {
 	// blocker, so the overlap check inside amendContractTx must produce 409.
 	extendedEnd := blockerStart.AddDate(0, 1, 0)
 	newCategory := "supplementary"
-	_, err = svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
-		StaffCategory: &newCategory,
-		To:            &extendedEnd,
+	_, err = svc.AmendContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractAmendRequest{
+		EffectiveFrom: models.Today(),
+		StaffCategory: models.OptOf(newCategory),
+		To:            models.OptOf(extendedEnd),
 	})
 	if err == nil {
 		t.Fatal("expected overlap conflict error, got nil")
@@ -2236,8 +2177,8 @@ func TestEmployeeService_UpdateContract_InPlace_FutureContract(t *testing.T) {
 	}
 
 	newFrom := tomorrow.AddDate(0, 0, 7)
-	updated, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
-		From: &newFrom,
+	updated, err := svc.CorrectContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractCorrectRequest{
+		From: models.OptOf(newFrom),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -2285,12 +2226,14 @@ func TestEmployeeService_UpdateContract_AmendStateConsistency(t *testing.T) {
 
 	// Amend: change staff category
 	newCategory := "supplementary"
-	newContract, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
-		StaffCategory: &newCategory,
+	amendResp, err := svc.AmendContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractAmendRequest{
+		EffectiveFrom: models.Today(),
+		StaffCategory: models.OptOf(newCategory),
 	})
 	if err != nil {
 		t.Fatalf("amend failed: %v", err)
 	}
+	newContract := &amendResp.Created
 
 	// List should show 2 contracts
 	contracts, total, err := svc.ListContracts(ctx, employee.ID, org.ID, 100, 0)
@@ -2356,12 +2299,14 @@ func TestEmployeeService_UpdateContract_AmendPreservesOngoingTo(t *testing.T) {
 	}
 
 	newHours := float64(30)
-	updated, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
-		WeeklyHours: &newHours,
+	amendResp, err := svc.AmendContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractAmendRequest{
+		EffectiveFrom: models.Today(),
+		WeeklyHours:   models.OptOf(newHours),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
+	updated := &amendResp.Created
 
 	if updated.To != nil {
 		t.Errorf("new contract To should be nil (ongoing), got %v", updated.To)
@@ -2396,12 +2341,14 @@ func TestEmployeeService_UpdateContract_AmendPreservesToWhenNotInRequest(t *test
 	}
 
 	newGrade := "S9"
-	updated, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
-		Grade: &newGrade,
+	amendResp, err := svc.AmendContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractAmendRequest{
+		EffectiveFrom: models.Today(),
+		Grade:         models.OptOf(newGrade),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
+	updated := &amendResp.Created
 
 	if updated.To == nil {
 		t.Fatal("new contract To should not be nil")
@@ -2551,8 +2498,8 @@ func TestEmployeeService_UpdateContract_ClearNullableTo(t *testing.T) {
 	}
 
 	// Clear To by sending nil (simulates frontend sending null to make open-ended)
-	updated, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
-		To: nil,
+	updated, err := svc.CorrectContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractCorrectRequest{
+		To: models.OptNull[time.Time](),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -2601,8 +2548,8 @@ func TestEmployeeService_UpdateContract_ClearNullableProperties(t *testing.T) {
 	}
 
 	// Clear Properties by sending nil
-	updated, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
-		Properties: nil,
+	updated, err := svc.CorrectContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractCorrectRequest{
+		Properties: models.OptNull[models.ContractProperties](),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -3452,8 +3399,8 @@ func TestEmployeeService_UpdateContract_InPlace_SkipsCoverageWhenTupleUnchanged(
 	contract := createTestEmployeeContract(t, db, employee.ID, payPlan.ID, from, nil, "S8a", 3, 40.0)
 
 	newHours := 30.0
-	updated, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
-		WeeklyHours: &newHours,
+	updated, err := svc.CorrectContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractCorrectRequest{
+		WeeklyHours: models.OptOf(newHours),
 	})
 	if err != nil {
 		t.Fatalf("update should succeed when only weekly_hours changes, got %v", err)
@@ -3483,49 +3430,11 @@ func TestEmployeeService_UpdateContract_InPlace_RejectsChangeToMissingGrade(t *t
 	}
 
 	bogus := "S99a"
-	_, err = svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
-		Grade: &bogus,
+	_, err = svc.CorrectContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractCorrectRequest{
+		Grade: models.OptOf(bogus),
 	})
 	if err == nil {
 		t.Fatal("expected update to reject missing grade")
-	}
-	if !errors.Is(err, apperror.ErrBadRequest) {
-		t.Errorf("expected ErrBadRequest, got %v", err)
-	}
-}
-
-func TestEmployeeService_BatchUpdateContracts_RejectsMissingGrade(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createEmployeeService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	employee := createTestEmployee(t, db, "Anna", "Schmidt", org.ID)
-	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
-
-	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	contract, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
-		SectionID: 1, From: from, StaffCategory: "qualified",
-		WeeklyHours: float64Ptr(39), Grade: "S8a", Step: 3, PayPlanID: payPlan.ID,
-	})
-	if err != nil {
-		t.Fatalf("setup: %v", err)
-	}
-
-	bogus := "S99a"
-	req := &models.EmployeeContractBatchUpdateRequest{
-		Updates: []models.EmployeeContractBatchUpdateEntry{
-			{
-				ID: contract.ID,
-				EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{
-					Grade: &bogus,
-				},
-			},
-		},
-	}
-	_, err = svc.BatchUpdateContracts(ctx, employee.ID, org.ID, req)
-	if err == nil {
-		t.Fatal("expected batch update to reject change to a missing grade")
 	}
 	if !errors.Is(err, apperror.ErrBadRequest) {
 		t.Errorf("expected ErrBadRequest, got %v", err)
@@ -3553,8 +3462,8 @@ func TestEmployeeService_UpdateContract_InPlace_ChangeWeeklyHours(t *testing.T) 
 	}
 
 	newHours := 30.0
-	updated, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
-		WeeklyHours: &newHours,
+	updated, err := svc.CorrectContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractCorrectRequest{
+		WeeklyHours: models.OptOf(newHours),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -3591,9 +3500,9 @@ func TestEmployeeService_UpdateContract_InPlace_ChangeGradeStep(t *testing.T) {
 
 	newGrade := "S8b"
 	newStep := 5
-	updated, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
-		Grade: &newGrade,
-		Step:  &newStep,
+	updated, err := svc.CorrectContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractCorrectRequest{
+		Grade: models.OptOf(newGrade),
+		Step:  models.OptOf(newStep),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -3631,8 +3540,8 @@ func TestEmployeeService_UpdateContract_InPlace_InvalidWeeklyHours(t *testing.T)
 	}
 
 	negativeHours := -5.0
-	_, err = svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
-		WeeklyHours: &negativeHours,
+	_, err = svc.CorrectContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractCorrectRequest{
+		WeeklyHours: models.OptOf(negativeHours),
 	})
 	if err == nil {
 		t.Fatal("expected error for negative weekly hours, got nil")
@@ -3664,8 +3573,8 @@ func TestEmployeeService_UpdateContract_InPlace_InvalidStaffCategory(t *testing.
 	}
 
 	invalidCategory := "invalid"
-	_, err = svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
-		StaffCategory: &invalidCategory,
+	_, err = svc.CorrectContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractCorrectRequest{
+		StaffCategory: models.OptOf(invalidCategory),
 	})
 	if err == nil {
 		t.Fatal("expected error for invalid staff category, got nil")
@@ -3673,47 +3582,6 @@ func TestEmployeeService_UpdateContract_InPlace_InvalidStaffCategory(t *testing.
 
 	if !errors.Is(err, apperror.ErrBadRequest) {
 		t.Errorf("expected ErrBadRequest, got %v", err)
-	}
-}
-
-// In-place update with nil To clears the end date (makes contract ongoing).
-// This is by design: nullable fields are always assigned so the frontend can clear them by sending null.
-func TestEmployeeService_UpdateContract_InPlace_NilToClearsEndDate(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createEmployeeService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-	payPlan := createTestPayPlanWithCoverage(t, db, "TVoD-SuE", org.ID)
-
-	// Create a future-dated contract with an explicit end date
-	from := time.Now().AddDate(1, 0, 0)
-	from = time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, time.UTC)
-	to := from.AddDate(0, 6, 0)
-	contract, err := svc.CreateContract(ctx, employee.ID, org.ID, &models.EmployeeContractCreateRequest{
-		SectionID: 1, From: from, To: &to, StaffCategory: "qualified",
-		WeeklyHours: float64Ptr(40), Grade: "S8a", Step: 3, PayPlanID: payPlan.ID,
-	})
-	if err != nil {
-		t.Fatalf("failed to create contract: %v", err)
-	}
-	if contract.To == nil {
-		t.Fatal("expected contract to have an end date")
-	}
-
-	// Update WeeklyHours with nil To — should clear the end date
-	newHours := 35.0
-	updated, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
-		WeeklyHours: &newHours,
-	})
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	// To should be nil (cleared) because nil To = "make open-ended"
-	if updated.To != nil {
-		t.Errorf("To should be nil (cleared), got %v", *updated.To)
 	}
 }
 
@@ -3737,12 +3605,14 @@ func TestEmployeeService_UpdateContract_AmendGradeTrimmed(t *testing.T) {
 	}
 
 	gradeWithSpaces := "  S8a  "
-	amended, err := svc.UpdateContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractUpdateRequest{
-		Grade: &gradeWithSpaces,
+	amendResp, err := svc.AmendContract(ctx, contract.ID, employee.ID, org.ID, &models.EmployeeContractAmendRequest{
+		EffectiveFrom: models.Today(),
+		Grade:         models.OptOf(gradeWithSpaces),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
+	amended := &amendResp.Created
 
 	// Amend creates a new contract
 	if amended.ID == contract.ID {
@@ -3754,354 +3624,3 @@ func TestEmployeeService_UpdateContract_AmendGradeTrimmed(t *testing.T) {
 }
 
 // --- Batch Update Contract Tests ---
-
-func TestEmployeeService_BatchUpdateContracts_ShiftBoundary(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createEmployeeService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	payplan := createTestPayPlanWithCoverage(t, db, "TestPP", org.ID)
-	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-
-	aTo := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
-	contractA := createTestEmployeeContract(t, db, employee.ID, payplan.ID,
-		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &aTo, "S8a", 3, 39)
-
-	bTo := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	contractB := createTestEmployeeContract(t, db, employee.ID, payplan.ID,
-		time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC), &bTo, "S8a", 3, 39)
-
-	// Shift boundary earlier
-	newATo := time.Date(2024, 5, 31, 0, 0, 0, 0, time.UTC)
-	newBFrom := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
-
-	results, err := svc.BatchUpdateContracts(ctx, employee.ID, org.ID, &models.EmployeeContractBatchUpdateRequest{
-		Updates: []models.EmployeeContractBatchUpdateEntry{
-			{ID: contractA.ID, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{To: &newATo}},
-			{ID: contractB.ID, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{From: &newBFrom, To: &bTo}},
-		},
-	})
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if len(results) != 2 {
-		t.Fatalf("expected 2 results, got %d", len(results))
-	}
-	if !results[0].To.Equal(newATo) {
-		t.Errorf("contract A To = %v, want %v", results[0].To, newATo)
-	}
-	if !results[1].From.Equal(newBFrom) {
-		t.Errorf("contract B From = %v, want %v", results[1].From, newBFrom)
-	}
-}
-
-func TestEmployeeService_BatchUpdateContracts_AllFields(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createEmployeeService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	section2 := createTestSection(t, db, "Section2", org.ID, false)
-	payplan := createTestPayPlanWithCoverage(t, db, "TestPP", org.ID)
-	payplan2 := createTestPayPlanWithCoverage(t, db, "TestPP2", org.ID)
-	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-
-	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	contract := createTestEmployeeContract(t, db, employee.ID, payplan.ID,
-		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &to, "S8a", 3, 39)
-
-	newFrom := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
-	newTo := time.Date(2025, 6, 30, 0, 0, 0, 0, time.UTC)
-	newCategory := "supplementary"
-	newGrade := "S4"
-	newStep := 5
-	newHours := 30.0
-
-	results, err := svc.BatchUpdateContracts(ctx, employee.ID, org.ID, &models.EmployeeContractBatchUpdateRequest{
-		Updates: []models.EmployeeContractBatchUpdateEntry{
-			{ID: contract.ID, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{
-				From:          &newFrom,
-				To:            &newTo,
-				SectionID:     &section2.ID,
-				StaffCategory: &newCategory,
-				Grade:         &newGrade,
-				Step:          &newStep,
-				WeeklyHours:   &newHours,
-				PayPlanID:     &payplan2.ID,
-			}},
-		},
-	})
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	r := results[0]
-	if !r.From.Equal(newFrom) {
-		t.Errorf("From = %v, want %v", r.From, newFrom)
-	}
-	if r.SectionID != section2.ID {
-		t.Errorf("SectionID = %d, want %d", r.SectionID, section2.ID)
-	}
-	if r.StaffCategory != newCategory {
-		t.Errorf("StaffCategory = %q, want %q", r.StaffCategory, newCategory)
-	}
-	if r.Grade != newGrade {
-		t.Errorf("Grade = %q, want %q", r.Grade, newGrade)
-	}
-	if r.Step != newStep {
-		t.Errorf("Step = %d, want %d", r.Step, newStep)
-	}
-	if r.WeeklyHours != newHours {
-		t.Errorf("WeeklyHours = %f, want %f", r.WeeklyHours, newHours)
-	}
-	if r.PayPlanID != payplan2.ID {
-		t.Errorf("PayPlanID = %d, want %d", r.PayPlanID, payplan2.ID)
-	}
-}
-
-func TestEmployeeService_BatchUpdateContracts_PastContracts_NoAmendMode(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createEmployeeService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	payplan := createTestPayPlanWithCoverage(t, db, "TestPP", org.ID)
-	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-
-	aTo := time.Date(2020, 6, 30, 0, 0, 0, 0, time.UTC)
-	contract := createTestEmployeeContract(t, db, employee.ID, payplan.ID,
-		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), &aTo, "S8a", 3, 39)
-
-	newTo := time.Date(2020, 8, 31, 0, 0, 0, 0, time.UTC)
-	results, err := svc.BatchUpdateContracts(ctx, employee.ID, org.ID, &models.EmployeeContractBatchUpdateRequest{
-		Updates: []models.EmployeeContractBatchUpdateEntry{
-			{ID: contract.ID, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{To: &newTo}},
-		},
-	})
-	if err != nil {
-		t.Fatalf("expected no error for past contract batch update, got %v", err)
-	}
-	if !results[0].To.Equal(newTo) {
-		t.Errorf("To = %v, want %v", results[0].To, newTo)
-	}
-}
-
-func TestEmployeeService_BatchUpdateContracts_DuplicateIDs(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createEmployeeService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-
-	_, err := svc.BatchUpdateContracts(ctx, employee.ID, org.ID, &models.EmployeeContractBatchUpdateRequest{
-		Updates: []models.EmployeeContractBatchUpdateEntry{
-			{ID: 1, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{}},
-			{ID: 1, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{}},
-		},
-	})
-	if err == nil {
-		t.Fatal("expected error for duplicate IDs, got nil")
-	}
-	if !errors.Is(err, apperror.ErrBadRequest) {
-		t.Errorf("expected ErrBadRequest, got %v", err)
-	}
-}
-
-func TestEmployeeService_BatchUpdateContracts_ContractNotFound(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createEmployeeService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-
-	_, err := svc.BatchUpdateContracts(ctx, employee.ID, org.ID, &models.EmployeeContractBatchUpdateRequest{
-		Updates: []models.EmployeeContractBatchUpdateEntry{
-			{ID: 9999, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{}},
-		},
-	})
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-	if !errors.Is(err, apperror.ErrNotFound) {
-		t.Errorf("expected ErrNotFound, got %v", err)
-	}
-}
-
-func TestEmployeeService_BatchUpdateContracts_WrongEmployee(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createEmployeeService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	payplan := createTestPayPlanWithCoverage(t, db, "TestPP", org.ID)
-	emp1 := createTestEmployee(t, db, "John", "Doe", org.ID)
-	emp2 := createTestEmployee(t, db, "Jane", "Doe", org.ID)
-
-	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	contract := createTestEmployeeContract(t, db, emp1.ID, payplan.ID,
-		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &to, "S8a", 3, 39)
-
-	_, err := svc.BatchUpdateContracts(ctx, emp2.ID, org.ID, &models.EmployeeContractBatchUpdateRequest{
-		Updates: []models.EmployeeContractBatchUpdateEntry{
-			{ID: contract.ID, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{}},
-		},
-	})
-	if err == nil {
-		t.Fatal("expected error for wrong employee, got nil")
-	}
-	if !errors.Is(err, apperror.ErrNotFound) {
-		t.Errorf("expected ErrNotFound, got %v", err)
-	}
-}
-
-func TestEmployeeService_BatchUpdateContracts_WrongOrg(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createEmployeeService(db)
-	ctx := context.Background()
-
-	org1 := createTestOrganization(t, db, "Org 1")
-	org2 := createTestOrganization(t, db, "Org 2")
-	employee := createTestEmployee(t, db, "John", "Doe", org1.ID)
-
-	_, err := svc.BatchUpdateContracts(ctx, employee.ID, org2.ID, &models.EmployeeContractBatchUpdateRequest{
-		Updates: []models.EmployeeContractBatchUpdateEntry{
-			{ID: 1, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{}},
-		},
-	})
-	if err == nil {
-		t.Fatal("expected error for wrong org, got nil")
-	}
-	if !errors.Is(err, apperror.ErrNotFound) {
-		t.Errorf("expected ErrNotFound, got %v", err)
-	}
-}
-
-func TestEmployeeService_BatchUpdateContracts_InvalidPayPlan(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createEmployeeService(db)
-	ctx := context.Background()
-
-	org1 := createTestOrganization(t, db, "Org 1")
-	org2 := createTestOrganization(t, db, "Org 2")
-	payplan1 := createTestPayPlanWithCoverage(t, db, "PP1", org1.ID)
-	payplan2 := createTestPayPlanWithCoverage(t, db, "PP2", org2.ID)
-	employee := createTestEmployee(t, db, "John", "Doe", org1.ID)
-
-	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	contract := createTestEmployeeContract(t, db, employee.ID, payplan1.ID,
-		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &to, "S8a", 3, 39)
-
-	// Try to use pay plan from different org
-	_, err := svc.BatchUpdateContracts(ctx, employee.ID, org1.ID, &models.EmployeeContractBatchUpdateRequest{
-		Updates: []models.EmployeeContractBatchUpdateEntry{
-			{ID: contract.ID, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{PayPlanID: &payplan2.ID, To: &to}},
-		},
-	})
-	if err == nil {
-		t.Fatal("expected error for wrong-org pay plan, got nil")
-	}
-	if !errors.Is(err, apperror.ErrBadRequest) {
-		t.Errorf("expected ErrBadRequest, got %v", err)
-	}
-}
-
-func TestEmployeeService_BatchUpdateContracts_InvalidStaffCategory(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createEmployeeService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	payplan := createTestPayPlanWithCoverage(t, db, "TestPP", org.ID)
-	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-
-	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	contract := createTestEmployeeContract(t, db, employee.ID, payplan.ID,
-		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &to, "S8a", 3, 39)
-
-	badCategory := "invalid_category"
-	_, err := svc.BatchUpdateContracts(ctx, employee.ID, org.ID, &models.EmployeeContractBatchUpdateRequest{
-		Updates: []models.EmployeeContractBatchUpdateEntry{
-			{ID: contract.ID, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{StaffCategory: &badCategory, To: &to}},
-		},
-	})
-	if err == nil {
-		t.Fatal("expected error for invalid staff category, got nil")
-	}
-	if !errors.Is(err, apperror.ErrBadRequest) {
-		t.Errorf("expected ErrBadRequest, got %v", err)
-	}
-}
-
-func TestEmployeeService_BatchUpdateContracts_OverlapConflict(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createEmployeeService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	payplan := createTestPayPlanWithCoverage(t, db, "TestPP", org.ID)
-	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-
-	aTo := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
-	contractA := createTestEmployeeContract(t, db, employee.ID, payplan.ID,
-		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &aTo, "S8a", 3, 39)
-
-	bTo := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	contractB := createTestEmployeeContract(t, db, employee.ID, payplan.ID,
-		time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC), &bTo, "S8a", 3, 39)
-
-	// Make them overlap
-	newATo := time.Date(2024, 9, 30, 0, 0, 0, 0, time.UTC)
-	_, err := svc.BatchUpdateContracts(ctx, employee.ID, org.ID, &models.EmployeeContractBatchUpdateRequest{
-		Updates: []models.EmployeeContractBatchUpdateEntry{
-			{ID: contractA.ID, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{To: &newATo}},
-			{ID: contractB.ID, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{To: &bTo}},
-		},
-	})
-	if err == nil {
-		t.Fatal("expected overlap error, got nil")
-	}
-	if !errors.Is(err, apperror.ErrConflict) {
-		t.Errorf("expected ErrConflict, got %v", err)
-	}
-}
-
-func TestEmployeeService_BatchUpdateContracts_TransactionRollback(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createEmployeeService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	payplan := createTestPayPlanWithCoverage(t, db, "TestPP", org.ID)
-	employee := createTestEmployee(t, db, "John", "Doe", org.ID)
-
-	aTo := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
-	contractA := createTestEmployeeContract(t, db, employee.ID, payplan.ID,
-		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &aTo, "S8a", 3, 39)
-
-	bTo := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	createTestEmployeeContract(t, db, employee.ID, payplan.ID,
-		time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC), &bTo, "S8a", 3, 39)
-
-	// First update valid, second references nonexistent contract
-	newATo := time.Date(2024, 5, 31, 0, 0, 0, 0, time.UTC)
-	_, err := svc.BatchUpdateContracts(ctx, employee.ID, org.ID, &models.EmployeeContractBatchUpdateRequest{
-		Updates: []models.EmployeeContractBatchUpdateEntry{
-			{ID: contractA.ID, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{To: &newATo}},
-			{ID: 9999, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{}},
-		},
-	})
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	// Verify contract A was NOT changed (rolled back)
-	resp, err := svc.GetContractByID(ctx, contractA.ID, employee.ID, org.ID)
-	if err != nil {
-		t.Fatalf("failed to get contract A: %v", err)
-	}
-	if !resp.To.Equal(aTo) {
-		t.Errorf("contract A To = %v, want %v (should be unchanged after rollback)", resp.To, aTo)
-	}
-}

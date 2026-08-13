@@ -49,13 +49,27 @@ func (o *Opt[T]) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON emits the value, or null when unset or explicitly null, so a
-// request DTO can be round-tripped in tests and logs.
+// MarshalJSON emits the value, or null when the field was explicitly set to
+// null. An *unset* Opt never reaches here: IsZero reports it as zero and the
+// `omitzero` tag on every Opt field omits it entirely.
+//
+// That pairing is what makes the type round-trip. Without it, marshalling
+// flattened absent and null back together — the very distinction Opt exists to
+// carry — so a Go caller that built a request struct and serialized it sent
+// `null` for every field it had not touched, and the service rejected it. Tests
+// and any future Go client hit that; the frontend did not, because it hand-builds
+// its JSON.
 func (o Opt[T]) MarshalJSON() ([]byte, error) {
 	if o.Value == nil {
 		return []byte("null"), nil
 	}
 	return json.Marshal(*o.Value)
+}
+
+// IsZero reports an unset Opt as zero so encoding/json's `omitzero` (Go 1.24+)
+// leaves the field out. An explicit null is not zero: it was chosen.
+func (o Opt[T]) IsZero() bool {
+	return !o.Set
 }
 
 // Get returns the value and whether a non-null value was supplied. Convenience

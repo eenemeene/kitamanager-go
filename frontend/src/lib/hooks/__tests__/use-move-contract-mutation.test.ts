@@ -37,13 +37,14 @@ describe('useMoveContractMutation', () => {
     ];
     queryClient.setQueryData(allKey, entities);
 
-    const updateFn = jest.fn().mockResolvedValue({});
+    const amendFn = jest.fn().mockResolvedValue({});
 
     const { result } = renderHook(
       () =>
         useMoveContractMutation<TestEntity>({
           orgId: 1,
-          updateFn,
+          amendFn,
+          correctFn: jest.fn(),
           allUnpaginatedKey: allKey,
           invalidateKeys: (entityId) => [
             ['children', 1],
@@ -56,7 +57,13 @@ describe('useMoveContractMutation', () => {
     );
 
     act(() => {
-      result.current.mutate({ entityId: 10, contractId: 100, sectionId: 2, version: 1 });
+      result.current.mutate({
+        entityId: 10,
+        contractId: 100,
+        sectionId: 2,
+        version: 1,
+        from: '2020-01-01',
+      });
     });
 
     await waitFor(() => {
@@ -64,7 +71,9 @@ describe('useMoveContractMutation', () => {
     });
 
     // The trailing 1 is the contract version, sent as the If-Match precondition.
-    expect(updateFn).toHaveBeenCalledWith(10, 100, 2, 1);
+    // The section move amends by default, so the effective date travels too:
+    // which section someone was in is history the occupancy reports read.
+    expect(amendFn).toHaveBeenCalledWith(10, 100, 2, 1, expect.any(String));
   });
 
   it('rolls back optimistic update on error', async () => {
@@ -74,13 +83,14 @@ describe('useMoveContractMutation', () => {
     ];
     queryClient.setQueryData(allKey, entities);
 
-    const updateFn = jest.fn().mockRejectedValue(new Error('Network error'));
+    const amendFn = jest.fn().mockRejectedValue(new Error('Network error'));
 
     const { result } = renderHook(
       () =>
         useMoveContractMutation<TestEntity>({
           orgId: 1,
-          updateFn,
+          amendFn,
+          correctFn: jest.fn(),
           allUnpaginatedKey: allKey,
           invalidateKeys: () => [['children', 1]],
           successMessage: 'sections.movedSuccess',
@@ -90,7 +100,13 @@ describe('useMoveContractMutation', () => {
     );
 
     act(() => {
-      result.current.mutate({ entityId: 10, contractId: 100, sectionId: 5, version: 1 });
+      result.current.mutate({
+        entityId: 10,
+        contractId: 100,
+        sectionId: 5,
+        version: 1,
+        from: '2020-01-01',
+      });
     });
 
     await waitFor(() => {
@@ -113,13 +129,14 @@ describe('useMoveContractMutation', () => {
       { id: 10, name: 'Alice', contracts: [{ id: 100, section_id: 1, version: 1 }] },
     ]);
 
-    const updateFn = jest.fn().mockResolvedValue({});
+    const amendFn = jest.fn().mockResolvedValue({});
 
     const { result } = renderHook(
       () =>
         useMoveContractMutation<TestEntity>({
           orgId: 1,
-          updateFn,
+          amendFn,
+          correctFn: jest.fn(),
           allUnpaginatedKey: allKey,
           invalidateKeys: (entityId) => [
             ['children', 1],
@@ -133,7 +150,13 @@ describe('useMoveContractMutation', () => {
     );
 
     act(() => {
-      result.current.mutate({ entityId: 10, contractId: 100, sectionId: 3, version: 1 });
+      result.current.mutate({
+        entityId: 10,
+        contractId: 100,
+        sectionId: 3,
+        version: 1,
+        from: '2020-01-01',
+      });
     });
 
     await waitFor(() => {

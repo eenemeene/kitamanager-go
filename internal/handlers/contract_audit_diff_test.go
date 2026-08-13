@@ -81,12 +81,11 @@ func childContractAuditFixture(t *testing.T, db *gorm.DB, orgName string) (
 	}
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/children/:childId/contracts/:contractId", handler.UpdateContract)
-	r.PUT("/organizations/:orgId/children/:childId/contracts/batch", handler.BatchUpdateContracts)
+	r.PATCH("/organizations/:orgId/children/:childId/contracts/:contractId", handler.CorrectContract)
 	return org, child, contract, r
 }
 
-// A dates-only batch entry — the timeline boundary drag — must record the date
+// A dates-only correction must record the date
 // move and must NOT report a properties change. This is the canary that was
 // missing when the drag was silently wiping them.
 func TestContractAudit_BatchDatesOnly_NoPropertiesDiff(t *testing.T) {
@@ -97,20 +96,19 @@ func TestContractAudit_BatchDatesOnly_NoPropertiesDiff(t *testing.T) {
 	org, child, contract, r := childContractAuditFixture(t, db, "Audit DatesOnly")
 
 	newTo := models.Today().AddDate(0, 6, 0)
-	body := models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: contract.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{To: &newTo}},
-		},
+	body := models.ChildContractCorrectRequest{
+		To: models.OptOf(newTo),
 	}
-	w := performRequest(r, "PUT",
-		fmt.Sprintf("/organizations/%d/children/%d/contracts/batch", org.ID, child.ID), body)
+	w := requestWithHeaders(r, "PATCH",
+		fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org.ID, child.ID, contract.ID),
+		string(mustMarshal(body)), anyVersion)
 	if w.Code != http.StatusOK {
-		t.Fatalf("batch update: status %d: %s", w.Code, w.Body.String())
+		t.Fatalf("correct: status %d: %s", w.Code, w.Body.String())
 	}
 
 	changes := contractAuditChangesFor(t, db, contract.ID, "child_contract", "child_contract_update")
 	if changes == nil {
-		t.Fatal("expected a changes map for a dates-only batch update")
+		t.Fatal("expected a changes map for a dates-only correction")
 	}
 	if _, present := changes["properties"]; present {
 		t.Errorf("dates-only edit must not report a properties change, got %+v", changes["properties"])
@@ -133,17 +131,14 @@ func TestContractAudit_PropertiesChange_RecordsOldAndNew(t *testing.T) {
 
 	org, child, contract, r := childContractAuditFixture(t, db, "Audit Props")
 
-	body := models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: contract.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{
-				Properties: models.ContractProperties{"care_type": "ganztag"},
-			}},
-		},
+	body := models.ChildContractCorrectRequest{
+		Properties: models.OptOf(models.ContractProperties{"care_type": "ganztag"}),
 	}
-	w := performRequest(r, "PUT",
-		fmt.Sprintf("/organizations/%d/children/%d/contracts/batch", org.ID, child.ID), body)
+	w := requestWithHeaders(r, "PATCH",
+		fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org.ID, child.ID, contract.ID),
+		string(mustMarshal(body)), anyVersion)
 	if w.Code != http.StatusOK {
-		t.Fatalf("batch update: status %d: %s", w.Code, w.Body.String())
+		t.Fatalf("correct: status %d: %s", w.Code, w.Body.String())
 	}
 
 	changes := contractAuditChangesFor(t, db, contract.ID, "child_contract", "child_contract_update")
@@ -171,18 +166,15 @@ func TestContractAudit_NoOpUpdate_NoChangesMap(t *testing.T) {
 	org, child, contract, r := childContractAuditFixture(t, db, "Audit NoOp")
 
 	// Re-send exactly the current state.
-	body := models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: contract.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{
-				From:       &contract.From,
-				Properties: models.ContractProperties{"care_type": "halbtag", "ndh": "ndh"},
-			}},
-		},
+	body := models.ChildContractCorrectRequest{
+		From:       models.OptOf(contract.From),
+		Properties: models.OptOf(models.ContractProperties{"care_type": "halbtag", "ndh": "ndh"}),
 	}
-	w := performRequest(r, "PUT",
-		fmt.Sprintf("/organizations/%d/children/%d/contracts/batch", org.ID, child.ID), body)
+	w := requestWithHeaders(r, "PATCH",
+		fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org.ID, child.ID, contract.ID),
+		string(mustMarshal(body)), anyVersion)
 	if w.Code != http.StatusOK {
-		t.Fatalf("batch update: status %d: %s", w.Code, w.Body.String())
+		t.Fatalf("correct: status %d: %s", w.Code, w.Body.String())
 	}
 
 	if changes := contractAuditChangesFor(t, db, contract.ID, "child_contract", "child_contract_update"); changes != nil {
@@ -227,22 +219,19 @@ func TestContractAudit_NilVsEmptyProperties_NotAChange(t *testing.T) {
 	}
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/children/:childId/contracts/batch", handler.BatchUpdateContracts)
+	r.PATCH("/organizations/:orgId/children/:childId/contracts/:contractId", handler.CorrectContract)
 
 	// Hand it an explicitly empty map while moving a date.
 	newTo := models.Today().AddDate(0, 3, 0)
-	body := models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: contract.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{
-				To:         &newTo,
-				Properties: models.ContractProperties{},
-			}},
-		},
+	body := models.ChildContractCorrectRequest{
+		To:         models.OptOf(newTo),
+		Properties: models.OptOf(models.ContractProperties{}),
 	}
-	w := performRequest(r, "PUT",
-		fmt.Sprintf("/organizations/%d/children/%d/contracts/batch", org.ID, child.ID), body)
+	w := requestWithHeaders(r, "PATCH",
+		fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org.ID, child.ID, contract.ID),
+		string(mustMarshal(body)), anyVersion)
 	if w.Code != http.StatusOK {
-		t.Fatalf("batch update: status %d: %s", w.Code, w.Body.String())
+		t.Fatalf("correct: status %d: %s", w.Code, w.Body.String())
 	}
 
 	changes := contractAuditChangesFor(t, db, contract.ID, "child_contract", "child_contract_update")
@@ -292,26 +281,23 @@ func TestContractAudit_EmployeeSalaryFields_Recorded(t *testing.T) {
 	}
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/employees/:employeeId/contracts/batch", handler.BatchUpdateContracts)
+	r.PATCH("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.CorrectContract)
 
 	newGrade := "S8b"
 	newStep := 3
 	newHours := 35.0
 	newCategory := "supplementary"
-	body := models.EmployeeContractBatchUpdateRequest{
-		Updates: []models.EmployeeContractBatchUpdateEntry{
-			{ID: contract.ID, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{
-				Grade:         &newGrade,
-				Step:          &newStep,
-				WeeklyHours:   &newHours,
-				StaffCategory: &newCategory,
-			}},
-		},
+	body := models.EmployeeContractCorrectRequest{
+		Grade:         models.OptOf(newGrade),
+		Step:          models.OptOf(newStep),
+		WeeklyHours:   models.OptOf(newHours),
+		StaffCategory: models.OptOf(newCategory),
 	}
-	w := performRequest(r, "PUT",
-		fmt.Sprintf("/organizations/%d/employees/%d/contracts/batch", org.ID, employee.ID), body)
+	w := requestWithHeaders(r, "PATCH",
+		fmt.Sprintf("/organizations/%d/employees/%d/contracts/%d", org.ID, employee.ID, contract.ID),
+		string(mustMarshal(body)), anyVersion)
 	if w.Code != http.StatusOK {
-		t.Fatalf("batch update: status %d: %s", w.Code, w.Body.String())
+		t.Fatalf("correct: status %d: %s", w.Code, w.Body.String())
 	}
 
 	changes := contractAuditChangesFor(t, db, contract.ID, "employee_contract", "employee_contract_update")
@@ -412,84 +398,5 @@ func TestContractAudit_Delete_RecordsSnapshot(t *testing.T) {
 	}
 	if snap["section_id"] == nil {
 		t.Error("snapshot must carry the section")
-	}
-}
-
-// An amend closed one contract and created another, but emitted a single
-// `_update` row against the NEW contract — claiming a row that was created had
-// been edited. It now emits the pair that actually happened.
-func TestContractAudit_Amend_EmitsUpdateAndCreatePair(t *testing.T) {
-	db := setupTestDB(t)
-	restore := models.SetNow(time.Date(2026, 8, 11, 10, 0, 0, 0, time.UTC))
-	defer restore()
-
-	childService := createChildService(db)
-	handler := NewChildHandler(childService, createAuditService(db))
-
-	org := createTestOrganization(t, db, "Audit AmendPair")
-	sectionID := ensureTestSection(t, db, org.ID)
-	child := &models.Child{Person: models.Person{
-		OrganizationID: org.ID, FirstName: "Pair", LastName: "Child", Gender: "male",
-		Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)}}
-	db.Create(child)
-
-	past := &models.ChildContract{
-		ChildID: child.ID,
-		BaseContract: models.BaseContract{
-			Period:     models.Period{From: models.Today().AddDate(-1, 0, 0), To: nil},
-			SectionID:  sectionID,
-			Properties: models.ContractProperties{"care_type": "halbtag"},
-		},
-	}
-	if err := db.Create(past).Error; err != nil {
-		t.Fatalf("seed: %v", err)
-	}
-
-	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/children/:childId/contracts/:contractId", handler.UpdateContract)
-
-	w := performRequest(r, "PUT",
-		fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org.ID, child.ID, past.ID),
-		models.ChildContractUpdateRequest{Properties: models.ContractProperties{"care_type": "ganztag"}})
-	if w.Code != http.StatusOK {
-		t.Fatalf("update: status %d: %s", w.Code, w.Body.String())
-	}
-	var created models.ChildContractResponse
-	parseResponse(t, w, &created)
-	if created.ID == past.ID {
-		t.Fatalf("expected an amend; still contract %d", created.ID)
-	}
-
-	// Row 1: the CLOSED contract was updated — its `to` moved to yesterday.
-	closedChanges := contractAuditChangesFor(t, db, past.ID, "child_contract", "child_contract_update")
-	if closedChanges == nil {
-		t.Fatal("expected an update row against the closed contract")
-	}
-	if _, ok := closedChanges["to"]; !ok {
-		t.Errorf("the closed contract's row should record its new end date, got %+v", closedChanges)
-	}
-	amended, ok := closedChanges["amended"].(map[string]any)
-	if !ok {
-		t.Fatalf("expected the pair to be linked via `amended`, got %+v", closedChanges)
-	}
-	if uint(amended["new_contract_id"].(float64)) != created.ID {
-		t.Errorf("new_contract_id = %v, want %d", amended["new_contract_id"], created.ID)
-	}
-
-	// Row 2: the successor was CREATED, not updated.
-	testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
-		Action:       models.AuditAction("child_contract_create"),
-		ResourceType: "child_contract",
-		ResourceID:   created.ID,
-	})
-
-	// And there must be no update row claiming the new contract was edited.
-	var bogus int64
-	db.Model(&models.AuditLog{}).
-		Where("action = ? AND resource_type = ? AND resource_id = ?",
-			"child_contract_update", "child_contract", created.ID).
-		Count(&bogus)
-	if bogus != 0 {
-		t.Errorf("found %d update row(s) against the newly created contract %d; an amend creates it, it is not an edit", bogus, created.ID)
 	}
 }
