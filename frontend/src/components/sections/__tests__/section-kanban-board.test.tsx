@@ -259,7 +259,7 @@ describe('SectionKanbanBoard', () => {
     await screen.findByText('sections.dragHint');
 
     // The board defaults to today and passes the date through to the
-    // server (the backend's contract_on filter narrows the result
+    // server (the backend's active_on filter narrows the result
     // set, so the page doesn't have to load every contract ever).
     // Locking in (orgId, YYYY-MM-DD) shape so a future "let's just
     // pass orgId" PR is exposed.

@@ -1269,8 +1269,14 @@ class ApiClient {
   }
 
   // Children - fetch all with active contracts for a specific date
+  //
+  // `active_on` is the parameter the endpoint declares. This used to send
+  // `contract_on`, which the backend never parsed: gin drops unknown query
+  // parameters silently, so the handler fell back to its default of today and the
+  // caller believed it had filtered. The section board's date picker therefore did
+  // nothing — it always showed today's roster.
   async getChildrenAllForDate(orgId: number, date: string, sectionId?: number): Promise<Child[]> {
-    let url = `/organizations/${orgId}/children?contract_on=${date}`;
+    let url = `/organizations/${orgId}/children?active_on=${date}`;
     if (sectionId) url += `&section_id=${sectionId}`;
     return this.fetchAllPages<Child>(url);
   }
@@ -1355,7 +1361,7 @@ class ApiClient {
   // Children - fetch all with active contracts (for kanban board view)
   async getChildrenAll(orgId: number): Promise<Child[]> {
     const today = toLocalDateString(new Date());
-    return this.fetchAllPages<Child>(`/organizations/${orgId}/children?contract_on=${today}`);
+    return this.fetchAllPages<Child>(`/organizations/${orgId}/children?active_on=${today}`);
   }
 
   // Employees - fetch all with active contracts on a specific date (for

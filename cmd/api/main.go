@@ -17,7 +17,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"gorm.io/gorm"
 
-	_ "github.com/eenemeene/kitamanager-go/docs"
+	"github.com/eenemeene/kitamanager-go/docs"
 	"github.com/eenemeene/kitamanager-go/internal/config"
 	cryptopkg "github.com/eenemeene/kitamanager-go/internal/crypto"
 	"github.com/eenemeene/kitamanager-go/internal/database"
@@ -339,6 +339,11 @@ func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices
 	r.Use(middleware.Metrics())
 	r.Use(middleware.BodySizeLimit(middleware.MaxRequestBodySize))
 	r.Use(middleware.RequestTimeout(middleware.DefaultRequestTimeout))
+	// Diagnostic only: warns when a client sends query parameters no endpoint
+	// declares, which gin otherwise drops in silence. The allowed set comes from
+	// the OpenAPI spec compiled into this binary, so it cannot drift from the
+	// handler annotations.
+	r.Use(middleware.UnknownQueryParams(docs.SwaggerInfo.ReadDoc()))
 
 	corsConfig := cors.Config{
 		AllowOrigins:     cfg.CORSAllowOrigins,

@@ -51,7 +51,7 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
   // shift it backward to see how their sections looked at any past
   // date or forward to plan a reorganisation. The query keys
   // include the date so changing it triggers a refetch through the
-  // active_on / contract_on backend filter.
+  // backend's active_on filter.
   const [asOfDate, setAsOfDate] = useState(() => toLocalDateString(new Date()));
 
   const sensors = useSensors(
