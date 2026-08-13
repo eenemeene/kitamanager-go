@@ -210,7 +210,7 @@ export function ChildCreateDialog({
               </div>
             )}
 
-            <div className="mt-4 space-y-2" data-testid="contract-properties-field">
+            <div className="mt-4 space-y-2">
               <Label htmlFor="create_properties">{t('contracts.propertiesLabel')}</Label>
               <Controller
                 name="properties"
