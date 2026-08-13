@@ -77,3 +77,44 @@ describe('contract delete preconditions', () => {
     });
   });
 });
+
+// The date filter's parameter *name*, asserted on the wire.
+//
+// This is the guard that was missing: the section board's test checks that the
+// client method is called with a date, and the client sent it as `contract_on` —
+// a parameter the API does not declare. Gin drops unknown query parameters
+// silently, so the request succeeded, the handler defaulted to today, and the
+// board's date picker did nothing. Nothing failed anywhere.
+describe('children list date filter', () => {
+  it('sends the date as active_on, the parameter the endpoint declares', async () => {
+    let seen: string | null = 'not-called';
+    server.use(
+      http.get(`${API_BASE}/organizations/1/children`, ({ request }) => {
+        seen = new URL(request.url).searchParams.get('active_on');
+        return HttpResponse.json({ data: [], page: 1, limit: 100, total: 0 });
+      })
+    );
+
+    const client = await createFreshClient();
+    await client.getChildrenAllForDate(1, '2026-03-01');
+
+    expect(seen).toBe('2026-03-01');
+  });
+
+  it('sends active_on for the plain board fetch too', async () => {
+    const params: URLSearchParams[] = [];
+    server.use(
+      http.get(`${API_BASE}/organizations/1/children`, ({ request }) => {
+        params.push(new URL(request.url).searchParams);
+        return HttpResponse.json({ data: [], page: 1, limit: 100, total: 0 });
+      })
+    );
+
+    const client = await createFreshClient();
+    await client.getChildrenAll(1);
+
+    expect(params).toHaveLength(1);
+    expect(params[0].get('active_on')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(params[0].has('contract_on')).toBe(false);
+  });
+});
