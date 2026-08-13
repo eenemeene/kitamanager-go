@@ -186,28 +186,21 @@ test.describe('Visual Regression - Dialogs', () => {
     // row of chips shifts everything below it. That is what the old
     // `maxDiffPixelRatio` was absorbing, and why the tablet copy failed in CI
     // while passing locally.
-    // Wait for the funding property chips to arrive before capturing: they come
-    // from two chained requests (the funding list, then that funding's periods),
-    // so the dialog is visible well before its lower half is complete. Without
-    // this the snapshot caught whichever moment the run reached — zero chips has
-    // been observed as often as a full row.
-    await expect(dialog.getByText(/Available:/i)).toBeVisible({ timeout: 10000 });
-
-    // The chips themselves are masked, and not because pixels are inconvenient:
-    // which properties an organization offers comes from its government funding
-    // configuration, and that set differs between this checkout and CI even with
-    // an identical berlin.yaml — four available chips here, eight there. A
-    // baseline generated in one environment is therefore wrong in the other by
-    // construction, which is exactly what made the tablet copy of this snapshot
-    // the single failure of the first CI run.
+    // Wait for the funding property chips before capturing. They arrive after two
+    // chained requests — the funding list, then that funding's periods — so the
+    // dialog is visible long before its lower half is complete, and the union of
+    // properties grows as periods arrive. Capturing on visibility alone caught
+    // whichever moment the run reached: this snapshot has been seen with four
+    // chips and with the full eight, and each extra row shifts everything below.
     //
-    // Masking that one field excludes an input the test does not control while
-    // keeping everything this file exists to protect — the dialog's width,
-    // padding and field layout — under exact comparison. The alternative, the
-    // diff ratio this replaces, silently tolerated real layout drift everywhere
-    // else in the dialog.
-    await expect(dialog).toHaveScreenshot('create-child-dialog.png', {
-      mask: [dialog.locator('[data-testid="contract-properties-field"]')],
+    // "integration a" comes from a period other than the current one, so its
+    // presence means every period has loaded and the set has settled. That is the
+    // condition to wait for — not a diff ratio, and not a mask: the dialog's
+    // content is identical in every environment once loading finishes.
+    await expect(dialog.getByRole('button', { name: 'integration a', exact: true })).toBeVisible({
+      timeout: 10000,
     });
+
+    await expect(dialog).toHaveScreenshot('create-child-dialog.png');
   });
 });

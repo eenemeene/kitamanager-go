@@ -83,18 +83,19 @@ repos:
         pass_filenames: false
 
       # === Slow checks (minutes) ===
+      # go-test runs the race detector over the packages this commit touches
+      # rather than the whole tree; see scripts/precommit-go-test.sh for why,
+      # and note that CI still runs `go test -race ./...` in full on the PR.
       # -p 1 runs package test binaries one at a time. Each DB-backed
       # package spins up its own Postgres testcontainer (testutil), so the
       # default per-CPU parallelism starts many containers at once and
       # flakes on resource exhaustion (`connection refused` mid-run),
-      # compounded by -race's memory overhead. Serializing trades wall time
-      # for a single live container and a deterministic run.
+      # compounded by -race's memory overhead.
       - id: go-test
-        name: go test
-        entry: go test -race -p 1 ./...
+        name: go test (changed packages)
+        entry: scripts/precommit-go-test.sh
         language: system
         types: [go]
-        pass_filenames: false
 
       - id: go-integration-test
         name: go integration test
