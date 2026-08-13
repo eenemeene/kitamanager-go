@@ -21,11 +21,11 @@ test.describe('Government Funding Bills - Kita Year Filter', () => {
     ).toBeVisible({ timeout: 10000 });
 
     // Kita year stepper should be visible with previous/next buttons and year label
-    await expect(page.getByRole('button', { name: /previous/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /previous year/i })).toBeVisible();
 
     // Previous and next buttons should be available
-    await expect(page.getByRole('button', { name: /previous/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /next/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /previous year/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /next year/i })).toBeVisible();
   });
 
   test('should filter bills by kita year when stepping', async ({ page }) => {
@@ -43,7 +43,7 @@ test.describe('Government Funding Bills - Kita Year Filter', () => {
     // Click previous to go back one year, then wait for the label to
     // actually change instead of sleeping. This catches both the request
     // landing and the re-render in a single explicit assertion.
-    await page.getByRole('button', { name: /previous/i }).click();
+    await page.getByRole('button', { name: /previous year/i }).click();
     await expect(yearLabel).not.toHaveText(initialYear, { timeout: 10000 });
 
     // The card title should include the kita year
@@ -63,7 +63,7 @@ test.describe('Government Funding Bills - Kita Year Filter', () => {
     // Step back through kita years until we find one with bills (seed data
     // covers the last 6 months so the current kita year usually has rows).
     const noBills = page.getByText(/no funding bills uploaded/i);
-    const previousButton = page.getByRole('button', { name: /previous/i });
+    const previousButton = page.getByRole('button', { name: /previous year/i });
     const yearLabel = page.locator('.min-w-\\[80px\\]').first();
     let foundBills = (await noBills.count()) === 0;
     for (let i = 0; i < 5 && !foundBills; i++) {
@@ -109,7 +109,7 @@ test.describe('Government Funding Bills - Kita Year Filter', () => {
     // change rather than sleeping, so we never advance to the next
     // iteration before the previous one's request has landed.
     const noBills = page.getByText(/no funding bills uploaded/i);
-    const previousButton = page.getByRole('button', { name: /previous/i });
+    const previousButton = page.getByRole('button', { name: /previous year/i });
     const yearLabel = page.locator('.min-w-\\[80px\\]').first();
 
     const maxAttempts = 5;

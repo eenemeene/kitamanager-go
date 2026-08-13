@@ -118,10 +118,10 @@ async function assertNavMatches(page: Page, expected: Visibility[]) {
   // The sidebar renders inside <nav>; org-scoped items only appear
   // once an org is selected, which fetchOrganizations does
   // automatically when the user has at least one org assigned.
-  await page.locator('nav').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('nav:visible').first().waitFor({ state: 'visible', timeout: 10000 });
 
   for (const { hrefMatches, visible } of expected) {
-    const links = page.locator(`nav a[href*="${hrefMatches}"]`);
+    const links = page.locator(`nav:visible a[href*="${hrefMatches}"]`);
     if (visible) {
       // Must have at least one matching link in the nav. Some entries
       // (e.g. Statistics) render a parent link plus children, so >=1
@@ -223,11 +223,11 @@ test.describe('Sidebar visibility per role', () => {
   test('superadmin sees the global-nav entries', async ({ page }) => {
     await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
     await ensureSidebarVisible(page);
+    await expect(page.locator('nav:visible a[href="/organizations"]').first()).toBeVisible({
+      timeout: 10000,
+    });
     await expect(
-      page.locator('nav a[href="/organizations"]').first()
-    ).toBeVisible({ timeout: 10000 });
-    await expect(
-      page.locator('nav a[href="/government-funding-rates"]').first()
+      page.locator('nav:visible a[href="/government-funding-rates"]').first()
     ).toBeVisible({ timeout: 10000 });
   });
 });

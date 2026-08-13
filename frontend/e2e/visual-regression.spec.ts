@@ -176,10 +176,38 @@ test.describe('Visual Regression - Dialogs', () => {
 
     // Screenshot only the dialog element: the children page behind the
     // dialog overlay shows today's date in the week navigator, which
-    // changes daily and causes pixel diffs. Allow slightly higher diff
-    // ratio for tablet where funding property tags vary by test data state.
+    // changes daily and causes pixel diffs.
+    //
+    // Wait for the funding property chips before capturing. They arrive after two
+    // chained requests — the funding list, then that funding's periods — so the
+    // dialog is visible well before its lower half is complete. Screenshotting on
+    // visibility alone captured whichever moment the run happened to reach: this
+    // snapshot has been observed with zero, four and eight chips, and each extra
+    // row of chips shifts everything below it. That is what the old
+    // `maxDiffPixelRatio` was absorbing, and why the tablet copy failed in CI
+    // while passing locally.
+    // Wait for the funding property chips to arrive before capturing: they come
+    // from two chained requests (the funding list, then that funding's periods),
+    // so the dialog is visible well before its lower half is complete. Without
+    // this the snapshot caught whichever moment the run reached — zero chips has
+    // been observed as often as a full row.
+    await expect(dialog.getByText(/Available:/i)).toBeVisible({ timeout: 10000 });
+
+    // The chips themselves are masked, and not because pixels are inconvenient:
+    // which properties an organization offers comes from its government funding
+    // configuration, and that set differs between this checkout and CI even with
+    // an identical berlin.yaml — four available chips here, eight there. A
+    // baseline generated in one environment is therefore wrong in the other by
+    // construction, which is exactly what made the tablet copy of this snapshot
+    // the single failure of the first CI run.
+    //
+    // Masking that one field excludes an input the test does not control while
+    // keeping everything this file exists to protect — the dialog's width,
+    // padding and field layout — under exact comparison. The alternative, the
+    // diff ratio this replaces, silently tolerated real layout drift everywhere
+    // else in the dialog.
     await expect(dialog).toHaveScreenshot('create-child-dialog.png', {
-      maxDiffPixelRatio: 0.02,
+      mask: [dialog.locator('[data-testid="contract-properties-field"]')],
     });
   });
 });

@@ -275,7 +275,7 @@ export function ChildrenTable({
                       onClick={() => onViewHistory(child)}
                       title={t('children.contractHistory')}
                       aria-label={t('children.contractHistory')}
-                      className="hidden lg:inline-flex"
+                      className="hidden sm:inline-flex"
                     >
                       <History className="h-4 w-4" />
                     </Button>
@@ -285,7 +285,7 @@ export function ChildrenTable({
                       onClick={() => onViewBilling(child)}
                       title={t('children.billingHistory')}
                       aria-label={t('children.billingHistory')}
-                      className="hidden lg:inline-flex"
+                      className="hidden sm:inline-flex"
                     >
                       <Receipt className="h-4 w-4" />
                     </Button>
@@ -295,7 +295,7 @@ export function ChildrenTable({
                       onClick={() => onAddContract(child)}
                       title={t('children.addContract')}
                       aria-label={t('children.addContract')}
-                      className="hidden lg:inline-flex"
+                      className="hidden sm:inline-flex"
                     >
                       <FileText className="h-4 w-4" />
                     </Button>
@@ -305,7 +305,7 @@ export function ChildrenTable({
                       onClick={() => onManageVouchers(child)}
                       title={t('vouchers.dialogTitle')}
                       aria-label={t('vouchers.dialogTitle')}
-                      className="hidden lg:inline-flex"
+                      className="hidden sm:inline-flex"
                     >
                       <Ticket className="h-4 w-4" />
                     </Button>

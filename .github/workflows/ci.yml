@@ -359,13 +359,13 @@ jobs:
         run: make api-test-contract
 
   e2e:
-    name: E2E Tests (shard ${{ matrix.shard }}/2)
+    name: E2E Tests (shard ${{ matrix.shard }}/6)
     runs-on: ubuntu-latest
     needs: [api-build, web-build]
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3, 4, 5, 6]
     services:
       postgres:
         image: postgres:18-alpine
@@ -489,7 +489,15 @@ jobs:
           done
 
       - name: Run E2E tests
-        run: cd frontend && npx playwright test --project=chromium --shard=${{ matrix.shard }}/2
+        # All three projects: chromium (1280px), tablet-chrome (768px) and
+        # mobile-chrome (Pixel 7, 412px). The two device projects existed in
+        # playwright.config.ts and had committed visual baselines, but this command
+        # pinned --project=chromium, so they had never run here — which is how a
+        # test that cannot pass below 1024px stayed green for months.
+        #
+        # Sharded across 6 instead of 2 because there are now three times as many
+        # tests: same wall-clock gate, more runners.
+        run: cd frontend && npx playwright test --shard=${{ matrix.shard }}/6
         env:
           BASE_URL: http://localhost:3000
           CI: true
@@ -521,8 +529,8 @@ jobs:
       # `success()`) — that catches the case where the report renders
       # fine but a different E2E spec is flaky, and surfaces report-only
       # failures that would otherwise be invisible to the E2E job.
-      # Run the report-pdf smoke-test only on shard 1 — both shards bring
-      # up identical stacks, so generating the PDF on every shard would
+      # Run the report-pdf smoke-test only on shard 1 — every shard brings
+      # up an identical stack, so generating the PDF on each one would
       # only duplicate work and create artifact-name collisions.
       - name: Set up Docker Buildx (for report image cache)
         if: ${{ !cancelled() && matrix.shard == 1 }}
