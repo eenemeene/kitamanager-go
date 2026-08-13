@@ -6402,9 +6402,21 @@
         },
         "securitySchemes": {
             "BearerAuth": {
-                "description": "Type \"Bearer\" followed by a space and JWT token.",
+                "description": "`Bearer \u003ctoken\u003e` where the token is the opaque session value returned\nby login — not a JWT. Intended for CLI and server-to-server callers;\nCSRF does not apply to it.",
                 "in": "header",
                 "name": "Authorization",
+                "type": "apiKey"
+            },
+            "CookieAuth": {
+                "description": "Session cookie set by `POST /api/v1/login`, sent automatically by\nbrowsers. Mutating requests must additionally send the CSRF header\nbelow. This is what the web frontend uses.",
+                "in": "cookie",
+                "name": "session",
+                "type": "apiKey"
+            },
+            "CsrfToken": {
+                "description": "Required on every mutating request made with `CookieAuth`. Its value\nis the `csrf_token` cookie, which login sets alongside the session\ncookie and which is deliberately readable from JavaScript so the\nclient can copy it into this header. Requests authenticated with\n`BearerAuth` do not need it.",
+                "in": "header",
+                "name": "X-CSRF-Token",
                 "type": "apiKey"
             }
         }
@@ -6414,7 +6426,7 @@
             "email": "support@kitamanager.example.com",
             "name": "API Support"
         },
-        "description": "REST API for managing Users and Organizations with RBAC support",
+        "description": "REST API for a Kita management system: children and their care\ncontracts, employees and theirs, sections, attendance, and the\nBerlin ISBJ funding and billing model. Organization-scoped\nthroughout, with role-based access control.\n\n## Authentication\n\nSessions are server-side. `POST /api/v1/login` sets two cookies: an\nHttpOnly `session` cookie holding the session token, and a\nJS-readable `csrf_token`. The token is opaque — not a JWT — and is\nhashed before it is stored, so a leaked database row is not a usable\ncredential.\n\nA request presents that session in one of two ways:\n\n- **Browser** — the `session` cookie, sent automatically. Every\nmutating request (POST, PATCH, PUT, DELETE) must also echo the\n`csrf_token` cookie back in the `X-CSRF-Token` header, or it is\nrejected. Reads do not need it.\n- **CLI or server-to-server** — `Authorization: Bearer \u003ctoken\u003e` with\nthe same value the login response put in the cookie. CSRF does not\napply here, because a browser never attaches this header on its own.\n\nThere is no refresh endpoint: a session stays valid until logout,\nexpiry, or revocation via `/api/v1/me/sessions`.\n\n## Concurrency\n\nContract writes are guarded with optimistic concurrency. Every\ncontract response carries a `version`, and `GET` of a single contract\nalso returns it as an `ETag`. Corrections, amendments, end-date\nchanges and deletes require that value in an `If-Match` header;\nomitting it is `428`, and a stale value is `412`. The seam-move\nendpoint takes both contracts' versions in its body instead, because\nit addresses two resources at once.",
         "license": {
             "name": "MIT",
             "url": "https://opensource.org/licenses/MIT"
@@ -6428,6 +6440,7 @@
         "/api/v1/audit-logs": {
             "get": {
                 "description": "Get a paginated list of all audit log entries with optional filters (superadmin only)",
+                "operationId": "getAuditLogs",
                 "parameters": [
                     {
                         "description": "Filter by action as a case-insensitive substring (e.g. 'ild' matches every child_* action)",
@@ -6537,6 +6550,7 @@
         "/api/v1/audit-logs/{auditLogId}": {
             "get": {
                 "description": "Get a single audit log entry by ID (superadmin only)",
+                "operationId": "getAuditLogsByAuditLogId",
                 "parameters": [
                     {
                         "description": "Audit Log ID",
@@ -6614,6 +6628,7 @@
         "/api/v1/auth/mfa/challenge": {
             "post": {
                 "description": "For WebAuthn factors, the client must fetch a server-\nissued challenge via this endpoint before calling\nnavigator.credentials.get(). Returns the\nPublicKeyCredentialRequestOptions JSON unchanged. TOTP\nand backup-code factors never hit this endpoint.",
+                "operationId": "postAuthMfaChallenge",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -6667,6 +6682,7 @@
         "/api/v1/auth/mfa/verify": {
             "post": {
                 "description": "Exchanges a pending_token from the /login MFA-required\nresponse + a TOTP code (or a backup code) for a real\nsession. Sets the session cookie on success.",
+                "operationId": "postAuthMfaVerify",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -6740,6 +6756,7 @@
         "/api/v1/government-funding-rates": {
             "get": {
                 "description": "Get a paginated list of all government fundings",
+                "operationId": "getGovernmentFundingRates",
                 "parameters": [
                     {
                         "description": "Search by name (case-insensitive)",
@@ -6813,6 +6830,7 @@
             },
             "post": {
                 "description": "Create a new government funding (superadmin only)",
+                "operationId": "postGovernmentFundingRates",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -6891,6 +6909,7 @@
         "/api/v1/government-funding-rates/import": {
             "post": {
                 "description": "Import government funding rates from a YAML file (superadmin only). If a funding for the given state already exists, returns 409 Conflict.",
+                "operationId": "postGovernmentFundingRatesImport",
                 "parameters": [
                     {
                         "description": "State (Bundesland) this funding applies to",
@@ -6988,6 +7007,7 @@
         "/api/v1/government-funding-rates/{fundingId}": {
             "delete": {
                 "description": "Delete a government funding by ID (superadmin only)",
+                "operationId": "deleteGovernmentFundingRatesByFundingId",
                 "parameters": [
                     {
                         "description": "GovernmentFunding ID",
@@ -7056,6 +7076,7 @@
             },
             "get": {
                 "description": "Get a single government funding by its ID with nested periods and properties",
+                "operationId": "getGovernmentFundingRatesByFundingId",
                 "parameters": [
                     {
                         "description": "GovernmentFunding ID",
@@ -7147,6 +7168,7 @@
             },
             "put": {
                 "description": "Update an existing government funding by ID (superadmin only)",
+                "operationId": "putGovernmentFundingRatesByFundingId",
                 "parameters": [
                     {
                         "description": "GovernmentFunding ID",
@@ -7246,6 +7268,7 @@
         "/api/v1/government-funding-rates/{fundingId}/periods": {
             "get": {
                 "description": "Get a paginated list of periods for a government funding (superadmin only)",
+                "operationId": "getGovernmentFundingRatesByFundingIdPeriods",
                 "parameters": [
                     {
                         "description": "GovernmentFunding ID",
@@ -7350,6 +7373,7 @@
             },
             "post": {
                 "description": "Create a new period for a government funding (superadmin only)",
+                "operationId": "postGovernmentFundingRatesByFundingIdPeriods",
                 "parameters": [
                     {
                         "description": "GovernmentFunding ID",
@@ -7449,6 +7473,7 @@
         "/api/v1/government-funding-rates/{fundingId}/periods/{periodId}": {
             "delete": {
                 "description": "Delete a period by ID (superadmin only)",
+                "operationId": "deleteGovernmentFundingRatesByFundingIdPeriodsByPeriodId",
                 "parameters": [
                     {
                         "description": "GovernmentFunding ID",
@@ -7526,6 +7551,7 @@
             },
             "get": {
                 "description": "Get a period by ID (superadmin only)",
+                "operationId": "getGovernmentFundingRatesByFundingIdPeriodsByPeriodId",
                 "parameters": [
                     {
                         "description": "GovernmentFunding ID",
@@ -7620,6 +7646,7 @@
             },
             "put": {
                 "description": "Update an existing period by ID (superadmin only)",
+                "operationId": "putGovernmentFundingRatesByFundingIdPeriodsByPeriodId",
                 "parameters": [
                     {
                         "description": "GovernmentFunding ID",
@@ -7728,6 +7755,7 @@
         "/api/v1/government-funding-rates/{fundingId}/periods/{periodId}/properties": {
             "get": {
                 "description": "Get a paginated list of properties for a government funding period (superadmin only)",
+                "operationId": "getGovernmentFundingRatesByFundingIdPeriodsByPeriodIdProperties",
                 "parameters": [
                     {
                         "description": "GovernmentFunding ID",
@@ -7841,6 +7869,7 @@
             },
             "post": {
                 "description": "Create a new property for a period (superadmin only)",
+                "operationId": "postGovernmentFundingRatesByFundingIdPeriodsByPeriodIdProperties",
                 "parameters": [
                     {
                         "description": "GovernmentFunding ID",
@@ -7949,6 +7978,7 @@
         "/api/v1/government-funding-rates/{fundingId}/periods/{periodId}/properties/{propertyId}": {
             "delete": {
                 "description": "Delete a property by ID (superadmin only)",
+                "operationId": "deleteGovernmentFundingRatesByFundingIdPeriodsByPeriodIdPropertiesByPropertyId",
                 "parameters": [
                     {
                         "description": "GovernmentFunding ID",
@@ -8035,6 +8065,7 @@
             },
             "get": {
                 "description": "Get a property by ID (superadmin only)",
+                "operationId": "getGovernmentFundingRatesByFundingIdPeriodsByPeriodIdPropertiesByPropertyId",
                 "parameters": [
                     {
                         "description": "GovernmentFunding ID",
@@ -8138,6 +8169,7 @@
             },
             "put": {
                 "description": "Update an existing property by ID (superadmin only)",
+                "operationId": "putGovernmentFundingRatesByFundingIdPeriodsByPeriodIdPropertiesByPropertyId",
                 "parameters": [
                     {
                         "description": "GovernmentFunding ID",
@@ -8255,6 +8287,7 @@
         "/api/v1/health": {
             "get": {
                 "description": "Check the health status of the API and its dependencies",
+                "operationId": "getHealth",
                 "responses": {
                     "200": {
                         "content": {
@@ -8296,6 +8329,7 @@
         "/api/v1/live": {
             "get": {
                 "description": "Check if the API process is alive",
+                "operationId": "getLive",
                 "responses": {
                     "200": {
                         "content": {
@@ -8317,6 +8351,7 @@
         "/api/v1/login": {
             "post": {
                 "description": "Authenticate with email and password. If the user has\nno MFA factor, returns `{status:\"authenticated\"}` and\nsets the session cookie. If the user has an active\nfactor, returns `{status:\"mfa_required\", pending_token,\nexpires_at, factors}` and the caller must follow up\nwith POST /auth/mfa/verify. No cookie is set on the\nMFA branch.",
+                "operationId": "postLogin",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -8390,6 +8425,7 @@
         "/api/v1/logout": {
             "post": {
                 "description": "Delete the current session and clear authentication cookies.",
+                "operationId": "postLogout",
                 "responses": {
                     "200": {
                         "content": {
@@ -8421,6 +8457,7 @@
         "/api/v1/me": {
             "get": {
                 "description": "Returns the currently authenticated user.",
+                "operationId": "getMe",
                 "responses": {
                     "200": {
                         "content": {
@@ -8467,6 +8504,7 @@
         "/api/v1/me/memberships": {
             "get": {
                 "description": "Returns the calling user's own memberships and roles. Self-only —\ndoes not require users:read. Used by the frontend on every page\nload to populate orgRoleMap, which the sidebar's role-based nav\nfiltering depends on. The admin-facing /users/{userId}/memberships\nstill exists separately for user-management screens.",
+                "operationId": "getMeMemberships",
                 "responses": {
                     "200": {
                         "content": {
@@ -8513,6 +8551,7 @@
         "/api/v1/me/password": {
             "put": {
                 "description": "Authenticated user changes their own password. Requires current password verification. Revokes every other session the user has.",
+                "operationId": "putMePassword",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -8581,6 +8620,7 @@
         "/api/v1/me/sessions": {
             "get": {
                 "description": "Returns every non-expired session belonging to the caller,\nwith a `current` flag marking the one that served this\nrequest. Used by the UI to show \"signed in on these devices\"\nand to let the user revoke individual sessions.",
+                "operationId": "getMeSessions",
                 "responses": {
                     "200": {
                         "content": {
@@ -8627,6 +8667,7 @@
         "/api/v1/me/sessions/{sessionId}": {
             "delete": {
                 "description": "Deletes the session with the given id (sha256 hex of the\ncookie value). Scoped to the caller — a user cannot revoke\nanother user's session, and the response is 404 in that\ncase so the endpoint does not leak session existence. If\nthe caller revokes their own current session, their next\nrequest will 401 and the frontend will clear cookies.",
+                "operationId": "deleteMeSessionsBySessionId",
                 "parameters": [
                     {
                         "description": "Session id (sha256 hex)",
@@ -8687,6 +8728,7 @@
         "/api/v1/organizations": {
             "get": {
                 "description": "Get a paginated list of organizations the user has access to.\nSuperadmins see all organizations; other users see only organizations they belong to via group membership.",
+                "operationId": "getOrganizations",
                 "parameters": [
                     {
                         "description": "Search by name",
@@ -8760,6 +8802,7 @@
             },
             "post": {
                 "description": "Create a new organization",
+                "operationId": "postOrganizations",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -8828,6 +8871,7 @@
         "/api/v1/organizations/{orgId}": {
             "delete": {
                 "description": "Delete an organization by ID",
+                "operationId": "deleteOrganizationsByOrgId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -8886,6 +8930,7 @@
             },
             "get": {
                 "description": "Get a single organization by its ID",
+                "operationId": "getOrganizationsByOrgId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -8961,6 +9006,7 @@
             },
             "put": {
                 "description": "Update an existing organization by ID",
+                "operationId": "putOrganizationsByOrgId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -9050,6 +9096,7 @@
         "/api/v1/organizations/{orgId}/audit-logs": {
             "get": {
                 "description": "Get a paginated list of audit log entries scoped to the given organization. Identity-level events (login, password rotation, superadmin grant/revoke) are deliberately excluded — those are only visible to the superadmin-only global endpoint. Requires org admin.",
+                "operationId": "getOrganizationsByOrgIdAuditLogs",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -9168,6 +9215,7 @@
         "/api/v1/organizations/{orgId}/budget-items": {
             "get": {
                 "description": "Get all budget items for an organization. Each item includes active_amount_cents when an entry is currently active.",
+                "operationId": "getOrganizationsByOrgIdBudgetItems",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -9270,6 +9318,7 @@
             },
             "post": {
                 "description": "Create a new budget item for an organization",
+                "operationId": "postOrganizationsByOrgIdBudgetItems",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -9369,6 +9418,7 @@
         "/api/v1/organizations/{orgId}/budget-items/{budgetItemId}": {
             "delete": {
                 "description": "Delete a budget item and all its entries",
+                "operationId": "deleteOrganizationsByOrgIdBudgetItemsByBudgetItemId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -9456,6 +9506,7 @@
             },
             "get": {
                 "description": "Get a budget item by ID with all entries",
+                "operationId": "getOrganizationsByOrgIdBudgetItemsByBudgetItemId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -9550,6 +9601,7 @@
             },
             "put": {
                 "description": "Update a budget item",
+                "operationId": "putOrganizationsByOrgIdBudgetItemsByBudgetItemId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -9668,6 +9720,7 @@
         "/api/v1/organizations/{orgId}/budget-items/{budgetItemId}/entries": {
             "get": {
                 "description": "Get all entries for a budget item",
+                "operationId": "getOrganizationsByOrgIdBudgetItemsByBudgetItemIdEntries",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -9781,6 +9834,7 @@
             },
             "post": {
                 "description": "Create a new entry for a budget item. Entries must not overlap in time.",
+                "operationId": "postOrganizationsByOrgIdBudgetItemsByBudgetItemIdEntries",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -9899,6 +9953,7 @@
         "/api/v1/organizations/{orgId}/budget-items/{budgetItemId}/entries/{entryId}": {
             "delete": {
                 "description": "Delete a budget item entry",
+                "operationId": "deleteOrganizationsByOrgIdBudgetItemsByBudgetItemIdEntriesByEntryId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -9995,6 +10050,7 @@
             },
             "get": {
                 "description": "Get a budget item entry by ID",
+                "operationId": "getOrganizationsByOrgIdBudgetItemsByBudgetItemIdEntriesByEntryId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -10098,6 +10154,7 @@
             },
             "put": {
                 "description": "Update a budget item entry. Entries must not overlap in time.",
+                "operationId": "putOrganizationsByOrgIdBudgetItemsByBudgetItemIdEntriesByEntryId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -10225,6 +10282,7 @@
         "/api/v1/organizations/{orgId}/children": {
             "get": {
                 "description": "Get a paginated list of all children in the specified organization",
+                "operationId": "getOrganizationsByOrgIdChildren",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -10341,6 +10399,7 @@
             },
             "post": {
                 "description": "Create a new child in the specified organization",
+                "operationId": "postOrganizationsByOrgIdChildren",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -10420,6 +10479,7 @@
         "/api/v1/organizations/{orgId}/children/attendance": {
             "get": {
                 "description": "Get all attendance records for an organization on a given date",
+                "operationId": "getOrganizationsByOrgIdChildrenAttendance",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -10514,6 +10574,7 @@
         "/api/v1/organizations/{orgId}/children/attendance/summary": {
             "get": {
                 "description": "Get attendance summary (present, absent, sick, vacation counts) for a date",
+                "operationId": "getOrganizationsByOrgIdChildrenAttendanceSummary",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -10589,6 +10650,7 @@
         "/api/v1/organizations/{orgId}/children/billing-summary": {
             "get": {
                 "description": "Get aggregated billing totals (billed vs calculated) for all children in an organization",
+                "operationId": "getOrganizationsByOrgIdChildrenBillingSummary",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -10646,6 +10708,7 @@
         "/api/v1/organizations/{orgId}/children/export/excel": {
             "get": {
                 "description": "Download all children matching the given filters as an XLSX spreadsheet",
+                "operationId": "getOrganizationsByOrgIdChildrenExportExcel",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -10746,6 +10809,7 @@
         "/api/v1/organizations/{orgId}/children/export/yaml": {
             "get": {
                 "description": "Download children with contracts as a YAML file. Supports the same filters as the list endpoint.\nWithout filters, exports all children (suitable for backup/restore).",
+                "operationId": "getOrganizationsByOrgIdChildrenExportYaml",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -10846,6 +10910,7 @@
         "/api/v1/organizations/{orgId}/children/import": {
             "post": {
                 "description": "Upload a YAML file to create or update children with contracts (upsert by name+birthdate)",
+                "operationId": "postOrganizationsByOrgIdChildrenImport",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -10936,6 +11001,7 @@
         "/api/v1/organizations/{orgId}/children/without-vouchers": {
             "get": {
                 "description": "Returns children who have active contracts but no voucher numbers assigned",
+                "operationId": "getOrganizationsByOrgIdChildrenWithoutVouchers",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -10996,6 +11062,7 @@
         "/api/v1/organizations/{orgId}/children/{childId}": {
             "delete": {
                 "description": "Delete a child by ID",
+                "operationId": "deleteOrganizationsByOrgIdChildrenByChildId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -11073,6 +11140,7 @@
             },
             "get": {
                 "description": "Get a single child by their ID",
+                "operationId": "getOrganizationsByOrgIdChildrenByChildId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -11157,6 +11225,7 @@
             },
             "put": {
                 "description": "Update an existing child by ID.",
+                "operationId": "putOrganizationsByOrgIdChildrenByChildId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -11255,6 +11324,7 @@
         "/api/v1/organizations/{orgId}/children/{childId}/attendance": {
             "get": {
                 "description": "Get attendance records for a specific child in a date range",
+                "operationId": "getOrganizationsByOrgIdChildrenByChildIdAttendance",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -11376,6 +11446,7 @@
             },
             "post": {
                 "description": "Create a new attendance record for a child (present, absent, sick, or vacation)",
+                "operationId": "postOrganizationsByOrgIdChildrenByChildIdAttendance",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -11484,6 +11555,7 @@
         "/api/v1/organizations/{orgId}/children/{childId}/attendance/{attendanceId}": {
             "delete": {
                 "description": "Delete an attendance record by ID for a specific child",
+                "operationId": "deleteOrganizationsByOrgIdChildrenByChildIdAttendanceByAttendanceId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -11570,6 +11642,7 @@
             },
             "get": {
                 "description": "Get a single attendance record by ID for a specific child",
+                "operationId": "getOrganizationsByOrgIdChildrenByChildIdAttendanceByAttendanceId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -11663,6 +11736,7 @@
             },
             "put": {
                 "description": "Update an existing attendance record for a specific child.\nWhen status changes to absent/sick/vacation, check_in_time and check_out_time are automatically cleared.\nWhen status changes to present and no check_in_time exists, check_in_time is automatically set to now.",
+                "operationId": "putOrganizationsByOrgIdChildrenByChildIdAttendanceByAttendanceId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -11770,6 +11844,7 @@
         "/api/v1/organizations/{orgId}/children/{childId}/billing-history": {
             "get": {
                 "description": "Get complete billing history across all uploaded bills for a child, with comparison to expected funding amounts",
+                "operationId": "getOrganizationsByOrgIdChildrenByChildIdBillingHistory",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -11846,6 +11921,7 @@
         "/api/v1/organizations/{orgId}/children/{childId}/contracts": {
             "get": {
                 "description": "Get paginated contracts for a child",
+                "operationId": "getOrganizationsByOrgIdChildrenByChildIdContracts",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -11949,6 +12025,7 @@
             },
             "post": {
                 "description": "Create a new contract for a child.\n\n**Contract Date Rules:**\n- Both `from` and `to` dates are inclusive (the contract is active on both dates)\n- Same-day contracts are allowed (`from` == `to`)\n- Contracts must not overlap with existing contracts\n- \"Touching\" contracts (where contract A ends on the same day contract B starts) are considered overlapping\n- To transition between contracts, the new contract must start the day AFTER the previous one ends\n\n**Example:** If contract A ends on 2025-01-31, contract B must start on 2025-02-01 or later.",
+                "operationId": "postOrganizationsByOrgIdChildrenByChildIdContracts",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -12057,6 +12134,7 @@
         "/api/v1/organizations/{orgId}/children/{childId}/contracts/boundary": {
             "post": {
                 "description": "Move the seam between two contracts that meet: the later one starts on `at` and the\nearlier one is closed the day before. This backs the timeline drag in the UI.\n\nOne date, both sides derived on the server. The client used to compute four dates and\nsend them as a batch, which went wrong twice: it cleared the neighbour's `to`\n(dragging any but the newest boundary failed with a 409) and it wiped the\nneighbour's properties, silently recomputing its funding at the base rate.\n\nThe two contracts must actually be adjacent — the earlier one's `to` plus one day\nequals the later one's `from`. With a gap between them there are two independent\nboundaries rather than one seam, so set each end date instead. The seam must also\nleave both sides at least one day long.",
+                "operationId": "postOrganizationsByOrgIdChildrenByChildIdContractsBoundary",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -12165,6 +12243,7 @@
         "/api/v1/organizations/{orgId}/children/{childId}/contracts/current": {
             "get": {
                 "description": "Get the currently active contract for a child",
+                "operationId": "getOrganizationsByOrgIdChildrenByChildIdContractsCurrent",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -12251,6 +12330,7 @@
         "/api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId}": {
             "delete": {
                 "description": "Delete a contract by ID",
+                "operationId": "deleteOrganizationsByOrgIdChildrenByChildIdContractsByContractId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -12366,6 +12446,7 @@
             },
             "get": {
                 "description": "Get a single contract by ID",
+                "operationId": "getOrganizationsByOrgIdChildrenByChildIdContractsByContractId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -12404,7 +12485,15 @@
                                 }
                             }
                         },
-                        "description": "OK"
+                        "description": "OK",
+                        "headers": {
+                            "ETag": {
+                                "description": "The contract's version, quoted. Echo it back as `If-Match` when correcting, amending, ending or deleting this contract; it is also on the body as `version`.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
                     },
                     "400": {
                         "content": {
@@ -12459,6 +12548,7 @@
             },
             "patch": {
                 "description": "Fix what a contract period records, in place. Use this when the stored facts were\nwrong — a typo'd start date, the wrong section, a care type entered incorrectly.\nUse amend instead when the facts themselves changed as of a date.\n\nThis is a true partial update: a field you omit is left exactly as it was. To clear\n`to` or `properties`, send them as null. That is the difference from the old PUT,\nwhere omitting `to` cleared it.\n\nCorrections are allowed on past contracts, including ones that already ended,\nbecause correcting history is the point. Every changed field is written to the audit\nlog with its old and new value, since a change to care type or a supplement changes\nwhat the Kita is paid.\n\nAuto-applied funding properties are re-merged only when the request touches\n`properties` or `from`, so correcting a section cannot quietly add funding keys.",
+                "operationId": "patchOrganizationsByOrgIdChildrenByChildIdContractsByContractId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -12605,6 +12695,7 @@
         "/api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId}/amend": {
             "post": {
                 "description": "Record that the facts changed as of a date: the addressed contract is closed the day\nbefore `effective_from`, and a successor carrying the changes starts on it. Both\ncontracts are returned, so the caller never has to guess which id it now holds.\n\n`effective_from` is honoured, including in the past — a Bescheid that arrives late is\none call. It also anchors the auto-applied funding properties, which the old PUT\nresolved at today and therefore got wrong for any backdated change that crossed a\nfunding period.\n\nFields you omit inherit from the contract being amended, which is usually what you\nwant: a new Bescheid typically changes the care type and nothing else. Send `to` as\nnull to make the successor open-ended.\n\nRejected with 400 if `effective_from` is not after the contract's start (that is a\ncorrection, so use PATCH), or if the contract already ended before it (amending would\nsilently extend a finished contract over months that were already billed).",
+                "operationId": "postOrganizationsByOrgIdChildrenByChildIdContractsByContractIdAmend",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -12751,6 +12842,7 @@
         "/api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId}/end": {
             "post": {
                 "description": "Record that a contract stops on a date — a child leaving — or undo that by sending\n`to` as null, which makes it ongoing again.\n\n`to` is required in the body. The old surface could only reopen a contract by\n*omitting* the field, which was indistinguishable from \"leave it alone\"; here the\nnull is explicit.\n\nReopening a contract that has a successor is a 409, not a silent overwrite.",
+                "operationId": "postOrganizationsByOrgIdChildrenByChildIdContractsByContractIdEnd",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -12897,6 +12989,7 @@
         "/api/v1/organizations/{orgId}/children/{childId}/vouchers": {
             "get": {
                 "description": "List all Kita-Gutschein numbers assigned to a child, ordered by first_seen ascending. Visible to any role with read access to the child.",
+                "operationId": "getOrganizationsByOrgIdChildrenByChildIdVouchers",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -12974,6 +13067,7 @@
             },
             "post": {
                 "description": "Link a Gutschein number to a child. Idempotent — assigning an already-known voucher is a no-op.",
+                "operationId": "postOrganizationsByOrgIdChildrenByChildIdVouchers",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -13072,6 +13166,7 @@
         "/api/v1/organizations/{orgId}/children/{childId}/vouchers/{voucherId}": {
             "delete": {
                 "description": "Hard-deletes a single voucher row. The freed unique slot allows the same number to be re-assigned to another child. Past bill rows that referenced the deleted voucher_number lose their child-link in /billing pages; the audit log preserves the trail.",
+                "operationId": "deleteOrganizationsByOrgIdChildrenByChildIdVouchersByVoucherId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -13150,6 +13245,7 @@
         "/api/v1/organizations/{orgId}/employees": {
             "get": {
                 "description": "Get a paginated list of all employees in the specified organization",
+                "operationId": "getOrganizationsByOrgIdEmployees",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -13266,6 +13362,7 @@
             },
             "post": {
                 "description": "Create a new employee in the specified organization",
+                "operationId": "postOrganizationsByOrgIdEmployees",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -13345,6 +13442,7 @@
         "/api/v1/organizations/{orgId}/employees/export/excel": {
             "get": {
                 "description": "Download all employees matching the given filters as an XLSX spreadsheet",
+                "operationId": "getOrganizationsByOrgIdEmployeesExportExcel",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -13445,6 +13543,7 @@
         "/api/v1/organizations/{orgId}/employees/export/yaml": {
             "get": {
                 "description": "Download employees with contracts as a YAML file. Supports the same filters as the list endpoint.\nWithout filters, exports all employees (suitable for backup/restore).",
+                "operationId": "getOrganizationsByOrgIdEmployeesExportYaml",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -13545,6 +13644,7 @@
         "/api/v1/organizations/{orgId}/employees/import": {
             "post": {
                 "description": "Upload a YAML file to create or update employees with contracts (upsert by name+birthdate)",
+                "operationId": "postOrganizationsByOrgIdEmployeesImport",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -13635,6 +13735,7 @@
         "/api/v1/organizations/{orgId}/employees/step-promotions": {
             "get": {
                 "description": "Returns employees eligible for step promotions based on years of service",
+                "operationId": "getOrganizationsByOrgIdEmployeesStepPromotions",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -13700,6 +13801,7 @@
         "/api/v1/organizations/{orgId}/employees/{employeeId}": {
             "delete": {
                 "description": "Delete an employee by ID",
+                "operationId": "deleteOrganizationsByOrgIdEmployeesByEmployeeId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -13777,6 +13879,7 @@
             },
             "get": {
                 "description": "Get a single employee by their ID",
+                "operationId": "getOrganizationsByOrgIdEmployeesByEmployeeId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -13861,6 +13964,7 @@
             },
             "put": {
                 "description": "Update an existing employee by ID.",
+                "operationId": "putOrganizationsByOrgIdEmployeesByEmployeeId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -13959,6 +14063,7 @@
         "/api/v1/organizations/{orgId}/employees/{employeeId}/contracts": {
             "get": {
                 "description": "Get paginated contracts for an employee",
+                "operationId": "getOrganizationsByOrgIdEmployeesByEmployeeIdContracts",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -14062,6 +14167,7 @@
             },
             "post": {
                 "description": "Create a new contract for an employee.\n\n**Contract Date Rules:**\n- Both `from` and `to` dates are inclusive (the contract is active on both dates)\n- Same-day contracts are allowed (`from` == `to`)\n- Contracts must not overlap with existing contracts\n- \"Touching\" contracts (where contract A ends on the same day contract B starts) are considered overlapping\n- To transition between contracts, the new contract must start the day AFTER the previous one ends\n\n**Example:** If contract A ends on 2025-01-31, contract B must start on 2025-02-01 or later.",
+                "operationId": "postOrganizationsByOrgIdEmployeesByEmployeeIdContracts",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -14170,6 +14276,7 @@
         "/api/v1/organizations/{orgId}/employees/{employeeId}/contracts/boundary": {
             "post": {
                 "description": "Move the seam between two contracts that meet: the later one starts on `at` and the\nearlier one is closed the day before. One date, both sides derived on the server.\n\nThe two contracts must actually be adjacent — the earlier one's `to` plus one day\nequals the later one's `from`. With a gap there are two independent boundaries rather\nthan one seam, so set each end date instead. The seam must leave both sides at least\none day long, and the pay plan must cover the later contract's grade and step at its\nnew start date.",
+                "operationId": "postOrganizationsByOrgIdEmployeesByEmployeeIdContractsBoundary",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -14278,6 +14385,7 @@
         "/api/v1/organizations/{orgId}/employees/{employeeId}/contracts/current": {
             "get": {
                 "description": "Get the currently active contract for an employee",
+                "operationId": "getOrganizationsByOrgIdEmployeesByEmployeeIdContractsCurrent",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -14364,6 +14472,7 @@
         "/api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId}": {
             "delete": {
                 "description": "Delete a contract by ID",
+                "operationId": "deleteOrganizationsByOrgIdEmployeesByEmployeeIdContractsByContractId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -14479,6 +14588,7 @@
             },
             "get": {
                 "description": "Get a single contract by ID with properties",
+                "operationId": "getOrganizationsByOrgIdEmployeesByEmployeeIdContractsByContractId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -14517,7 +14627,15 @@
                                 }
                             }
                         },
-                        "description": "OK"
+                        "description": "OK",
+                        "headers": {
+                            "ETag": {
+                                "description": "The contract's version, quoted. Echo it back as `If-Match` when correcting, amending, ending or deleting this contract; it is also on the body as `version`.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
                     },
                     "400": {
                         "content": {
@@ -14572,6 +14690,7 @@
             },
             "patch": {
                 "description": "Fix what a contract period records, in place — a typo'd start date, the wrong\nsection, a pay grade entered incorrectly. Use amend instead when the terms actually\nchanged as of a date, so the old terms stay on record for the months they applied to.\n\nA true partial update: a field you omit is left exactly as it was, and `to` or\n`properties` are cleared only by an explicit null. `weekly_hours` accepts 0 — a\ncontract with no hours (parental leave) is legitimate and the old request could not\nexpress it, because `required` rejects zero.\n\nPay-plan coverage is re-checked only when pay plan, grade, step or `from` move, so\ncorrecting a section cannot fail because the pay plan was edited years later.",
+                "operationId": "patchOrganizationsByOrgIdEmployeesByEmployeeIdContractsByContractId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -14718,6 +14837,7 @@
         "/api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId}/amend": {
             "post": {
                 "description": "Record that the terms changed as of a date — a raise, a change in weekly hours, a\nmove to another section. The addressed contract is closed the day before\n`effective_from` and a successor carrying the changes starts on it; both are returned.\n\nThis is the operation to use for anything that affects pay, because it keeps the old\nterms on record for the months they applied to. `effective_from` is honoured,\nincluding in the past, and it anchors the pay-plan coverage check — the old path\nchecked at today, which accepted a backdated amendment to a grade the plan only\ngained later, and rejected one it had at the time.\n\nFields you omit inherit from the contract being amended. Send `to` as null to make\nthe successor open-ended.",
+                "operationId": "postOrganizationsByOrgIdEmployeesByEmployeeIdContractsByContractIdAmend",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -14864,6 +14984,7 @@
         "/api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId}/end": {
             "post": {
                 "description": "Record that a contract stops on a date — an employee leaving, or a fixed term — or\nundo that by sending `to` as null, which makes it ongoing again.\n\n`to` is required in the body: the old surface could only reopen a contract by\nomitting the field, which was indistinguishable from \"leave it alone\".",
+                "operationId": "postOrganizationsByOrgIdEmployeesByEmployeeIdContractsByContractIdEnd",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -15010,6 +15131,7 @@
         "/api/v1/organizations/{orgId}/government-funding-bills": {
             "get": {
                 "description": "Get a paginated list of government funding bill periods for an organization",
+                "operationId": "getOrganizationsByOrgIdGovernmentFundingBills",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -15092,6 +15214,7 @@
             },
             "post": {
                 "description": "Parse an ISBJ Senatsabrechnung Excel file, persist the bill, and return funding bill data enriched with matched child/contract info",
+                "operationId": "postOrganizationsByOrgIdGovernmentFundingBills",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -15189,6 +15312,7 @@
         "/api/v1/organizations/{orgId}/government-funding-bills/compare": {
             "get": {
                 "description": "Compare bill data against calculated funding. Always returns comparisons with a summary.\nUse from/to for a date range, bill_id for a specific bill, or no params for the latest bill.",
+                "operationId": "getOrganizationsByOrgIdGovernmentFundingBillsCompare",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -15280,6 +15404,7 @@
         "/api/v1/organizations/{orgId}/government-funding-bills/unmatched-children": {
             "get": {
                 "description": "Returns bill rows whose voucher_number has no child_vouchers row anywhere — i.e. the Bezirks-Jugendamt is billing for a child KitaManager has never recorded. Each row carries metadata from the earliest bill the voucher was seen in, so the caller can pre-fill a contract start date.",
+                "operationId": "getOrganizationsByOrgIdGovernmentFundingBillsUnmatchedChildren",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -15340,6 +15465,7 @@
         "/api/v1/organizations/{orgId}/government-funding-bills/{billId}": {
             "delete": {
                 "description": "Delete a government funding bill period and all associated children and payments",
+                "operationId": "deleteOrganizationsByOrgIdGovernmentFundingBillsByBillId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -15407,6 +15533,7 @@
             },
             "get": {
                 "description": "Get a single government funding bill period with enriched children and match status",
+                "operationId": "getOrganizationsByOrgIdGovernmentFundingBillsByBillId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -15483,6 +15610,7 @@
         "/api/v1/organizations/{orgId}/government-funding-bills/{billId}/compare": {
             "get": {
                 "description": "Compare an uploaded ISBJ bill against calculated funding rates per child and property",
+                "operationId": "getOrganizationsByOrgIdGovernmentFundingBillsByBillIdCompare",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -15559,6 +15687,7 @@
         "/api/v1/organizations/{orgId}/pay-plans": {
             "get": {
                 "description": "Get all pay plans for an organization",
+                "operationId": "getOrganizationsByOrgIdPayPlans",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -15661,6 +15790,7 @@
             },
             "post": {
                 "description": "Create a new pay plan for an organization",
+                "operationId": "postOrganizationsByOrgIdPayPlans",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -15750,6 +15880,7 @@
         "/api/v1/organizations/{orgId}/pay-plans/import": {
             "post": {
                 "description": "Upload a YAML file to create a pay plan with all periods and entries",
+                "operationId": "postOrganizationsByOrgIdPayPlansImport",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -15847,6 +15978,7 @@
         "/api/v1/organizations/{orgId}/pay-plans/{payPlanId}": {
             "delete": {
                 "description": "Delete a pay plan and all its periods and entries",
+                "operationId": "deleteOrganizationsByOrgIdPayPlansByPayPlanId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -15934,6 +16066,7 @@
             },
             "get": {
                 "description": "Get a pay plan by ID with all periods and entries",
+                "operationId": "getOrganizationsByOrgIdPayPlansByPayPlanId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -16036,6 +16169,7 @@
             },
             "put": {
                 "description": "Update a pay plan",
+                "operationId": "putOrganizationsByOrgIdPayPlansByPayPlanId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -16144,6 +16278,7 @@
         "/api/v1/organizations/{orgId}/pay-plans/{payPlanId}/export": {
             "get": {
                 "description": "Download a pay plan with all periods and entries as a YAML file",
+                "operationId": "getOrganizationsByOrgIdPayPlansByPayPlanIdExport",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -16241,6 +16376,7 @@
         "/api/v1/organizations/{orgId}/pay-plans/{payPlanId}/periods": {
             "get": {
                 "description": "Get a paginated list of periods for a pay plan",
+                "operationId": "getOrganizationsByOrgIdPayPlansByPayPlanIdPeriods",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -16354,6 +16490,7 @@
             },
             "post": {
                 "description": "Create a new period for a pay plan",
+                "operationId": "postOrganizationsByOrgIdPayPlansByPayPlanIdPeriods",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -16462,6 +16599,7 @@
         "/api/v1/organizations/{orgId}/pay-plans/{payPlanId}/periods/{periodId}": {
             "delete": {
                 "description": "Delete a period and all its entries",
+                "operationId": "deleteOrganizationsByOrgIdPayPlansByPayPlanIdPeriodsByPeriodId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -16558,6 +16696,7 @@
             },
             "get": {
                 "description": "Get a period by ID with all entries",
+                "operationId": "getOrganizationsByOrgIdPayPlansByPayPlanIdPeriodsByPeriodId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -16661,6 +16800,7 @@
             },
             "put": {
                 "description": "Update a period",
+                "operationId": "putOrganizationsByOrgIdPayPlansByPayPlanIdPeriodsByPeriodId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -16778,6 +16918,7 @@
         "/api/v1/organizations/{orgId}/pay-plans/{payPlanId}/periods/{periodId}/entries": {
             "get": {
                 "description": "Get a paginated list of entries for a pay plan period",
+                "operationId": "getOrganizationsByOrgIdPayPlansByPayPlanIdPeriodsByPeriodIdEntries",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -16900,6 +17041,7 @@
             },
             "post": {
                 "description": "Create a new entry for a period",
+                "operationId": "postOrganizationsByOrgIdPayPlansByPayPlanIdPeriodsByPeriodIdEntries",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -17017,6 +17159,7 @@
         "/api/v1/organizations/{orgId}/pay-plans/{payPlanId}/periods/{periodId}/entries/{entryId}": {
             "delete": {
                 "description": "Delete an entry",
+                "operationId": "deleteOrganizationsByOrgIdPayPlansByPayPlanIdPeriodsByPeriodIdEntriesByEntryId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -17122,6 +17265,7 @@
             },
             "get": {
                 "description": "Get an entry by ID",
+                "operationId": "getOrganizationsByOrgIdPayPlansByPayPlanIdPeriodsByPeriodIdEntriesByEntryId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -17234,6 +17378,7 @@
             },
             "put": {
                 "description": "Update an entry",
+                "operationId": "putOrganizationsByOrgIdPayPlansByPayPlanIdPeriodsByPeriodIdEntriesByEntryId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -17360,6 +17505,7 @@
         "/api/v1/organizations/{orgId}/purge": {
             "delete": {
                 "description": "Physically removes an organization and CASCADEs through\nthe FK graph (pay_plans, gov-funding bills, employees,\nchildren, sections — see migration 000014). Bypasses\nthe soft-delete tombstone entirely. Irreversible.\n\nRestricted to superadmins. Accepts both live and\nalready-tombstoned rows so an Art. 17 request can fire\nagainst either state.",
+                "operationId": "deleteOrganizationsByOrgIdPurge",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -17440,6 +17586,7 @@
         "/api/v1/organizations/{orgId}/sections": {
             "get": {
                 "description": "Get a paginated list of sections within a specific organization",
+                "operationId": "getOrganizationsByOrgIdSections",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -17532,6 +17679,7 @@
             },
             "post": {
                 "description": "Create a new section within an organization",
+                "operationId": "postOrganizationsByOrgIdSections",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -17611,6 +17759,7 @@
         "/api/v1/organizations/{orgId}/sections/{sectionId}": {
             "delete": {
                 "description": "Delete a section by ID within an organization. Cannot delete sections with assigned children or employees.",
+                "operationId": "deleteOrganizationsByOrgIdSectionsBySectionId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -17688,6 +17837,7 @@
             },
             "get": {
                 "description": "Get a single section by its ID within an organization",
+                "operationId": "getOrganizationsByOrgIdSectionsBySectionId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -17772,6 +17922,7 @@
             },
             "put": {
                 "description": "Update an existing section by ID within an organization",
+                "operationId": "putOrganizationsByOrgIdSectionsBySectionId",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -17870,6 +18021,7 @@
         "/api/v1/organizations/{orgId}/sections/{sectionId}/promote-default": {
             "post": {
                 "description": "Atomically clears the previous default flag (if any) and\nsets is_default = true on the given section. The\n(organization_id) WHERE is_default index from migration\n000019 enforces \"exactly one default per org\" at the DB\nlayer; this endpoint is the only sanctioned way to flip\nthe flag through the API.",
+                "operationId": "postOrganizationsByOrgIdSectionsBySectionIdPromoteDefault",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -17949,6 +18101,7 @@
         "/api/v1/organizations/{orgId}/statistics/age-distribution": {
             "get": {
                 "description": "Get age distribution of children with active contracts on the specified date",
+                "operationId": "getOrganizationsByOrgIdStatisticsAgeDistribution",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -18024,6 +18177,7 @@
         "/api/v1/organizations/{orgId}/statistics/contract-properties": {
             "get": {
                 "description": "Get the distribution of contract properties for children with active contracts on the specified date",
+                "operationId": "getOrganizationsByOrgIdStatisticsContractProperties",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -18099,6 +18253,7 @@
         "/api/v1/organizations/{orgId}/statistics/estimates/child-funding": {
             "post": {
                 "description": "Calculates government funding based on birthdate, date, and contract properties\nwithout requiring an existing child record",
+                "operationId": "postOrganizationsByOrgIdStatisticsEstimatesChildFunding",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -18188,6 +18343,7 @@
         "/api/v1/organizations/{orgId}/statistics/estimates/employee-cost": {
             "post": {
                 "description": "Calculates gross salary and employer costs based on pay plan, grade, step, and weekly hours\nwithout requiring an existing employee record",
+                "operationId": "postOrganizationsByOrgIdStatisticsEstimatesEmployeeCost",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -18277,6 +18433,7 @@
         "/api/v1/organizations/{orgId}/statistics/financials": {
             "get": {
                 "description": "Returns monthly data points with income (government funding), expenses (salaries, employer costs, operating costs), and balance.\nIncome is calculated from children's contract properties matched against government funding.\nSalary costs use pay plan entries pro-rated by weekly hours. Employer costs apply the period's contribution rate.\nOperating costs sum active cost entries for the organization.\nEach data point includes optional breakdowns: funding_details (per funding property), budget_item_details (per budget item), and salary_details (per staff category).",
+                "operationId": "getOrganizationsByOrgIdStatisticsFinancials",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -18368,6 +18525,7 @@
         "/api/v1/organizations/{orgId}/statistics/forecast": {
             "post": {
                 "description": "Runs all statistics calculations (financials, staffing hours, occupancy, employee staffing hours)\nwith overlay modifications applied. The overlay allows modeling hypothetical changes such as\nadding/removing employees or children, modifying contracts, changing pay plan rates,\nadjusting government funding, and adding/removing budget items.",
+                "operationId": "postOrganizationsByOrgIdStatisticsForecast",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -18447,6 +18605,7 @@
         "/api/v1/organizations/{orgId}/statistics/funding": {
             "get": {
                 "description": "Calculate government funding for all children with active contracts on a given date",
+                "operationId": "getOrganizationsByOrgIdStatisticsFunding",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -18532,6 +18691,7 @@
         "/api/v1/organizations/{orgId}/statistics/occupancy": {
             "get": {
                 "description": "Returns monthly data points showing the occupancy matrix: children broken down by age group and care type,\nplus supplement counts. Age groups and care types are derived from the government funding configuration.",
+                "operationId": "getOrganizationsByOrgIdStatisticsOccupancy",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -18623,6 +18783,7 @@
         "/api/v1/organizations/{orgId}/statistics/staffing-hours": {
             "get": {
                 "description": "Returns monthly data points comparing required vs available staffing hours.\nRequired hours are calculated from children's contract properties matched against government funding requirements.\nAvailable hours are the sum of weekly hours from pedagogical staff (qualified + supplementary) contracts.",
+                "operationId": "getOrganizationsByOrgIdStatisticsStaffingHours",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -18714,6 +18875,7 @@
         "/api/v1/organizations/{orgId}/statistics/staffing-hours/employees": {
             "get": {
                 "description": "Returns monthly contracted weekly hours for each employee, with one row per employee and one column per month.",
+                "operationId": "getOrganizationsByOrgIdStatisticsStaffingHoursEmployees",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -18805,6 +18967,7 @@
         "/api/v1/organizations/{orgId}/users": {
             "get": {
                 "description": "Get a paginated list of users who are members of the specified organization",
+                "operationId": "getOrganizationsByOrgIdUsers",
                 "parameters": [
                     {
                         "description": "Organization ID",
@@ -18900,6 +19063,7 @@
         "/api/v1/ready": {
             "get": {
                 "description": "Check if the API is ready to accept traffic",
+                "operationId": "getReady",
                 "responses": {
                     "200": {
                         "content": {
@@ -18931,6 +19095,7 @@
         "/api/v1/users": {
             "get": {
                 "description": "Get a paginated list of all users",
+                "operationId": "getUsers",
                 "parameters": [
                     {
                         "description": "Search by name or email (case-insensitive)",
@@ -19004,6 +19169,7 @@
             },
             "post": {
                 "description": "Create a new user account",
+                "operationId": "postUsers",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -19072,6 +19238,7 @@
         "/api/v1/users/{userId}": {
             "delete": {
                 "description": "Delete a user by ID",
+                "operationId": "deleteUsersByUserId",
                 "parameters": [
                     {
                         "description": "User ID",
@@ -19140,6 +19307,7 @@
             },
             "get": {
                 "description": "Get a single user by their ID",
+                "operationId": "getUsersByUserId",
                 "parameters": [
                     {
                         "description": "User ID",
@@ -19215,6 +19383,7 @@
             },
             "put": {
                 "description": "Update an existing user by ID",
+                "operationId": "putUsersByUserId",
                 "parameters": [
                     {
                         "description": "User ID",
@@ -19304,6 +19473,7 @@
         "/api/v1/users/{userId}/factors": {
             "get": {
                 "description": "Returns every activated factor owned by the addressed user.\nPending (not-yet-activated) factors are hidden.",
+                "operationId": "getUsersByUserIdFactors",
                 "parameters": [
                     {
                         "description": "User id or 'me'",
@@ -19359,6 +19529,7 @@
             },
             "post": {
                 "description": "Creates a pending factor. For TOTP, returns the\nbase32 secret and otpauth URI that the client displays\nas a QR code. The factor is not yet usable — call\n/activate with a valid code to enable it.\nPassword re-entry is required (step-up) to prevent a\nstolen session from installing a backdoor authenticator.",
+                "operationId": "postUsersByUserIdFactors",
                 "parameters": [
                     {
                         "description": "User id or 'me'",
@@ -19428,6 +19599,7 @@
         "/api/v1/users/{userId}/factors/{factorId}": {
             "delete": {
                 "description": "Disables a factor. Password re-entry required\n(step-up). A code from any active factor is additionally\nrequired when removing your last primary factor —\notherwise a stolen session could wipe your 2FA and\nleave you with password-only protection.",
+                "operationId": "deleteUsersByUserIdFactorsByFactorId",
                 "parameters": [
                     {
                         "description": "User id or 'me'",
@@ -19506,6 +19678,7 @@
                 ]
             },
             "get": {
+                "operationId": "getUsersByUserIdFactorsByFactorId",
                 "parameters": [
                     {
                         "description": "User id or 'me'",
@@ -19570,6 +19743,7 @@
             },
             "patch": {
                 "description": "Rename a factor. No step-up required.",
+                "operationId": "patchUsersByUserIdFactorsByFactorId",
                 "parameters": [
                     {
                         "description": "User id or 'me'",
@@ -19658,6 +19832,7 @@
         "/api/v1/users/{userId}/factors/{factorId}/activate": {
             "post": {
                 "description": "Verifies the first code (proving the user can read\ntheir authenticator) and enables the factor. If this\nis the user's first primary factor, a fresh set of\nbackup codes is generated and returned — save them NOW.",
+                "operationId": "postUsersByUserIdFactorsByFactorIdActivate",
                 "parameters": [
                     {
                         "description": "User id or 'me'",
@@ -19756,6 +19931,7 @@
         "/api/v1/users/{userId}/factors/{factorId}/regenerate": {
             "post": {
                 "description": "Replaces every backup code (used or unused) with a\nfresh set. Password re-entry required. Only valid for\nbackup_codes factors.",
+                "operationId": "postUsersByUserIdFactorsByFactorIdRegenerate",
                 "parameters": [
                     {
                         "description": "User id or 'me'",
@@ -19844,6 +20020,7 @@
         "/api/v1/users/{userId}/memberships": {
             "get": {
                 "description": "Get all organization memberships for a user with their roles",
+                "operationId": "getUsersByUserIdMemberships",
                 "parameters": [
                     {
                         "description": "User ID",
@@ -19921,6 +20098,7 @@
         "/api/v1/users/{userId}/organizations": {
             "post": {
                 "description": "Add a user to an organization with a specific role",
+                "operationId": "postUsersByUserIdOrganizations",
                 "parameters": [
                     {
                         "description": "User ID",
@@ -20020,6 +20198,7 @@
         "/api/v1/users/{userId}/organizations/{orgId}": {
             "delete": {
                 "description": "Remove a user from an organization",
+                "operationId": "deleteUsersByUserIdOrganizationsByOrgId",
                 "parameters": [
                     {
                         "description": "User ID",
@@ -20097,6 +20276,7 @@
             },
             "put": {
                 "description": "Update a user's role within a specific organization",
+                "operationId": "putUsersByUserIdOrganizationsByOrgId",
                 "parameters": [
                     {
                         "description": "User ID",
@@ -20205,6 +20385,7 @@
         "/api/v1/users/{userId}/password": {
             "put": {
                 "description": "Admin-initiated password reset. Sets a new password for the specified user and revokes all their tokens.",
+                "operationId": "putUsersByUserIdPassword",
                 "parameters": [
                     {
                         "description": "User ID",
@@ -20297,6 +20478,7 @@
         "/api/v1/users/{userId}/purge": {
             "delete": {
                 "description": "Physically removes a user and CASCADEs through the FK\ngraph (sessions, factors, user_organizations, audit\ntrail rows that don't reference the user). Bypasses the\ntombstone soft-delete entirely. Irreversible.\n\nRestricted to superadmins. Cannot purge self. Cannot\npurge the last superadmin. Accepts both live and\nalready-tombstoned rows so an Art. 17 request can fire\nagainst either state.",
+                "operationId": "deleteUsersByUserIdPurge",
                 "parameters": [
                     {
                         "description": "User ID",
@@ -20377,6 +20559,7 @@
         "/api/v1/users/{userId}/superadmin": {
             "put": {
                 "description": "Set or unset a user's superadmin status. Requires superadmin access\nAND step-up authentication (the actor's current password in\n`actor_password`). Symmetric with the admin password-reset endpoint:\nwithout step-up a stolen superadmin session could mint a confederate\nsuperadmin (or demote the actor) at full API rate.",
+                "operationId": "putUsersByUserIdSuperadmin",
                 "parameters": [
                     {
                         "description": "User ID",

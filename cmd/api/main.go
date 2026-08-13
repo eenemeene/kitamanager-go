@@ -36,7 +36,41 @@ import (
 
 // @title KitaManager API
 // @version 1.0
-// @description REST API for managing Users and Organizations with RBAC support
+// @description REST API for a Kita management system: children and their care
+// @description contracts, employees and theirs, sections, attendance, and the
+// @description Berlin ISBJ funding and billing model. Organization-scoped
+// @description throughout, with role-based access control.
+// @description
+// @description ## Authentication
+// @description
+// @description Sessions are server-side. `POST /api/v1/login` sets two cookies: an
+// @description HttpOnly `session` cookie holding the session token, and a
+// @description JS-readable `csrf_token`. The token is opaque — not a JWT — and is
+// @description hashed before it is stored, so a leaked database row is not a usable
+// @description credential.
+// @description
+// @description A request presents that session in one of two ways:
+// @description
+// @description - **Browser** — the `session` cookie, sent automatically. Every
+// @description   mutating request (POST, PATCH, PUT, DELETE) must also echo the
+// @description   `csrf_token` cookie back in the `X-CSRF-Token` header, or it is
+// @description   rejected. Reads do not need it.
+// @description - **CLI or server-to-server** — `Authorization: Bearer <token>` with
+// @description   the same value the login response put in the cookie. CSRF does not
+// @description   apply here, because a browser never attaches this header on its own.
+// @description
+// @description There is no refresh endpoint: a session stays valid until logout,
+// @description expiry, or revocation via `/api/v1/me/sessions`.
+// @description
+// @description ## Concurrency
+// @description
+// @description Contract writes are guarded with optimistic concurrency. Every
+// @description contract response carries a `version`, and `GET` of a single contract
+// @description also returns it as an `ETag`. Corrections, amendments, end-date
+// @description changes and deletes require that value in an `If-Match` header;
+// @description omitting it is `428`, and a stale value is `412`. The seam-move
+// @description endpoint takes both contracts' versions in its body instead, because
+// @description it addresses two resources at once.
 // @termsOfService http://swagger.io/terms/
 
 // @contact.name API Support
@@ -48,10 +82,28 @@ import (
 // @host localhost:8080
 // @BasePath /
 
+// @securityDefinitions.apikey CookieAuth
+// @in cookie
+// @name session
+// @description Session cookie set by `POST /api/v1/login`, sent automatically by
+// @description browsers. Mutating requests must additionally send the CSRF header
+// @description below. This is what the web frontend uses.
+
+// @securityDefinitions.apikey CsrfToken
+// @in header
+// @name X-CSRF-Token
+// @description Required on every mutating request made with `CookieAuth`. Its value
+// @description is the `csrf_token` cookie, which login sets alongside the session
+// @description cookie and which is deliberately readable from JavaScript so the
+// @description client can copy it into this header. Requests authenticated with
+// @description `BearerAuth` do not need it.
+
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
-// @description Type "Bearer" followed by a space and JWT token.
+// @description `Bearer <token>` where the token is the opaque session value returned
+// @description by login — not a JWT. Intended for CLI and server-to-server callers;
+// @description CSRF does not apply to it.
 
 // appStores holds all data access layer instances.
 type appStores struct {

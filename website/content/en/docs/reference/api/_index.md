@@ -11,7 +11,7 @@ The OpenAPI spec at `/swagger/index.html` provides per-endpoint detail; this pag
 
 ## Authentication
 
-Authentication is **cookie-based**: a successful login sets an HttpOnly `access_token` session cookie plus a JS-readable `csrf_token` cookie. Mutating requests (POST/PUT/PATCH/DELETE) must echo the CSRF token via the `X-CSRF-Token` header. There is no separate refresh endpoint — sessions remain valid until you log out, the cookie expires, or you revoke them from `/me/sessions`.
+Authentication is **cookie-based**: a successful login sets an HttpOnly `session` cookie plus a JS-readable `csrf_token` cookie. Mutating requests (POST/PUT/PATCH/DELETE) must echo the CSRF token via the `X-CSRF-Token` header. There is no separate refresh endpoint — sessions remain valid until you log out, the cookie expires, or you revoke them from `/me/sessions`.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -35,7 +35,7 @@ curl -i -c cookies.txt -X POST http://localhost:8080/api/v1/login \
 The response sets two cookies:
 
 ```
-Set-Cookie: access_token=...; HttpOnly; Path=/
+Set-Cookie: session=...; HttpOnly; Path=/
 Set-Cookie: csrf_token=...; Path=/
 ```
 
@@ -138,9 +138,74 @@ Nested under an employee: `.../employees/{id}/contracts`.
 | POST | `.../contracts` | Create contract |
 | GET | `.../contracts/current` | Get current active contract |
 | GET | `.../contracts/{contractId}` | Get contract |
-| PUT | `.../contracts/{contractId}` | Update contract |
-| PUT | `.../contracts/batch` | Batch-update employee contracts (used by the contract-amend flow) |
-| DELETE | `.../contracts/{contractId}` | Delete contract |
+| PATCH | `.../contracts/{contractId}` | Correct a contract in place — the recorded facts were wrong. Partial: an omitted field is left alone. Needs `If-Match`. |
+| POST | `.../contracts/{contractId}/amend` | Record a change effective from a date: closes this contract the day before and creates its successor. Returns both. Needs `If-Match`. |
+| POST | `.../contracts/{contractId}/end` | Set or clear the end date. `to: null` reopens an ongoing contract. Needs `If-Match`. |
+| POST | `.../contracts/boundary` | Move the seam between two adjacent contracts. Takes one date and both versions. |
+| DELETE | `.../contracts/{contractId}` | Delete a contract. Needs `If-Match`. |
+
+## Contract writes: worked examples
+
+Contract endpoints are the ones whose semantics are not obvious from their paths,
+so they are worth spelling out. Each names one intent, and each single-contract
+write needs the contract's version as an `If-Match` precondition — read it from
+the `version` field or the `ETag` on a `GET`.
+
+Correct a contract whose recorded facts were wrong. Omitted fields are left
+untouched; send `null` to clear one:
+
+```bash
+curl -X PATCH "$API/organizations/1/children/42/contracts/7" \
+  -b cookies.txt -H "X-CSRF-Token: $CSRF" \
+  -H 'Content-Type: application/json' -H 'If-Match: "3"' \
+  -d '{"section_id": 2}'
+```
+
+Record a change that takes effect on a date — a new Bescheid, a change of care
+type. This closes contract 7 the day before and creates its successor, returning
+both. The date may be in the past:
+
+```bash
+curl -X POST "$API/organizations/1/children/42/contracts/7/amend" \
+  -b cookies.txt -H "X-CSRF-Token: $CSRF" \
+  -H 'Content-Type: application/json' -H 'If-Match: "3"' \
+  -d '{"effective_from": "2026-02-01T00:00:00Z",
+       "properties": {"care_type": "ganztag", "integration": "integration a"}}'
+```
+
+```json
+{
+  "closed":  { "id": 7, "from": "2025-08-01T00:00:00Z", "to": "2026-01-31T00:00:00Z", "version": 4 },
+  "created": { "id": 9, "from": "2026-02-01T00:00:00Z", "to": null,                   "version": 1 }
+}
+```
+
+Record a departure, or undo one by sending `null`:
+
+```bash
+curl -X POST "$API/organizations/1/children/42/contracts/9/end" \
+  -b cookies.txt -H "X-CSRF-Token: $CSRF" \
+  -H 'Content-Type: application/json' -H 'If-Match: "1"' \
+  -d '{"to": "2026-07-31T00:00:00Z"}'
+```
+
+Move the boundary between two adjacent contracts. One date; the server closes the
+earlier one the day before and starts the later one on it. Both versions travel in
+the body, because this changes two contracts:
+
+```bash
+curl -X POST "$API/organizations/1/children/42/contracts/boundary" \
+  -b cookies.txt -H "X-CSRF-Token: $CSRF" \
+  -H 'Content-Type: application/json' \
+  -d '{"earlier_id": 7, "later_id": 9, "at": "2026-03-01T00:00:00Z",
+       "earlier_version": 4, "later_version": 1}'
+```
+
+Two 409-family responses mean different things: `412` (`precondition_failed`)
+means someone changed the contract since you read it — reload and reapply. `428`
+(`precondition_required`) means you sent no `If-Match` at all. A plain `409` with
+`contract_overlap` means the dates collide with another contract, which reloading
+will not fix.
 
 ## Children
 
@@ -173,9 +238,11 @@ Nested under a child: `.../children/{id}/contracts`.
 | POST | `.../contracts` | Create contract |
 | GET | `.../contracts/current` | Get current active contract |
 | GET | `.../contracts/{contractId}` | Get contract |
-| PUT | `.../contracts/{contractId}` | Update contract |
-| PUT | `.../contracts/batch` | Batch-update child contracts (used by the contract-amend flow) |
-| DELETE | `.../contracts/{contractId}` | Delete contract |
+| PATCH | `.../contracts/{contractId}` | Correct a contract in place — the recorded facts were wrong. Partial: an omitted field is left alone. Needs `If-Match`. |
+| POST | `.../contracts/{contractId}/amend` | Record a change effective from a date: closes this contract the day before and creates its successor. Returns both. Needs `If-Match`. |
+| POST | `.../contracts/{contractId}/end` | Set or clear the end date. `to: null` reopens an ongoing contract. Needs `If-Match`. |
+| POST | `.../contracts/boundary` | Move the seam between two adjacent contracts. Takes one date and both versions. |
+| DELETE | `.../contracts/{contractId}` | Delete a contract. Needs `If-Match`. |
 
 ### Child attendance
 

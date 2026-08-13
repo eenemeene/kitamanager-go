@@ -1,7 +1,7 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "REST API for managing Users and Organizations with RBAC support",
+        "description": "REST API for a Kita management system: children and their care\ncontracts, employees and theirs, sections, attendance, and the\nBerlin ISBJ funding and billing model. Organization-scoped\nthroughout, with role-based access control.\n\n## Authentication\n\nSessions are server-side. `POST /api/v1/login` sets two cookies: an\nHttpOnly `session` cookie holding the session token, and a\nJS-readable `csrf_token`. The token is opaque — not a JWT — and is\nhashed before it is stored, so a leaked database row is not a usable\ncredential.\n\nA request presents that session in one of two ways:\n\n- **Browser** — the `session` cookie, sent automatically. Every\nmutating request (POST, PATCH, PUT, DELETE) must also echo the\n`csrf_token` cookie back in the `X-CSRF-Token` header, or it is\nrejected. Reads do not need it.\n- **CLI or server-to-server** — `Authorization: Bearer \u003ctoken\u003e` with\nthe same value the login response put in the cookie. CSRF does not\napply here, because a browser never attaches this header on its own.\n\nThere is no refresh endpoint: a session stays valid until logout,\nexpiry, or revocation via `/api/v1/me/sessions`.\n\n## Concurrency\n\nContract writes are guarded with optimistic concurrency. Every\ncontract response carries a `version`, and `GET` of a single contract\nalso returns it as an `ETag`. Corrections, amendments, end-date\nchanges and deletes require that value in an `If-Match` header;\nomitting it is `428`, and a stale value is `412`. The seam-move\nendpoint takes both contracts' versions in its body instead, because\nit addresses two resources at once.",
         "title": "KitaManager API",
         "termsOfService": "http://swagger.io/terms/",
         "contact": {
@@ -16396,9 +16396,21 @@
     },
     "securityDefinitions": {
         "BearerAuth": {
-            "description": "Type \"Bearer\" followed by a space and JWT token.",
+            "description": "`Bearer \u003ctoken\u003e` where the token is the opaque session value returned\nby login — not a JWT. Intended for CLI and server-to-server callers;\nCSRF does not apply to it.",
             "type": "apiKey",
             "name": "Authorization",
+            "in": "header"
+        },
+        "CookieAuth": {
+            "description": "Session cookie set by `POST /api/v1/login`, sent automatically by\nbrowsers. Mutating requests must additionally send the CSRF header\nbelow. This is what the web frontend uses.",
+            "type": "apiKey",
+            "name": "session",
+            "in": "cookie"
+        },
+        "CsrfToken": {
+            "description": "Required on every mutating request made with `CookieAuth`. Its value\nis the `csrf_token` cookie, which login sets alongside the session\ncookie and which is deliberately readable from JavaScript so the\nclient can copy it into this header. Requests authenticated with\n`BearerAuth` do not need it.",
+            "type": "apiKey",
+            "name": "X-CSRF-Token",
             "in": "header"
         }
     }

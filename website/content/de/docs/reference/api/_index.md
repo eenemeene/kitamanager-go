@@ -11,6 +11,6 @@ KitaManager bietet eine REST-API. Die interaktive OpenAPI/Swagger-UI wird mit de
 Die vollständige englischsprachige Endpunkt-Übersicht steht unter [/en/docs/reference/api/](/en/docs/reference/api/). Für Authentifizierungsfluss, CSRF-Verhalten und Code-Beispiele bitte dort nachschlagen.
 {{< /callout >}}
 
-Die API ist **cookie-basiert** authentifiziert: ein erfolgreicher Login setzt ein HttpOnly `access_token`-Sitzungs-Cookie sowie ein per JS lesbares `csrf_token`-Cookie. Mutierende Anfragen (POST/PUT/PATCH/DELETE) müssen das CSRF-Token im `X-CSRF-Token`-Header zurückgeben. Es gibt keinen Refresh-Endpunkt — Sitzungen bleiben gültig bis zum Logout, Cookie-Ablauf, oder bis Sie sie unter `/me/sessions` widerrufen.
+Die API ist **cookie-basiert** authentifiziert: ein erfolgreicher Login setzt ein HttpOnly `session`-Sitzungs-Cookie sowie ein per JS lesbares `csrf_token`-Cookie. Mutierende Anfragen (POST/PUT/PATCH/DELETE) müssen das CSRF-Token im `X-CSRF-Token`-Header zurückgeben. Es gibt keinen Refresh-Endpunkt — Sitzungen bleiben gültig bis zum Logout, Cookie-Ablauf, oder bis Sie sie unter `/me/sessions` widerrufen.
 
 Vollständige Endpunkt-Tabellen mit Methoden und Pfaden: [englische API-Referenz](/en/docs/reference/api/).
