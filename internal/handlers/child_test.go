@@ -1386,14 +1386,14 @@ func TestChildHandler_UpdateContract_SectionFromWrongOrg(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/children/:childId/contracts/:contractId", handler.UpdateContract)
+	r.PATCH("/organizations/:orgId/children/:childId/contracts/:contractId", handler.CorrectContract)
 
 	// Try to update contract to use org2's section
-	body := models.ChildContractUpdateRequest{
-		SectionID: &org2SectionID,
+	body := models.ChildContractCorrectRequest{
+		SectionID: models.OptOf(org2SectionID),
 	}
 
-	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org1.ID, child.ID, contract.ID), body)
+	w := requestWithHeaders(r, "PATCH", fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org1.ID, child.ID, contract.ID), string(mustMarshal(body)), anyVersion)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("SECURITY: expected status %d when updating to section from wrong org, got %d: %s",
@@ -2045,14 +2045,14 @@ func TestChildHandler_UpdateContract(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/children/:childId/contracts/:contractId", handler.UpdateContract)
+	r.PATCH("/organizations/:orgId/children/:childId/contracts/:contractId", handler.CorrectContract)
 
 	newFrom := today.AddDate(0, 2, 0)
-	body := models.ChildContractUpdateRequest{
-		From: &newFrom,
+	body := models.ChildContractCorrectRequest{
+		From: models.OptOf(newFrom),
 	}
 
-	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org.ID, child.ID, contract.ID), body)
+	w := requestWithHeaders(r, "PATCH", fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org.ID, child.ID, contract.ID), string(mustMarshal(body)), anyVersion)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
@@ -2078,14 +2078,14 @@ func TestChildHandler_UpdateContract_NotFound(t *testing.T) {
 	db.Create(child)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/children/:childId/contracts/:contractId", handler.UpdateContract)
+	r.PATCH("/organizations/:orgId/children/:childId/contracts/:contractId", handler.CorrectContract)
 
 	newFrom := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
-	body := models.ChildContractUpdateRequest{
-		From: &newFrom,
+	body := models.ChildContractCorrectRequest{
+		From: models.OptOf(newFrom),
 	}
 
-	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/children/%d/contracts/999", org.ID, child.ID), body)
+	w := requestWithHeaders(r, "PATCH", fmt.Sprintf("/organizations/%d/children/%d/contracts/999", org.ID, child.ID), string(mustMarshal(body)), anyVersion)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
@@ -2125,15 +2125,15 @@ func TestChildHandler_UpdateContract_Overlap(t *testing.T) {
 	db.Create(contract2)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/children/:childId/contracts/:contractId", handler.UpdateContract)
+	r.PATCH("/organizations/:orgId/children/:childId/contracts/:contractId", handler.CorrectContract)
 
 	// Update contract2's From to overlap with contract1
 	newFrom := today.AddDate(0, 3, 0)
-	body := models.ChildContractUpdateRequest{
-		From: &newFrom,
+	body := models.ChildContractCorrectRequest{
+		From: models.OptOf(newFrom),
 	}
 
-	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org.ID, child.ID, contract2.ID), body)
+	w := requestWithHeaders(r, "PATCH", fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org.ID, child.ID, contract2.ID), string(mustMarshal(body)), anyVersion)
 
 	if w.Code != http.StatusConflict {
 		t.Errorf("expected status %d for overlap, got %d: %s", http.StatusConflict, w.Code, w.Body.String())
@@ -2162,13 +2162,13 @@ func TestChildHandler_UpdateContract_InvalidBody(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/children/:childId/contracts/:contractId", handler.UpdateContract)
+	r.PATCH("/organizations/:orgId/children/:childId/contracts/:contractId", handler.CorrectContract)
 
 	body := map[string]any{
 		"from": "not-a-date",
 	}
 
-	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org.ID, child.ID, contract.ID), body)
+	w := requestWithHeaders(r, "PATCH", fmt.Sprintf("/organizations/%d/children/%d/contracts/%d", org.ID, child.ID, contract.ID), string(mustMarshal(body)), anyVersion)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)

@@ -4823,113 +4823,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/v1/organizations/{orgId}/children/{childId}/contracts/batch': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    /**
-     * Batch update child contracts
-     * @description Atomically update multiple contracts for a child. This is the endpoint for
-     *     CORRECTING A HISTORICAL TIMELINE: unlike the single-contract PUT there is NO amend
-     *     mode, so dates and fields are written in place even on contracts that started — or
-     *     ended — in the past. It backs the timeline boundary drag in the UI.
-     *
-     *     Entries are PARTIAL: a field you omit keeps its current value, with one exception —
-     *     `to` is CLEARED when omitted, because that is how a contract is set back to ongoing.
-     *     Always send `to` explicitly when you want to keep it, otherwise a contract that has a
-     *     successor becomes ongoing and collides with it (409). `properties` is carried forward
-     *     when omitted; send an empty object to clear it deliberately.
-     *
-     *     Adjacent ranges may be swapped within one request (extend A's `to`, shift B's `from`):
-     *     the no-overlap constraint is deferred to commit, so only the final state must be
-     *     valid. If any entry fails, the whole batch is rolled back.
-     */
-    put: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description Organization ID */
-          orgId: number;
-          /** @description Child ID */
-          childId: number;
-        };
-        cookie?: never;
-      };
-      /** @description Batch update data */
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['ChildContractBatchUpdateRequest'];
-        };
-      };
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ChildContractResponse'][];
-          };
-        };
-        /** @description Invalid request (e.g., duplicate IDs, invalid dates) */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description Child or contract not found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description Updated dates would overlap */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-      };
-    };
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   '/api/v1/organizations/{orgId}/children/{childId}/contracts/boundary': {
     parameters: {
       query?: never;
@@ -5189,104 +5082,7 @@ export interface paths {
         };
       };
     };
-    /**
-     * Update child contract
-     * @description Update an existing contract by ID. Date rules as for creation: both dates
-     *     inclusive, same-day contracts allowed, no overlaps.
-     *
-     *     IMPORTANT — what happens depends on when the contract started, because changing a
-     *     past contract in place would silently recompute funding for months already billed:
-     *
-     *     - started BEFORE today: the contract is AMENDED, not edited. The existing row is
-     *     closed with to = yesterday and a NEW contract is created starting TODAY carrying
-     *     the changes. Any `from` in the request is IGNORED; `to`, if given, applies to the
-     *     new contract, so a `to` in the past is rejected (400) as from-after-to.
-     *     - starts TODAY or later: updated in place.
-     *     - already ENDED (to before today): rejected with 400.
-     *
-     *     So this endpoint records a change going FORWARD. To correct a historical timeline —
-     *     move a boundary into the past — use the batch endpoint instead.
-     *
-     *     Nullable fields (`to`, `properties`) are replaced wholesale: omitting one CLEARS it.
-     *     Send the full properties map on every update unless you mean to remove them.
-     */
-    put: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description Organization ID */
-          orgId: number;
-          /** @description Child ID */
-          childId: number;
-          /** @description Contract ID */
-          contractId: number;
-        };
-        cookie?: never;
-      };
-      /** @description Contract data */
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['ChildContractUpdateRequest'];
-        };
-      };
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ChildContractResponse'];
-          };
-        };
-        /** @description Invalid request (e.g., from date after to date) */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description Contract not found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description Updated dates would overlap with another contract */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-      };
-    };
+    put?: never;
     post?: never;
     /**
      * Delete child contract
@@ -6783,113 +6579,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/v1/organizations/{orgId}/employees/{employeeId}/contracts/batch': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    /**
-     * Batch update employee contracts
-     * @description Atomically update multiple contracts for an employee. This is the endpoint for
-     *     CORRECTING A HISTORICAL TIMELINE: unlike the single-contract PUT there is NO amend
-     *     mode, so dates and fields are written in place even on contracts that started — or
-     *     ended — in the past. It backs the timeline boundary drag in the UI.
-     *
-     *     Entries are PARTIAL: a field you omit keeps its current value, with one exception —
-     *     `to` is CLEARED when omitted, because that is how a contract is set back to ongoing.
-     *     Always send `to` explicitly when you want to keep it, otherwise a contract that has a
-     *     successor becomes ongoing and collides with it (409). `properties` is carried forward
-     *     when omitted; send an empty object to clear it deliberately.
-     *
-     *     Adjacent ranges may be swapped within one request (extend A's `to`, shift B's `from`):
-     *     the no-overlap constraint is deferred to commit, so only the final state must be
-     *     valid. If any entry fails, the whole batch is rolled back.
-     */
-    put: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description Organization ID */
-          orgId: number;
-          /** @description Employee ID */
-          employeeId: number;
-        };
-        cookie?: never;
-      };
-      /** @description Batch update data */
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['EmployeeContractBatchUpdateRequest'];
-        };
-      };
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['EmployeeContractResponse'][];
-          };
-        };
-        /** @description Invalid request (e.g., duplicate IDs, invalid dates) */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description Employee or contract not found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description Updated dates would overlap */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-      };
-    };
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   '/api/v1/organizations/{orgId}/employees/{employeeId}/contracts/boundary': {
     parameters: {
       query?: never;
@@ -7145,104 +6834,7 @@ export interface paths {
         };
       };
     };
-    /**
-     * Update employee contract
-     * @description Update an existing contract by ID. Date rules as for creation: both dates
-     *     inclusive, same-day contracts allowed, no overlaps.
-     *
-     *     IMPORTANT — what happens depends on when the contract started, because changing a
-     *     past contract in place would silently recompute funding for months already billed:
-     *
-     *     - started BEFORE today: the contract is AMENDED, not edited. The existing row is
-     *     closed with to = yesterday and a NEW contract is created starting TODAY carrying
-     *     the changes. Any `from` in the request is IGNORED; `to`, if given, applies to the
-     *     new contract, so a `to` in the past is rejected (400) as from-after-to.
-     *     - starts TODAY or later: updated in place.
-     *     - already ENDED (to before today): rejected with 400.
-     *
-     *     So this endpoint records a change going FORWARD. To correct a historical timeline —
-     *     move a boundary into the past — use the batch endpoint instead.
-     *
-     *     Nullable fields (`to`, `properties`) are replaced wholesale: omitting one CLEARS it.
-     *     Send the full properties map on every update unless you mean to remove them.
-     */
-    put: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description Organization ID */
-          orgId: number;
-          /** @description Employee ID */
-          employeeId: number;
-          /** @description Contract ID */
-          contractId: number;
-        };
-        cookie?: never;
-      };
-      /** @description Contract data */
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['EmployeeContractUpdateRequest'];
-        };
-      };
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['EmployeeContractResponse'];
-          };
-        };
-        /** @description Invalid request (e.g., from date after to date) */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description Contract not found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description Updated dates would overlap with another contract */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-      };
-    };
+    put?: never;
     post?: never;
     /**
      * Delete employee contract
@@ -12860,26 +12452,6 @@ export interface components {
       closed: components['schemas']['ChildContractResponse'];
       created: components['schemas']['ChildContractResponse'];
     };
-    ChildContractBatchUpdateEntry: {
-      /**
-       * Format: date-time
-       * @example 2025-01-01
-       */
-      from?: string;
-      /** @example 5 */
-      id: number;
-      properties?: components['schemas']['ContractProperties'];
-      /** @example 2 */
-      section_id?: number;
-      /**
-       * Format: date-time
-       * @example 2025-12-31
-       */
-      to?: string;
-    };
-    ChildContractBatchUpdateRequest: {
-      updates: components['schemas']['ChildContractBatchUpdateEntry'][];
-    };
     ChildContractBoundaryResponse: {
       earlier: components['schemas']['ChildContractResponse'];
       later: components['schemas']['ChildContractResponse'];
@@ -12947,21 +12519,6 @@ export interface components {
        * @example 3
        */
       version: number;
-    };
-    ChildContractUpdateRequest: {
-      /**
-       * Format: date-time
-       * @example 2025-01-01
-       */
-      from?: string;
-      properties?: components['schemas']['ContractProperties'];
-      /** @example 2 */
-      section_id?: number;
-      /**
-       * Format: date-time
-       * @example 2025-12-31
-       */
-      to?: string;
     };
     ChildCreateRequest: {
       /** @example 2020-03-10 */
@@ -13265,36 +12822,6 @@ export interface components {
       closed: components['schemas']['EmployeeContractResponse'];
       created: components['schemas']['EmployeeContractResponse'];
     };
-    EmployeeContractBatchUpdateEntry: {
-      /**
-       * Format: date-time
-       * @example 2025-01-01
-       */
-      from?: string;
-      /** @example S8a */
-      grade?: string;
-      /** @example 5 */
-      id: number;
-      /** @example 1 */
-      payplan_id?: number;
-      properties?: components['schemas']['ContractProperties'];
-      /** @example 2 */
-      section_id?: number;
-      /** @example qualified */
-      staff_category?: string;
-      /** @example 3 */
-      step?: number;
-      /**
-       * Format: date-time
-       * @example 2025-12-31
-       */
-      to?: string;
-      /** @example 40 */
-      weekly_hours?: number;
-    };
-    EmployeeContractBatchUpdateRequest: {
-      updates: components['schemas']['EmployeeContractBatchUpdateEntry'][];
-    };
     EmployeeContractBoundaryResponse: {
       earlier: components['schemas']['EmployeeContractResponse'];
       later: components['schemas']['EmployeeContractResponse'];
@@ -13402,31 +12929,6 @@ export interface components {
       version: number;
       /** @example 40 */
       weekly_hours: number;
-    };
-    EmployeeContractUpdateRequest: {
-      /**
-       * Format: date-time
-       * @example 2025-01-01
-       */
-      from?: string;
-      /** @example S8a */
-      grade?: string;
-      /** @example 1 */
-      payplan_id?: number;
-      properties?: components['schemas']['ContractProperties'];
-      /** @example 2 */
-      section_id?: number;
-      /** @example qualified */
-      staff_category?: string;
-      /** @example 3 */
-      step?: number;
-      /**
-       * Format: date-time
-       * @example 2025-12-31
-       */
-      to?: string;
-      /** @example 40 */
-      weekly_hours?: number;
     };
     EmployeeCostEstimateRequest: {
       /**

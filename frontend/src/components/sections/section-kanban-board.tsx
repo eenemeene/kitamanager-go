@@ -130,7 +130,12 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
 
   const moveChildMutation = useMoveContractMutation<Child>({
     orgId,
-    updateFn: (childId, contractId, sectionId, version) =>
+    amendFn: (childId, contractId, sectionId, version, effectiveFrom) =>
+      apiClient.amendChildContract(orgId, childId, contractId, version, {
+        effective_from: effectiveFrom,
+        section_id: sectionId,
+      }),
+    correctFn: (childId, contractId, sectionId, version) =>
       apiClient.correctChildContract(orgId, childId, contractId, version, {
         section_id: sectionId,
       }),
@@ -146,7 +151,12 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
 
   const moveEmployeeMutation = useMoveContractMutation<Employee>({
     orgId,
-    updateFn: (employeeId, contractId, sectionId, version) =>
+    amendFn: (employeeId, contractId, sectionId, version, effectiveFrom) =>
+      apiClient.amendEmployeeContract(orgId, employeeId, contractId, version, {
+        effective_from: effectiveFrom,
+        section_id: sectionId,
+      }),
+    correctFn: (employeeId, contractId, sectionId, version) =>
       apiClient.correctEmployeeContract(orgId, employeeId, contractId, version, {
         section_id: sectionId,
       }),
@@ -206,6 +216,7 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
         contractId: activeContract.id,
         sectionId: newSectionId,
         version: activeContract.version,
+        from: activeContract.from,
       });
     } else {
       const employee = currentItem.item;
@@ -217,6 +228,7 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
         contractId: activeContract.id,
         sectionId: newSectionId,
         version: activeContract.version,
+        from: activeContract.from,
       });
     }
   }

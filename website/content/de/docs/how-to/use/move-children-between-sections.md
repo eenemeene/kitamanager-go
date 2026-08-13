@@ -18,7 +18,7 @@ Passt das Alter des Kindes nicht in den Zielbereich, verschiebt KitaManager es t
 ### Zwei Ausnahmen
 
 - **Der Vertrag beginnt heute oder später.** Dann wird er direkt geändert, ohne neuen Vertrag — es gibt noch keine Vergangenheit zu bewahren.
-- **Der Vertrag ist schon beendet** (Bis-Datum in der Vergangenheit). Dann lehnt KitaManager die Änderung ab. Legen Sie in diesem Fall über **Neuer Vertrag** einen Vertrag im Zielbereich an, statt zu ziehen.
+- **Der Vertrag ist schon beendet** (Bis-Datum in der Vergangenheit). Ziehen ist dann nicht der richtige Weg: Es gibt keinen laufenden Vertrag, der fortgeschrieben werden könnte. Legen Sie über **Neuer Vertrag** einen Vertrag im Zielbereich an. Soll ein *falsch erfasster* Bereich in der Vergangenheit berichtigt werden, bearbeiten Sie den betreffenden Vertrag in der Vertragshistorie — das ändert ihn an Ort und Stelle und schreibt alte und neue Werte ins Protokoll.
 
 ## Manueller Weg: für ein bestimmtes Wechseldatum
 

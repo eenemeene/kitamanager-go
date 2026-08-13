@@ -104,7 +104,7 @@ func TestEmployeeService_CreateContract_ToBeforeBirthdate(t *testing.T) {
 // H4: birthdate is also enforced on update paths (not just create)
 // ===========================================================================
 
-func TestChildService_UpdateContract_FromMovedBeforeBirthdate(t *testing.T) {
+func TestChildService_CorrectContract_FromMovedBeforeBirthdate(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
 	ctx := context.Background()
@@ -125,10 +125,10 @@ func TestChildService_UpdateContract_FromMovedBeforeBirthdate(t *testing.T) {
 		t.Fatalf("setup: create contract: %v", err)
 	}
 
-	// Now move From earlier than birthdate via Update — must be rejected.
+	// Now move From earlier than birthdate via a correction — must be rejected.
 	bad := time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)
-	_, err = svc.UpdateContract(ctx, created.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
-		From: &bad,
+	_, err = svc.CorrectContract(ctx, created.ID, child.ID, org.ID, &models.ChildContractCorrectRequest{
+		From: models.OptOf(bad),
 	})
 	if err == nil {
 		t.Fatal("expected error when moving From earlier than birthdate via Update, got nil")
@@ -147,47 +147,7 @@ func TestChildService_UpdateContract_FromMovedBeforeBirthdate(t *testing.T) {
 	}
 }
 
-func TestChildService_BatchUpdateContracts_FromMovedBeforeBirthdate(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createChildService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	child := createTestChild(t, db, "Lia", "Becker", org.ID)
-	child.Birthdate = time.Date(2022, 6, 15, 0, 0, 0, 0, time.UTC)
-	db.Save(child)
-	sectionID := getDefaultSection(t, db, org.ID).ID
-
-	a := mustCreateChildContract(t, ctx, svc, child.ID, org.ID, sectionID,
-		time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
-		datePtr(2025, time.June, 30))
-	b := mustCreateChildContract(t, ctx, svc, child.ID, org.ID, sectionID,
-		time.Date(2025, 7, 1, 0, 0, 0, 0, time.UTC), nil)
-
-	bad := time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)
-	_, err := svc.BatchUpdateContracts(ctx, child.ID, org.ID, &models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: a.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{From: &bad}},
-			{ID: b.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{}},
-		},
-	})
-	if !errors.Is(err, apperror.ErrBadRequest) {
-		t.Fatalf("expected ErrBadRequest, got %v", err)
-	}
-
-	// Rollback semantics: neither contract changed.
-	var aGot, bGot models.ChildContract
-	db.First(&aGot, a.ID)
-	db.First(&bGot, b.ID)
-	if !aGot.From.Equal(a.From) {
-		t.Errorf("contract A From = %v, want unchanged %v", aGot.From, a.From)
-	}
-	if bGot.From.IsZero() || !bGot.From.Equal(b.From) {
-		t.Errorf("contract B From = %v, want unchanged %v", bGot.From, b.From)
-	}
-}
-
-func TestEmployeeService_UpdateContract_FromMovedBeforeBirthdate(t *testing.T) {
+func TestEmployeeService_CorrectContract_FromMovedBeforeBirthdate(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createEmployeeService(db)
 	ctx := context.Background()
@@ -210,35 +170,8 @@ func TestEmployeeService_UpdateContract_FromMovedBeforeBirthdate(t *testing.T) {
 	}
 
 	bad := time.Date(1989, 1, 1, 0, 0, 0, 0, time.UTC)
-	_, err = svc.UpdateContract(ctx, created.ID, emp.ID, org.ID, &models.EmployeeContractUpdateRequest{
-		From: &bad,
-	})
-	if !errors.Is(err, apperror.ErrBadRequest) {
-		t.Fatalf("expected ErrBadRequest, got %v", err)
-	}
-}
-
-func TestEmployeeService_BatchUpdateContracts_FromMovedBeforeBirthdate(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createEmployeeService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	emp := createTestEmployee(t, db, "Anna", "Becker", org.ID)
-	emp.Birthdate = time.Date(2005, 5, 15, 0, 0, 0, 0, time.UTC)
-	db.Save(emp)
-	payPlan := createTestPayPlanWithCoverage(t, db, "PP", org.ID)
-	sectionID := getDefaultSection(t, db, org.ID).ID
-
-	a := mustCreateEmployeeContract(t, ctx, svc, emp.ID, org.ID, sectionID, payPlan.ID,
-		time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
-		datePtr(2025, time.June, 30))
-
-	bad := time.Date(1989, 1, 1, 0, 0, 0, 0, time.UTC)
-	_, err := svc.BatchUpdateContracts(ctx, emp.ID, org.ID, &models.EmployeeContractBatchUpdateRequest{
-		Updates: []models.EmployeeContractBatchUpdateEntry{
-			{ID: a.ID, EmployeeContractUpdateRequest: models.EmployeeContractUpdateRequest{From: &bad}},
-		},
+	_, err = svc.CorrectContract(ctx, created.ID, emp.ID, org.ID, &models.EmployeeContractCorrectRequest{
+		From: models.OptOf(bad),
 	})
 	if !errors.Is(err, apperror.ErrBadRequest) {
 		t.Fatalf("expected ErrBadRequest, got %v", err)
@@ -276,7 +209,7 @@ func TestValidateContractDatesAfterBirthdate_TimezoneTolerance(t *testing.T) {
 // value and verifies (a) the new contract's From equals exactly that today,
 // (b) the old contract's To equals exactly today-1, with no drift caused by
 // re-reading time.Now() inside the helper (the bug M7 closes).
-func TestAmendContractTx_UsesCallerToday(t *testing.T) {
+func TestAmendContract_SeamIsOneDayAfterClosure(t *testing.T) {
 	db := setupTestDB(t)
 	svc := createChildService(db)
 	ctx := context.Background()
@@ -301,12 +234,14 @@ func TestAmendContractTx_UsesCallerToday(t *testing.T) {
 		t.Fatalf("setup: %v", err)
 	}
 
-	updated, err := svc.UpdateContract(ctx, old.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
-		Properties: models.ContractProperties{"care_type": "ganztag"},
+	amended, err := svc.AmendContract(ctx, old.ID, child.ID, org.ID, &models.ChildContractAmendRequest{
+		EffectiveFrom: models.Today(),
+		Properties:    models.OptOf(models.ContractProperties{"care_type": "ganztag"}),
 	})
 	if err != nil {
-		t.Fatalf("amend update: %v", err)
+		t.Fatalf("amend: %v", err)
 	}
+	updated := &amended.Created
 
 	// The new contract's From and the closure of the old contract's To must
 	// be exactly one day apart — i.e. the helper used a single `today`.
@@ -539,76 +474,6 @@ func TestEmployeeService_CreateContract_ConcurrentRaceLosesExactlyOne(t *testing
 	}
 }
 
-// BatchUpdateContracts must succeed when swapping adjacent ranges — phase 1
-// transiently overlaps, phase 2 fixes it, and the deferred constraint sees a
-// consistent state at COMMIT. Without DEFERRABLE INITIALLY DEFERRED this
-// would fail on phase 1's first save.
-func TestChildService_BatchUpdateContracts_DeferredConstraintAllowsSwap(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createChildService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	child := createTestChild(t, db, "Lia", "Becker", org.ID)
-	child.Birthdate = time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
-	db.Save(child)
-	sectionID := getDefaultSection(t, db, org.ID).ID
-
-	// A: Jan–Jun, B: Aug–Dec, with a one-month gap so the desired final
-	// state is A: Jan–Jul, B: Jul-Aug→Dec — that is, A grows and B retracts;
-	// the deliberately-tricky case is the per-row save order: extending A
-	// first creates a transient overlap with B until B's From is shifted.
-	a := mustCreateChildContract(t, ctx, svc, child.ID, org.ID, sectionID,
-		time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
-		datePtr(2025, time.June, 30))
-	b := mustCreateChildContract(t, ctx, svc, child.ID, org.ID, sectionID,
-		time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC),
-		datePtr(2025, time.December, 31))
-
-	// Final state: A ends 2025-07-31, B starts 2025-08-01.
-	aNewTo := datePtr(2025, time.July, 31)
-	bNewFrom := time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC)
-	// Note phase-1 save order extends A first (A's new To = 2025-07-31 still
-	// doesn't overlap B's untouched From of 2025-08-01, so this batch alone
-	// wouldn't actually trip the constraint — see the next subtest for the
-	// stronger swap that requires DEFERRED).
-	_, err := svc.BatchUpdateContracts(ctx, child.ID, org.ID, &models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: a.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{To: aNewTo}},
-			{ID: b.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{From: &bNewFrom}},
-		},
-	})
-	if err != nil {
-		t.Fatalf("batch update should succeed, got %v", err)
-	}
-
-	// Now the stronger case: extend A INTO B's range simultaneously with
-	// shifting B forward. Phase 1 saves A first → transient overlap.
-	// Without DEFERRABLE the very first INSERT/UPDATE fails. With it,
-	// commit sees the reconciled state and succeeds.
-	aPushTo := datePtr(2025, time.September, 30)              // A grows past B's old From
-	bPushFrom := time.Date(2025, 10, 1, 0, 0, 0, 0, time.UTC) // B retreats past A's new To
-	_, err = svc.BatchUpdateContracts(ctx, child.ID, org.ID, &models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: a.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{To: aPushTo}},
-			{ID: b.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{From: &bPushFrom}},
-		},
-	})
-	if err != nil {
-		t.Fatalf("DEFERRED batch swap should succeed, got %v", err)
-	}
-
-	var aRow, bRow models.ChildContract
-	db.First(&aRow, a.ID)
-	db.First(&bRow, b.ID)
-	if aRow.To == nil || !aRow.To.Equal(*aPushTo) {
-		t.Errorf("A.To = %v, want %v", aRow.To, aPushTo)
-	}
-	if !bRow.From.Equal(bPushFrom) {
-		t.Errorf("B.From = %v, want %v", bRow.From, bPushFrom)
-	}
-}
-
 // mapContractDeferredOverlap is the bridge between the raw 23P01 sqlstate the
 // driver returns and the apperror.Conflict the API produces. Make sure the
 // mapping is exact and other errors pass through.
@@ -805,30 +670,6 @@ func TestEmployeeContract_DBCheckConstraint_WeeklyHoursBounds(t *testing.T) {
 // ===========================================================================
 // helpers
 // ===========================================================================
-
-func mustCreateChildContract(t *testing.T, ctx context.Context, svc *ChildService, childID, orgID, sectionID uint, from time.Time, to *time.Time) *models.ChildContractResponse {
-	t.Helper()
-	resp, err := svc.CreateContract(ctx, childID, orgID, &models.ChildContractCreateRequest{
-		From: from, To: to, SectionID: sectionID,
-	})
-	if err != nil {
-		t.Fatalf("setup: create child contract %v..%v: %v", from, to, err)
-	}
-	return resp
-}
-
-func mustCreateEmployeeContract(t *testing.T, ctx context.Context, svc *EmployeeService, empID, orgID, sectionID, payPlanID uint, from time.Time, to *time.Time) *models.EmployeeContractResponse {
-	t.Helper()
-	resp, err := svc.CreateContract(ctx, empID, orgID, &models.EmployeeContractCreateRequest{
-		From: from, To: to, SectionID: sectionID,
-		StaffCategory: "qualified", Grade: "S8a", Step: 1,
-		WeeklyHours: float64Ptr(40), PayPlanID: payPlanID,
-	})
-	if err != nil {
-		t.Fatalf("setup: create employee contract %v..%v: %v", from, to, err)
-	}
-	return resp
-}
 
 func isCheckViolation(err error) bool {
 	if err == nil {

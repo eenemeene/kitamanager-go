@@ -207,61 +207,6 @@ func contractAuditChanges[Resp any](
 	return diffFn(before, after)
 }
 
-// handleBatchUpdateContracts handles atomically updating multiple contracts with audit logging.
-//
-// Each contract is fetched before the update so its audit row can carry a
-// per-field diff. entryIDsFn is needed because this helper is generic over the
-// request type and cannot otherwise know which contracts the batch touches; it
-// costs one extra read per entry, and a timeline boundary drag sends two.
-func handleBatchUpdateContracts[Req any, Resp any](
-	c *gin.Context,
-	parentParam string,
-	audit auditConfig,
-	batchUpdateFn func(context.Context, uint, uint, *Req) ([]Resp, error),
-	getAuditInfo func(*Resp) (uint, uint), // returns (contractID, parentID)
-	getFn func(context.Context, uint, uint, uint) (*Resp, error),
-	diffFn func(before, after *Resp) map[string]any,
-	entryIDsFn func(*Req) []uint,
-) {
-	orgID, resourceID, ok := parseOrgAndResourceID(c, parentParam)
-	if !ok {
-		return
-	}
-
-	req, ok := bindJSON[Req](c)
-	if !ok {
-		return
-	}
-
-	// Best-effort pre-fetch, keyed by contract id. Errors are ignored for the
-	// same reason as in handleUpdateContract: the update itself reports them.
-	before := make(map[uint]*Resp)
-	if getFn != nil && entryIDsFn != nil {
-		for _, id := range entryIDsFn(req) {
-			if prev, err := getFn(c.Request.Context(), id, resourceID, orgID); err == nil {
-				before[id] = prev
-			}
-		}
-	}
-
-	results, err := batchUpdateFn(c.Request.Context(), resourceID, orgID, req)
-	if err != nil {
-		respondError(c, err)
-		return
-	}
-
-	for i := range results {
-		id, parentID := getAuditInfo(&results[i])
-		// Batch updates are always in place, so the id is stable and the
-		// before-state is found by it.
-		changes := contractAuditChanges(before[id], &results[i], diffFn)
-		auditUpdateWithChanges(c, audit.auditService, audit.resourceType, id,
-			fmt.Sprintf("%s=%d", audit.parentLabel, parentID), changes)
-	}
-
-	c.JSON(http.StatusOK, results)
-}
-
 // handleDeleteContract handles deleting a contract with pre-fetch for audit logging.
 func handleDeleteContract[Resp any](
 	c *gin.Context,

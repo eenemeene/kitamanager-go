@@ -13,7 +13,7 @@ Sie wollen eine Mitarbeiter:in einem anderen Bereich zuordnen (z. B. eine Erzieh
 2. Jeder Bereich ist eine Spalte mit Kindern und pädagogischen Mitarbeiter:innen. Die Karte der Mitarbeiter:in finden und in den Zielbereich ziehen.
 3. Loslassen. Für einen Vertrag, der vor heute begann, beendet KitaManager den alten Vertrag (Bis = gestern) und legt einen neuen im Zielbereich ab heute an. Für einen Vertrag, der heute oder später beginnt, ändert KitaManager den Bereich an Ort und Stelle.
 
-Ist der Vertrag **schon beendet** (Bis-Datum in der Vergangenheit), lehnt KitaManager die Änderung ab. Legen Sie dann über **Neuer Vertrag** einen Vertrag im Zielbereich an, statt zu ziehen.
+Ist der Vertrag **schon beendet** (Bis-Datum in der Vergangenheit), ist Ziehen nicht der richtige Weg — es gibt keinen laufenden Vertrag, der fortgeschrieben werden könnte. Legen Sie über **Neuer Vertrag** einen Vertrag im Zielbereich an. Einen *falsch erfassten* Bereich in der Vergangenheit berichtigen Sie, indem Sie den betreffenden Vertrag in der Vertragshistorie bearbeiten.
 
 ## Manueller Weg: Vertrag bearbeiten
 

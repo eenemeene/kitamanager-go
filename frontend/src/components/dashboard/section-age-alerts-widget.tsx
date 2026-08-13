@@ -16,6 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { apiClient } from '@/lib/api/client';
+import { toLocalDateString } from '@/lib/utils/formatting';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { getActiveContract } from '@/lib/utils/contracts';
 import { type Section, LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
@@ -24,8 +25,10 @@ interface AgeAlert {
   childId: number;
   childName: string;
   contractId: number;
-  /** The contract version as read, sent as the correction's If-Match precondition. */
+  /** The contract version as read, sent as the If-Match precondition. */
   contractVersion: number;
+  /** The contract's start date, which decides amend versus correct. */
+  contractFrom: string;
   sectionName: string;
   ageMonths: number;
   maxAgeMonths: number;
@@ -76,20 +79,35 @@ export function SectionAgeAlertsWidget({ orgId }: SectionAgeAlertsWidgetProps) {
   });
 
   const moveMutation = useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       childId,
       contractId,
       sectionId,
       version,
+      from,
     }: {
       childId: number;
       contractId: number;
       sectionId: number;
       version: number;
-    }) =>
-      apiClient.correctChildContract(orgId, childId, contractId, version, {
+      from: string;
+    }): Promise<void> => {
+      // Amend rather than correct: which section a child was in is history that
+      // occupancy and staffing reports read. A contract that has not started yet
+      // has no such history, and an amendment of it would be refused anyway,
+      // because an effective date has to fall after the contract's own start.
+      const today = toLocalDateString(new Date());
+      if (from.slice(0, 10) > today) {
+        await apiClient.correctChildContract(orgId, childId, contractId, version, {
+          section_id: sectionId,
+        });
+        return;
+      }
+      await apiClient.amendChildContract(orgId, childId, contractId, version, {
+        effective_from: today,
         section_id: sectionId,
-      }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.children.allUnpaginated(orgId) });
     },
@@ -121,6 +139,7 @@ export function SectionAgeAlertsWidget({ orgId }: SectionAgeAlertsWidgetProps) {
           childName: `${child.first_name} ${child.last_name}`,
           contractId: activeContract.id,
           contractVersion: activeContract.version,
+          contractFrom: activeContract.from,
           sectionName: section.name,
           ageMonths,
           maxAgeMonths: section.max_age_months,
@@ -176,6 +195,7 @@ export function SectionAgeAlertsWidget({ orgId }: SectionAgeAlertsWidgetProps) {
                           contractId: alert.contractId,
                           sectionId: alert.nextSection!.id,
                           version: alert.contractVersion,
+                          from: alert.contractFrom,
                         })
                       }
                     >

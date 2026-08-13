@@ -18,7 +18,7 @@ If the child's age doesn't fit the target section, KitaManager still moves them 
 ### Two exceptions
 
 - **The contract starts today or later.** It is then edited in place, with no new contract — there is no past to preserve yet.
-- **The contract has already ended** (To date in the past). KitaManager rejects the change. Use **New contract** to create one in the target section instead of dragging.
+- **The contract has already ended** (To date in the past). Dragging is not the right tool: there is no running contract to carry forward. Use **New contract** to create one in the target section. If instead a past section was *recorded wrongly*, edit that contract in the contract history — that changes it in place and records the old and new value in the audit log.
 
 ## Manual way: for a specific change date
 

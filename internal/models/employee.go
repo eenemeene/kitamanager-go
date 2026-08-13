@@ -51,30 +51,6 @@ type EmployeeContractCreateRequest struct {
 	Properties  ContractProperties `json:"properties,omitempty"`
 }
 
-// EmployeeContractUpdateRequest represents the request body for updating an employee contract.
-type EmployeeContractUpdateRequest struct {
-	From          *time.Time         `json:"from" format:"date-time" example:"2025-01-01"`
-	To            *time.Time         `json:"to" format:"date-time" example:"2025-12-31"`
-	SectionID     *uint              `json:"section_id,omitempty" example:"2"`
-	StaffCategory *string            `json:"staff_category" binding:"omitempty" example:"qualified"`
-	Grade         *string            `json:"grade" binding:"omitempty,max=20" example:"S8a"`
-	Step          *int               `json:"step" binding:"omitempty,gte=0,lte=10" example:"3"`
-	WeeklyHours   *float64           `json:"weekly_hours" binding:"omitempty,gte=0,lte=168" example:"40"`
-	PayPlanID     *uint              `json:"payplan_id" example:"1"`
-	Properties    ContractProperties `json:"properties,omitempty"`
-}
-
-// EmployeeContractBatchUpdateEntry represents a single contract update within a batch.
-type EmployeeContractBatchUpdateEntry struct {
-	ID uint `json:"id" binding:"required" example:"5"`
-	EmployeeContractUpdateRequest
-}
-
-// EmployeeContractBatchUpdateRequest represents a batch of contract updates applied atomically.
-type EmployeeContractBatchUpdateRequest struct {
-	Updates []EmployeeContractBatchUpdateEntry `json:"updates" binding:"required,min=1,max=20"`
-}
-
 // EmployeeCreateRequest represents the request body for creating an employee.
 // OrganizationID is derived from the URL path parameter.
 type EmployeeCreateRequest struct {

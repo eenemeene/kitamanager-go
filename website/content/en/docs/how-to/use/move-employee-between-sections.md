@@ -13,7 +13,7 @@ You want to reassign an employee to a different section (e.g. a teacher moving f
 2. Each section is a column showing children and pedagogical employees. Find the employee's card and drag it to the target section column.
 3. Drop. For a contract that started before today, KitaManager closes the old contract (To = yesterday) and creates a new one in the target section starting today. For a contract that started today or later, KitaManager updates the section in place.
 
-If the contract has **already ended** (To date in the past), KitaManager rejects the change. Use **New contract** to create one in the target section instead of dragging.
+If the contract has **already ended** (To date in the past), dragging is not the right tool — there is no running contract to carry forward. Use **New contract** to create one in the target section. To correct a past section that was *recorded wrongly*, edit that contract in the contract history instead.
 
 ## Manual way: edit the contract
 

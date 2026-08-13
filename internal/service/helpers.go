@@ -73,15 +73,6 @@ func validateSectionOrg(ctx context.Context, sectionStore store.SectionStorer, s
 	return nil
 }
 
-// validateOptionalSectionOrg validates that a section exists and belongs to the given
-// organization when sectionID is non-nil. Returns nil if sectionID is nil.
-func validateOptionalSectionOrg(ctx context.Context, sectionStore store.SectionStorer, sectionID *uint, orgID uint) error {
-	if sectionID == nil {
-		return nil
-	}
-	return validateSectionOrg(ctx, sectionStore, *sectionID, orgID)
-}
-
 // validateContractDatesAfterBirthdate rejects a contract whose date range straddles
 // a date prior to the person's birthdate. Applies to both children and employees.
 //

@@ -926,14 +926,14 @@ func TestEmployeeHandler_UpdateContract_SectionFromWrongOrg(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.UpdateContract)
+	r.PATCH("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.CorrectContract)
 
 	// Try to update contract to use org2's section
-	body := models.EmployeeContractUpdateRequest{
-		SectionID: &org2SectionID,
+	body := models.EmployeeContractCorrectRequest{
+		SectionID: models.OptOf(org2SectionID),
 	}
 
-	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/employees/%d/contracts/%d", org1.ID, employee.ID, contract.ID), body)
+	w := requestWithHeaders(r, "PATCH", fmt.Sprintf("/organizations/%d/employees/%d/contracts/%d", org1.ID, employee.ID, contract.ID), string(mustMarshal(body)), anyVersion)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("SECURITY: expected status %d when updating to section from wrong org, got %d: %s",
@@ -2175,14 +2175,14 @@ func TestEmployeeHandler_UpdateContract(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.UpdateContract)
+	r.PATCH("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.CorrectContract)
 
 	newStaffCategory := "non_pedagogical"
-	body := models.EmployeeContractUpdateRequest{
-		StaffCategory: &newStaffCategory,
+	body := models.EmployeeContractCorrectRequest{
+		StaffCategory: models.OptOf(newStaffCategory),
 	}
 
-	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/employees/%d/contracts/%d", org.ID, employee.ID, contract.ID), body)
+	w := requestWithHeaders(r, "PATCH", fmt.Sprintf("/organizations/%d/employees/%d/contracts/%d", org.ID, employee.ID, contract.ID), string(mustMarshal(body)), anyVersion)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
@@ -2208,14 +2208,14 @@ func TestEmployeeHandler_UpdateContract_NotFound(t *testing.T) {
 	db.Create(employee)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.UpdateContract)
+	r.PATCH("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.CorrectContract)
 
 	newStaffCategory := "non_pedagogical"
-	body := models.EmployeeContractUpdateRequest{
-		StaffCategory: &newStaffCategory,
+	body := models.EmployeeContractCorrectRequest{
+		StaffCategory: models.OptOf(newStaffCategory),
 	}
 
-	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/employees/%d/contracts/999", org.ID, employee.ID), body)
+	w := requestWithHeaders(r, "PATCH", fmt.Sprintf("/organizations/%d/employees/%d/contracts/999", org.ID, employee.ID), string(mustMarshal(body)), anyVersion)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
@@ -2262,15 +2262,15 @@ func TestEmployeeHandler_UpdateContract_Overlap(t *testing.T) {
 	db.Create(contract2)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.UpdateContract)
+	r.PATCH("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.CorrectContract)
 
 	// Update contract2's From to overlap with contract1
 	newFrom := today.AddDate(0, 3, 0)
-	body := models.EmployeeContractUpdateRequest{
-		From: &newFrom,
+	body := models.EmployeeContractCorrectRequest{
+		From: models.OptOf(newFrom),
 	}
 
-	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/employees/%d/contracts/%d", org.ID, employee.ID, contract2.ID), body)
+	w := requestWithHeaders(r, "PATCH", fmt.Sprintf("/organizations/%d/employees/%d/contracts/%d", org.ID, employee.ID, contract2.ID), string(mustMarshal(body)), anyVersion)
 
 	if w.Code != http.StatusConflict {
 		t.Errorf("expected status %d for overlap, got %d: %s", http.StatusConflict, w.Code, w.Body.String())
@@ -2303,13 +2303,13 @@ func TestEmployeeHandler_UpdateContract_InvalidBody(t *testing.T) {
 	db.Create(contract)
 
 	r := setupTestRouter()
-	r.PUT("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.UpdateContract)
+	r.PATCH("/organizations/:orgId/employees/:employeeId/contracts/:contractId", handler.CorrectContract)
 
 	body := map[string]any{
 		"from": "not-a-date",
 	}
 
-	w := performRequest(r, "PUT", fmt.Sprintf("/organizations/%d/employees/%d/contracts/%d", org.ID, employee.ID, contract.ID), body)
+	w := requestWithHeaders(r, "PATCH", fmt.Sprintf("/organizations/%d/employees/%d/contracts/%d", org.ID, employee.ID, contract.ID), string(mustMarshal(body)), anyVersion)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)

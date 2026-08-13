@@ -25,7 +25,7 @@ Ausnahme: **Eingabefehler korrigieren** — Sie hatten `halbtag` eingetragen, ge
 
 1. Öffnen Sie das Kind über die **Kinder**-Liste und klicken Sie auf das **Verlaufs**-Symbol, um die Vertragshistorie zu öffnen.
 2. Suchen Sie den **aktiven** Vertrag (Status-Badge: *aktiv*). Klicken Sie auf den **Stift** zum Bearbeiten.
-3. Setzen Sie **Bis** auf den Tag vor dem Stichtag (z. B. Integrationsstatus A ab 1. Februar → Bis = 31. Januar). **Speichern**. Das **Bis**-Datum muss heute oder später liegen — für einen Stichtag in der Vergangenheit siehe [Rückwirkende Änderungen](#rückwirkende-änderungen).
+3. Setzen Sie **Bis** auf den Tag vor dem Stichtag (z. B. Integrationsstatus A ab 1. Februar → Bis = 31. Januar). **Speichern**.
 4. Zurück in der Vertragshistorie klicken Sie auf **Neuer Vertrag**.
 5. Setzen Sie **Von** auf das Stichtag-Datum. Wählen Sie denselben **Bereich** (es sei denn, der Bereich ändert sich ebenfalls — dann siehe [Kinder zwischen Bereichen verschieben](../move-children-between-sections/)).
 6. Setzen Sie die **Eigenschaften** des Vertrags:
@@ -51,16 +51,17 @@ Der berechnete monatliche Förderbetrag des Kindes aktualisiert sich sofort — 
 
 ## Rückwirkende Änderungen
 
-Liegt der Stichtag in der Vergangenheit (der Bescheid kommt im August, die Änderung gilt ab 1. Februar), geht das in zwei Schritten:
+Liegt der Stichtag in der Vergangenheit (der Bescheid kommt im August, die Änderung gilt ab 1. Februar), erfassen Sie die Änderung genauso wie oben — in **einem** Schritt:
 
-1. **Änderung normal erfassen**, wie oben beschrieben. KitaManager beendet den alten Vertrag gestern und legt den neuen ab heute an — noch nicht das gewünschte Datum.
-2. **Zeitleiste öffnen** (Tab **Zeitleiste** auf der Vertragsseite) und die Grenze zwischen den beiden Verträgen auf den Stichtag ziehen. Der alte Vertrag endet dann am Tag davor, der neue beginnt am Stichtag.
+1. Beim aktiven Vertrag auf **Neuer Vertrag** klicken, das Häkchen **Aktuellen Vertrag beenden und neuen erstellen** stehen lassen.
+2. **Von** auf den Stichtag setzen — auch wenn er in der Vergangenheit liegt.
+3. Eigenschaften setzen und **Speichern**.
 
-Danach rechnet KitaManager auch die vergangenen Monate ab dem Stichtag mit den neuen Werten.
+KitaManager beendet den alten Vertrag am Tag vor dem Stichtag und beginnt den neuen am Stichtag. Danach rechnet KitaManager auch die vergangenen Monate ab dem Stichtag mit den neuen Werten.
 
-Warum zwei Schritte: Im Bearbeiten-Dialog eines Vertrags, der vor heute begann, legt KitaManager beim Speichern immer einen Folgevertrag **ab heute** an — ein **Bis**-Datum in der Vergangenheit ergäbe dort einen Vertrag, dessen Ende vor seinem Anfang liegt, und wird abgelehnt. Die Zeitleiste arbeitet direkt an den bestehenden Verträgen und darf deshalb in die Vergangenheit greifen.
+Zuschläge, die zum Stichtag in der Förder-Konfiguration hinterlegt waren, werden dabei nach dem **Stichtag** ermittelt, nicht nach dem heutigen Datum — ein rückwirkender Wechsel über eine Förderperiode hinweg erhält also die damals geltenden Werte.
 
-Die Grenze lässt sich nur innerhalb der Nachbarverträge verschieben — nicht vor den Beginn des älteren Vertrags.
+Die Zeitleiste (Tab **Zeitleiste**) bleibt der Weg, eine bereits bestehende Grenze zwischen zwei Verträgen zu verschieben. Sie lässt sich nur innerhalb der Nachbarverträge verschieben — nicht vor den Beginn des älteren Vertrags.
 
 ## Falsches Datum korrigieren (kein neuer Vertrag nötig)
 

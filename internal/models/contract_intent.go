@@ -32,10 +32,10 @@ import "time"
 // endpoint the kanban board and the age-alerts widget use to move a child
 // between sections by sending `{"section_id": N}` alone.
 type ChildContractCorrectRequest struct {
-	From       Opt[time.Time]          `json:"from" swaggertype:"string" format:"date-time" example:"2025-01-01"`
-	To         Opt[time.Time]          `json:"to" swaggertype:"string" format:"date-time" extensions:"x-nullable" example:"2025-12-31"`
-	SectionID  Opt[uint]               `json:"section_id" swaggertype:"integer" example:"2"`
-	Properties Opt[ContractProperties] `json:"properties" swaggertype:"object" extensions:"x-nullable"`
+	From       Opt[time.Time]          `json:"from,omitzero" swaggertype:"string" format:"date-time" example:"2025-01-01"`
+	To         Opt[time.Time]          `json:"to,omitzero" swaggertype:"string" format:"date-time" extensions:"x-nullable" example:"2025-12-31"`
+	SectionID  Opt[uint]               `json:"section_id,omitzero" swaggertype:"integer" example:"2"`
+	Properties Opt[ContractProperties] `json:"properties,omitzero" swaggertype:"object" extensions:"x-nullable"`
 
 	// ExpectedVersion is set from the If-Match header, not from JSON.
 	ExpectedVersion *int64 `json:"-" swaggerignore:"true"`
@@ -51,9 +51,9 @@ type ChildContractCorrectRequest struct {
 // at today — wrong for any backdated change that crosses a funding period.
 type ChildContractAmendRequest struct {
 	EffectiveFrom time.Time               `json:"effective_from" binding:"required" format:"date-time" example:"2025-08-01"`
-	To            Opt[time.Time]          `json:"to" swaggertype:"string" format:"date-time" extensions:"x-nullable" example:"2025-12-31"`
-	SectionID     Opt[uint]               `json:"section_id" swaggertype:"integer" example:"2"`
-	Properties    Opt[ContractProperties] `json:"properties" swaggertype:"object" extensions:"x-nullable"`
+	To            Opt[time.Time]          `json:"to,omitzero" swaggertype:"string" format:"date-time" extensions:"x-nullable" example:"2025-12-31"`
+	SectionID     Opt[uint]               `json:"section_id,omitzero" swaggertype:"integer" example:"2"`
+	Properties    Opt[ContractProperties] `json:"properties,omitzero" swaggertype:"object" extensions:"x-nullable"`
 
 	// ExpectedVersion is set from the If-Match header, not from JSON.
 	ExpectedVersion *int64 `json:"-" swaggerignore:"true"`
@@ -65,15 +65,15 @@ type ChildContractAmendRequest struct {
 // leave keeps the contract with no hours) and `required` rejects zero values,
 // which is why the old update request could not express it.
 type EmployeeContractCorrectRequest struct {
-	From          Opt[time.Time]          `json:"from" swaggertype:"string" format:"date-time" example:"2025-01-01"`
-	To            Opt[time.Time]          `json:"to" swaggertype:"string" format:"date-time" extensions:"x-nullable" example:"2025-12-31"`
-	SectionID     Opt[uint]               `json:"section_id" swaggertype:"integer" example:"2"`
-	StaffCategory Opt[string]             `json:"staff_category" swaggertype:"string" example:"qualified"`
-	Grade         Opt[string]             `json:"grade" swaggertype:"string" example:"S8a"`
-	Step          Opt[int]                `json:"step" swaggertype:"integer" example:"3"`
-	WeeklyHours   Opt[float64]            `json:"weekly_hours" swaggertype:"number" example:"40"`
-	PayPlanID     Opt[uint]               `json:"payplan_id" swaggertype:"integer" example:"1"`
-	Properties    Opt[ContractProperties] `json:"properties" swaggertype:"object" extensions:"x-nullable"`
+	From          Opt[time.Time]          `json:"from,omitzero" swaggertype:"string" format:"date-time" example:"2025-01-01"`
+	To            Opt[time.Time]          `json:"to,omitzero" swaggertype:"string" format:"date-time" extensions:"x-nullable" example:"2025-12-31"`
+	SectionID     Opt[uint]               `json:"section_id,omitzero" swaggertype:"integer" example:"2"`
+	StaffCategory Opt[string]             `json:"staff_category,omitzero" swaggertype:"string" example:"qualified"`
+	Grade         Opt[string]             `json:"grade,omitzero" swaggertype:"string" example:"S8a"`
+	Step          Opt[int]                `json:"step,omitzero" swaggertype:"integer" example:"3"`
+	WeeklyHours   Opt[float64]            `json:"weekly_hours,omitzero" swaggertype:"number" example:"40"`
+	PayPlanID     Opt[uint]               `json:"payplan_id,omitzero" swaggertype:"integer" example:"1"`
+	Properties    Opt[ContractProperties] `json:"properties,omitzero" swaggertype:"object" extensions:"x-nullable"`
 
 	// ExpectedVersion is set from the If-Match header, not from JSON.
 	ExpectedVersion *int64 `json:"-" swaggerignore:"true"`
@@ -88,14 +88,14 @@ type EmployeeContractCorrectRequest struct {
 // pass, and one that it had back then used to fail.
 type EmployeeContractAmendRequest struct {
 	EffectiveFrom time.Time               `json:"effective_from" binding:"required" format:"date-time" example:"2025-08-01"`
-	To            Opt[time.Time]          `json:"to" swaggertype:"string" format:"date-time" extensions:"x-nullable" example:"2025-12-31"`
-	SectionID     Opt[uint]               `json:"section_id" swaggertype:"integer" example:"2"`
-	StaffCategory Opt[string]             `json:"staff_category" swaggertype:"string" example:"qualified"`
-	Grade         Opt[string]             `json:"grade" swaggertype:"string" example:"S8a"`
-	Step          Opt[int]                `json:"step" swaggertype:"integer" example:"3"`
-	WeeklyHours   Opt[float64]            `json:"weekly_hours" swaggertype:"number" example:"40"`
-	PayPlanID     Opt[uint]               `json:"payplan_id" swaggertype:"integer" example:"1"`
-	Properties    Opt[ContractProperties] `json:"properties" swaggertype:"object" extensions:"x-nullable"`
+	To            Opt[time.Time]          `json:"to,omitzero" swaggertype:"string" format:"date-time" extensions:"x-nullable" example:"2025-12-31"`
+	SectionID     Opt[uint]               `json:"section_id,omitzero" swaggertype:"integer" example:"2"`
+	StaffCategory Opt[string]             `json:"staff_category,omitzero" swaggertype:"string" example:"qualified"`
+	Grade         Opt[string]             `json:"grade,omitzero" swaggertype:"string" example:"S8a"`
+	Step          Opt[int]                `json:"step,omitzero" swaggertype:"integer" example:"3"`
+	WeeklyHours   Opt[float64]            `json:"weekly_hours,omitzero" swaggertype:"number" example:"40"`
+	PayPlanID     Opt[uint]               `json:"payplan_id,omitzero" swaggertype:"integer" example:"1"`
+	Properties    Opt[ContractProperties] `json:"properties,omitzero" swaggertype:"object" extensions:"x-nullable"`
 
 	// ExpectedVersion is set from the If-Match header, not from JSON.
 	ExpectedVersion *int64 `json:"-" swaggerignore:"true"`
@@ -108,7 +108,7 @@ type EmployeeContractAmendRequest struct {
 // open-ended, which the old surface could only express by omitting the field,
 // indistinguishable from "don't touch it".
 type ContractEndRequest struct {
-	To Opt[time.Time] `json:"to" swaggertype:"string" format:"date-time" extensions:"x-nullable" example:"2025-12-31"`
+	To Opt[time.Time] `json:"to,omitzero" swaggertype:"string" format:"date-time" extensions:"x-nullable" example:"2025-12-31"`
 
 	// ExpectedVersion is set from the If-Match header, not from JSON.
 	ExpectedVersion *int64 `json:"-" swaggerignore:"true"`

@@ -870,8 +870,8 @@ func TestChildService_UpdateContract_ClearNullableTo(t *testing.T) {
 	}
 
 	// Clear To by sending nil (simulates frontend sending null to make open-ended)
-	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
-		To: nil,
+	updated, err := svc.CorrectContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractCorrectRequest{
+		To: models.OptNull[time.Time](),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -913,8 +913,8 @@ func TestChildService_UpdateContract_ClearNullableProperties(t *testing.T) {
 	}
 
 	// Clear Properties by sending nil
-	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
-		Properties: nil,
+	updated, err := svc.CorrectContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractCorrectRequest{
+		Properties: models.OptNull[models.ContractProperties](),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -2123,13 +2123,13 @@ func TestChildService_UpdateContract_InPlace(t *testing.T) {
 	// Update dates and properties — in-place update since contract starts today
 	newFrom := today.AddDate(0, 1, 0)
 	newTo := today.AddDate(1, 6, 0)
-	updateReq := &models.ChildContractUpdateRequest{
-		From:       &newFrom,
-		To:         &newTo,
-		Properties: models.ContractProperties{"care_type": "halbtag"},
+	updateReq := &models.ChildContractCorrectRequest{
+		From:       models.OptOf(newFrom),
+		To:         models.OptOf(newTo),
+		Properties: models.OptOf(models.ContractProperties{"care_type": "halbtag"}),
 	}
 
-	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, updateReq)
+	updated, err := svc.CorrectContract(ctx, contract.ID, child.ID, org.ID, updateReq)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -2171,11 +2171,11 @@ func TestChildService_UpdateContract_InvalidPeriod(t *testing.T) {
 
 	// Try to update with 'to' before 'from'
 	invalidTo := today.AddDate(-1, 0, 0)
-	updateReq := &models.ChildContractUpdateRequest{
-		To: &invalidTo,
+	updateReq := &models.ChildContractCorrectRequest{
+		To: models.OptOf(invalidTo),
 	}
 
-	_, err = svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, updateReq)
+	_, err = svc.CorrectContract(ctx, contract.ID, child.ID, org.ID, updateReq)
 	if err == nil {
 		t.Fatal("expected error for invalid period (to before from), got nil")
 	}
@@ -2222,11 +2222,11 @@ func TestChildService_UpdateContract_OverlapConflict(t *testing.T) {
 
 	// Try to update second contract to overlap with first
 	overlapFrom := today.AddDate(0, 3, 0)
-	updateReq := &models.ChildContractUpdateRequest{
-		From: &overlapFrom,
+	updateReq := &models.ChildContractCorrectRequest{
+		From: models.OptOf(overlapFrom),
 	}
 
-	_, err = svc.UpdateContract(ctx, contract2.ID, child.ID, org.ID, updateReq)
+	_, err = svc.CorrectContract(ctx, contract2.ID, child.ID, org.ID, updateReq)
 	if err == nil {
 		t.Fatal("expected error for overlapping contract, got nil")
 	}
@@ -2253,11 +2253,11 @@ func TestChildService_UpdateContract_WrongOrg(t *testing.T) {
 	}
 
 	newFrom := today.AddDate(0, 1, 0)
-	updateReq := &models.ChildContractUpdateRequest{
-		From: &newFrom,
+	updateReq := &models.ChildContractCorrectRequest{
+		From: models.OptOf(newFrom),
 	}
 
-	_, err = svc.UpdateContract(ctx, contract.ID, child.ID, org2.ID, updateReq)
+	_, err = svc.CorrectContract(ctx, contract.ID, child.ID, org2.ID, updateReq)
 	if err == nil {
 		t.Fatal("expected error when updating contract from wrong org, got nil")
 	}
@@ -2283,11 +2283,11 @@ func TestChildService_UpdateContract_WrongChild(t *testing.T) {
 	}
 
 	newFrom := today.AddDate(0, 1, 0)
-	updateReq := &models.ChildContractUpdateRequest{
-		From: &newFrom,
+	updateReq := &models.ChildContractCorrectRequest{
+		From: models.OptOf(newFrom),
 	}
 
-	_, err = svc.UpdateContract(ctx, contract.ID, child2.ID, org.ID, updateReq)
+	_, err = svc.CorrectContract(ctx, contract.ID, child2.ID, org.ID, updateReq)
 	if err == nil {
 		t.Fatal("expected error when updating contract via wrong child, got nil")
 	}
@@ -2360,12 +2360,14 @@ func TestChildService_UpdateContract_AmendChangeSection(t *testing.T) {
 	}
 
 	// Update section → should trigger amend
-	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
-		SectionID: &section2.ID,
+	amendResp, err := svc.AmendContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractAmendRequest{
+		EffectiveFrom: models.Today(),
+		SectionID:     models.OptOf(section2.ID),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
+	updated := &amendResp.Created
 
 	today := models.Today()
 	yesterday := today.AddDate(0, 0, -1)
@@ -2424,12 +2426,14 @@ func TestChildService_UpdateContract_AmendChangeProperties(t *testing.T) {
 	}
 
 	// Update properties → triggers amend
-	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
-		Properties: models.ContractProperties{"care_type": "halbtag"},
+	amendResp, err := svc.AmendContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractAmendRequest{
+		EffectiveFrom: models.Today(),
+		Properties:    models.OptOf(models.ContractProperties{"care_type": "halbtag"}),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
+	updated := &amendResp.Created
 
 	if updated.ID == contract.ID {
 		t.Error("expected new contract ID (amend)")
@@ -2440,40 +2444,6 @@ func TestChildService_UpdateContract_AmendChangeProperties(t *testing.T) {
 	// Section carried over
 	if updated.SectionID != section.ID {
 		t.Errorf("SectionID should carry over, got %d, want %d", updated.SectionID, section.ID)
-	}
-}
-
-func TestChildService_UpdateContract_AmendFromIgnored(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createChildService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	child := createTestChild(t, db, "John", "Doe", org.ID)
-	section := createTestSection(t, db, "Krippe", org.ID, false)
-
-	past := models.Today().AddDate(0, -3, 0)
-	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
-		SectionID: section.ID,
-		From:      past,
-	})
-	if err != nil {
-		t.Fatalf("failed to create contract: %v", err)
-	}
-
-	// Try to set From to a specific date — should be ignored in amend mode
-	requestedFrom := time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC)
-	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
-		From: &requestedFrom,
-	})
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	today := models.Today()
-	// From should be today, NOT the requested date
-	if !updated.From.Truncate(24 * time.Hour).Equal(today) {
-		t.Errorf("From = %v, want today (%v) — From should be ignored in amend mode", updated.From, today)
 	}
 }
 
@@ -2497,50 +2467,20 @@ func TestChildService_UpdateContract_AmendToApplied(t *testing.T) {
 
 	// Set To date in the request
 	endDate := models.Today().AddDate(0, 6, 0)
-	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
-		To: &endDate,
+	amendResp, err := svc.AmendContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractAmendRequest{
+		EffectiveFrom: models.Today(),
+		To:            models.OptOf(endDate),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
+	updated := &amendResp.Created
 
 	if updated.To == nil {
 		t.Fatal("To should not be nil")
 	}
 	if !updated.To.Truncate(24 * time.Hour).Equal(endDate) {
 		t.Errorf("To = %v, want %v", updated.To, endDate)
-	}
-}
-
-func TestChildService_UpdateContract_EndedContract(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createChildService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	child := createTestChild(t, db, "John", "Doe", org.ID)
-
-	// Create a contract that has already ended
-	past := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
-	pastEnd := time.Date(2023, 12, 31, 0, 0, 0, 0, time.UTC)
-	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
-		SectionID: 1,
-		From:      past,
-		To:        &pastEnd,
-	})
-	if err != nil {
-		t.Fatalf("failed to create contract: %v", err)
-	}
-
-	// Try to update an ended contract → should be rejected
-	_, err = svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
-		Properties: models.ContractProperties{"care_type": "halbtag"},
-	})
-	if err == nil {
-		t.Fatal("expected error for ended contract, got nil")
-	}
-	if !errors.Is(err, apperror.ErrBadRequest) {
-		t.Errorf("expected ErrBadRequest, got %v", err)
 	}
 }
 
@@ -2565,8 +2505,8 @@ func TestChildService_UpdateContract_InPlace_FutureContract(t *testing.T) {
 
 	// Update From date — should be in-place (contract hasn't started yet)
 	newFrom := tomorrow.AddDate(0, 0, 7)
-	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
-		From: &newFrom,
+	updated, err := svc.CorrectContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractCorrectRequest{
+		From: models.OptOf(newFrom),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -2624,9 +2564,10 @@ func TestChildService_UpdateContract_AmendOverlapConflict(t *testing.T) {
 	// extended To — that range now overlaps the blocker, and the amend's
 	// overlap check inside amendContractTx must produce 409.
 	extendedEnd := blockerStart.AddDate(0, 1, 0) // sits inside the blocker's range
-	_, err = svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
-		Properties: models.ContractProperties{"care_type": "halbtag"},
-		To:         &extendedEnd,
+	_, err = svc.AmendContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractAmendRequest{
+		EffectiveFrom: models.Today(),
+		Properties:    models.OptOf(models.ContractProperties{"care_type": "halbtag"}),
+		To:            models.OptOf(extendedEnd),
 	})
 	if err == nil {
 		t.Fatal("expected overlap conflict error, got nil")
@@ -2662,12 +2603,14 @@ func TestChildService_UpdateContract_AmendPreservesProperties(t *testing.T) {
 	}
 
 	// Update only section — properties should carry over
-	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
-		SectionID: &section2.ID,
+	amendResp, err := svc.AmendContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractAmendRequest{
+		EffectiveFrom: models.Today(),
+		SectionID:     models.OptOf(section2.ID),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
+	updated := &amendResp.Created
 
 	if updated.Properties["care_type"] != "ganztag" {
 		t.Errorf("care_type should carry over, got %v", updated.Properties["care_type"])
@@ -2698,12 +2641,14 @@ func TestChildService_UpdateContract_AmendPreservesSection(t *testing.T) {
 	}
 
 	// Update only properties — section should carry over
-	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
-		Properties: models.ContractProperties{"care_type": "halbtag"},
+	amendResp, err := svc.AmendContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractAmendRequest{
+		EffectiveFrom: models.Today(),
+		Properties:    models.OptOf(models.ContractProperties{"care_type": "halbtag"}),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
+	updated := &amendResp.Created
 
 	if updated.SectionID != section.ID {
 		t.Errorf("SectionID should carry over, got %d, want %d", updated.SectionID, section.ID)
@@ -2731,12 +2676,14 @@ func TestChildService_UpdateContract_AmendPreservesOngoingTo(t *testing.T) {
 	}
 
 	// Amend: change properties, don't set To in request
-	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
-		Properties: models.ContractProperties{"care_type": "halbtag"},
+	amendResp, err := svc.AmendContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractAmendRequest{
+		EffectiveFrom: models.Today(),
+		Properties:    models.OptOf(models.ContractProperties{"care_type": "halbtag"}),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
+	updated := &amendResp.Created
 
 	// New contract should also be ongoing (nil To)
 	if updated.To != nil {
@@ -2766,12 +2713,14 @@ func TestChildService_UpdateContract_AmendPreservesToWhenNotInRequest(t *testing
 	}
 
 	// Amend: change properties, don't set To in request
-	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
-		Properties: models.ContractProperties{"care_type": "halbtag"},
+	amendResp, err := svc.AmendContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractAmendRequest{
+		EffectiveFrom: models.Today(),
+		Properties:    models.OptOf(models.ContractProperties{"care_type": "halbtag"}),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
+	updated := &amendResp.Created
 
 	// New contract should have the original To date
 	if updated.To == nil {
@@ -2806,12 +2755,14 @@ func TestChildService_UpdateContract_AmendStateConsistency(t *testing.T) {
 	}
 
 	// Amend the contract
-	newContract, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
-		Properties: models.ContractProperties{"care_type": "halbtag"},
+	amendResp, err := svc.AmendContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractAmendRequest{
+		EffectiveFrom: models.Today(),
+		Properties:    models.OptOf(models.ContractProperties{"care_type": "halbtag"}),
 	})
 	if err != nil {
 		t.Fatalf("amend failed: %v", err)
 	}
+	newContract := &amendResp.Created
 
 	// List should show 2 contracts
 	contracts, total, err := svc.ListContracts(ctx, child.ID, org.ID, 100, 0)
@@ -3702,8 +3653,8 @@ func TestChildService_UpdateContract_InPlace_AutoApply(t *testing.T) {
 	}
 
 	// Update in place — change properties but omit parent
-	updated, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
-		Properties: models.ContractProperties{"care_type": "halbtag"},
+	updated, err := svc.CorrectContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractCorrectRequest{
+		Properties: models.OptOf(models.ContractProperties{"care_type": "halbtag"}),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -3745,12 +3696,14 @@ func TestChildService_UpdateContract_Amend_AutoApply(t *testing.T) {
 	}
 
 	// Amend: change section (triggers new contract creation)
-	amended, err := svc.UpdateContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractUpdateRequest{
-		SectionID: &section2.ID,
+	amendResp, err := svc.AmendContract(ctx, contract.ID, child.ID, org.ID, &models.ChildContractAmendRequest{
+		EffectiveFrom: models.Today(),
+		SectionID:     models.OptOf(section2.ID),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
+	amended := &amendResp.Created
 
 	// Different contract ID (amend creates new)
 	if amended.ID == contract.ID {
@@ -4194,552 +4147,3 @@ func TestChildService_FindAllByOrganization_Empty(t *testing.T) {
 }
 
 // --- Batch Update Contract Tests ---
-
-func TestChildService_BatchUpdateContracts_ShiftBoundaryEarlier(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createChildService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	section := getDefaultSection(t, db, org.ID)
-	child := createTestChild(t, db, "John", "Doe", org.ID)
-
-	// Create two adjacent contracts: A=[Jan 1 - Jun 30], B=[Jul 1 - Dec 31]
-	aTo := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
-	contractA := createTestChildContract(t, db, child.ID,
-		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &aTo, section.ID, nil)
-
-	bTo := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	contractB := createTestChildContract(t, db, child.ID,
-		time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC), &bTo, section.ID, nil)
-
-	// Shift boundary earlier: A ends May 31, B starts Jun 1
-	newATo := time.Date(2024, 5, 31, 0, 0, 0, 0, time.UTC)
-	newBFrom := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
-
-	results, err := svc.BatchUpdateContracts(ctx, child.ID, org.ID, &models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: contractA.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{To: &newATo}},
-			{ID: contractB.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{From: &newBFrom, To: &bTo}},
-		},
-	})
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if len(results) != 2 {
-		t.Fatalf("expected 2 results, got %d", len(results))
-	}
-	if !results[0].To.Equal(newATo) {
-		t.Errorf("contract A To = %v, want %v", results[0].To, newATo)
-	}
-	if !results[1].From.Equal(newBFrom) {
-		t.Errorf("contract B From = %v, want %v", results[1].From, newBFrom)
-	}
-}
-
-func TestChildService_BatchUpdateContracts_ShiftBoundaryLater(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createChildService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	section := getDefaultSection(t, db, org.ID)
-	child := createTestChild(t, db, "John", "Doe", org.ID)
-
-	aTo := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
-	contractA := createTestChildContract(t, db, child.ID,
-		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &aTo, section.ID, nil)
-
-	bTo := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	contractB := createTestChildContract(t, db, child.ID,
-		time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC), &bTo, section.ID, nil)
-
-	// Shift boundary later: A ends Aug 31, B starts Sep 1
-	newATo := time.Date(2024, 8, 31, 0, 0, 0, 0, time.UTC)
-	newBFrom := time.Date(2024, 9, 1, 0, 0, 0, 0, time.UTC)
-
-	results, err := svc.BatchUpdateContracts(ctx, child.ID, org.ID, &models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: contractA.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{To: &newATo}},
-			{ID: contractB.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{From: &newBFrom, To: &bTo}},
-		},
-	})
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if !results[0].To.Equal(newATo) {
-		t.Errorf("contract A To = %v, want %v", results[0].To, newATo)
-	}
-	if !results[1].From.Equal(newBFrom) {
-		t.Errorf("contract B From = %v, want %v", results[1].From, newBFrom)
-	}
-}
-
-func TestChildService_BatchUpdateContracts_SingleContract(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createChildService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	section := getDefaultSection(t, db, org.ID)
-	child := createTestChild(t, db, "John", "Doe", org.ID)
-
-	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	contract := createTestChildContract(t, db, child.ID,
-		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &to, section.ID, nil)
-
-	newTo := time.Date(2025, 6, 30, 0, 0, 0, 0, time.UTC)
-	results, err := svc.BatchUpdateContracts(ctx, child.ID, org.ID, &models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: contract.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{To: &newTo}},
-		},
-	})
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if len(results) != 1 {
-		t.Fatalf("expected 1 result, got %d", len(results))
-	}
-	if !results[0].To.Equal(newTo) {
-		t.Errorf("To = %v, want %v", results[0].To, newTo)
-	}
-}
-
-func TestChildService_BatchUpdateContracts_AllFields(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createChildService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	section := getDefaultSection(t, db, org.ID)
-	section2 := createTestSection(t, db, "Section2", org.ID, false)
-	child := createTestChild(t, db, "John", "Doe", org.ID)
-
-	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	contract := createTestChildContract(t, db, child.ID,
-		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &to, section.ID,
-		models.ContractProperties{"care_type": "ganztag"})
-
-	newFrom := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
-	newTo := time.Date(2025, 6, 30, 0, 0, 0, 0, time.UTC)
-	results, err := svc.BatchUpdateContracts(ctx, child.ID, org.ID, &models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: contract.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{
-				From:       &newFrom,
-				To:         &newTo,
-				SectionID:  &section2.ID,
-				Properties: models.ContractProperties{"care_type": "halbtag"},
-			}},
-		},
-	})
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if !results[0].From.Equal(newFrom) {
-		t.Errorf("From = %v, want %v", results[0].From, newFrom)
-	}
-	if results[0].SectionID != section2.ID {
-		t.Errorf("SectionID = %d, want %d", results[0].SectionID, section2.ID)
-	}
-	if results[0].Properties["care_type"] != "halbtag" {
-		t.Errorf("Properties = %v, want care_type=halbtag", results[0].Properties)
-	}
-}
-
-func TestChildService_BatchUpdateContracts_PastContracts_NoAmendMode(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createChildService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	section := getDefaultSection(t, db, org.ID)
-	child := createTestChild(t, db, "John", "Doe", org.ID)
-
-	// Create a past contract (started and ended before today)
-	aTo := time.Date(2020, 6, 30, 0, 0, 0, 0, time.UTC)
-	contract := createTestChildContract(t, db, child.ID,
-		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), &aTo, section.ID, nil)
-
-	// Batch update should work on past/ended contracts (no amend mode)
-	newTo := time.Date(2020, 8, 31, 0, 0, 0, 0, time.UTC)
-	results, err := svc.BatchUpdateContracts(ctx, child.ID, org.ID, &models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: contract.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{To: &newTo}},
-		},
-	})
-	if err != nil {
-		t.Fatalf("expected no error for past contract batch update, got %v", err)
-	}
-	if !results[0].To.Equal(newTo) {
-		t.Errorf("To = %v, want %v", results[0].To, newTo)
-	}
-}
-
-func TestChildService_BatchUpdateContracts_DuplicateIDs(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createChildService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	child := createTestChild(t, db, "John", "Doe", org.ID)
-
-	_, err := svc.BatchUpdateContracts(ctx, child.ID, org.ID, &models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: 1, ChildContractUpdateRequest: models.ChildContractUpdateRequest{}},
-			{ID: 1, ChildContractUpdateRequest: models.ChildContractUpdateRequest{}},
-		},
-	})
-	if err == nil {
-		t.Fatal("expected error for duplicate IDs, got nil")
-	}
-	if !errors.Is(err, apperror.ErrBadRequest) {
-		t.Errorf("expected ErrBadRequest, got %v", err)
-	}
-}
-
-func TestChildService_BatchUpdateContracts_ContractNotFound(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createChildService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	child := createTestChild(t, db, "John", "Doe", org.ID)
-
-	_, err := svc.BatchUpdateContracts(ctx, child.ID, org.ID, &models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: 9999, ChildContractUpdateRequest: models.ChildContractUpdateRequest{}},
-		},
-	})
-	if err == nil {
-		t.Fatal("expected error for nonexistent contract, got nil")
-	}
-	if !errors.Is(err, apperror.ErrNotFound) {
-		t.Errorf("expected ErrNotFound, got %v", err)
-	}
-}
-
-func TestChildService_BatchUpdateContracts_WrongChild(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createChildService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	section := getDefaultSection(t, db, org.ID)
-	child1 := createTestChild(t, db, "John", "Doe", org.ID)
-	child2 := createTestChild(t, db, "Jane", "Doe", org.ID)
-
-	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	contract := createTestChildContract(t, db, child1.ID,
-		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &to, section.ID, nil)
-
-	// Try to batch update child1's contract via child2 — should fail
-	_, err := svc.BatchUpdateContracts(ctx, child2.ID, org.ID, &models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: contract.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{}},
-		},
-	})
-	if err == nil {
-		t.Fatal("expected error for wrong child, got nil")
-	}
-	if !errors.Is(err, apperror.ErrNotFound) {
-		t.Errorf("expected ErrNotFound, got %v", err)
-	}
-}
-
-func TestChildService_BatchUpdateContracts_WrongOrg(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createChildService(db)
-	ctx := context.Background()
-
-	org1 := createTestOrganization(t, db, "Org 1")
-	org2 := createTestOrganization(t, db, "Org 2")
-	child := createTestChild(t, db, "John", "Doe", org1.ID)
-
-	// Try to batch update via wrong org
-	_, err := svc.BatchUpdateContracts(ctx, child.ID, org2.ID, &models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: 1, ChildContractUpdateRequest: models.ChildContractUpdateRequest{}},
-		},
-	})
-	if err == nil {
-		t.Fatal("expected error for wrong org, got nil")
-	}
-	if !errors.Is(err, apperror.ErrNotFound) {
-		t.Errorf("expected ErrNotFound, got %v", err)
-	}
-}
-
-func TestChildService_BatchUpdateContracts_InvalidPeriod(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createChildService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	section := getDefaultSection(t, db, org.ID)
-	child := createTestChild(t, db, "John", "Doe", org.ID)
-
-	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	contract := createTestChildContract(t, db, child.ID,
-		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &to, section.ID, nil)
-
-	// from > to
-	badFrom := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
-	badTo := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
-	_, err := svc.BatchUpdateContracts(ctx, child.ID, org.ID, &models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: contract.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{From: &badFrom, To: &badTo}},
-		},
-	})
-	if err == nil {
-		t.Fatal("expected error for invalid period, got nil")
-	}
-	if !errors.Is(err, apperror.ErrBadRequest) {
-		t.Errorf("expected ErrBadRequest, got %v", err)
-	}
-}
-
-func TestChildService_BatchUpdateContracts_OverlapBetweenUpdated(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createChildService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	section := getDefaultSection(t, db, org.ID)
-	child := createTestChild(t, db, "John", "Doe", org.ID)
-
-	aTo := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
-	contractA := createTestChildContract(t, db, child.ID,
-		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &aTo, section.ID, nil)
-
-	bTo := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	contractB := createTestChildContract(t, db, child.ID,
-		time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC), &bTo, section.ID, nil)
-
-	// Make them overlap: A ends Sep 30, but B still starts Jul 1
-	newATo := time.Date(2024, 9, 30, 0, 0, 0, 0, time.UTC)
-	_, err := svc.BatchUpdateContracts(ctx, child.ID, org.ID, &models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: contractA.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{To: &newATo}},
-			{ID: contractB.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{To: &bTo}},
-		},
-	})
-	if err == nil {
-		t.Fatal("expected overlap error, got nil")
-	}
-	if !errors.Is(err, apperror.ErrConflict) {
-		t.Errorf("expected ErrConflict, got %v", err)
-	}
-}
-
-func TestChildService_BatchUpdateContracts_OverlapWithThirdContract(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createChildService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	section := getDefaultSection(t, db, org.ID)
-	child := createTestChild(t, db, "John", "Doe", org.ID)
-
-	// Three contracts: A=[Jan-Mar], B=[Apr-Jun], C=[Jul-Dec]
-	aTo := time.Date(2024, 3, 31, 0, 0, 0, 0, time.UTC)
-	createTestChildContract(t, db, child.ID,
-		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &aTo, section.ID, nil)
-
-	bTo := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
-	contractB := createTestChildContract(t, db, child.ID,
-		time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC), &bTo, section.ID, nil)
-
-	cTo := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	contractC := createTestChildContract(t, db, child.ID,
-		time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC), &cTo, section.ID, nil)
-
-	// Extend B into A's territory: B starts Feb 1 (overlaps with A=[Jan-Mar])
-	newBFrom := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
-	_, err := svc.BatchUpdateContracts(ctx, child.ID, org.ID, &models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: contractB.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{From: &newBFrom, To: &bTo}},
-			{ID: contractC.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{To: &cTo}},
-		},
-	})
-	if err == nil {
-		t.Fatal("expected overlap error with third contract, got nil")
-	}
-	if !errors.Is(err, apperror.ErrConflict) {
-		t.Errorf("expected ErrConflict, got %v", err)
-	}
-}
-
-func TestChildService_BatchUpdateContracts_InvalidSection(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createChildService(db)
-	ctx := context.Background()
-
-	org1 := createTestOrganization(t, db, "Org 1")
-	org2 := createTestOrganization(t, db, "Org 2")
-	section2 := getDefaultSection(t, db, org2.ID)
-	section1 := getDefaultSection(t, db, org1.ID)
-	child := createTestChild(t, db, "John", "Doe", org1.ID)
-
-	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	contract := createTestChildContract(t, db, child.ID,
-		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &to, section1.ID, nil)
-
-	// Try to use section from different org
-	_, err := svc.BatchUpdateContracts(ctx, child.ID, org1.ID, &models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: contract.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{SectionID: &section2.ID, To: &to}},
-		},
-	})
-	if err == nil {
-		t.Fatal("expected error for wrong-org section, got nil")
-	}
-	if !errors.Is(err, apperror.ErrBadRequest) {
-		t.Errorf("expected ErrBadRequest, got %v", err)
-	}
-}
-
-func TestChildService_BatchUpdateContracts_SingleDayContract(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createChildService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	section := getDefaultSection(t, db, org.ID)
-	child := createTestChild(t, db, "John", "Doe", org.ID)
-
-	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	contract := createTestChildContract(t, db, child.ID,
-		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &to, section.ID, nil)
-
-	// Single-day contract (from == to)
-	sameDay := time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC)
-	results, err := svc.BatchUpdateContracts(ctx, child.ID, org.ID, &models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: contract.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{From: &sameDay, To: &sameDay}},
-		},
-	})
-	if err != nil {
-		t.Fatalf("expected no error for single-day contract, got %v", err)
-	}
-	if !results[0].From.Equal(sameDay) || !results[0].To.Equal(sameDay) {
-		t.Errorf("From=%v To=%v, want both %v", results[0].From, results[0].To, sameDay)
-	}
-}
-
-func TestChildService_BatchUpdateContracts_MakeOngoing(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createChildService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	section := getDefaultSection(t, db, org.ID)
-	child := createTestChild(t, db, "John", "Doe", org.ID)
-
-	to := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	contract := createTestChildContract(t, db, child.ID,
-		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &to, section.ID, nil)
-
-	// Set To to nil (make ongoing)
-	results, err := svc.BatchUpdateContracts(ctx, child.ID, org.ID, &models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: contract.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{To: nil}},
-		},
-	})
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if results[0].To != nil {
-		t.Errorf("To = %v, want nil (ongoing)", results[0].To)
-	}
-}
-
-func TestChildService_BatchUpdateContracts_ThreeContracts(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createChildService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	section := getDefaultSection(t, db, org.ID)
-	child := createTestChild(t, db, "John", "Doe", org.ID)
-
-	// Three adjacent contracts
-	aTo := time.Date(2024, 3, 31, 0, 0, 0, 0, time.UTC)
-	contractA := createTestChildContract(t, db, child.ID,
-		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &aTo, section.ID, nil)
-
-	bTo := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
-	contractB := createTestChildContract(t, db, child.ID,
-		time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC), &bTo, section.ID, nil)
-
-	cTo := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	contractC := createTestChildContract(t, db, child.ID,
-		time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC), &cTo, section.ID, nil)
-
-	// Shift all boundaries: A=[Jan-Feb], B=[Mar-Aug], C=[Sep-Dec]
-	newATo := time.Date(2024, 2, 29, 0, 0, 0, 0, time.UTC)
-	newBFrom := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
-	newBTo := time.Date(2024, 8, 31, 0, 0, 0, 0, time.UTC)
-	newCFrom := time.Date(2024, 9, 1, 0, 0, 0, 0, time.UTC)
-
-	results, err := svc.BatchUpdateContracts(ctx, child.ID, org.ID, &models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: contractA.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{To: &newATo}},
-			{ID: contractB.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{From: &newBFrom, To: &newBTo}},
-			{ID: contractC.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{From: &newCFrom, To: &cTo}},
-		},
-	})
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if len(results) != 3 {
-		t.Fatalf("expected 3 results, got %d", len(results))
-	}
-	if !results[0].To.Equal(newATo) {
-		t.Errorf("A To = %v, want %v", results[0].To, newATo)
-	}
-	if !results[1].From.Equal(newBFrom) || !results[1].To.Equal(newBTo) {
-		t.Errorf("B = [%v, %v], want [%v, %v]", results[1].From, results[1].To, newBFrom, newBTo)
-	}
-	if !results[2].From.Equal(newCFrom) {
-		t.Errorf("C From = %v, want %v", results[2].From, newCFrom)
-	}
-}
-
-func TestChildService_BatchUpdateContracts_TransactionRollback(t *testing.T) {
-	db := setupTestDB(t)
-	svc := createChildService(db)
-	ctx := context.Background()
-
-	org := createTestOrganization(t, db, "Test Org")
-	section := getDefaultSection(t, db, org.ID)
-	child := createTestChild(t, db, "John", "Doe", org.ID)
-
-	aTo := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
-	contractA := createTestChildContract(t, db, child.ID,
-		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), &aTo, section.ID, nil)
-
-	bTo := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	createTestChildContract(t, db, child.ID,
-		time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC), &bTo, section.ID, nil)
-
-	// First update valid, second references nonexistent contract — both should roll back
-	newATo := time.Date(2024, 5, 31, 0, 0, 0, 0, time.UTC)
-	_, err := svc.BatchUpdateContracts(ctx, child.ID, org.ID, &models.ChildContractBatchUpdateRequest{
-		Updates: []models.ChildContractBatchUpdateEntry{
-			{ID: contractA.ID, ChildContractUpdateRequest: models.ChildContractUpdateRequest{To: &newATo}},
-			{ID: 9999, ChildContractUpdateRequest: models.ChildContractUpdateRequest{}},
-		},
-	})
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	// Verify contract A was NOT changed (rolled back)
-	resp, err := svc.GetContractByID(ctx, contractA.ID, child.ID, org.ID)
-	if err != nil {
-		t.Fatalf("failed to get contract A: %v", err)
-	}
-	if !resp.To.Equal(aTo) {
-		t.Errorf("contract A To = %v, want %v (should be unchanged after rollback)", resp.To, aTo)
-	}
-}

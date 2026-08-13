@@ -158,11 +158,9 @@ func TestChildService_Correct_EndedContractAllowed(t *testing.T) {
 	f := setupChildIntent(t, "Ended", time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), &ended)
 	ctx := context.Background()
 
-	// The old surface on the same contract, for contrast.
-	if _, err := f.svc.UpdateContract(ctx, f.contract.ID, f.childID, f.orgID,
-		&models.ChildContractUpdateRequest{To: &ended}); err == nil {
-		t.Error("UpdateContract accepted an ended contract; this test's premise is stale")
-	}
+	// The contrast this test used to draw against the old PUT — which refused an
+	// ended contract with "cannot update a contract that has already ended" — is
+	// gone along with that endpoint. What remains is the guarantee itself.
 
 	corrected := time.Date(2025, 7, 31, 0, 0, 0, 0, time.UTC)
 	resp, err := f.svc.CorrectContract(ctx, f.contract.ID, f.childID, f.orgID,
@@ -649,5 +647,209 @@ func TestEmployeeService_Amend_PayPlanCoverageAnchoredAtSeam(t *testing.T) {
 		&models.EmployeeContractAmendRequest{EffectiveFrom: date(2025, 6, 1)})
 	if err == nil {
 		t.Fatal("amend into a date the pay plan does not cover was accepted")
+	}
+}
+
+// ------------------------------------------------ date-only comparisons ----
+
+// from_date/to_date are Postgres DATE columns, so a request carrying a time of
+// day has to compare as the calendar day it falls on.
+//
+// determineAmendMode had a test for this and it was deleted with that function.
+// The truncation itself survives, in checkAmendSeam and checkAdjacent, where the
+// consequence is sharper than before: an afternoon timestamp must not make a seam
+// look like it falls on a different day than it will once stored.
+func TestCheckAmendSeam_ComparesCalendarDays(t *testing.T) {
+	from := time.Date(2026, 1, 10, 15, 30, 45, 0, time.UTC)
+
+	// Same calendar day, later clock time — still the contract's own start, so
+	// still a correction rather than an amendment.
+	if err := checkAmendSeam(from, nil, time.Date(2026, 1, 10, 23, 59, 59, 0, time.UTC)); err == nil {
+		t.Error("a seam on the contract's start date must be rejected whatever the time of day")
+	}
+
+	// Next calendar day, earlier clock time — legal.
+	if err := checkAmendSeam(from, nil, time.Date(2026, 1, 11, 0, 0, 1, 0, time.UTC)); err != nil {
+		t.Errorf("a seam on the following day must be accepted: %v", err)
+	}
+
+	// A contract whose end date carries a time still covers that whole day, so a
+	// seam on its last day is an amendment and not an attempt to extend it.
+	to := time.Date(2026, 3, 31, 8, 0, 0, 0, time.UTC)
+	if err := checkAmendSeam(from, &to, time.Date(2026, 3, 31, 20, 0, 0, 0, time.UTC)); err != nil {
+		t.Errorf("a seam on the contract's last day must be accepted: %v", err)
+	}
+}
+
+func TestCheckAdjacent_ComparesCalendarDays(t *testing.T) {
+	earlierFrom := time.Date(2026, 1, 1, 9, 0, 0, 0, time.UTC)
+	earlierTo := time.Date(2026, 3, 31, 17, 45, 0, 0, time.UTC)
+	laterFrom := time.Date(2026, 4, 1, 6, 15, 0, 0, time.UTC)
+
+	// One day apart on the calendar, despite all three carrying clock times.
+	if err := checkAdjacent(earlierFrom, &earlierTo, laterFrom, nil,
+		time.Date(2026, 3, 1, 13, 0, 0, 0, time.UTC)); err != nil {
+		t.Errorf("contracts one day apart must count as adjacent whatever the time: %v", err)
+	}
+}
+
+// ------------------------- guarantees inherited from the batch endpoint ----
+
+// The employee side of the seam move. The batch tests covered both owners and the
+// intent tests only covered children, so this is the employee half of
+// TestChildService_MoveBoundary_ThreeContracts — including that a seam move does
+// not disturb the salary-bearing fields of either side, which is what made the
+// old dates-only batch payload dangerous for pay as well as funding.
+func TestEmployeeService_MoveBoundary_ThreeContracts(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createEmployeeService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Emp Seam Org")
+	section := createTestSection(t, db, "Nest", org.ID, false)
+	payPlan := createTestPayPlanWithCoverage(t, db, "TVöD", org.ID)
+	employee := createTestEmployee(t, db, "Emp", "Seam", org.ID)
+
+	mk := func(from time.Time, to *time.Time, hours float64, step int, note string) *models.EmployeeContract {
+		return &models.EmployeeContract{EmployeeID: employee.ID, PayPlanID: payPlan.ID,
+			Grade: "S8a", Step: step, WeeklyHours: hours,
+			StaffCategory: string(models.StaffCategoryQualified),
+			BaseContract: models.BaseContract{
+				Period: models.Period{From: from, To: to}, SectionID: section.ID,
+				Properties: models.ContractProperties{"note": note}}}
+	}
+	first := mk(date(2026, 1, 1), timePtr(date(2026, 3, 31)), 30, 1, "phase a")
+	second := mk(date(2026, 4, 1), timePtr(date(2026, 6, 30)), 35, 2, "phase b")
+	third := mk(date(2026, 7, 1), nil, 39, 3, "phase c")
+	for _, x := range []*models.EmployeeContract{first, second, third} {
+		if err := db.Create(x).Error; err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+
+	resp, err := svc.MoveContractBoundary(ctx, employee.ID, org.ID,
+		&models.ContractBoundaryMoveRequest{
+			EarlierID: first.ID, LaterID: second.ID, At: date(2026, 3, 1),
+			EarlierVersion: first.Version, LaterVersion: second.Version,
+		})
+	if err != nil {
+		t.Fatalf("move boundary: %v", err)
+	}
+
+	if !resp.Later.From.Equal(date(2026, 3, 1)) {
+		t.Errorf("later from = %v, want 2026-03-01", resp.Later.From)
+	}
+	if resp.Earlier.To == nil || !resp.Earlier.To.Equal(date(2026, 2, 28)) {
+		t.Errorf("earlier to = %v, want 2026-02-28", resp.Earlier.To)
+	}
+	// The later contract keeps its own end date, so the third contract is untouched.
+	if resp.Later.To == nil || !resp.Later.To.Equal(date(2026, 6, 30)) {
+		t.Errorf("later to = %v, want 2026-06-30 unchanged", resp.Later.To)
+	}
+	// Pay is decided by these, and a seam move must not touch them.
+	if resp.Earlier.WeeklyHours != 30 || resp.Earlier.Step != 1 {
+		t.Errorf("earlier hours/step = %v/%d, want 30/1", resp.Earlier.WeeklyHours, resp.Earlier.Step)
+	}
+	if resp.Later.WeeklyHours != 35 || resp.Later.Step != 2 {
+		t.Errorf("later hours/step = %v/%d, want 35/2", resp.Later.WeeklyHours, resp.Later.Step)
+	}
+	if resp.Earlier.Properties["note"] != "phase a" || resp.Later.Properties["note"] != "phase b" {
+		t.Errorf("properties not preserved: %v / %v", resp.Earlier.Properties, resp.Later.Properties)
+	}
+
+	var reloaded models.EmployeeContract
+	if err := db.First(&reloaded, third.ID).Error; err != nil {
+		t.Fatalf("reload third: %v", err)
+	}
+	if !reloaded.From.Equal(date(2026, 7, 1)) || reloaded.To != nil {
+		t.Errorf("third contract changed: from=%v to=%v", reloaded.From, reloaded.To)
+	}
+}
+
+// An empty object clears properties, distinct from omitting the field. The batch
+// endpoint documented this ("send an empty object to clear them deliberately")
+// and had a test for it; with Opt[T] both `{}` and null clear, and omission is
+// the only thing that leaves them alone.
+func TestChildService_Correct_EmptyPropertiesClears(t *testing.T) {
+	f := setupChildIntent(t, "EmptyProps", date(2026, 1, 1), nil)
+
+	resp, err := f.svc.CorrectContract(context.Background(), f.contract.ID, f.childID, f.orgID,
+		&models.ChildContractCorrectRequest{
+			Properties: models.OptOf(models.ContractProperties{}),
+		})
+	if err != nil {
+		t.Fatalf("correct: %v", err)
+	}
+	if len(resp.Properties) != 0 {
+		t.Errorf("properties = %v, want cleared by an explicit empty object", resp.Properties)
+	}
+}
+
+// A seam moved FORWARD is the case that needs the deferred constraint, and it is
+// distinct from moving one backward: moveBoundaryTx writes the earlier contract
+// first, so growing it into the later one's range creates a real overlap that
+// exists until the later contract's start is shifted a statement later.
+//
+// The EXCLUDE constraint is DEFERRABLE INITIALLY DEFERRED precisely so that only
+// the state at COMMIT has to be legal. Without that, the first UPDATE would fail.
+// TestChildService_MoveBoundary_ThreeContracts moves a seam backward, which
+// shrinks the earlier contract first and never overlaps — so it does not exercise
+// this at all. Ported from the batch endpoint's DeferredConstraintAllowsSwap test.
+func TestChildService_MoveBoundary_ForwardNeedsDeferredConstraint(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Deferred Org")
+	section := createTestSection(t, db, "Nest", org.ID, false)
+	child := createTestChild(t, db, "Deferred", "Child", org.ID)
+
+	earlier := &models.ChildContract{ChildID: child.ID, BaseContract: models.BaseContract{
+		Period:     models.Period{From: date(2026, 1, 1), To: timePtr(date(2026, 3, 31))},
+		SectionID:  section.ID,
+		Properties: models.ContractProperties{"care_type": "halbtag"},
+	}}
+	later := &models.ChildContract{ChildID: child.ID, BaseContract: models.BaseContract{
+		Period:     models.Period{From: date(2026, 4, 1), To: timePtr(date(2026, 6, 30))},
+		SectionID:  section.ID,
+		Properties: models.ContractProperties{"care_type": "ganztag"},
+	}}
+	for _, c := range []*models.ChildContract{earlier, later} {
+		if err := db.Create(c).Error; err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+
+	// Push the seam two months forward: the earlier contract grows to 2026-05-31,
+	// which overlaps the later one's untouched start of 2026-04-01 mid-transaction.
+	resp, err := svc.MoveContractBoundary(ctx, child.ID, org.ID,
+		&models.ContractBoundaryMoveRequest{
+			EarlierID: earlier.ID, LaterID: later.ID, At: date(2026, 6, 1),
+			EarlierVersion: earlier.Version, LaterVersion: later.Version,
+		})
+	if err != nil {
+		t.Fatalf("moving a seam forward must be allowed by the deferred constraint: %v", err)
+	}
+
+	if resp.Earlier.To == nil || !resp.Earlier.To.Equal(date(2026, 5, 31)) {
+		t.Errorf("earlier to = %v, want 2026-05-31", resp.Earlier.To)
+	}
+	if !resp.Later.From.Equal(date(2026, 6, 1)) {
+		t.Errorf("later from = %v, want 2026-06-01", resp.Later.From)
+	}
+	// The final state must be a legal timeline, which is the only thing COMMIT
+	// checks — re-read to prove it was actually persisted rather than rolled back.
+	var e, l models.ChildContract
+	if err := db.First(&e, earlier.ID).Error; err != nil {
+		t.Fatalf("reload earlier: %v", err)
+	}
+	if err := db.First(&l, later.ID).Error; err != nil {
+		t.Fatalf("reload later: %v", err)
+	}
+	if e.To == nil || !e.To.Equal(date(2026, 5, 31)) || !l.From.Equal(date(2026, 6, 1)) {
+		t.Errorf("persisted state wrong: earlier.to=%v later.from=%v", e.To, l.From)
+	}
+	if l.To == nil || !l.To.Equal(date(2026, 6, 30)) {
+		t.Errorf("later to = %v, want 2026-06-30 — a one-day contract, but not a cleared one", l.To)
 	}
 }

@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
+import { toLocalDateString } from '@/lib/utils/formatting';
 import { useToast } from '@/lib/hooks/use-toast';
 
 interface HasContracts {
@@ -10,12 +11,27 @@ interface HasContracts {
 interface MoveContractConfig<T extends HasContracts> {
   orgId: number;
   /**
-   * API call to correct the contract's section. `version` is the contract's
-   * optimistic-concurrency token, required by the correction endpoint: moving
-   * someone between sections must not overwrite a change another user made to
-   * the same contract in the meantime.
+   * Amend the contract: close it yesterday and open a successor in the target
+   * section from today. This is the normal path, because which section someone
+   * was in is history worth keeping — occupancy and staffing reports are per
+   * section, so rewriting it in place would restate months that already passed.
    */
-  updateFn: (
+  amendFn: (
+    entityId: number,
+    contractId: number,
+    sectionId: number,
+    version: number,
+    effectiveFrom: string
+  ) => Promise<unknown>;
+  /**
+   * Correct the contract in place, used only when it has not started yet: there
+   * is no past to preserve, and an amendment would be refused anyway because its
+   * effective date has to fall after the contract's own start.
+   *
+   * `version` is the optimistic-concurrency token both paths must send, so moving
+   * someone between sections cannot overwrite another user's concurrent edit.
+   */
+  correctFn: (
     entityId: number,
     contractId: number,
     sectionId: number,
@@ -37,6 +53,8 @@ export interface MoveContractVariables {
   sectionId: number;
   /** The contract version as read, sent as the If-Match precondition. */
   version: number;
+  /** The contract's start date, which decides amend versus correct. */
+  from: string;
 }
 
 export function useMoveContractMutation<T extends HasContracts>(config: MoveContractConfig<T>) {
@@ -45,13 +63,28 @@ export function useMoveContractMutation<T extends HasContracts>(config: MoveCont
   const queryClient = useQueryClient();
 
   return useMutation<unknown, Error, MoveContractVariables, { previous?: T[] }>({
-    mutationFn: (variables) =>
-      config.updateFn(
+    mutationFn: (variables) => {
+      // The server no longer infers this from the dates — that inference was the
+      // whole problem — so the client states which it means. It can: it knows when
+      // the contract starts.
+      const today = toLocalDateString(new Date());
+      const startsLater = variables.from.slice(0, 10) > today;
+      if (startsLater) {
+        return config.correctFn(
+          variables.entityId,
+          variables.contractId,
+          variables.sectionId,
+          variables.version
+        );
+      }
+      return config.amendFn(
         variables.entityId,
         variables.contractId,
         variables.sectionId,
-        variables.version
-      ),
+        variables.version,
+        today
+      );
+    },
     onMutate: async ({ entityId, contractId, sectionId }) => {
       await queryClient.cancelQueries({ queryKey: config.allUnpaginatedKey });
       const previous = queryClient.getQueryData<T[]>(config.allUnpaginatedKey);

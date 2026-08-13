@@ -25,7 +25,7 @@ The one exception is **correcting an input error** — you typed `halbtag` but m
 
 1. Open the child from the **Children** list and click the **history** icon to open their contract history.
 2. Find the **active** contract (status badge: *active*). Click the **pencil** to edit.
-3. Set **To** to the day before the change takes effect (e.g. Integrationsstatus A is granted from 1 February → To = 31 January). Click **Save**. The **To** date must be today or later — for an effective date in the past, see [Backdated changes](#backdated-changes).
+3. Set **To** to the day before the change takes effect (e.g. Integrationsstatus A is granted from 1 February → To = 31 January). Click **Save**.
 4. Back on the contract history, click **New contract**.
 5. Set **From** to the effective date. Pick the same **Section** (unless the section is also changing — then see [Move children between sections](../move-children-between-sections/)).
 6. Set the contract **Properties**:
@@ -51,16 +51,17 @@ The child's calculated monthly funding amount updates immediately — verify the
 
 ## Backdated changes
 
-When the effective date is in the past (the Bescheid arrives in August, the change applies from 1 February), it takes two steps:
+When the effective date is in the past (the Bescheid arrives in August, the change applies from 1 February), record it exactly as above — in **one** step:
 
-1. **Record the change normally**, as above. KitaManager ends the old contract yesterday and starts the new one today — not yet the date you want.
-2. **Open the Timeline** (the **Timeline** tab on the contracts page) and drag the boundary between the two contracts to the effective date. The old contract then ends the day before, and the new one starts on the effective date.
+1. On the active contract, click **New contract** and leave **End current contract and create a new one** checked.
+2. Set **From** to the effective date, even if it is in the past.
+3. Set the properties and click **Save**.
 
-From then on KitaManager also calculates the past months from the effective date using the new values.
+KitaManager ends the old contract the day before the effective date and starts the new one on it. From then on it also calculates the past months from that date using the new values.
 
-Why two steps: in the edit dialog for a contract that started before today, saving always creates the follow-on contract **starting today** — a **To** date in the past would give that contract an end before its start, and is rejected. The Timeline works directly on the existing contracts, so it is allowed to reach into the past.
+Funding supplements are resolved as of the **effective date** rather than today, so a backdated change that crosses a funding period keeps the values that applied back then.
 
-The boundary can only move within the neighbouring contracts — not before the start of the older one.
+The Timeline (the **Timeline** tab) remains the way to move an existing boundary between two contracts. It can only move within the neighbouring contracts — not before the start of the older one.
 
 ## Fix a wrong date (no new contract needed)
 

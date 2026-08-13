@@ -673,38 +673,6 @@ definitions:
       created:
         $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse'
     type: object
-  github_com_eenemeene_kitamanager-go_internal_models.ChildContractBatchUpdateEntry:
-    properties:
-      from:
-        example: "2025-01-01"
-        format: date-time
-        type: string
-      id:
-        example: 5
-        type: integer
-      properties:
-        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
-      section_id:
-        example: 2
-        type: integer
-      to:
-        example: "2025-12-31"
-        format: date-time
-        type: string
-    required:
-    - id
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.ChildContractBatchUpdateRequest:
-    properties:
-      updates:
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractBatchUpdateEntry'
-        maxItems: 20
-        minItems: 1
-        type: array
-    required:
-    - updates
-    type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildContractBoundaryResponse:
     properties:
       earlier:
@@ -786,22 +754,6 @@ definitions:
           person YAML dumps: it describes a row's revision, not the contract.
         example: 3
         type: integer
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.ChildContractUpdateRequest:
-    properties:
-      from:
-        example: "2025-01-01"
-        format: date-time
-        type: string
-      properties:
-        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
-      section_id:
-        example: 2
-        type: integer
-      to:
-        example: "2025-12-31"
-        format: date-time
-        type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildCreateRequest:
     properties:
@@ -1255,58 +1207,6 @@ definitions:
       created:
         $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractResponse'
     type: object
-  github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractBatchUpdateEntry:
-    properties:
-      from:
-        example: "2025-01-01"
-        format: date-time
-        type: string
-      grade:
-        example: S8a
-        maxLength: 20
-        type: string
-      id:
-        example: 5
-        type: integer
-      payplan_id:
-        example: 1
-        type: integer
-      properties:
-        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
-      section_id:
-        example: 2
-        type: integer
-      staff_category:
-        example: qualified
-        type: string
-      step:
-        example: 3
-        maximum: 10
-        minimum: 0
-        type: integer
-      to:
-        example: "2025-12-31"
-        format: date-time
-        type: string
-      weekly_hours:
-        example: 40
-        maximum: 168
-        minimum: 0
-        type: number
-    required:
-    - id
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractBatchUpdateRequest:
-    properties:
-      updates:
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractBatchUpdateEntry'
-        maxItems: 20
-        minItems: 1
-        type: array
-    required:
-    - updates
-    type: object
   github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractBoundaryResponse:
     properties:
       earlier:
@@ -1450,42 +1350,6 @@ definitions:
         type: integer
       weekly_hours:
         example: 40
-        type: number
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractUpdateRequest:
-    properties:
-      from:
-        example: "2025-01-01"
-        format: date-time
-        type: string
-      grade:
-        example: S8a
-        maxLength: 20
-        type: string
-      payplan_id:
-        example: 1
-        type: integer
-      properties:
-        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
-      section_id:
-        example: 2
-        type: integer
-      staff_category:
-        example: qualified
-        type: string
-      step:
-        example: 3
-        maximum: 10
-        minimum: 0
-        type: integer
-      to:
-        example: "2025-12-31"
-        format: date-time
-        type: string
-      weekly_hours:
-        example: 40
-        maximum: 168
-        minimum: 0
         type: number
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.EmployeeCostEstimateRequest:
@@ -6985,82 +6849,6 @@ paths:
       summary: Correct a child contract
       tags:
       - children
-    put:
-      consumes:
-      - application/json
-      description: |-
-        Update an existing contract by ID. Date rules as for creation: both dates
-        inclusive, same-day contracts allowed, no overlaps.
-
-        IMPORTANT — what happens depends on when the contract started, because changing a
-        past contract in place would silently recompute funding for months already billed:
-
-        - started BEFORE today: the contract is AMENDED, not edited. The existing row is
-        closed with to = yesterday and a NEW contract is created starting TODAY carrying
-        the changes. Any `from` in the request is IGNORED; `to`, if given, applies to the
-        new contract, so a `to` in the past is rejected (400) as from-after-to.
-        - starts TODAY or later: updated in place.
-        - already ENDED (to before today): rejected with 400.
-
-        So this endpoint records a change going FORWARD. To correct a historical timeline —
-        move a boundary into the past — use the batch endpoint instead.
-
-        Nullable fields (`to`, `properties`) are replaced wholesale: omitting one CLEARS it.
-        Send the full properties map on every update unless you mean to remove them.
-      parameters:
-      - description: Organization ID
-        in: path
-        name: orgId
-        required: true
-        type: integer
-      - description: Child ID
-        in: path
-        name: childId
-        required: true
-        type: integer
-      - description: Contract ID
-        in: path
-        name: contractId
-        required: true
-        type: integer
-      - description: Contract data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractUpdateRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse'
-        "400":
-          description: Invalid request (e.g., from date after to date)
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "404":
-          description: Contract not found
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "409":
-          description: Updated dates would overlap with another contract
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update child contract
-      tags:
-      - children
   /api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId}/amend:
     post:
       consumes:
@@ -7230,76 +7018,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Set or clear a child contract's end date
-      tags:
-      - children
-  /api/v1/organizations/{orgId}/children/{childId}/contracts/batch:
-    put:
-      consumes:
-      - application/json
-      description: |-
-        Atomically update multiple contracts for a child. This is the endpoint for
-        CORRECTING A HISTORICAL TIMELINE: unlike the single-contract PUT there is NO amend
-        mode, so dates and fields are written in place even on contracts that started — or
-        ended — in the past. It backs the timeline boundary drag in the UI.
-
-        Entries are PARTIAL: a field you omit keeps its current value, with one exception —
-        `to` is CLEARED when omitted, because that is how a contract is set back to ongoing.
-        Always send `to` explicitly when you want to keep it, otherwise a contract that has a
-        successor becomes ongoing and collides with it (409). `properties` is carried forward
-        when omitted; send an empty object to clear it deliberately.
-
-        Adjacent ranges may be swapped within one request (extend A's `to`, shift B's `from`):
-        the no-overlap constraint is deferred to commit, so only the final state must be
-        valid. If any entry fails, the whole batch is rolled back.
-      parameters:
-      - description: Organization ID
-        in: path
-        name: orgId
-        required: true
-        type: integer
-      - description: Child ID
-        in: path
-        name: childId
-        required: true
-        type: integer
-      - description: Batch update data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractBatchUpdateRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractResponse'
-            type: array
-        "400":
-          description: Invalid request (e.g., duplicate IDs, invalid dates)
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "404":
-          description: Child or contract not found
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "409":
-          description: Updated dates would overlap
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Batch update child contracts
       tags:
       - children
   /api/v1/organizations/{orgId}/children/{childId}/contracts/boundary:
@@ -8395,82 +8113,6 @@ paths:
       summary: Correct an employee contract
       tags:
       - employees
-    put:
-      consumes:
-      - application/json
-      description: |-
-        Update an existing contract by ID. Date rules as for creation: both dates
-        inclusive, same-day contracts allowed, no overlaps.
-
-        IMPORTANT — what happens depends on when the contract started, because changing a
-        past contract in place would silently recompute funding for months already billed:
-
-        - started BEFORE today: the contract is AMENDED, not edited. The existing row is
-        closed with to = yesterday and a NEW contract is created starting TODAY carrying
-        the changes. Any `from` in the request is IGNORED; `to`, if given, applies to the
-        new contract, so a `to` in the past is rejected (400) as from-after-to.
-        - starts TODAY or later: updated in place.
-        - already ENDED (to before today): rejected with 400.
-
-        So this endpoint records a change going FORWARD. To correct a historical timeline —
-        move a boundary into the past — use the batch endpoint instead.
-
-        Nullable fields (`to`, `properties`) are replaced wholesale: omitting one CLEARS it.
-        Send the full properties map on every update unless you mean to remove them.
-      parameters:
-      - description: Organization ID
-        in: path
-        name: orgId
-        required: true
-        type: integer
-      - description: Employee ID
-        in: path
-        name: employeeId
-        required: true
-        type: integer
-      - description: Contract ID
-        in: path
-        name: contractId
-        required: true
-        type: integer
-      - description: Contract data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractUpdateRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractResponse'
-        "400":
-          description: Invalid request (e.g., from date after to date)
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "404":
-          description: Contract not found
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "409":
-          description: Updated dates would overlap with another contract
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update employee contract
-      tags:
-      - employees
   /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId}/amend:
     post:
       consumes:
@@ -8633,76 +8275,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Set or clear an employee contract's end date
-      tags:
-      - employees
-  /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/batch:
-    put:
-      consumes:
-      - application/json
-      description: |-
-        Atomically update multiple contracts for an employee. This is the endpoint for
-        CORRECTING A HISTORICAL TIMELINE: unlike the single-contract PUT there is NO amend
-        mode, so dates and fields are written in place even on contracts that started — or
-        ended — in the past. It backs the timeline boundary drag in the UI.
-
-        Entries are PARTIAL: a field you omit keeps its current value, with one exception —
-        `to` is CLEARED when omitted, because that is how a contract is set back to ongoing.
-        Always send `to` explicitly when you want to keep it, otherwise a contract that has a
-        successor becomes ongoing and collides with it (409). `properties` is carried forward
-        when omitted; send an empty object to clear it deliberately.
-
-        Adjacent ranges may be swapped within one request (extend A's `to`, shift B's `from`):
-        the no-overlap constraint is deferred to commit, so only the final state must be
-        valid. If any entry fails, the whole batch is rolled back.
-      parameters:
-      - description: Organization ID
-        in: path
-        name: orgId
-        required: true
-        type: integer
-      - description: Employee ID
-        in: path
-        name: employeeId
-        required: true
-        type: integer
-      - description: Batch update data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractBatchUpdateRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractResponse'
-            type: array
-        "400":
-          description: Invalid request (e.g., duplicate IDs, invalid dates)
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "404":
-          description: Employee or contract not found
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "409":
-          description: Updated dates would overlap
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Batch update employee contracts
       tags:
       - employees
   /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/boundary:
