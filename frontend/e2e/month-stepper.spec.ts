@@ -21,19 +21,14 @@ test.use({ locale: 'en-US' });
 // monotonic in year position (last token is always the four-digit
 // year), so we read it back via the same shape that produced it.
 async function getActiveOnDate(page: Page): Promise<Date> {
-  const label = await page
-    .getByRole('button', { name: /\d+\. \w+ \d{4}/ })
-    .first()
-    .innerText();
-  // Format "1. January 2026" → Date parsed via the standard parser.
-  // Date.parse handles "January 1, 2026" natively; we rebuild that
-  // shape from the label tokens to stay independent of locale-
-  // specific Date parsing quirks.
-  const m = label.match(/^(\d+)\.\s+(\w+)\s+(\d{4})$/);
-  if (!m) throw new Error(`unexpected MonthStepper label format: ${label}`);
-  const [, day, month, year] = m;
-  const parsed = new Date(`${month} ${day}, ${year}`);
-  if (isNaN(parsed.getTime())) throw new Error(`could not parse label as Date: ${label}`);
+  // Read the value, not the label. The label is localized and, below `sm`,
+  // deliberately abbreviated so the stepper fits a 412px row — so parsing it
+  // made this test depend on both the locale and the viewport. It broke exactly
+  // that way when the short form landed.
+  const raw = await page.getByTestId('month-stepper-value').first().getAttribute('data-value');
+  if (!raw) throw new Error('MonthStepper exposes no data-value');
+  const parsed = new Date(`${raw}T00:00:00`);
+  if (isNaN(parsed.getTime())) throw new Error(`could not parse data-value as Date: ${raw}`);
   return parsed;
 }
 
@@ -91,10 +86,7 @@ test.describe('MonthStepper year navigation', () => {
 
   test('calendar popover exposes a year dropdown for direct jumps', async ({ page }) => {
     // Open the popover by clicking the date label button.
-    await page
-      .getByRole('button', { name: /\d+\. \w+ \d{4}/ })
-      .first()
-      .click();
+    await page.getByTestId('month-stepper-value').first().click();
 
     // react-day-picker renders the year selector as a native
     // <select> when captionLayout="dropdown" is on. The accessible

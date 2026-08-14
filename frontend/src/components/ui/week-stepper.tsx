@@ -45,7 +45,14 @@ export function WeekStepper({ value, onChange }: WeekStepperProps) {
 
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant="outline" className="text-sm font-medium md:min-w-[260px]">
+          <Button
+            variant="outline"
+            // See month-stepper: the label is localized and abbreviated on
+            // small screens, so the machine-readable value lives here.
+            data-testid="week-stepper-value"
+            data-value={format(monday, 'yyyy-MM-dd')}
+            className="text-sm font-medium md:min-w-[260px]"
+          >
             {/* Two renderings, toggled by CSS rather than a media-query hook, so
               there is no hydration mismatch and no layout shift after mount.
               The long form is what a desktop user reads; the short one exists
