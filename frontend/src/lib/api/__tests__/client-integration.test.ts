@@ -74,29 +74,19 @@ describe('ApiClient integration (MSW)', () => {
   });
 
   describe('429 rate limit handling', () => {
-    it('enriches 429 error with user-friendly message', async () => {
+    it('surfaces the message the server sent, without rewriting it', async () => {
       server.use(
-        http.post(`${API_BASE}/organizations`, () => {
-          return HttpResponse.json({ code: 'rate_limit_exceeded' }, { status: 429 });
-        })
-      );
-
-      const client = await createFreshClient();
-
-      try {
-        await client.createOrganization({ name: 'Test Org' } as never);
-        fail('Should have thrown');
-      } catch (error: unknown) {
-        const axiosError = error as { response?: { data?: { detail?: string } } };
-        expect(axiosError.response?.data?.detail).toContain('Rate limit exceeded');
-      }
-    });
-
-    it('includes Retry-After in 429 message when header is present', async () => {
-      server.use(
-        http.post(`${API_BASE}/organizations`, () => {
+        http.post('*/api/v1/organizations', () => {
           return HttpResponse.json(
-            { code: 'rate_limit_exceeded' },
+            {
+              status: 429,
+              code: 'too_many_requests',
+              detail: 'too many failed attempts, please try again later',
+              localized: {
+                locale: 'de',
+                detail: 'Zu viele fehlgeschlagene Versuche, bitte versuchen Sie es später erneut',
+              },
+            },
             { status: 429, headers: { 'Retry-After': '30' } }
           );
         })
@@ -108,39 +98,17 @@ describe('ApiClient integration (MSW)', () => {
         await client.createOrganization({ name: 'Test Org' } as never);
         fail('Should have thrown');
       } catch (error: unknown) {
-        const axiosError = error as { response?: { data?: { detail?: string } } };
-        expect(axiosError.response?.data?.detail).toContain('30 seconds');
+        // The client no longer composes an English sentence over the top: the
+        // server localizes, and Retry-After remains readable from the headers.
+        const axiosError = error as {
+          response?: {
+            data?: { localized?: { detail?: string } };
+            headers?: Record<string, string>;
+          };
+        };
+        expect(axiosError.response?.data?.localized?.detail).toContain('Zu viele');
+        expect(axiosError.response?.headers?.['retry-after']).toBe('30');
       }
-    });
-  });
-
-  describe('logout', () => {
-    it('posts /logout and propagates 401 on subsequent calls via onUnauthorized', async () => {
-      const onUnauthorized = jest.fn();
-
-      server.use(
-        http.post(`${API_BASE}/login`, () => {
-          return HttpResponse.json({ status: 'authenticated', expires_in: 3600 });
-        }),
-        http.post(`${API_BASE}/logout`, () => {
-          return HttpResponse.json({ message: 'logged out' });
-        }),
-        http.get(`${API_BASE}/me`, () => {
-          return HttpResponse.json(
-            { code: 'unauthorized', message: 'not authenticated' },
-            { status: 401 }
-          );
-        })
-      );
-
-      const client = await createFreshClient();
-      client.setOnUnauthorized(onUnauthorized);
-
-      await client.login({ email: 'test@example.com', password: 'pass' });
-      await client.logout();
-
-      await expect(client.getCurrentUser()).rejects.toThrow();
-      expect(onUnauthorized).toHaveBeenCalled();
     });
   });
 

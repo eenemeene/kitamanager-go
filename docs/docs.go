@@ -13059,6 +13059,14 @@ const docTemplate = `{
                         "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.InvalidParam"
                     }
                 },
+                "localized": {
+                    "description": "Localized carries the user-facing rendering when the client negotiated a\nlanguage the catalogue covers. The members above stay English, always:\nthey are what a log, a captured response or an integrator's console shows,\nand losing the English is how a support ticket becomes unreadable to\nwhoever is handling it. This follows Google's AIP-193, where the\ndeveloper-facing message and the localized one travel together.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.LocalizedMessage"
+                        }
+                    ]
+                },
                 "params": {
                     "description": "Params carries the specifics of this occurrence as key/value data, so a\nclient that renders in another language can interpolate them into its own\nmessage instead of parsing them back out of Detail.",
                     "type": "object",
@@ -14529,6 +14537,11 @@ const docTemplate = `{
                     "type": "string",
                     "example": "weekly_hours"
                 },
+                "localized_reason": {
+                    "description": "LocalizedReason is Reason in the negotiated language, present on the same\nterms as Localized above. It sits beside Reason rather than in a parallel\narray inside Localized: a form iterating these needs both strings for the\nsame field together, and matching two arrays by index is a bug waiting to\nhappen.",
+                    "type": "string",
+                    "example": "ist erforderlich"
+                },
                 "param": {
                     "type": "string",
                     "example": "8"
@@ -14540,6 +14553,24 @@ const docTemplate = `{
                 "rule": {
                     "type": "string",
                     "example": "required"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.LocalizedMessage": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Kind 7 wurde in dieser Organisation nicht gefunden"
+                },
+                "locale": {
+                    "description": "Locale is the language actually served, which is not always the one\nrequested — an unsupported language is answered in English.",
+                    "type": "string",
+                    "example": "de"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Ressource nicht gefunden"
                 }
             }
         },

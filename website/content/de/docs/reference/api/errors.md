@@ -38,21 +38,48 @@ zusätzlich zur Übersetzung an — nicht stattdessen.
 
 ## Sprache
 
-Die API ist englisch. `code`, `type`, Feldnamen und sämtliche Log-Ausgaben
-bleiben englisch, unabhängig davon, was ein Client anfragt — und englisch ist
-auch die Voreinstellung.
+Die API ist englisch, und die oberste Ebene eines Problem-Dokuments ist es
+immer: `code`, `type`, `title`, `detail`, Feldnamen und sämtliche Log-Ausgaben.
+Das ist bewusst so — eine aufgezeichnete Fehlerantwort bleibt für diejenigen
+lesbar, die den Support-Fall bearbeiten, unabhängig davon, in welcher Sprache
+die Nutzerin oder der Nutzer gearbeitet hat.
 
-Über `Accept-Language` lassen sich die Fließtext-Felder aushandeln: Mit `de`
-kommt `title` auf Deutsch zurück. Die Antwort nennt in `Content-Language`, was
-tatsächlich ausgeliefert wurde, und enthält `Vary: Accept-Language`, damit
-zwischengeschaltete Caches korrekt unterscheiden. Qualitätswerte und regionale
-Subtags werden berücksichtigt — `de-AT;q=0.9, en;q=0.8` wählt Deutsch —, und ein
-nicht unterstützter oder fehlerhafter Wert führt zu Englisch statt zu einem
-Fehler.
+Mit `Accept-Language: de` enthält das Dokument zusätzlich ein Feld `localized`
+mit Titel und Detail auf Deutsch. Alles darüber bleibt unverändert.
 
-`detail` ist derzeit in jeder Sprache englisch: Es wird an der Stelle
-zusammengesetzt, an der der Fehler entsteht, und diese Stellen sind noch nicht
-umgestellt. Ein lokalisierter Client sollte vorerst weiterhin `code` übersetzen.
+```json
+{
+  "type": "https://eenemeene.github.io/kitamanager-go/en/docs/reference/api/errors/#not_found",
+  "title": "Resource not found",
+  "status": 404,
+  "detail": "child 7 not found in this organization",
+  "code": "not_found",
+  "request_id": "0e03dc7d-9baa-4a23-a8ba-bc54ad5b30b9",
+  "localized": {
+    "locale": "de",
+    "title": "Ressource nicht gefunden",
+    "detail": "Kind 7 wurde in dieser Organisation nicht gefunden"
+  }
+}
+```
+
+Die Regel für einen Client: **auf `code` verzweigen, `localized.detail` anzeigen
+wenn vorhanden, sonst `detail`, und `detail` protokollieren.**
+
+Bei einer englischen Anfrage entfällt `localized` vollständig — die oberste
+Ebene ist dann bereits die gewünschte Sprache. `locale` nennt die tatsächlich
+ausgelieferte Sprache, die nicht immer der angefragten entspricht: eine nicht
+unterstützte Sprache wird auf Englisch beantwortet. Qualitätswerte und regionale
+Subtags werden berücksichtigt, `de-AT;q=0.9, en;q=0.8` wählt also Deutsch.
+
+Da der Body damit zwei Sprachen enthält, nennt `Content-Language` beide
+(`en, de`) statt nur der ausgehandelten. `Vary: Accept-Language` wird immer
+gesetzt, damit zwischengeschaltete Caches korrekt unterscheiden.
+
+Alle nutzerseitigen Meldungen sind übersetzt, und ein Test lässt den Build
+fehlschlagen, sobald eine Meldung ohne Übersetzung hinzukommt oder umformuliert
+wird — ein fehlendes `localized` bedeutet also, dass Englisch angefragt wurde,
+nicht dass eine Übersetzung vergessen wurde.
 
 ## Welches Feld wofür
 
@@ -65,6 +92,7 @@ umgestellt. Ein lokalisierter Client sollte vorerst weiterhin `code` übersetzen
 | `instance` | Der angefragte Pfad. |
 | `request_id` | Bei einer Fehlermeldung bitte mit angeben; sie entspricht der Zeile im Server-Log. |
 | `invalid_params` | Bei Validierungsfehlern: ein Eintrag je abgelehntem Feld. |
+| `localized` | Titel und Detail in der ausgehandelten Sprache. Entfällt bei Englisch. |
 | `params` | Die konkreten Werte als Schlüssel/Wert-Daten, sofern der Endpunkt sie liefert. |
 
 ## Validierungsfehler
@@ -81,8 +109,10 @@ Feldern auszugeben.
   "detail": "email must be a valid email address; weekly_hours is required",
   "code": "validation_error",
   "invalid_params": [
-    { "field": "email", "reason": "must be a valid email address", "rule": "email" },
-    { "field": "weekly_hours", "reason": "is required", "rule": "required" }
+    { "field": "email", "reason": "must be a valid email address", "rule": "email",
+      "localized_reason": "muss eine gültige E-Mail-Adresse sein" },
+    { "field": "weekly_hours", "reason": "is required", "rule": "required",
+      "localized_reason": "ist erforderlich" }
   ]
 }
 ```

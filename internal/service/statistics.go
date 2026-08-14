@@ -420,13 +420,13 @@ func (s *StatisticsService) EstimateEmployeeCost(ctx context.Context, orgID uint
 
 	period := findPayPlanPeriodForDate(payPlan.Periods, date)
 	if period == nil {
-		return nil, apperror.NotFound("no active pay plan period for the given date")
+		return nil, apperror.NotFound("active pay plan period for the given date")
 	}
 
 	entryIdx := buildEntryIndex(period.Entries)
 	entry := entryIdx[gradeStepKey{req.Grade, req.Step}]
 	if entry == nil {
-		return nil, apperror.NotFound("no pay plan entry for grade %s step %d", req.Grade, req.Step)
+		return nil, apperror.NotFound("pay plan entry for grade %s step %d", req.Grade, req.Step)
 	}
 
 	gross, contrib := employeeMonthlyCost(entry.MonthlyAmount, req.WeeklyHours, period.WeeklyHours, period.EmployerContributionRate)

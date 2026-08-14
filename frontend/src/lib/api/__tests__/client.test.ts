@@ -51,100 +51,6 @@ describe('getErrorMessage', () => {
     expect(getErrorMessage(error, 'Fallback message')).toBe('Invalid credentials');
   });
 
-  it('translates by code for a German reader rather than showing the English detail', () => {
-    document.cookie = 'locale=de';
-    const error = {
-      response: {
-        data: {
-          status: 409,
-          detail: 'contract periods overlap between 2026-01-01 and 2026-03-31',
-          code: 'contract_overlap',
-        },
-      },
-    };
-
-    // The point of the whole migration: a German user gets German, and gets it
-    // from the code rather than from the server guessing a language.
-    expect(getErrorMessage(error, 'Fallback message')).toContain('Vertragszeiträume');
-    document.cookie = 'locale=en';
-  });
-
-  it('never tells a German reader less than an English one', () => {
-    document.cookie = 'locale=de';
-    const error = {
-      response: {
-        data: {
-          status: 400,
-          code: 'bad_request',
-          // The specifics of a bulk import live only here. A generic German
-          // sentence would drop the row and the field, which is the regression
-          // this test exists to prevent.
-          detail: 'add_children[3].contracts[1]: from is required',
-        },
-      },
-    };
-
-    const message = getErrorMessage(error, 'Fallback message');
-    expect(message).toContain('add_children[3].contracts[1]');
-    document.cookie = 'locale=en';
-  });
-
-  it('does not append the English detail when the translation already says it all', () => {
-    document.cookie = 'locale=de';
-    const error = {
-      response: {
-        data: {
-          status: 409,
-          code: 'contract_overlap',
-          // The server's detail for this code is a bare sentinel with nothing
-          // in it, so showing it too would be noise, not information.
-          detail: 'period would overlap with existing record',
-        },
-      },
-    };
-
-    const message = getErrorMessage(error, 'Fallback message');
-    expect(message).toContain('Vertragszeiträume');
-    expect(message).not.toContain('period would overlap');
-    document.cookie = 'locale=en';
-  });
-
-  it('renders rejected fields in German, as specifically as the English detail', () => {
-    document.cookie = 'locale=de';
-    const error = {
-      response: {
-        data: {
-          status: 400,
-          code: 'validation_error',
-          detail: 'email must be a valid email address; name must be at least 2 characters',
-          invalid_params: [
-            { field: 'email', reason: 'must be a valid email address', rule: 'email' },
-            { field: 'name', reason: 'must be at least 2 characters', rule: 'min', param: '2' },
-          ],
-        },
-      },
-    };
-
-    const message = getErrorMessage(error, 'Fallback message');
-    // Same two fields as the English sentence, in German, with the bound.
-    expect(message).toBe(
-      'email muss eine gültige E-Mail-Adresse sein; name muss mindestens 2 Zeichen lang sein'
-    );
-    document.cookie = 'locale=en';
-  });
-
-  it('keeps the Retry-After seconds in German', () => {
-    document.cookie = 'locale=de';
-    const error = {
-      response: {
-        data: { status: 429, code: 'too_many_requests', params: { seconds: '30' } },
-      },
-    };
-
-    expect(getErrorMessage(error, 'Fallback message')).toContain('30 Sekunden');
-    document.cookie = 'locale=en';
-  });
-
   it('falls back to the English detail for a code with no translation', () => {
     document.cookie = 'locale=de';
     const error = {
@@ -183,6 +89,71 @@ describe('getErrorMessage', () => {
     };
 
     expect(getRequestId(error)).toBe('0e03dc7d-9baa');
+  });
+
+  it('shows the localized detail the server sent, for a German reader', () => {
+    const error = {
+      response: {
+        data: {
+          status: 404,
+          code: 'not_found',
+          // English stays on top for logs and captured responses.
+          detail: 'child 7 not found in this organization',
+          localized: {
+            locale: 'de',
+            title: 'Ressource nicht gefunden',
+            detail: 'Kind 7 wurde in dieser Organisation nicht gefunden',
+          },
+        },
+      },
+    };
+
+    // The specifics survive translation — the 7 is still there. That is what
+    // the server-side catalogue buys over a per-code lookup in the client.
+    expect(getErrorMessage(error, 'Fallback message')).toBe(
+      'Kind 7 wurde in dieser Organisation nicht gefunden'
+    );
+  });
+
+  it('falls back to the English detail when the server sent no localized block', () => {
+    // What an English reader gets: the server omits `localized` entirely rather
+    // than echoing English into it.
+    const error = {
+      response: {
+        data: { status: 404, code: 'not_found', detail: 'child 7 not found in this organization' },
+      },
+    };
+
+    expect(getErrorMessage(error, 'Fallback message')).toBe(
+      'child 7 not found in this organization'
+    );
+  });
+
+  it('exposes the localized reason per rejected field', () => {
+    const error = {
+      response: {
+        data: {
+          status: 400,
+          code: 'validation_error',
+          invalid_params: [
+            {
+              field: 'email',
+              rule: 'email',
+              reason: 'must be a valid email address',
+              localized_reason: 'muss eine gültige E-Mail-Adresse sein',
+            },
+          ],
+        },
+      },
+    };
+
+    // Both strings travel with the field, so a form can mark the input and show
+    // the reader's language without matching two arrays by index.
+    expect(getInvalidParams(error)[0]).toMatchObject({
+      field: 'email',
+      reason: 'must be a valid email address',
+      localized_reason: 'muss eine gültige E-Mail-Adresse sein',
+    });
   });
 
   it('returns fallback for error without response', () => {

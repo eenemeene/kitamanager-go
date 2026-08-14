@@ -149,6 +149,13 @@ func localizerFor(c *gin.Context) *goi18n.Localizer {
 	return goi18n.NewLocalizer(bundle, language.English.String())
 }
 
+// titleID returns the catalogue ID for an error code's title. Derived rather
+// than tabulated: the code is already a stable slug, so a new code gets a
+// predictable ID and there is no second list to forget to update.
+func titleID(code string) string {
+	return "error.title." + code
+}
+
 // Title returns the localized title for an error code, or "" when the catalogue
 // has no entry — the caller then decides what to fall back to.
 func Title(c *gin.Context, code string) string {
@@ -226,6 +233,41 @@ func localizeValue(p *message.Printer, v any) any {
 	default:
 		return fmt.Sprint(v)
 	}
+}
+
+// ruleIDs maps a validator tag to its catalogue entry. Validation reasons are
+// not registry messages: they are assembled from a rule and a field rather than
+// written as a sentence at a call site, so they are keyed directly.
+var ruleIDs = map[string]string{
+	"required": "validation.rule.required",
+	"email":    "validation.rule.email",
+	"min":      "validation.rule.min",
+	"max":      "validation.rule.max",
+	"voucher":  "validation.rule.voucher",
+	"":         "validation.rule.invalid",
+}
+
+// Rule renders the reason a field was rejected, in the request's language.
+//
+// Returns "" when the request is English or the rule is unknown, so the caller
+// keeps the English reason it already built. param carries the rule's argument
+// where it takes one — the bound in "at least 8 characters".
+func Rule(c *gin.Context, rule, param string) string {
+	if LanguageFor(c) == language.English {
+		return ""
+	}
+	id, ok := ruleIDs[rule]
+	if !ok {
+		id = ruleIDs[""]
+	}
+	out, err := localizerFor(c).Localize(&goi18n.LocalizeConfig{
+		MessageID:    id,
+		TemplateData: map[string]any{"Param": param},
+	})
+	if err != nil {
+		return ""
+	}
+	return out
 }
 
 // Registered reports whether an English message has a catalogue entry. Used by

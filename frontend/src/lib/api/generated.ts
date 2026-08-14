@@ -3475,6 +3475,15 @@ export interface components {
        */
       invalid_params: components['schemas']['InvalidParam'][];
       /**
+       * @description Localized carries the user-facing rendering when the client negotiated a
+       *     language the catalogue covers. The members above stay English, always:
+       *     they are what a log, a captured response or an integrator's console shows,
+       *     and losing the English is how a support ticket becomes unreadable to
+       *     whoever is handling it. This follows Google's AIP-193, where the
+       *     developer-facing message and the localized one travel together.
+       */
+      localized: components['schemas']['LocalizedMessage'];
+      /**
        * @description Params carries the specifics of this occurrence as key/value data, so a
        *     client that renders in another language can interpolate them into its own
        *     message instead of parsing them back out of Detail.
@@ -4236,12 +4245,33 @@ export interface components {
     InvalidParam: {
       /** @example weekly_hours */
       field: string;
+      /**
+       * @description LocalizedReason is Reason in the negotiated language, present on the same
+       *     terms as Localized above. It sits beside Reason rather than in a parallel
+       *     array inside Localized: a form iterating these needs both strings for the
+       *     same field together, and matching two arrays by index is a bug waiting to
+       *     happen.
+       * @example ist erforderlich
+       */
+      localized_reason: string;
       /** @example 8 */
       param: string;
       /** @example is required */
       reason: string;
       /** @example required */
       rule: string;
+    };
+    LocalizedMessage: {
+      /** @example Kind 7 wurde in dieser Organisation nicht gefunden */
+      detail: string;
+      /**
+       * @description Locale is the language actually served, which is not always the one
+       *     requested — an unsupported language is answered in English.
+       * @example de
+       */
+      locale: string;
+      /** @example Ressource nicht gefunden */
+      title: string;
     };
     LoginFactorDescriptor: {
       /**

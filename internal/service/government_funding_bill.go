@@ -888,7 +888,7 @@ func (s *GovernmentFundingBillService) CompareByDate(ctx context.Context, orgID 
 	period, err := s.billPeriodStore.FindByOrgAndMonth(ctx, orgID, date)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
-			return nil, apperror.NotFound("no bill found for the specified date")
+			return nil, apperror.NotFound("bill for the specified date")
 		}
 		return nil, apperror.InternalWrap(err, "failed to find bill by date")
 	}
@@ -900,7 +900,7 @@ func (s *GovernmentFundingBillService) CompareLatest(ctx context.Context, orgID 
 	period, err := s.billPeriodStore.FindLatestByOrganization(ctx, orgID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
-			return nil, apperror.NotFound("no bills found for this organization")
+			return nil, apperror.NotFound("bills for this organization")
 		}
 		return nil, apperror.InternalWrap(err, "failed to find latest bill")
 	}

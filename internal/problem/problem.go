@@ -20,6 +20,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"golang.org/x/text/language"
+
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/i18n"
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -78,12 +80,12 @@ var titles = map[string]string{
 // gets the German title and one that did not gets the English string back
 // unchanged. RFC 9457 asks for exactly this: a title is the same for every
 // occurrence of a type "except for purposes of localization".
-func Title(c *gin.Context, code string) string {
-	if t := i18n.Title(c, code); t != "" {
-		return t
-	}
-	// No catalogue entry: fall back to the English map, then to the code itself,
-	// so an unregistered code still produces a valid document.
+// Title returns the English title for a code, falling back to the code itself so
+// an unregistered code still produces a valid document.
+//
+// English, deliberately: the top level of a problem document is the developer's
+// view. The reader's language lives under "localized".
+func Title(code string) string {
 	if t, ok := titles[code]; ok {
 		return t
 	}
@@ -108,7 +110,7 @@ func TypeURI(code string) string {
 func New(c *gin.Context, status int, code, detail string) models.ErrorResponse {
 	p := models.ErrorResponse{
 		Type:   TypeURI(code),
-		Title:  Title(c, code),
+		Title:  Title(code),
 		Status: status,
 		Detail: detail,
 		Code:   code,
@@ -121,7 +123,34 @@ func New(c *gin.Context, status int, code, detail string) models.ErrorResponse {
 			p.RequestID = id
 		}
 	}
+	p.Localized = localizedFor(c, code, detail, nil)
 	return p
+}
+
+// localizedFor builds the user-facing view of a problem, or nil when there is
+// nothing to add.
+//
+// Nothing to add means one of two things: the client is reading English, so the
+// top level already is its language; or the catalogue has neither a title nor a
+// message for this error, so a localized block would only repeat what is above
+// it. Both produce an absent member rather than an empty object.
+func localizedFor(c *gin.Context, code, messageID string, args []any) *models.LocalizedMessage {
+	tag := i18n.LanguageFor(c)
+	if tag == language.English {
+		return nil
+	}
+
+	out := &models.LocalizedMessage{Locale: tag.String()}
+	out.Title = i18n.Title(c, code)
+	if messageID != "" {
+		if detail, ok := i18n.Localize(c, messageID, args...); ok {
+			out.Detail = detail
+		}
+	}
+	if out.Title == "" && out.Detail == "" {
+		return nil
+	}
+	return out
 }
 
 // Write sends a problem document and aborts the handler chain.
@@ -138,6 +167,12 @@ func Write(c *gin.Context, status int, code, detail string) {
 func WriteProblem(c *gin.Context, p models.ErrorResponse) {
 	c.Abort()
 	c.Header("Content-Type", ContentType)
+	if p.Localized != nil {
+		// The body now genuinely contains two languages, and Content-Language
+		// names the intended audience — so listing only the negotiated one would
+		// misdescribe it. RFC 9110 allows the list for exactly this case.
+		c.Header("Content-Language", "en, "+p.Localized.Locale)
+	}
 	c.JSON(p.Status, p)
 }
 
@@ -156,20 +191,11 @@ func WriteError(c *gin.Context, err error) {
 		params = appErr.GetParams()
 	}
 
-	// Re-render the message in the request's language. This is the whole reason
-	// AppError keeps the format string and its arguments apart: err.Error() is
-	// the English rendering and stays that way for the log below, while the same
-	// pieces produce a German sentence here when the client asked for one.
-	//
-	// A message with no translation renders as its English self, so this is safe
-	// while the catalogue is incomplete — which it is: the translations land
-	// separately from this plumbing.
+	// Detail is the English rendering, always. AppError keeps the format string
+	// and its arguments apart so the localized view can be built from the same
+	// pieces without replacing this one — a captured response stays readable by
+	// whoever handles the support ticket, whatever language the user was in.
 	detail := err.Error()
-	if appErr != nil && appErr.MessageID != "" {
-		if localized, ok := i18n.Localize(c, appErr.MessageID, appErr.Args...); ok {
-			detail = localized
-		}
-	}
 	if status >= http.StatusInternalServerError {
 		slog.Error("Internal error",
 			"error", err,
@@ -183,8 +209,11 @@ func WriteError(c *gin.Context, err error) {
 	doc := New(c, status, code, detail)
 	// Params are dropped on a 5xx along with the detail: they describe an
 	// internal failure, and the same argument applies to both.
-	if status < http.StatusInternalServerError {
+	if status < http.StatusInternalServerError && appErr != nil {
 		doc.Params = params
+		// Re-derive the localized view from the format and its arguments rather
+		// than from the rendered English, which New could only look up verbatim.
+		doc.Localized = localizedFor(c, code, appErr.MessageID, appErr.Args)
 	}
 	WriteProblem(c, doc)
 }

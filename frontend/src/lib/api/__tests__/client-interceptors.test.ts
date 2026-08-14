@@ -282,34 +282,29 @@ describe('ApiClient interceptors', () => {
     });
   });
 
-  describe('response interceptor — 429 enrichment', () => {
-    it('enriches the error data with a "Rate limit exceeded" message including Retry-After seconds', async () => {
-      // 429s without a message produce an opaque "Network error" toast.
-      // The interceptor injects a usable message so the user knows
-      // when to retry.
-      const err = makeError(429, '/api/v1/login', 'post', {});
+  describe('response interceptor — 429 handling', () => {
+    it('leaves the server\u2019s message alone', async () => {
+      // The interceptor used to synthesise "Rate limit exceeded. Please try
+      // again in N seconds." because the body carried nothing usable. The
+      // server now sends a localized message, and overwriting it would put
+      // English back in front of a German reader. Retry-After stays on the
+      // response for any caller that wants a countdown.
+      const err = makeError(429, '/api/v1/login', 'post', {
+        code: 'too_many_requests',
+        detail: 'too many failed login attempts, please try again later',
+        localized: {
+          locale: 'de',
+          detail: 'Zu viele fehlgeschlagene Anmeldeversuche, bitte versuchen Sie es später erneut',
+        },
+      });
       err.response!.headers = { 'retry-after': '30' };
-      await expect(captured.responseError!(err)).rejects.toBe(err);
-      const data = err.response!.data as { detail?: string };
-      expect(data.detail).toMatch(/30 seconds/);
-    });
 
-    it('falls back to a generic message when Retry-After is missing', async () => {
-      const err = makeError(429, '/api/v1/login', 'post', {});
-      // no retry-after header
       await expect(captured.responseError!(err)).rejects.toBe(err);
-      const data = err.response!.data as { detail?: string };
-      expect(data.detail).toBe('Rate limit exceeded. Please try again later.');
-    });
 
-    it('does NOT overwrite a backend-provided detail', async () => {
-      // If the backend went to the trouble of supplying a specific
-      // 429 message, we must not clobber it. (E.g. account lockout
-      // could surface "Locked for 5 minutes" from the backend.)
-      const err = makeError(429, '/api/v1/login', 'post', { detail: 'Account locked' });
-      await expect(captured.responseError!(err)).rejects.toBe(err);
-      const data = err.response!.data as { detail?: string };
-      expect(data.detail).toBe('Account locked');
+      const data = err.response!.data as { detail?: string; localized?: { detail?: string } };
+      expect(data.detail).toBe('too many failed login attempts, please try again later');
+      expect(data.localized?.detail).toContain('Anmeldeversuche');
+      expect(err.response!.headers['retry-after']).toBe('30');
     });
 
     it('does not fire the unauthorized callback on 429', async () => {

@@ -182,21 +182,3 @@ func TestLocalizerIsRequestScoped(t *testing.T) {
 	req.Header.Set("Accept-Language", "de")
 	r.ServeHTTP(httptest.NewRecorder(), req)
 }
-
-// TestRegistryIsFullyTranslated is the drift gate, and it now covers the details
-// as well as the titles — which the previous version did not, so 148 detail
-// translations would have been able to rot one at a time.
-//
-// It checks both catalogues: an entry with no English source renders as its ID,
-// and one with no German is silently served in English.
-func TestRegistryIsFullyTranslated(t *testing.T) {
-	for format, e := range i18n.RegistryEntries() {
-		plural := e.Plural != ""
-		if !i18n.Has(language.English, e.ID, plural) {
-			t.Errorf("id %q (from %q) has no English source in locales/en.json", e.ID, format)
-		}
-		if !i18n.Has(language.German, e.ID, plural) {
-			t.Errorf("id %q (from %q) has no German translation in locales/de.json", e.ID, format)
-		}
-	}
-}

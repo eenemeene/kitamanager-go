@@ -20,6 +20,7 @@ import (
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/ctxkeys"
+	"github.com/eenemeene/kitamanager-go/internal/i18n"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/problem"
 	"github.com/eenemeene/kitamanager-go/internal/service"
@@ -327,7 +328,7 @@ func sanitizeJSONDecodeError(err error) string {
 // sanitizeBindError converts validator errors into user-friendly messages
 // without exposing Go struct field names or internal validation tags.
 func sanitizeBindError(err error) string {
-	params := invalidParams(err)
+	params := invalidParams(nil, err)
 	if len(params) == 0 {
 		// For non-validation errors (e.g. malformed JSON), return a generic message
 		return "invalid request body"
@@ -345,7 +346,7 @@ func sanitizeBindError(err error) string {
 // It returns nil for anything that is not a validation error, which is what
 // makes it safe to call unconditionally — a malformed body has no fields to
 // report, only a message.
-func invalidParams(err error) []models.InvalidParam {
+func invalidParams(c *gin.Context, err error) []models.InvalidParam {
 	var ve validator.ValidationErrors
 	if !errors.As(err, &ve) {
 		return nil
@@ -376,10 +377,11 @@ func invalidParams(err error) []models.InvalidParam {
 			reason = "is invalid"
 		}
 		params = append(params, models.InvalidParam{
-			Field:  field,
-			Reason: reason,
-			Rule:   fe.Tag(),
-			Param:  fe.Param(),
+			Field:           field,
+			Reason:          reason,
+			Rule:            fe.Tag(),
+			Param:           fe.Param(),
+			LocalizedReason: i18n.Rule(c, fe.Tag(), fe.Param()),
 		})
 	}
 	return params
@@ -553,7 +555,7 @@ func respondError(c *gin.Context, err error) {
 // line above all of them.
 func respondValidationError(c *gin.Context, err error) {
 	doc := problem.New(c, http.StatusBadRequest, apperror.CodeValidation, sanitizeBindError(err))
-	doc.InvalidParams = invalidParams(err)
+	doc.InvalidParams = invalidParams(c, err)
 	problem.WriteProblem(c, doc)
 }
 
