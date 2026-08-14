@@ -118,7 +118,24 @@ Feldern auszugeben.
 ```
 
 `field` ist der JSON-Pfad im Request-Body; verschachtelte Felder erscheinen also
-als `properties.0.name`. `rule` ist die Validator-Regel, an der das Feld
+als `properties.0.name`, ein Bulk-Import als
+`add_children[3].contracts[1].from`.
+
+Der Pfad ist nie Teil des Satzes. Das war früher anders — ein Bulk-Import
+antwortete mit `add_children[3].contracts[1]: from is required` —, was Clients
+zwang, Fließtext zu zerlegen, um das betroffene Feld zu ermitteln, und die
+deutsche Fassung halb deutsch und halb JSON-Pfad machte. Alle einschlägigen
+Spezifikationen trennen beides, und hier ist es genauso: das Feld über `field`
+lokalisieren, den Grund aus `reason` oder `localized_reason` anzeigen — oder
+beides ignorieren und aus `rule` eigenen Text erzeugen.
+
+`rule` stammt aus einem kleinen Vokabular, damit der Grund in jeder Sprache
+formuliert werden kann: `required`, `non_empty`, `min` (Zeichenlänge),
+`min_value` (numerisch), `max`, `positive`, `mismatch`, `email`, `voucher`.
+
+Es können mehrere Felder gleichzeitig fehlerhaft sein, und alle werden gemeldet:
+Der Binding-Validator gibt jedes fehlerhafte Feld zurück, nicht nur das erste,
+und ein Bulk-Import meldet jede fehlerhafte Zeile. `rule` ist die Validator-Regel, an der das Feld
 gescheitert ist — `required`, `email`, `min`, `max`, `voucher` —, und `param`
 deren Argument, sofern die Regel eines hat. So kann ein Client den Satz selbst
 formulieren, statt `reason` anzuzeigen.

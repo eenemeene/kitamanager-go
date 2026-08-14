@@ -17,6 +17,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -204,6 +205,40 @@ func WriteError(c *gin.Context, err error) {
 			"request_id", c.GetString(requestIDKey),
 		)
 		detail = "An unexpected error occurred. Quote the request_id when reporting this."
+	}
+
+	// Field violations compose their own message, so both languages are built
+	// from the same data rather than one being a translation of the other.
+	if appErr != nil && len(appErr.Fields) > 0 {
+		doc := New(c, status, code, detail)
+		doc.InvalidParams = make([]models.InvalidParam, 0, len(appErr.Fields))
+		localizedParts := make([]string, 0, len(appErr.Fields))
+		for _, f := range appErr.Fields {
+			reason := apperror.EnglishReason(f.Rule, f.Param)
+			localizedReason := i18n.Rule(c, f.Rule, f.Param)
+			doc.InvalidParams = append(doc.InvalidParams, models.InvalidParam{
+				Field:           f.Field,
+				Reason:          reason,
+				Rule:            f.Rule,
+				Param:           f.Param,
+				LocalizedReason: localizedReason,
+			})
+			if localizedReason != "" {
+				localizedParts = append(localizedParts, f.Field+" "+localizedReason)
+			}
+		}
+		if len(localizedParts) > 0 {
+			// The path stays in the prose as a locator, because a client that
+			// does not yet render field errors would otherwise be told only that
+			// something is invalid. The structured form above is what a client
+			// should actually use.
+			if doc.Localized == nil {
+				doc.Localized = &models.LocalizedMessage{Locale: i18n.LanguageFor(c).String()}
+			}
+			doc.Localized.Detail = strings.Join(localizedParts, "; ")
+		}
+		WriteProblem(c, doc)
+		return
 	}
 
 	doc := New(c, status, code, detail)

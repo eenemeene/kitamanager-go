@@ -262,3 +262,153 @@ func TestFiveHundredCarriesNoLocalizedDetail(t *testing.T) {
 		t.Errorf("500 body leaked the underlying error: %s", rec.Body.String())
 	}
 }
+
+// TestFieldViolationsAreStructured pins the shape that replaced a formatted
+// sentence with the field path glued onto the front.
+//
+// The path is data now, so a client can mark the offending input without parsing
+// prose, and the reason renders in either language from the same rule.
+func TestFieldViolationsAreStructured(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(i18n.Middleware())
+	r.GET("/x", func(c *gin.Context) {
+		problem.WriteError(c, apperror.RequiredField("add_children[%d].contracts[%d].from", 3, 1))
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/x", nil)
+	req.Header.Set("Accept-Language", "de")
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	var got models.ErrorResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("body is not JSON: %v", err)
+	}
+
+	if got.Code != apperror.CodeValidation {
+		t.Errorf("code = %q, want %q", got.Code, apperror.CodeValidation)
+	}
+	if len(got.InvalidParams) != 1 {
+		t.Fatalf("invalid_params = %+v, want one entry", got.InvalidParams)
+	}
+	p := got.InvalidParams[0]
+	if p.Field != "add_children[3].contracts[1].from" {
+		t.Errorf("field = %q, want the JSON path", p.Field)
+	}
+	if p.Rule != "required" {
+		t.Errorf("rule = %q, want %q", p.Rule, "required")
+	}
+	if p.Reason != "is required" {
+		t.Errorf("reason = %q, want the English fragment", p.Reason)
+	}
+	if p.LocalizedReason != "ist erforderlich" {
+		t.Errorf("localized_reason = %q, want the German fragment", p.LocalizedReason)
+	}
+	// Both prose forms are composed from the same violation, so neither is a
+	// translation of the other and neither can drift.
+	if got.Detail != "add_children[3].contracts[1].from is required" {
+		t.Errorf("detail = %q", got.Detail)
+	}
+	if got.Localized == nil || got.Localized.Detail != "add_children[3].contracts[1].from ist erforderlich" {
+		t.Errorf("localized = %+v", got.Localized)
+	}
+}
+
+// TestFieldViolationRulesRenderInBothLanguages covers the small vocabulary the
+// bulk-import checks need, which is what let their 27 hand-written messages go.
+//
+// Both languages are asserted from the same rule, which is how the mismatch
+// between "must be at least 1" and "muss mindestens 1 Zeichen lang sein" showed
+// up: a numeric minimum and a string length were sharing one rule.
+func TestFieldViolationRulesRenderInBothLanguages(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	tests := []struct {
+		rule, param, en, de string
+	}{
+		{"required", "", "is required", "ist erforderlich"},
+		{"non_empty", "", "must contain at least one entry", "muss mindestens einen Eintrag enthalten"},
+		{"min_value", "1", "must be at least 1", "muss mindestens 1 sein"},
+		{"positive", "", "must be greater than 0", "muss größer als 0 sein"},
+		{"mismatch", "7", "must match 7", "muss 7 entsprechen"},
+	}
+	for _, tt := range tests {
+		if got := apperror.EnglishReason(tt.rule, tt.param); got != tt.en {
+			t.Errorf("EnglishReason(%q) = %q, want %q", tt.rule, got, tt.en)
+		}
+
+		var got string
+		r := gin.New()
+		r.Use(i18n.Middleware())
+		r.GET("/x", func(c *gin.Context) {
+			got = i18n.Rule(c, tt.rule, tt.param)
+			c.Status(http.StatusOK)
+		})
+		req := httptest.NewRequest(http.MethodGet, "/x", nil)
+		req.Header.Set("Accept-Language", "de")
+		r.ServeHTTP(httptest.NewRecorder(), req)
+
+		if got != tt.de {
+			t.Errorf("Rule(de, %q, %q) = %q, want %q", tt.rule, tt.param, got, tt.de)
+		}
+	}
+}
+
+// TestMultipleFieldViolations covers what a real bulk import produces: several
+// bad fields at once. Every previous test used a single violation, so the
+// plural path — the joining, the ordering, the per-entry localization — was
+// carried entirely by code that no test had run.
+func TestMultipleFieldViolations(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(i18n.Middleware())
+	r.GET("/x", func(c *gin.Context) {
+		problem.WriteError(c, apperror.InvalidFields(
+			apperror.Field("required", "", "add_children[0].birthdate"),
+			apperror.Field("non_empty", "", "add_children[0].contracts"),
+			apperror.Field("min_value", "1", "add_employees[2].contracts[1].step"),
+		))
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/x", nil)
+	req.Header.Set("Accept-Language", "de")
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	var got models.ErrorResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("body is not JSON: %v", err)
+	}
+
+	if len(got.InvalidParams) != 3 {
+		t.Fatalf("invalid_params has %d entries, want 3: %+v", len(got.InvalidParams), got.InvalidParams)
+	}
+	// Order is the order they were reported, so a form can rely on it.
+	wantFields := []string{
+		"add_children[0].birthdate",
+		"add_children[0].contracts",
+		"add_employees[2].contracts[1].step",
+	}
+	for i, want := range wantFields {
+		if got.InvalidParams[i].Field != want {
+			t.Errorf("invalid_params[%d].field = %q, want %q", i, got.InvalidParams[i].Field, want)
+		}
+		if got.InvalidParams[i].LocalizedReason == "" {
+			t.Errorf("invalid_params[%d] has no localized reason", i)
+		}
+	}
+
+	// Both prose forms list all three, so a client that shows only the message
+	// still tells the user everything that is wrong rather than the first thing.
+	for _, want := range wantFields {
+		if !strings.Contains(got.Detail, want) {
+			t.Errorf("detail %q omits %q", got.Detail, want)
+		}
+		if got.Localized == nil || !strings.Contains(got.Localized.Detail, want) {
+			t.Errorf("localized detail omits %q", want)
+		}
+	}
+	if strings.Count(got.Detail, ";") != 2 {
+		t.Errorf("detail %q does not separate three violations", got.Detail)
+	}
+}

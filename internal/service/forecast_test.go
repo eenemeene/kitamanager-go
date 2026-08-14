@@ -10,6 +10,7 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/store"
 )
@@ -1520,7 +1521,7 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 					Contracts: []models.ChildContract{{BaseContract: models.BaseContract{Period: models.Period{From: from}, SectionID: 1}}},
 				}},
 			},
-			wantErrPath: "add_children[0]: birthdate is required",
+			wantErrPath: "add_children[0].birthdate is required",
 		},
 		{
 			name: "child_no_contracts",
@@ -1529,7 +1530,7 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 					Person: models.Person{FirstName: "X", LastName: "Y", Gender: "female", Birthdate: bday},
 				}},
 			},
-			wantErrPath: "add_children[0]: at least one contract is required",
+			wantErrPath: "add_children[0].contracts must contain at least one entry",
 		},
 		{
 			name: "child_contract_missing_from",
@@ -1539,7 +1540,7 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 					Contracts: []models.ChildContract{{BaseContract: models.BaseContract{SectionID: 1}}},
 				}},
 			},
-			wantErrPath: "add_children[0].contracts[0]: from is required",
+			wantErrPath: "add_children[0].contracts[0].from is required",
 		},
 		{
 			name: "child_contract_missing_section",
@@ -1549,14 +1550,14 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 					Contracts: []models.ChildContract{{BaseContract: models.BaseContract{Period: models.Period{From: from}}}},
 				}},
 			},
-			wantErrPath: "add_children[0].contracts[0]: section_id is required",
+			wantErrPath: "add_children[0].contracts[0].section_id is required",
 		},
 
 		// AddChildContracts (standalone)
 		{
 			name:        "child_contract_standalone_missing_child_id",
 			req:         &models.ForecastRequest{AddChildContracts: []models.ChildContract{{BaseContract: models.BaseContract{Period: models.Period{From: from}, SectionID: 1}}}},
-			wantErrPath: "add_child_contracts[0]: child_id is required",
+			wantErrPath: "add_child_contracts[0].child_id is required",
 		},
 		{
 			name: "child_contract_standalone_missing_from",
@@ -1566,7 +1567,7 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 					ChildID:      1,
 				}},
 			},
-			wantErrPath: "add_child_contracts[0]: from is required",
+			wantErrPath: "add_child_contracts[0].from is required",
 		},
 
 		// AddEmployees
@@ -1577,7 +1578,7 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 					Person: models.Person{FirstName: "X", LastName: "Y", Birthdate: bday},
 				}},
 			},
-			wantErrPath: "add_employees[0]: at least one contract is required",
+			wantErrPath: "add_employees[0].contracts must contain at least one entry",
 		},
 		{
 			name: "employee_contract_missing_payplan",
@@ -1590,7 +1591,7 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 					}},
 				}},
 			},
-			wantErrPath: "add_employees[0].contracts[0]: payplan_id is required",
+			wantErrPath: "add_employees[0].contracts[0].payplan_id is required",
 		},
 		{
 			name: "employee_contract_missing_grade",
@@ -1604,7 +1605,7 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 					}},
 				}},
 			},
-			wantErrPath: "add_employees[0].contracts[0]: grade is required",
+			wantErrPath: "add_employees[0].contracts[0].grade is required",
 		},
 		{
 			name: "employee_contract_step_zero",
@@ -1618,7 +1619,7 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 					}},
 				}},
 			},
-			wantErrPath: "add_employees[0].contracts[0]: step must be >= 1",
+			wantErrPath: "add_employees[0].contracts[0].step must be at least 1",
 		},
 		{
 			name: "employee_contract_zero_hours",
@@ -1631,7 +1632,7 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 					}},
 				}},
 			},
-			wantErrPath: "add_employees[0].contracts[0]: weekly_hours must be > 0",
+			wantErrPath: "add_employees[0].contracts[0].weekly_hours must be greater than 0",
 		},
 		{
 			name: "employee_contract_missing_staff_category",
@@ -1644,14 +1645,14 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 					}},
 				}},
 			},
-			wantErrPath: "add_employees[0].contracts[0]: staff_category is required",
+			wantErrPath: "add_employees[0].contracts[0].staff_category is required",
 		},
 
 		// AddEmployeeContracts (standalone)
 		{
 			name:        "employee_contract_standalone_missing_employee_id",
 			req:         &models.ForecastRequest{AddEmployeeContracts: []models.EmployeeContract{{BaseContract: models.BaseContract{Period: models.Period{From: from}, SectionID: 1}, PayPlanID: 1, Grade: "S8a", Step: 3, WeeklyHours: 30, StaffCategory: "qualified"}}},
-			wantErrPath: "add_employee_contracts[0]: employee_id is required",
+			wantErrPath: "add_employee_contracts[0].employee_id is required",
 		},
 	}
 
@@ -1665,6 +1666,14 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 			}
 			if !strings.Contains(err.Error(), tc.wantErrPath) {
 				t.Errorf("error %q does not contain %q", err.Error(), tc.wantErrPath)
+			}
+			// The path is structured now, not only prose: a client marks the
+			// field from this rather than by parsing the sentence above.
+			var appErr *apperror.AppError
+			if !errors.As(err, &appErr) || len(appErr.Fields) == 0 {
+				t.Errorf("error carries no field violations: %v", err)
+			} else if got := appErr.Fields[0].Field; !strings.HasPrefix(tc.wantErrPath, got) {
+				t.Errorf("violation field = %q, not the prefix of %q", got, tc.wantErrPath)
 			}
 		})
 	}

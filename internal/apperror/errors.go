@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 // Sentinel errors for domain operations
@@ -61,6 +62,10 @@ type AppError struct {
 	// Args are MessageID's formatting arguments, kept for that re-render.
 	Args []any
 
+	// Fields carries per-field validation failures as data. When set, the
+	// response writer composes the message from them.
+	Fields []FieldViolation
+
 	// Params carries the specifics of this occurrence as data rather than as
 	// prose: the dates that overlapped, the month already billed. Message says
 	// the same thing in an English sentence, and that sentence is the only place
@@ -93,7 +98,39 @@ func (e *AppError) WithParams(kv ...string) *AppError {
 func (e *AppError) GetParams() map[string]string { return e.Params }
 
 func (e *AppError) Error() string {
+	if e.Message == "" && len(e.Fields) > 0 {
+		parts := make([]string, 0, len(e.Fields))
+		for _, f := range e.Fields {
+			parts = append(parts, f.Field+" "+EnglishReason(f.Rule, f.Param))
+		}
+		return strings.Join(parts, "; ")
+	}
 	return e.Message
+}
+
+// EnglishReason renders a rule as the English sentence fragment that follows a
+// field name. Kept here rather than in the i18n package so that Error(), which
+// must never depend on a request, has no reason to reach for a localizer.
+func EnglishReason(rule, param string) string {
+	switch rule {
+	case "required":
+		return "is required"
+	case "non_empty":
+		return "must contain at least one entry"
+	case "min":
+		// The validator tag, which is a string length.
+		return "must be at least " + param + " characters"
+	case "min_value":
+		// A numeric minimum. Separate from "min" because "at least 1 characters"
+		// is wrong for a pay-plan step, and was wrong in both languages.
+		return "must be at least " + param
+	case "positive":
+		return "must be greater than 0"
+	case "mismatch":
+		return "must match " + param
+	default:
+		return "is invalid"
+	}
 }
 
 func (e *AppError) Unwrap() error {
@@ -121,6 +158,53 @@ func (e *AppError) GetErrorCode() string {
 		return CodeTooManyRequests
 	default:
 		return CodeInternal
+	}
+}
+
+// FieldViolation names one request field that failed validation, as data.
+//
+// The alternative this replaces was a formatted sentence with the field path
+// glued onto the front — "add_children[3].contracts[1]: from is required". That
+// serves neither audience: a client has to parse prose to learn which field
+// failed, and a translation of it is half German and half JSON path. Every
+// specification in this space keeps the two apart — JSON:API's source.pointer,
+// AIP-193's FieldViolation, RFC 9457's invalid-params, ASP.NET's dictionary
+// keyed by path — and so does this.
+//
+// Rule is a small vocabulary rather than free text, so the reason can be
+// rendered in any language: "required", "non_empty", "min", "positive",
+// "mismatch". Param carries the rule's argument where it takes one.
+type FieldViolation struct {
+	Field string
+	Rule  string
+	Param string
+}
+
+// Field builds a violation, formatting the field path from its arguments.
+func Field(rule, param, pathFormat string, args ...any) FieldViolation {
+	path := pathFormat
+	if len(args) > 0 {
+		path = fmt.Sprintf(pathFormat, args...)
+	}
+	return FieldViolation{Field: path, Rule: rule, Param: param}
+}
+
+// RequiredField is the common case, kept short because it is most of them.
+func RequiredField(pathFormat string, args ...any) *AppError {
+	return InvalidFields(Field("required", "", pathFormat, args...))
+}
+
+// InvalidFields creates a 400 carrying field violations.
+//
+// The Message is left empty: the response writer composes it from the
+// violations, so the English sentence and the localized one are built the same
+// way from the same data instead of one being a translation of the other.
+func InvalidFields(violations ...FieldViolation) *AppError {
+	return &AppError{
+		Err:       ErrBadRequest,
+		Code:      http.StatusBadRequest,
+		ErrorCode: CodeValidation,
+		Fields:    violations,
 	}
 }
 

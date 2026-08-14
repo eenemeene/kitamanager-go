@@ -112,7 +112,23 @@ mark the offending inputs instead of printing one sentence above all of them.
 ```
 
 `field` is the JSON path within the request body, so nested fields read as
-`properties.0.name`. `rule` is the validator tag that rejected it — `required`,
+`properties.0.name` and a bulk import reads as
+`add_children[3].contracts[1].from`.
+
+The path is never part of the sentence. It used to be — a bulk import answered
+`add_children[3].contracts[1]: from is required` — which forced a client to parse
+prose to learn which field failed, and made the German version half German and
+half JSON path. Every specification in this space keeps the two apart, and so
+does this: locate the field with `field`, show the reason from `reason` or
+`localized_reason`, or ignore both and render your own text from `rule`.
+
+`rule` is drawn from a small vocabulary so it can be rendered in any language:
+`required`, `non_empty`, `min` (string length), `min_value` (numeric), `max`,
+`positive`, `mismatch`, `email`, `voucher`.
+
+Several fields can fail at once, and all of them are reported: the binding
+validator returns every failing field rather than the first, and a bulk import
+reports every bad row. `rule` is the validator tag that rejected it — `required`,
 `email`, `min`, `max`, `voucher` — and `param` its argument where the rule takes
 one, so a client can build the sentence itself instead of showing `reason`.
 

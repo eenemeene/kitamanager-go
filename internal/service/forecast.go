@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"maps"
+	"strconv"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -141,12 +142,12 @@ func (s *StatisticsService) validateOverlay(ctx context.Context, req *models.For
 	// burn round trips on requests that can never succeed.
 	for i, ac := range req.AddEmployeeContracts {
 		if ac.EmployeeID == 0 {
-			return apperror.BadRequest("add_employee_contracts[%d]: employee_id is required", i)
+			return apperror.RequiredField("add_employee_contracts[%d].employee_id", i)
 		}
 	}
 	for i, ac := range req.AddChildContracts {
 		if ac.ChildID == 0 {
-			return apperror.BadRequest("add_child_contracts[%d]: child_id is required", i)
+			return apperror.RequiredField("add_child_contracts[%d].child_id", i)
 		}
 	}
 
@@ -289,33 +290,33 @@ func validateOverlaySectionMatches(req *models.ForecastRequest, want uint) error
 	for i := range req.AddEmployees {
 		for j, ct := range req.AddEmployees[i].Contracts {
 			if ct.SectionID != want {
-				return apperror.BadRequest(
-					"add_employees[%d].contracts[%d]: section_id %d does not match request section_id %d",
-					i, j, ct.SectionID, want)
+				return apperror.InvalidFields(apperror.Field(
+					"mismatch", strconv.FormatUint(uint64(want), 10),
+					"add_employees[%d].contracts[%d].section_id", i, j))
 			}
 		}
 	}
 	for i, ct := range req.AddEmployeeContracts {
 		if ct.SectionID != want {
-			return apperror.BadRequest(
-				"add_employee_contracts[%d]: section_id %d does not match request section_id %d",
-				i, ct.SectionID, want)
+			return apperror.InvalidFields(apperror.Field(
+				"mismatch", strconv.FormatUint(uint64(want), 10),
+				"add_employee_contracts[%d].section_id", i))
 		}
 	}
 	for i := range req.AddChildren {
 		for j, ct := range req.AddChildren[i].Contracts {
 			if ct.SectionID != want {
-				return apperror.BadRequest(
-					"add_children[%d].contracts[%d]: section_id %d does not match request section_id %d",
-					i, j, ct.SectionID, want)
+				return apperror.InvalidFields(apperror.Field(
+					"mismatch", strconv.FormatUint(uint64(want), 10),
+					"add_children[%d].contracts[%d].section_id", i, j))
 			}
 		}
 	}
 	for i, ct := range req.AddChildContracts {
 		if ct.SectionID != want {
-			return apperror.BadRequest(
-				"add_child_contracts[%d]: section_id %d does not match request section_id %d",
-				i, ct.SectionID, want)
+			return apperror.InvalidFields(apperror.Field(
+				"mismatch", strconv.FormatUint(uint64(want), 10),
+				"add_child_contracts[%d].section_id", i))
 		}
 	}
 	return nil
@@ -325,17 +326,17 @@ func validateOverlaySectionMatches(req *models.ForecastRequest, want uint) error
 func validateOverlayChildren(children []models.Child) error {
 	for i, c := range children {
 		if c.Birthdate.IsZero() {
-			return apperror.BadRequest("add_children[%d]: birthdate is required", i)
+			return apperror.RequiredField("add_children[%d].birthdate", i)
 		}
 		if len(c.Contracts) == 0 {
-			return apperror.BadRequest("add_children[%d]: at least one contract is required", i)
+			return apperror.InvalidFields(apperror.Field("non_empty", "", "add_children[%d].contracts", i))
 		}
 		for j, ct := range c.Contracts {
 			if ct.From.IsZero() {
-				return apperror.BadRequest("add_children[%d].contracts[%d]: from is required", i, j)
+				return apperror.RequiredField("add_children[%d].contracts[%d].from", i, j)
 			}
 			if ct.SectionID == 0 {
-				return apperror.BadRequest("add_children[%d].contracts[%d]: section_id is required", i, j)
+				return apperror.RequiredField("add_children[%d].contracts[%d].section_id", i, j)
 			}
 		}
 	}
@@ -346,13 +347,13 @@ func validateOverlayChildren(children []models.Child) error {
 func validateOverlayChildContracts(contracts []models.ChildContract) error {
 	for i, ct := range contracts {
 		if ct.ChildID == 0 {
-			return apperror.BadRequest("add_child_contracts[%d]: child_id is required", i)
+			return apperror.RequiredField("add_child_contracts[%d].child_id", i)
 		}
 		if ct.From.IsZero() {
-			return apperror.BadRequest("add_child_contracts[%d]: from is required", i)
+			return apperror.RequiredField("add_child_contracts[%d].from", i)
 		}
 		if ct.SectionID == 0 {
-			return apperror.BadRequest("add_child_contracts[%d]: section_id is required", i)
+			return apperror.RequiredField("add_child_contracts[%d].section_id", i)
 		}
 	}
 	return nil
@@ -362,29 +363,29 @@ func validateOverlayChildContracts(contracts []models.ChildContract) error {
 func validateOverlayEmployees(employees []models.Employee) error {
 	for i, e := range employees {
 		if len(e.Contracts) == 0 {
-			return apperror.BadRequest("add_employees[%d]: at least one contract is required", i)
+			return apperror.InvalidFields(apperror.Field("non_empty", "", "add_employees[%d].contracts", i))
 		}
 		for j, ct := range e.Contracts {
 			if ct.From.IsZero() {
-				return apperror.BadRequest("add_employees[%d].contracts[%d]: from is required", i, j)
+				return apperror.RequiredField("add_employees[%d].contracts[%d].from", i, j)
 			}
 			if ct.SectionID == 0 {
-				return apperror.BadRequest("add_employees[%d].contracts[%d]: section_id is required", i, j)
+				return apperror.RequiredField("add_employees[%d].contracts[%d].section_id", i, j)
 			}
 			if ct.PayPlanID == 0 {
-				return apperror.BadRequest("add_employees[%d].contracts[%d]: payplan_id is required", i, j)
+				return apperror.RequiredField("add_employees[%d].contracts[%d].payplan_id", i, j)
 			}
 			if ct.Grade == "" {
-				return apperror.BadRequest("add_employees[%d].contracts[%d]: grade is required", i, j)
+				return apperror.RequiredField("add_employees[%d].contracts[%d].grade", i, j)
 			}
 			if ct.Step < 1 {
-				return apperror.BadRequest("add_employees[%d].contracts[%d]: step must be >= 1", i, j)
+				return apperror.InvalidFields(apperror.Field("min_value", "1", "add_employees[%d].contracts[%d].step", i, j))
 			}
 			if ct.WeeklyHours <= 0 {
-				return apperror.BadRequest("add_employees[%d].contracts[%d]: weekly_hours must be > 0", i, j)
+				return apperror.InvalidFields(apperror.Field("positive", "", "add_employees[%d].contracts[%d].weekly_hours", i, j))
 			}
 			if ct.StaffCategory == "" {
-				return apperror.BadRequest("add_employees[%d].contracts[%d]: staff_category is required", i, j)
+				return apperror.RequiredField("add_employees[%d].contracts[%d].staff_category", i, j)
 			}
 		}
 	}
@@ -395,28 +396,28 @@ func validateOverlayEmployees(employees []models.Employee) error {
 func validateOverlayEmployeeContracts(contracts []models.EmployeeContract) error {
 	for i, ct := range contracts {
 		if ct.EmployeeID == 0 {
-			return apperror.BadRequest("add_employee_contracts[%d]: employee_id is required", i)
+			return apperror.RequiredField("add_employee_contracts[%d].employee_id", i)
 		}
 		if ct.From.IsZero() {
-			return apperror.BadRequest("add_employee_contracts[%d]: from is required", i)
+			return apperror.RequiredField("add_employee_contracts[%d].from", i)
 		}
 		if ct.SectionID == 0 {
-			return apperror.BadRequest("add_employee_contracts[%d]: section_id is required", i)
+			return apperror.RequiredField("add_employee_contracts[%d].section_id", i)
 		}
 		if ct.PayPlanID == 0 {
-			return apperror.BadRequest("add_employee_contracts[%d]: payplan_id is required", i)
+			return apperror.RequiredField("add_employee_contracts[%d].payplan_id", i)
 		}
 		if ct.Grade == "" {
-			return apperror.BadRequest("add_employee_contracts[%d]: grade is required", i)
+			return apperror.RequiredField("add_employee_contracts[%d].grade", i)
 		}
 		if ct.Step < 1 {
-			return apperror.BadRequest("add_employee_contracts[%d]: step must be >= 1", i)
+			return apperror.InvalidFields(apperror.Field("min_value", "1", "add_employee_contracts[%d].step", i))
 		}
 		if ct.WeeklyHours <= 0 {
-			return apperror.BadRequest("add_employee_contracts[%d]: weekly_hours must be > 0", i)
+			return apperror.InvalidFields(apperror.Field("positive", "", "add_employee_contracts[%d].weekly_hours", i))
 		}
 		if ct.StaffCategory == "" {
-			return apperror.BadRequest("add_employee_contracts[%d]: staff_category is required", i)
+			return apperror.RequiredField("add_employee_contracts[%d].staff_category", i)
 		}
 	}
 	return nil
