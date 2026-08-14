@@ -6,6 +6,10 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 const isDev = process.env.NODE_ENV === 'development';
 
 const nextConfig: NextConfig = {
+  // Build output location. Overridable so a second instance can be built and
+  // served alongside a running one without clobbering its .next directory —
+  // needed to verify a layout fix against a stack that is already up.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   output: 'standalone',
   // Proxy API requests to the Go backend during development
   async rewrites() {

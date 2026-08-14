@@ -384,7 +384,7 @@ export default function EmployeesPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 md:gap-4">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-muted-foreground text-sm">{t('common.activeOn')}</span>
           <MonthStepper value={activeOn} onChange={setActiveOn} />
         </div>

@@ -63,7 +63,18 @@ export function MonthStepper({ value, onChange }: MonthStepperProps) {
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button variant="outline" className="text-sm font-medium md:min-w-[180px]">
-            {format(value, 'd. MMMM yyyy', { locale: dfLocale })}
+            {/* Two renderings, toggled by CSS rather than a media-query hook, so
+              there is no hydration mismatch and no layout shift after mount.
+              The long form is what a desktop user reads; the short one exists
+              because this row cannot otherwise fit a 412px phone — six controls
+              at 44px touch targets plus this label came to 419px, which pushed
+              mobile Chrome to widen the layout viewport and gave every page a
+              horizontal scroll. Nothing is hidden: the same date, written
+              shorter. */}
+            <span className="sm:hidden">{format(value, 'P', { locale: dfLocale })}</span>
+            <span className="hidden sm:inline">
+              {format(value, 'd. MMMM yyyy', { locale: dfLocale })}
+            </span>
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="center">

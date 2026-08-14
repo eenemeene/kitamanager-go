@@ -365,7 +365,7 @@ export default function AttendancePage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 md:gap-4">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-muted-foreground text-sm">{tCommon('week')}</span>
           <WeekStepper value={selectedDate} onChange={setSelectedDate} />
         </div>
