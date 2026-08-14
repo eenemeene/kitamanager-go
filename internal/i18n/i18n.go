@@ -239,12 +239,16 @@ func localizeValue(p *message.Printer, v any) any {
 // not registry messages: they are assembled from a rule and a field rather than
 // written as a sentence at a call site, so they are keyed directly.
 var ruleIDs = map[string]string{
-	"required": "validation.rule.required",
-	"email":    "validation.rule.email",
-	"min":      "validation.rule.min",
-	"max":      "validation.rule.max",
-	"voucher":  "validation.rule.voucher",
-	"":         "validation.rule.invalid",
+	"required":  "validation.rule.required",
+	"email":     "validation.rule.email",
+	"min":       "validation.rule.min",
+	"max":       "validation.rule.max",
+	"voucher":   "validation.rule.voucher",
+	"min_value": "validation.rule.min_value",
+	"non_empty": "validation.rule.non_empty",
+	"positive":  "validation.rule.positive",
+	"mismatch":  "validation.rule.mismatch",
+	"":          "validation.rule.invalid",
 }
 
 // Rule renders the reason a field was rejected, in the request's language.

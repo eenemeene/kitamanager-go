@@ -156,6 +156,62 @@ describe('getErrorMessage', () => {
     });
   });
 
+  it('carries every rejected field, not just the first', () => {
+    // Both producers on the server report all failures at once: the binding
+    // validator returns every failing field, and a bulk import reports every bad
+    // row. Only the single-field case was covered here, so nothing proved the
+    // client surfaced more than one.
+    const error = {
+      response: {
+        data: {
+          status: 400,
+          code: 'validation_error',
+          detail:
+            'add_children[0].birthdate is required; add_children[0].contracts must contain at least one entry',
+          invalid_params: [
+            {
+              field: 'add_children[0].birthdate',
+              rule: 'required',
+              reason: 'is required',
+              localized_reason: 'ist erforderlich',
+            },
+            {
+              field: 'add_children[0].contracts',
+              rule: 'non_empty',
+              reason: 'must contain at least one entry',
+              localized_reason: 'muss mindestens einen Eintrag enthalten',
+            },
+          ],
+          localized: {
+            locale: 'de',
+            detail:
+              'add_children[0].birthdate ist erforderlich; add_children[0].contracts muss mindestens einen Eintrag enthalten',
+          },
+        },
+      },
+    };
+
+    const params = getInvalidParams(error);
+    expect(params).toHaveLength(2);
+    // Order is the server's report order, so a form can walk it directly.
+    expect(params.map((p) => p.field)).toEqual([
+      'add_children[0].birthdate',
+      'add_children[0].contracts',
+    ]);
+    expect(params.every((p) => p.localized_reason)).toBe(true);
+
+    // And the single-string fallback still names both, so a caller that shows
+    // only the message does not tell the user about one problem out of two.
+    const message = getErrorMessage(error, 'Fallback message');
+    expect(message).toContain('birthdate');
+    expect(message).toContain('contracts');
+  });
+
+  it('returns an empty list when there are no field errors', () => {
+    const error = { response: { data: { status: 404, code: 'not_found', detail: 'gone' } } };
+    expect(getInvalidParams(error)).toEqual([]);
+  });
+
   it('returns fallback for error without response', () => {
     const error = new Error('Network error');
 

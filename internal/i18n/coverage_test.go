@@ -113,8 +113,14 @@ func TestEveryUserFacingMessageIsRegistered(t *testing.T) {
 
 	// Guard against the walk finding nothing — a moved layout would otherwise
 	// make this pass by inspecting zero call sites.
-	if checked < 300 {
-		t.Fatalf("only inspected %d user-facing call sites, expected 300+; the walk root or layout has changed", checked)
+	//
+	// The floor is well below the real count (296 at the time of writing, down
+	// from 325 when the bulk-import checks moved to field violations, which are
+	// data rather than prose and so are not counted here). It is a tripwire for
+	// a broken walk, not a census: tightening it to the exact number would make
+	// every conversion of a message to structured form fail this test.
+	if checked < 250 {
+		t.Fatalf("only inspected %d user-facing call sites, expected 250+; the walk root or layout has changed", checked)
 	}
 	if len(unregistered) > 0 {
 		t.Errorf("%d user-facing message(s) have no registry entry, so a German reader gets English.\n"+
