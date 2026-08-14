@@ -451,18 +451,20 @@ Response shape:
 
 ## Error responses
 
-| Status | Meaning |
-|--------|---------|
-| 400 | Bad Request — invalid input or missing required parameters |
-| 401 | Unauthorized — missing or invalid authentication |
-| 403 | Forbidden — insufficient permissions |
-| 404 | Not Found — resource does not exist |
-| 500 | Internal Server Error — unexpected error |
-
-Error body:
+Every error is an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem
+document sent as `application/problem+json`. Branch on `code`; show `detail`, or
+translate `code` if your client is not English.
 
 ```json
 {
-  "error": "Description of the error"
+  "type": "https://eenemeene.github.io/kitamanager-go/en/docs/reference/api/errors/#not_found",
+  "title": "Resource not found",
+  "status": 404,
+  "detail": "child contract 7 not found",
+  "instance": "/api/v1/organizations/1/children/42/contracts/7",
+  "code": "not_found",
+  "request_id": "0e03dc7d-9baa-4a23-a8ba-bc54ad5b30b9"
 }
 ```
+
+Every code, what it means and what to do about it: [Errors](errors/).

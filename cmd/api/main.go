@@ -18,6 +18,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/eenemeene/kitamanager-go/docs"
+	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/config"
 	cryptopkg "github.com/eenemeene/kitamanager-go/internal/crypto"
 	"github.com/eenemeene/kitamanager-go/internal/database"
@@ -25,6 +26,7 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/importer"
 	"github.com/eenemeene/kitamanager-go/internal/middleware"
 	"github.com/eenemeene/kitamanager-go/internal/models"
+	"github.com/eenemeene/kitamanager-go/internal/problem"
 	"github.com/eenemeene/kitamanager-go/internal/rbac"
 	"github.com/eenemeene/kitamanager-go/internal/routes"
 	"github.com/eenemeene/kitamanager-go/internal/seed"
@@ -384,9 +386,36 @@ func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices
 		os.Exit(1)
 	}
 
-	r.Use(gin.Recovery())
+	// RequestID is installed before recovery on purpose. A panic is the response
+	// where "which request was this?" matters most, and with gin's own Recovery
+	// outermost the handler ran outside the middleware that assigns the id — so
+	// the one 500 a user is most likely to report was the one that could not be
+	// correlated with a log line.
 	r.Use(middleware.RequestID())
+	r.Use(gin.CustomRecovery(func(c *gin.Context, recovered any) {
+		// gin has already written the panic and its stack to the error writer.
+		// What is added here is a response body: the default recovery aborts with
+		// a bare 500 and no content at all, so a client saw an empty body for the
+		// one failure it most needs to report.
+		problem.Write(c, http.StatusInternalServerError, apperror.CodeInternal,
+			"An unexpected error occurred. Quote the request_id when reporting this.")
+	}))
 	r.Use(middleware.StructuredLogger())
+
+	// Unrouted paths and wrong methods are answered with the same document type
+	// as everything else. gin's defaults are a plain-text "404 page not found"
+	// and, for a wrong method, another 404 — so a client hitting a typo in a path
+	// got a body it could not parse and no way to tell a missing route from a
+	// missing record.
+	r.HandleMethodNotAllowed = true
+	r.NoRoute(func(c *gin.Context) {
+		problem.Write(c, http.StatusNotFound, apperror.CodeNotFound,
+			"No endpoint matches "+c.Request.Method+" "+c.Request.URL.Path)
+	})
+	r.NoMethod(func(c *gin.Context) {
+		problem.Write(c, http.StatusMethodNotAllowed, apperror.CodeMethodNotAllowed,
+			c.Request.Method+" is not supported on this path")
+	})
 	r.Use(middleware.SecurityHeaders())
 	r.Use(middleware.Metrics())
 	r.Use(middleware.BodySizeLimit(middleware.MaxRequestBodySize))

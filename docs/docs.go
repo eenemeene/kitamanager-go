@@ -13038,12 +13038,46 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
+                    "description": "Code is the machine-readable slug — the programmatic contract, kept as an\nRFC 9457 extension member because the specification has no opinion on\nerror codes and clients need one that does not depend on parsing a URI.",
                     "type": "string",
                     "example": "not_found"
                 },
-                "message": {
+                "detail": {
+                    "description": "Detail describes this particular occurrence: which contract, which dates.\nSafe to show a user; never carries internal error text for 5xx.",
                     "type": "string",
-                    "example": "resource not found"
+                    "example": "child contract 7 not found"
+                },
+                "instance": {
+                    "description": "Instance is the request path this occurred on.",
+                    "type": "string",
+                    "example": "/api/v1/organizations/1/children/42"
+                },
+                "invalid_params": {
+                    "description": "InvalidParams lists the fields a validation error rejected, so a form can\nmark the offending inputs instead of showing one sentence above all of them.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.InvalidParam"
+                    }
+                },
+                "request_id": {
+                    "description": "RequestID ties this response to the server logs for the same request.",
+                    "type": "string",
+                    "example": "0e03dc7d-9baa-4a23-a8ba-bc54ad5b30b9"
+                },
+                "status": {
+                    "description": "Status repeats the HTTP status code, so a problem document that has been\nlogged or forwarded still says what happened.",
+                    "type": "integer",
+                    "example": 404
+                },
+                "title": {
+                    "description": "Title is a short, human-readable summary of the problem type. It does not\nchange from occurrence to occurrence — Detail carries the specifics.",
+                    "type": "string",
+                    "example": "Resource not found"
+                },
+                "type": {
+                    "description": "Type identifies the kind of problem and is the stable thing to branch on\nor translate by. It resolves to the errors reference, so a caller reading a\nlog can follow it and find out what the condition means.",
+                    "type": "string",
+                    "example": "https://kitamanager.example.com/errors/not-found"
                 }
             }
         },
@@ -14478,6 +14512,19 @@ const docTemplate = `{
                 "version": {
                     "type": "string",
                     "example": "a1b2c3d"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.InvalidParam": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string",
+                    "example": "weekly_hours"
+                },
+                "reason": {
+                    "type": "string",
+                    "example": "must be between 0 and 168"
                 }
             }
         },

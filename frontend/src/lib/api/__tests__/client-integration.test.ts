@@ -87,8 +87,8 @@ describe('ApiClient integration (MSW)', () => {
         await client.createOrganization({ name: 'Test Org' } as never);
         fail('Should have thrown');
       } catch (error: unknown) {
-        const axiosError = error as { response?: { data?: { message?: string } } };
-        expect(axiosError.response?.data?.message).toContain('Rate limit exceeded');
+        const axiosError = error as { response?: { data?: { detail?: string } } };
+        expect(axiosError.response?.data?.detail).toContain('Rate limit exceeded');
       }
     });
 
@@ -108,8 +108,8 @@ describe('ApiClient integration (MSW)', () => {
         await client.createOrganization({ name: 'Test Org' } as never);
         fail('Should have thrown');
       } catch (error: unknown) {
-        const axiosError = error as { response?: { data?: { message?: string } } };
-        expect(axiosError.response?.data?.message).toContain('30 seconds');
+        const axiosError = error as { response?: { data?: { detail?: string } } };
+        expect(axiosError.response?.data?.detail).toContain('30 seconds');
       }
     });
   });

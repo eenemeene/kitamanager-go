@@ -10,7 +10,7 @@ import (
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/ctxkeys"
-	"github.com/eenemeene/kitamanager-go/internal/models"
+	"github.com/eenemeene/kitamanager-go/internal/problem"
 	"github.com/eenemeene/kitamanager-go/internal/store"
 )
 
@@ -81,10 +81,7 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 		raw := extractRawToken(c)
 		if raw == "" {
 			slog.Warn("Auth failed: no session cookie or authorization header", "ip", c.ClientIP(), "path", c.Request.URL.Path)
-			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
-				Code:    apperror.CodeUnauthorized,
-				Message: "authorization required",
-			})
+			problem.Write(c, http.StatusUnauthorized, apperror.CodeUnauthorized, "authorization required")
 			c.Abort()
 			return
 		}
@@ -95,18 +92,12 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 			if errors.Is(err, store.ErrNotFound) {
 				slog.Warn("Auth failed: session not found or expired", "ip", c.ClientIP(), "path", c.Request.URL.Path)
 				m.clearAuthCookies(c)
-				c.JSON(http.StatusUnauthorized, models.ErrorResponse{
-					Code:    apperror.CodeUnauthorized,
-					Message: "invalid or expired session",
-				})
+				problem.Write(c, http.StatusUnauthorized, apperror.CodeUnauthorized, "invalid or expired session")
 				c.Abort()
 				return
 			}
 			slog.Error("Failed to look up session", "error", err, "ip", c.ClientIP())
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Code:    apperror.CodeInternal,
-				Message: "internal server error",
-			})
+			problem.Write(c, http.StatusInternalServerError, apperror.CodeInternal, "internal server error")
 			c.Abort()
 			return
 		}
@@ -118,10 +109,7 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 			_ = m.sessionStore.Delete(c.Request.Context(), idHash)
 			slog.Warn("Auth failed: user is inactive", "user_id", lookup.UserID, "ip", c.ClientIP())
 			m.clearAuthCookies(c)
-			c.JSON(http.StatusUnauthorized, models.ErrorResponse{
-				Code:    apperror.CodeUnauthorized,
-				Message: "account disabled",
-			})
+			problem.Write(c, http.StatusUnauthorized, apperror.CodeUnauthorized, "account disabled")
 			c.Abort()
 			return
 		}

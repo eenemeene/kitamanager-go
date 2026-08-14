@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance, type AxiosError } from 'axios';
+import { getProblem, problemMessage } from './problem';
 import type {
   AgeDistributionResponse,
   AuditLogListParams,
@@ -159,9 +160,13 @@ class ApiClient {
         // Enrich 429 responses with a user-friendly message.
         if (error.response?.status === 429) {
           const retryAfter = error.response.headers['retry-after'];
+          // The rate limiter already sends a problem document; this only adds the
+          // Retry-After seconds, which live in a header and so cannot reach the
+          // body any other way. It fills `detail` rather than replacing it, so a
+          // German user still gets the translated `code` message.
           const data = error.response.data as Record<string, unknown> | undefined;
-          if (data && !data.message) {
-            data.message = retryAfter
+          if (data && !data.detail) {
+            data.detail = retryAfter
               ? `Rate limit exceeded. Please try again in ${retryAfter} seconds.`
               : 'Rate limit exceeded. Please try again later.';
           }
@@ -1374,13 +1379,23 @@ class ApiClient {
 
 export const apiClient = new ApiClient();
 
-// Helper to extract error message from API errors
+/**
+ * The message to show a user for a failed request.
+ *
+ * The API answers every error with an RFC 9457 problem document, so this reads
+ * `code` first and translates it — which is what makes a German user see German.
+ * See `problem.ts` for why the resolution order differs per locale, and for
+ * `getInvalidParams` / `getRequestId` when a caller wants to mark form fields or
+ * quote a request id.
+ *
+ * The `fallback` argument still wins for anything unparseable — a network error,
+ * a timeout, a proxy's own HTML error page — which is most of what it ever
+ * covered.
+ */
 export function getErrorMessage(error: unknown, fallback: string): string {
-  if (error && typeof error === 'object' && 'response' in error) {
-    const axiosError = error as { response?: { data?: { message?: string } } };
-    if (axiosError.response?.data?.message) {
-      return axiosError.response.data.message;
-    }
+  const problem = getProblem(error);
+  if (problem) {
+    return problemMessage(problem) || fallback;
   }
   return fallback;
 }

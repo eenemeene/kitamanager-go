@@ -269,26 +269,26 @@ describe('ApiClient interceptors', () => {
       const err = makeError(429, '/api/v1/login', 'post', {});
       err.response!.headers = { 'retry-after': '30' };
       await expect(captured.responseError!(err)).rejects.toBe(err);
-      const data = err.response!.data as { message?: string };
-      expect(data.message).toMatch(/30 seconds/);
+      const data = err.response!.data as { detail?: string };
+      expect(data.detail).toMatch(/30 seconds/);
     });
 
     it('falls back to a generic message when Retry-After is missing', async () => {
       const err = makeError(429, '/api/v1/login', 'post', {});
       // no retry-after header
       await expect(captured.responseError!(err)).rejects.toBe(err);
-      const data = err.response!.data as { message?: string };
-      expect(data.message).toBe('Rate limit exceeded. Please try again later.');
+      const data = err.response!.data as { detail?: string };
+      expect(data.detail).toBe('Rate limit exceeded. Please try again later.');
     });
 
-    it('does NOT overwrite a backend-provided message', async () => {
+    it('does NOT overwrite a backend-provided detail', async () => {
       // If the backend went to the trouble of supplying a specific
       // 429 message, we must not clobber it. (E.g. account lockout
       // could surface "Locked for 5 minutes" from the backend.)
-      const err = makeError(429, '/api/v1/login', 'post', { message: 'Account locked' });
+      const err = makeError(429, '/api/v1/login', 'post', { detail: 'Account locked' });
       await expect(captured.responseError!(err)).rejects.toBe(err);
-      const data = err.response!.data as { message?: string };
-      expect(data.message).toBe('Account locked');
+      const data = err.response!.data as { detail?: string };
+      expect(data.detail).toBe('Account locked');
     });
 
     it('does not fire the unauthorized callback on 429', async () => {
