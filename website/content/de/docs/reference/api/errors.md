@@ -15,6 +15,13 @@ Die API ist einsprachig englisch: `title` und `detail` sind englische Sätze. F�
 Endnutzerinnen und Endnutzer übersetzt die Oberfläche den `code` — deshalb sehen
 Sie in KitaManager deutsche Fehlermeldungen, obwohl die API englisch antwortet.
 Die Feldnamen und Codes unten bleiben aus demselben Grund englisch.
+
+Eine übersetzte Meldung ist zwangsläufig allgemeiner als ein `detail`, das für
+einen konkreten Fall formuliert wurde — die Übersetzung darf die konkreten
+Angaben aber nicht kosten. Dafür gibt es zwei Felder: `params` enthält die Daten
+hinter dem Satz, und `invalid_params` liefert neben dem englischen `reason` auch
+`rule` und `param`. Wo beides fehlt, zeigt ein lokalisierter Client `detail`
+zusätzlich zur Übersetzung an — nicht stattdessen.
 {{< /callout >}}
 
 ```json
@@ -40,6 +47,7 @@ Die Feldnamen und Codes unten bleiben aus demselben Grund englisch.
 | `instance` | Der angefragte Pfad. |
 | `request_id` | Bei einer Fehlermeldung bitte mit angeben; sie entspricht der Zeile im Server-Log. |
 | `invalid_params` | Bei Validierungsfehlern: ein Eintrag je abgelehntem Feld. |
+| `params` | Die konkreten Werte als Schlüssel/Wert-Daten, sofern der Endpunkt sie liefert. |
 
 ## Validierungsfehler
 
@@ -55,14 +63,17 @@ Feldern auszugeben.
   "detail": "email must be a valid email address; weekly_hours is required",
   "code": "validation_error",
   "invalid_params": [
-    { "field": "email", "reason": "must be a valid email address" },
-    { "field": "weekly_hours", "reason": "is required" }
+    { "field": "email", "reason": "must be a valid email address", "rule": "email" },
+    { "field": "weekly_hours", "reason": "is required", "rule": "required" }
   ]
 }
 ```
 
 `field` ist der JSON-Pfad im Request-Body; verschachtelte Felder erscheinen also
-als `properties.0.name`.
+als `properties.0.name`. `rule` ist die Validator-Regel, an der das Feld
+gescheitert ist — `required`, `email`, `min`, `max`, `voucher` —, und `param`
+deren Argument, sofern die Regel eines hat. So kann ein Client den Satz selbst
+formulieren, statt `reason` anzuzeigen.
 
 ## Codes
 

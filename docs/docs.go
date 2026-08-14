@@ -13059,6 +13059,13 @@ const docTemplate = `{
                         "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.InvalidParam"
                     }
                 },
+                "params": {
+                    "description": "Params carries the specifics of this occurrence as key/value data, so a\nclient that renders in another language can interpolate them into its own\nmessage instead of parsing them back out of Detail.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
                 "request_id": {
                     "description": "RequestID ties this response to the server logs for the same request.",
                     "type": "string",
@@ -14522,9 +14529,17 @@ const docTemplate = `{
                     "type": "string",
                     "example": "weekly_hours"
                 },
+                "param": {
+                    "type": "string",
+                    "example": "8"
+                },
                 "reason": {
                     "type": "string",
-                    "example": "must be between 0 and 168"
+                    "example": "is required"
+                },
+                "rule": {
+                    "type": "string",
+                    "example": "required"
                 }
             }
         },

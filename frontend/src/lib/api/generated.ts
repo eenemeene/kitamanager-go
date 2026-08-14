@@ -3475,6 +3475,14 @@ export interface components {
        */
       invalid_params: components['schemas']['InvalidParam'][];
       /**
+       * @description Params carries the specifics of this occurrence as key/value data, so a
+       *     client that renders in another language can interpolate them into its own
+       *     message instead of parsing them back out of Detail.
+       */
+      params: {
+        [key: string]: string;
+      };
+      /**
        * @description RequestID ties this response to the server logs for the same request.
        * @example 0e03dc7d-9baa-4a23-a8ba-bc54ad5b30b9
        */
@@ -4228,8 +4236,12 @@ export interface components {
     InvalidParam: {
       /** @example weekly_hours */
       field: string;
-      /** @example must be between 0 and 168 */
+      /** @example 8 */
+      param: string;
+      /** @example is required */
       reason: string;
+      /** @example required */
+      rule: string;
     };
     LoginFactorDescriptor: {
       /**

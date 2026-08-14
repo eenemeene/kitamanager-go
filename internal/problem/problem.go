@@ -139,8 +139,10 @@ func WriteError(c *gin.Context, err error) {
 	status := apperror.HTTPStatus(err)
 	code := apperror.CodeInternal
 	var appErr *apperror.AppError
+	var params map[string]string
 	if errors.As(err, &appErr) {
 		code = appErr.GetErrorCode()
+		params = appErr.GetParams()
 	}
 
 	detail := err.Error()
@@ -154,5 +156,11 @@ func WriteError(c *gin.Context, err error) {
 		detail = "An unexpected error occurred. Quote the request_id when reporting this."
 	}
 
-	Write(c, status, code, detail)
+	doc := New(c, status, code, detail)
+	// Params are dropped on a 5xx along with the detail: they describe an
+	// internal failure, and the same argument applies to both.
+	if status < http.StatusInternalServerError {
+		doc.Params = params
+	}
+	WriteProblem(c, doc)
 }

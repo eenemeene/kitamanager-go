@@ -32,11 +32,20 @@ plain-text body.
 | `instance` | The request path. |
 | `request_id` | Quote this when reporting a problem; it matches the server log line. |
 | `invalid_params` | Present on validation failures: one entry per rejected field. |
+| `params` | The specifics as key/value data, where the endpoint provides them. |
 
 `title` and `detail` are English and always will be — the API has one language.
 Anything user-facing translates `code` on its side; that is what the KitaManager
 frontend does, which is why a German user sees German for a failure whose
 `detail` is an English sentence.
+
+A translated sentence is necessarily more generic than a `detail` written for one
+occurrence, so translating must not cost the reader the specifics. Two members
+exist for that: `params` carries the data behind the sentence, for a client to
+interpolate into its own wording, and `invalid_params` carries `rule` and `param`
+alongside the English `reason` so a rejected field can be described in any
+language. Where neither is available, a localized client should show `detail` as
+well as its translation rather than instead of it.
 
 ## Validation failures
 
@@ -51,14 +60,16 @@ mark the offending inputs instead of printing one sentence above all of them.
   "detail": "email must be a valid email address; weekly_hours is required",
   "code": "validation_error",
   "invalid_params": [
-    { "field": "email", "reason": "must be a valid email address" },
-    { "field": "weekly_hours", "reason": "is required" }
+    { "field": "email", "reason": "must be a valid email address", "rule": "email" },
+    { "field": "weekly_hours", "reason": "is required", "rule": "required" }
   ]
 }
 ```
 
 `field` is the JSON path within the request body, so nested fields read as
-`properties.0.name`.
+`properties.0.name`. `rule` is the validator tag that rejected it — `required`,
+`email`, `min`, `max`, `voucher` — and `param` its argument where the rule takes
+one, so a client can build the sentence itself instead of showing `reason`.
 
 ## Codes
 

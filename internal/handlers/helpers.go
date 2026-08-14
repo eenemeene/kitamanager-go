@@ -375,7 +375,12 @@ func invalidParams(err error) []models.InvalidParam {
 		default:
 			reason = "is invalid"
 		}
-		params = append(params, models.InvalidParam{Field: field, Reason: reason})
+		params = append(params, models.InvalidParam{
+			Field:  field,
+			Reason: reason,
+			Rule:   fe.Tag(),
+			Param:  fe.Param(),
+		})
 	}
 	return params
 }
