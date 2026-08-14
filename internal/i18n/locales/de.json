@@ -1,0 +1,17 @@
+{
+  "Resource not found": "Ressource nicht gefunden",
+  "Malformed request": "Fehlerhafte Anfrage",
+  "Validation failed": "Validierung fehlgeschlagen",
+  "Conflict with current state": "Konflikt mit dem aktuellen Zustand",
+  "Authentication required": "Anmeldung erforderlich",
+  "Not permitted": "Nicht berechtigt",
+  "Too many requests": "Zu viele Anfragen",
+  "Internal server error": "Interner Serverfehler",
+  "Email address already in use": "E-Mail-Adresse wird bereits verwendet",
+  "Contract periods overlap": "Vertragszeiträume überschneiden sich",
+  "Bill already imported": "Rechnung bereits importiert",
+  "Bill already exists for this month": "Für diesen Monat existiert bereits eine Rechnung",
+  "Method not allowed": "Methode nicht erlaubt",
+  "If-Match header required": "If-Match-Header erforderlich",
+  "Resource was modified": "Ressource wurde geändert"
+}

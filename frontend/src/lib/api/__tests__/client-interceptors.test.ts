@@ -261,6 +261,27 @@ describe('ApiClient interceptors', () => {
     });
   });
 
+  describe('request interceptor — Accept-Language', () => {
+    it('asks the server for the language the user chose in the app', () => {
+      document.cookie = 'locale=de';
+
+      const cfg = captured.requestSuccess!(makeConfig({ method: 'get' }));
+
+      // Not the browser's Accept-Language: a German user on an English-locale
+      // laptop has already told us which they want, in the app.
+      expect(cfg.headers!['Accept-Language']).toBe('de');
+      document.cookie = 'locale=en';
+    });
+
+    it('defaults to English when no locale has been chosen', () => {
+      document.cookie = 'locale=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+
+      const cfg = captured.requestSuccess!(makeConfig({ method: 'get' }));
+
+      expect(cfg.headers!['Accept-Language']).toBe('en');
+    });
+  });
+
   describe('response interceptor — 429 enrichment', () => {
     it('enriches the error data with a "Rate limit exceeded" message including Retry-After seconds', async () => {
       // 429s without a message produce an opaque "Network error" toast.
