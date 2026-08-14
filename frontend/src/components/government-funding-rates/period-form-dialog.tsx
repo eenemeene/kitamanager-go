@@ -14,6 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { governmentFundingPeriodSchema, type GovernmentFundingPeriodFormData } from '@/lib/schemas';
+import { validationTiming } from '@/lib/forms/validation-timing';
 
 interface PeriodFormDialogProps {
   open: boolean;
@@ -36,6 +37,7 @@ export function PeriodFormDialog({
     reset,
     formState: { errors },
   } = useForm<GovernmentFundingPeriodFormData>({
+    ...validationTiming,
     resolver: zodResolver(governmentFundingPeriodSchema),
     defaultValues: { from: '', to: '', full_time_weekly_hours: 39, comment: '' },
   });

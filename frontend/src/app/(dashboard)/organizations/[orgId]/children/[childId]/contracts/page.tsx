@@ -56,6 +56,7 @@ import { childContractSchema, type ChildContractFormData } from '@/lib/schemas';
 import { useToast } from '@/lib/hooks/use-toast';
 import { showErrorToast } from '@/lib/utils/show-error-toast';
 import { useUiStore } from '@/stores/ui-store';
+import { validationTiming } from '@/lib/forms/validation-timing';
 
 export default function ChildContractsPage() {
   const params = useParams();
@@ -204,6 +205,7 @@ export default function ChildContractsPage() {
     setValue,
     formState: { errors },
   } = useForm<ChildContractFormData>({
+    ...validationTiming,
     resolver: zodResolver(childContractSchema),
     defaultValues: {
       from: '',

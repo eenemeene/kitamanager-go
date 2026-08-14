@@ -62,11 +62,21 @@ export function TwoFactorEnrolDialog({
 
   const pwForm = useForm<FactorEnrolFormData>({
     resolver: zodResolver(factorEnrolSchema),
+    // Deliberately onChange, not the shared validationTiming. This form gates
+    // its submit button on formState.isValid, and under `onTouched` that stays
+    // false until the field is blurred — so someone who types the code and goes
+    // straight for the button finds it disabled. Short form, fixed-length input,
+    // no "told you are wrong too early" problem to solve here.
     mode: 'onChange',
     defaultValues: { password: '' },
   });
   const codeForm = useForm<FactorActivateFormData>({
     resolver: zodResolver(factorActivateSchema),
+    // Deliberately onChange, not the shared validationTiming. This form gates
+    // its submit button on formState.isValid, and under `onTouched` that stays
+    // false until the field is blurred — so someone who types the code and goes
+    // straight for the button finds it disabled. Short form, fixed-length input,
+    // no "told you are wrong too early" problem to solve here.
     mode: 'onChange',
     defaultValues: { code: '' },
   });

@@ -32,6 +32,7 @@ import { propertiesToLabelKeys } from '@/lib/utils/contract-properties';
 import { getActiveContract, isDateBefore } from '@/lib/utils/contracts';
 import { calculateContractEndDate } from '@/lib/utils/school-enrollment';
 import type { Child, Section, ContractProperties } from '@/lib/api/types';
+import { validationTiming } from '@/lib/forms/validation-timing';
 
 export interface ChildContractCreateDialogProps {
   open: boolean;
@@ -68,6 +69,7 @@ export function ChildContractCreateDialog({
     control,
     formState: { errors },
   } = useForm<ChildContractFormData>({
+    ...validationTiming,
     resolver: zodResolver(childContractSchema),
     defaultValues: {
       from: '',

@@ -20,6 +20,7 @@ import type { PaginatedResponse, PaginationParams } from '@/lib/api/types';
 import { useCrudDialogs, type UseCrudDialogsResult } from './use-crud-dialogs';
 import { useCrudMutations, type UseCrudMutationsResult } from './use-crud-mutations';
 import { useResourceListFilters } from './use-resource-list-filters';
+import { validationTiming } from '@/lib/forms/validation-timing';
 
 interface UseCrudPageConfig<
   TItem extends { id: number },
@@ -107,6 +108,7 @@ export function useCrudPage<
     watch,
     formState: { errors },
   } = useForm<TFormData>({
+    ...validationTiming,
     resolver: zodResolver(config.schema as any),
     defaultValues: config.defaultValues as DefaultValues<TFormData>,
   });

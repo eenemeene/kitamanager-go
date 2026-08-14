@@ -38,6 +38,7 @@ import { useCrudMutations } from '@/lib/hooks/use-crud-mutations';
 import { useResourceListFilters } from '@/lib/hooks/use-resource-list-filters';
 import { governmentFundingSchema, type GovernmentFundingFormData } from '@/lib/schemas';
 import { SearchInput } from '@/components/ui/search-input';
+import { validationTiming } from '@/lib/forms/validation-timing';
 
 const defaultValues: GovernmentFundingFormData = {
   name: '',
@@ -57,6 +58,7 @@ export default function GovernmentFundingsPage() {
     watch,
     formState: { errors },
   } = useForm<GovernmentFundingFormData>({
+    ...validationTiming,
     resolver: zodResolver(governmentFundingSchema),
     defaultValues,
   });

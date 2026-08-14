@@ -49,6 +49,7 @@ import { ChildContractCreateDialog } from '@/components/children/child-contract-
 import { VouchersDialog } from '@/components/children/vouchers-dialog';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useUiStore } from '@/stores/ui-store';
+import { validationTiming } from '@/lib/forms/validation-timing';
 import {
   childSchema,
   type ChildFormData,
@@ -222,6 +223,7 @@ export default function ChildrenPage() {
     watch: watchChild,
     formState: { errors: errorsChild },
   } = useForm<ChildFormData>({
+    ...validationTiming,
     resolver: zodResolver(childSchema),
     defaultValues: {
       first_name: '',

@@ -46,6 +46,7 @@ import {
 } from '@/components/crud';
 import { Pagination } from '@/components/ui/pagination';
 import { organizationSchema, type OrganizationFormData } from '@/lib/schemas';
+import { validationTiming } from '@/lib/forms/validation-timing';
 
 const defaultValues: OrganizationFormData = {
   name: '',
@@ -66,6 +67,7 @@ export default function OrganizationsPage() {
     watch,
     formState: { errors },
   } = useForm<OrganizationFormData>({
+    ...validationTiming,
     resolver: zodResolver(organizationSchema) as any,
     defaultValues,
   });
