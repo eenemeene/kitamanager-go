@@ -32,18 +32,81 @@ jest.mock('axios', () => {
 });
 
 import { getErrorMessage, apiClient } from '../client';
+import { getInvalidParams, getRequestId } from '../problem';
 
 describe('getErrorMessage', () => {
-  it('extracts message from axios error response', () => {
+  it('shows the problem detail, which is the specific one, for an English reader', () => {
     const error = {
       response: {
         data: {
-          message: 'Invalid credentials',
+          type: 'https://kitamanager.dev/docs/reference/api/errors/#unauthorized',
+          title: 'Authentication required',
+          status: 401,
+          detail: 'Invalid credentials',
+          code: 'unauthorized',
         },
       },
     };
 
     expect(getErrorMessage(error, 'Fallback message')).toBe('Invalid credentials');
+  });
+
+  it('translates by code for a German reader rather than showing the English detail', () => {
+    document.cookie = 'locale=de';
+    const error = {
+      response: {
+        data: {
+          status: 409,
+          detail: 'contract periods overlap between 2026-01-01 and 2026-03-31',
+          code: 'contract_overlap',
+        },
+      },
+    };
+
+    // The point of the whole migration: a German user gets German, and gets it
+    // from the code rather than from the server guessing a language.
+    expect(getErrorMessage(error, 'Fallback message')).toContain('Vertragszeiträume');
+    document.cookie = 'locale=en';
+  });
+
+  it('falls back to the English detail for a code with no translation', () => {
+    document.cookie = 'locale=de';
+    const error = {
+      response: {
+        data: { status: 400, detail: 'something specific went wrong', code: 'brand_new_code' },
+      },
+    };
+
+    // An untranslated sentence beats a blank one, and it means adding a code on
+    // the backend cannot produce an empty toast.
+    expect(getErrorMessage(error, 'Fallback message')).toBe('something specific went wrong');
+    document.cookie = 'locale=en';
+  });
+
+  it('exposes the rejected fields so a form can mark its inputs', () => {
+    const error = {
+      response: {
+        data: {
+          status: 400,
+          code: 'validation_error',
+          detail: 'weekly_hours is required',
+          invalid_params: [{ field: 'weekly_hours', reason: 'is required' }],
+        },
+      },
+    };
+
+    expect(getInvalidParams(error)).toEqual([{ field: 'weekly_hours', reason: 'is required' }]);
+    expect(getRequestId(error)).toBeUndefined();
+  });
+
+  it('carries the request id, which is what support asks for after a 500', () => {
+    const error = {
+      response: {
+        data: { status: 500, code: 'internal_error', request_id: '0e03dc7d-9baa' },
+      },
+    };
+
+    expect(getRequestId(error)).toBe('0e03dc7d-9baa');
   });
 
   it('returns fallback for error without response', () => {
@@ -52,7 +115,7 @@ describe('getErrorMessage', () => {
     expect(getErrorMessage(error, 'Fallback message')).toBe('Fallback message');
   });
 
-  it('returns fallback for error without message in response', () => {
+  it('returns fallback for a body that is not a problem document', () => {
     const error = {
       response: {
         data: {},

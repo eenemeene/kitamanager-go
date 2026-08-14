@@ -115,7 +115,10 @@ describe('LoginPage', () => {
     mockLogin.mockRejectedValue({
       response: {
         data: {
-          message: 'Invalid credentials',
+          // A problem document, as the API sends: the UI reads `detail`/`code`.
+          status: 401,
+          code: 'unauthorized',
+          detail: 'Invalid credentials',
         },
       },
     });
@@ -223,7 +226,9 @@ describe('LoginPage — state machine', () => {
   });
 
   it('shows banner on password error in password state', async () => {
-    mockLogin.mockRejectedValue({ response: { data: { message: 'Invalid credentials' } } });
+    mockLogin.mockRejectedValue({
+      response: { data: { status: 401, code: 'unauthorized', detail: 'Invalid credentials' } },
+    });
     render(<LoginPage />);
     await userEvent.type(screen.getByLabelText('auth.email'), 'a@example.com');
     await userEvent.type(screen.getByLabelText('auth.password'), 'wrongpw');

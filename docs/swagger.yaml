@@ -1534,10 +1534,52 @@ definitions:
   github_com_eenemeene_kitamanager-go_internal_models.ErrorResponse:
     properties:
       code:
+        description: |-
+          Code is the machine-readable slug — the programmatic contract, kept as an
+          RFC 9457 extension member because the specification has no opinion on
+          error codes and clients need one that does not depend on parsing a URI.
         example: not_found
         type: string
-      message:
-        example: resource not found
+      detail:
+        description: |-
+          Detail describes this particular occurrence: which contract, which dates.
+          Safe to show a user; never carries internal error text for 5xx.
+        example: child contract 7 not found
+        type: string
+      instance:
+        description: Instance is the request path this occurred on.
+        example: /api/v1/organizations/1/children/42
+        type: string
+      invalid_params:
+        description: |-
+          InvalidParams lists the fields a validation error rejected, so a form can
+          mark the offending inputs instead of showing one sentence above all of them.
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.InvalidParam'
+        type: array
+      request_id:
+        description: RequestID ties this response to the server logs for the same
+          request.
+        example: 0e03dc7d-9baa-4a23-a8ba-bc54ad5b30b9
+        type: string
+      status:
+        description: |-
+          Status repeats the HTTP status code, so a problem document that has been
+          logged or forwarded still says what happened.
+        example: 404
+        type: integer
+      title:
+        description: |-
+          Title is a short, human-readable summary of the problem type. It does not
+          change from occurrence to occurrence — Detail carries the specifics.
+        example: Resource not found
+        type: string
+      type:
+        description: |-
+          Type identifies the kind of problem and is the stable thing to branch on
+          or translate by. It resolves to the errors reference, so a caller reading a
+          log can follow it and find out what the condition means.
+        example: https://kitamanager.example.com/errors/not-found
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ExistingChildMatchResponse:
@@ -2597,6 +2639,15 @@ definitions:
         type: string
       version:
         example: a1b2c3d
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.InvalidParam:
+    properties:
+      field:
+        example: weekly_hours
+        type: string
+      reason:
+        example: must be between 0 and 168
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.LoginFactorDescriptor:

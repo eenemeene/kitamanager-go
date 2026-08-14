@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
@@ -22,6 +21,7 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/ctxkeys"
 	"github.com/eenemeene/kitamanager-go/internal/models"
+	"github.com/eenemeene/kitamanager-go/internal/problem"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 )
 
@@ -284,7 +284,7 @@ func bindJSON[T any](c *gin.Context) (*T, bool) {
 	}
 
 	if err := binding.Validator.ValidateStruct(&req); err != nil {
-		respondError(c, apperror.BadRequest(sanitizeBindError(err)))
+		respondValidationError(c, err)
 		return nil, false
 	}
 	return &req, true
@@ -327,37 +327,57 @@ func sanitizeJSONDecodeError(err error) string {
 // sanitizeBindError converts validator errors into user-friendly messages
 // without exposing Go struct field names or internal validation tags.
 func sanitizeBindError(err error) string {
+	params := invalidParams(err)
+	if len(params) == 0 {
+		// For non-validation errors (e.g. malformed JSON), return a generic message
+		return "invalid request body"
+	}
+	msgs := make([]string, 0, len(params))
+	for _, p := range params {
+		msgs = append(msgs, p.Field+" "+p.Reason)
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// invalidParams turns validator errors into the invalid_params extension of the
+// problem document: one entry per rejected field, named by its JSON path.
+//
+// It returns nil for anything that is not a validation error, which is what
+// makes it safe to call unconditionally — a malformed body has no fields to
+// report, only a message.
+func invalidParams(err error) []models.InvalidParam {
 	var ve validator.ValidationErrors
-	if errors.As(err, &ve) {
-		msgs := make([]string, 0, len(ve))
-		for _, fe := range ve {
-			field := fe.Field()
-			// Use the JSON tag name if available
-			if fe.Namespace() != "" {
-				parts := strings.Split(fe.Namespace(), ".")
-				if len(parts) > 1 {
-					field = strings.Join(parts[1:], ".")
-				}
-			}
-			switch fe.Tag() {
-			case "required":
-				msgs = append(msgs, field+" is required")
-			case "email":
-				msgs = append(msgs, field+" must be a valid email address")
-			case "min":
-				msgs = append(msgs, field+" must be at least "+fe.Param()+" characters")
-			case "max":
-				msgs = append(msgs, field+" must be at most "+fe.Param()+" characters")
-			case "voucher":
-				msgs = append(msgs, field+" must match the voucher format GB-XXXXXXXXXXX-NN")
-			default:
-				msgs = append(msgs, field+" is invalid")
+	if !errors.As(err, &ve) {
+		return nil
+	}
+	params := make([]models.InvalidParam, 0, len(ve))
+	for _, fe := range ve {
+		field := fe.Field()
+		// Use the JSON tag name if available
+		if fe.Namespace() != "" {
+			parts := strings.Split(fe.Namespace(), ".")
+			if len(parts) > 1 {
+				field = strings.Join(parts[1:], ".")
 			}
 		}
-		return strings.Join(msgs, "; ")
+		var reason string
+		switch fe.Tag() {
+		case "required":
+			reason = "is required"
+		case "email":
+			reason = "must be a valid email address"
+		case "min":
+			reason = "must be at least " + fe.Param() + " characters"
+		case "max":
+			reason = "must be at most " + fe.Param() + " characters"
+		case "voucher":
+			reason = "must match the voucher format GB-XXXXXXXXXXX-NN"
+		default:
+			reason = "is invalid"
+		}
+		params = append(params, models.InvalidParam{Field: field, Reason: reason})
 	}
-	// For non-validation errors (e.g. malformed JSON), return a generic message
-	return "invalid request body"
+	return params
 }
 
 // auditConfig holds audit configuration for resource operations (contracts, nested resources).
@@ -517,25 +537,19 @@ func validateDateRange(from, to time.Time, maxMonths int) error {
 // For 5xx errors, the raw error message is logged server-side and a generic
 // message is returned to the client to avoid leaking internal details.
 func respondError(c *gin.Context, err error) {
-	httpCode := apperror.HTTPStatus(err)
+	problem.WriteError(c, err)
+}
 
-	// Try to get error code from AppError
-	var appErr *apperror.AppError
-	errorCode := "error"
-	if errors.As(err, &appErr) {
-		errorCode = appErr.GetErrorCode()
-	}
-
-	message := err.Error()
-	if httpCode >= 500 {
-		slog.Error("Internal error", "error", err, "path", c.Request.URL.Path, "method", c.Request.Method)
-		message = "internal server error"
-	}
-
-	c.JSON(httpCode, models.ErrorResponse{
-		Code:    errorCode,
-		Message: message,
-	})
+// respondValidationError sends a 400 that names the fields that were rejected.
+//
+// The detail sentence is kept — it is what a caller without field-aware form
+// handling will show — and invalid_params carries the same information
+// structured, so a form can mark the offending inputs instead of printing one
+// line above all of them.
+func respondValidationError(c *gin.Context, err error) {
+	doc := problem.New(c, http.StatusBadRequest, apperror.CodeValidation, sanitizeBindError(err))
+	doc.InvalidParams = invalidParams(err)
+	problem.WriteProblem(c, doc)
 }
 
 // MaxFilenameLength is the maximum allowed length for uploaded filenames.

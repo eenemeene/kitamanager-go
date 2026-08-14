@@ -34,6 +34,11 @@ const (
 	// CodePreconditionRequired and CodePreconditionFailed are separate because
 	// the remedies differ: the first means "send If-Match", the second means
 	// "reload, the record moved on".
+	// CodeMethodNotAllowed is returned by the router itself: the path exists,
+	// this method does not. It has no AppError constructor because no handler
+	// ever raises it.
+	CodeMethodNotAllowed = "method_not_allowed"
+
 	CodePreconditionRequired = "precondition_required"
 	CodePreconditionFailed   = "precondition_failed"
 )

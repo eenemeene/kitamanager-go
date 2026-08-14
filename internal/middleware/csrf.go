@@ -9,7 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/eenemeene/kitamanager-go/internal/models"
+	"github.com/eenemeene/kitamanager-go/internal/problem"
 )
 
 const (
@@ -71,10 +71,7 @@ func (m *CSRFMiddleware) ValidateCSRF() gin.HandlerFunc {
 
 		csrfHeader := c.GetHeader(CSRFHeaderName)
 		if csrfHeader == "" {
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Code:    "csrf_error",
-				Message: "CSRF token header missing",
-			})
+			problem.Write(c, http.StatusForbidden, "csrf_error", "CSRF token header missing")
 			c.Abort()
 			return
 		}
@@ -84,10 +81,7 @@ func (m *CSRFMiddleware) ValidateCSRF() gin.HandlerFunc {
 
 		// Constant-time comparison to prevent timing attacks.
 		if subtle.ConstantTimeCompare([]byte(csrfHeader), []byte(expectedCSRF)) != 1 {
-			c.JSON(http.StatusForbidden, models.ErrorResponse{
-				Code:    "csrf_error",
-				Message: "CSRF token validation failed",
-			})
+			problem.Write(c, http.StatusForbidden, "csrf_error", "CSRF token validation failed")
 			c.Abort()
 			return
 		}

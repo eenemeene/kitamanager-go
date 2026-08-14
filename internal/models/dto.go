@@ -12,8 +12,36 @@ func UintPtr(u uint) *uint { return &u }
 
 // ErrorResponse represents a structured error response
 type ErrorResponse struct {
-	Code    string `json:"code" example:"not_found"`
-	Message string `json:"message" example:"resource not found"`
+	// Type identifies the kind of problem and is the stable thing to branch on
+	// or translate by. It resolves to the errors reference, so a caller reading a
+	// log can follow it and find out what the condition means.
+	Type string `json:"type" example:"https://kitamanager.example.com/errors/not-found"`
+	// Title is a short, human-readable summary of the problem type. It does not
+	// change from occurrence to occurrence — Detail carries the specifics.
+	Title string `json:"title" example:"Resource not found"`
+	// Status repeats the HTTP status code, so a problem document that has been
+	// logged or forwarded still says what happened.
+	Status int `json:"status" example:"404"`
+	// Detail describes this particular occurrence: which contract, which dates.
+	// Safe to show a user; never carries internal error text for 5xx.
+	Detail string `json:"detail,omitempty" example:"child contract 7 not found"`
+	// Instance is the request path this occurred on.
+	Instance string `json:"instance,omitempty" example:"/api/v1/organizations/1/children/42"`
+	// Code is the machine-readable slug — the programmatic contract, kept as an
+	// RFC 9457 extension member because the specification has no opinion on
+	// error codes and clients need one that does not depend on parsing a URI.
+	Code string `json:"code" example:"not_found"`
+	// RequestID ties this response to the server logs for the same request.
+	RequestID string `json:"request_id,omitempty" example:"0e03dc7d-9baa-4a23-a8ba-bc54ad5b30b9"`
+	// InvalidParams lists the fields a validation error rejected, so a form can
+	// mark the offending inputs instead of showing one sentence above all of them.
+	InvalidParams []InvalidParam `json:"invalid_params,omitempty"`
+}
+
+// InvalidParam names one field that failed validation.
+type InvalidParam struct {
+	Field  string `json:"field" example:"weekly_hours"`
+	Reason string `json:"reason" example:"must be between 0 and 168"`
 }
 
 // LoginRequest represents the login request body.

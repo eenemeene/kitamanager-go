@@ -81,6 +81,7 @@ func run(inPath, outPath string) error {
 	allowFreeFormObjectProperties(v3)
 	assignOperationIDs(v3)
 	declareContractETag(v3)
+	declareProblemContentType(v3)
 
 	// kin-openapi marshals fields in a stable order via tagged structs;
 	// the only non-determinism left would come from unordered maps in the
@@ -110,6 +111,47 @@ func run(inPath, outPath string) error {
 //
 // Undocumented, the concurrency contract is only half stated: the write endpoints
 // say they require If-Match without saying where its value comes from.
+// declareProblemContentType re-labels error responses as problem documents.
+//
+// swaggo derives every response's media type from the operation's @Produce
+// annotation, which is "application/json" for the whole API — so the generated
+// spec claimed plain JSON for the error bodies even though the server sends
+// RFC 9457's "application/problem+json". Annotating each of the 400-odd @Failure
+// lines individually would be the alternative; doing it here keeps the one fact
+// in one place, and it cannot fall out of step with a new endpoint.
+//
+// Only responses that actually carry the error schema are moved. A 4xx that
+// returns something else (there are none today, but a file endpoint could)
+// keeps its own media type.
+func declareProblemContentType(doc *openapi3.T) {
+	if doc.Paths == nil {
+		return
+	}
+	const problemJSON = "application/problem+json"
+	for _, item := range doc.Paths.Map() {
+		if item == nil {
+			continue
+		}
+		for _, op := range item.Operations() {
+			if op == nil || op.Responses == nil {
+				continue
+			}
+			for status, ref := range op.Responses.Map() {
+				if status < "400" || ref == nil || ref.Value == nil {
+					continue
+				}
+				media := ref.Value.Content["application/json"]
+				if media == nil || media.Schema == nil ||
+					!strings.HasSuffix(media.Schema.Ref, "ErrorResponse") {
+					continue
+				}
+				delete(ref.Value.Content, "application/json")
+				ref.Value.Content[problemJSON] = media
+			}
+		}
+	}
+}
+
 func declareContractETag(doc *openapi3.T) {
 	if doc.Paths == nil {
 		return

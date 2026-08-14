@@ -8,7 +8,7 @@ import (
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/ctxkeys"
-	"github.com/eenemeene/kitamanager-go/internal/models"
+	"github.com/eenemeene/kitamanager-go/internal/problem"
 	"github.com/eenemeene/kitamanager-go/internal/rbac"
 )
 
@@ -29,19 +29,13 @@ func (m *AuthorizationMiddleware) RequirePermission(resource, action string) gin
 	return func(c *gin.Context) {
 		userID, exists := c.Get(ctxkeys.UserID)
 		if !exists {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, models.ErrorResponse{
-				Code:    apperror.CodeUnauthorized,
-				Message: "unauthorized",
-			})
+			problem.Write(c, http.StatusUnauthorized, apperror.CodeUnauthorized, "unauthorized")
 			return
 		}
 
 		userIDUint, ok := userID.(uint)
 		if !ok {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, models.ErrorResponse{
-				Code:    apperror.CodeInternal,
-				Message: "invalid user id",
-			})
+			problem.Write(c, http.StatusInternalServerError, apperror.CodeInternal, "invalid user id")
 			return
 		}
 
@@ -51,10 +45,7 @@ func (m *AuthorizationMiddleware) RequirePermission(resource, action string) gin
 		// lookup — see M2.
 		isSuperAdmin, err := m.permissionService.IsSuperAdmin(c.Request.Context(), userIDUint)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, models.ErrorResponse{
-				Code:    apperror.CodeInternal,
-				Message: "authorization check failed",
-			})
+			problem.Write(c, http.StatusInternalServerError, apperror.CodeInternal, "authorization check failed")
 			return
 		}
 		c.Set(ctxkeys.IsSuperAdmin, isSuperAdmin)
@@ -73,37 +64,25 @@ func (m *AuthorizationMiddleware) RequirePermission(resource, action string) gin
 			// fail closed with a 403 rather than try to infer the
 			// tenant scope from a resource lookup (which would need
 			// the resource's type and a DB round-trip per request).
-			c.AbortWithStatusJSON(http.StatusForbidden, models.ErrorResponse{
-				Code:    apperror.CodeForbidden,
-				Message: "organization context required",
-			})
+			problem.Write(c, http.StatusForbidden, apperror.CodeForbidden, "organization context required")
 			return
 		}
 
 		orgID, err := strconv.ParseUint(orgIDStr, 10, 32)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusBadRequest, models.ErrorResponse{
-				Code:    apperror.CodeBadRequest,
-				Message: "invalid organization id",
-			})
+			problem.Write(c, http.StatusBadRequest, apperror.CodeBadRequest, "invalid organization id")
 			return
 		}
 
 		// Check permission
 		allowed, err := m.permissionService.CheckPermission(c.Request.Context(), userIDUint, uint(orgID), resource, action)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, models.ErrorResponse{
-				Code:    apperror.CodeInternal,
-				Message: "authorization check failed",
-			})
+			problem.Write(c, http.StatusInternalServerError, apperror.CodeInternal, "authorization check failed")
 			return
 		}
 
 		if !allowed {
-			c.AbortWithStatusJSON(http.StatusForbidden, models.ErrorResponse{
-				Code:    apperror.CodeForbidden,
-				Message: "forbidden",
-			})
+			problem.Write(c, http.StatusForbidden, apperror.CodeForbidden, "forbidden")
 			return
 		}
 
@@ -118,37 +97,25 @@ func (m *AuthorizationMiddleware) RequireSuperAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID, exists := c.Get(ctxkeys.UserID)
 		if !exists {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, models.ErrorResponse{
-				Code:    apperror.CodeUnauthorized,
-				Message: "unauthorized",
-			})
+			problem.Write(c, http.StatusUnauthorized, apperror.CodeUnauthorized, "unauthorized")
 			return
 		}
 
 		userIDUint, ok := userID.(uint)
 		if !ok {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, models.ErrorResponse{
-				Code:    apperror.CodeInternal,
-				Message: "invalid user id",
-			})
+			problem.Write(c, http.StatusInternalServerError, apperror.CodeInternal, "invalid user id")
 			return
 		}
 
 		isSuperAdmin, err := m.permissionService.IsSuperAdmin(c.Request.Context(), userIDUint)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, models.ErrorResponse{
-				Code:    apperror.CodeInternal,
-				Message: "authorization check failed",
-			})
+			problem.Write(c, http.StatusInternalServerError, apperror.CodeInternal, "authorization check failed")
 			return
 		}
 		c.Set(ctxkeys.IsSuperAdmin, isSuperAdmin)
 
 		if !isSuperAdmin {
-			c.AbortWithStatusJSON(http.StatusForbidden, models.ErrorResponse{
-				Code:    apperror.CodeForbidden,
-				Message: "superadmin access required",
-			})
+			problem.Write(c, http.StatusForbidden, apperror.CodeForbidden, "superadmin access required")
 			return
 		}
 
@@ -163,19 +130,13 @@ func (m *AuthorizationMiddleware) RequireGlobalPermission(resource, action strin
 	return func(c *gin.Context) {
 		userID, exists := c.Get(ctxkeys.UserID)
 		if !exists {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, models.ErrorResponse{
-				Code:    apperror.CodeUnauthorized,
-				Message: "unauthorized",
-			})
+			problem.Write(c, http.StatusUnauthorized, apperror.CodeUnauthorized, "unauthorized")
 			return
 		}
 
 		userIDUint, ok := userID.(uint)
 		if !ok {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, models.ErrorResponse{
-				Code:    apperror.CodeInternal,
-				Message: "invalid user id",
-			})
+			problem.Write(c, http.StatusInternalServerError, apperror.CodeInternal, "invalid user id")
 			return
 		}
 
@@ -183,28 +144,19 @@ func (m *AuthorizationMiddleware) RequireGlobalPermission(resource, action strin
 		// ctx key without repeating the lookup (M2).
 		isSuperAdmin, err := m.permissionService.IsSuperAdmin(c.Request.Context(), userIDUint)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, models.ErrorResponse{
-				Code:    apperror.CodeInternal,
-				Message: "authorization check failed",
-			})
+			problem.Write(c, http.StatusInternalServerError, apperror.CodeInternal, "authorization check failed")
 			return
 		}
 		c.Set(ctxkeys.IsSuperAdmin, isSuperAdmin)
 
 		allowed, err := m.permissionService.HasPermissionInAnyOrg(c.Request.Context(), userIDUint, resource, action)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, models.ErrorResponse{
-				Code:    apperror.CodeInternal,
-				Message: "authorization check failed",
-			})
+			problem.Write(c, http.StatusInternalServerError, apperror.CodeInternal, "authorization check failed")
 			return
 		}
 
 		if !allowed {
-			c.AbortWithStatusJSON(http.StatusForbidden, models.ErrorResponse{
-				Code:    apperror.CodeForbidden,
-				Message: "forbidden",
-			})
+			problem.Write(c, http.StatusForbidden, apperror.CodeForbidden, "forbidden")
 			return
 		}
 

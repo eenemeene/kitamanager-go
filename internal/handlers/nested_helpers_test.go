@@ -548,8 +548,8 @@ func TestHandleOrgNestedDelete_ErrorMessagePreserved(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &errResp); err != nil {
 		t.Fatalf("failed to parse error response: %v", err)
 	}
-	if errResp.Message != "period overlaps" {
-		t.Errorf("message = %q, want %q", errResp.Message, "period overlaps")
+	if errResp.Detail != "period overlaps" {
+		t.Errorf("message = %q, want %q", errResp.Detail, "period overlaps")
 	}
 }
 
