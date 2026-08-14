@@ -23,18 +23,45 @@ plain-text body.
 
 ## Language
 
-The API is English. `code`, `type`, field names and every log line stay English
-regardless of what a client asks for, and English is what you get by default.
+The API is English, and the top level of a problem document always is: `code`,
+`type`, `title`, `detail`, field names and every log line. That is deliberate —
+a captured error response stays readable by whoever picks up the support ticket,
+whatever language the user was working in.
 
-`Accept-Language` negotiates the prose members. Send `de` and `title` comes back
-in German; the response states what it actually served in `Content-Language`, and
-carries `Vary: Accept-Language` so a shared cache keys on it. Quality values and
-regional subtags are honoured — `de-AT;q=0.9, en;q=0.8` selects German — and an
-unsupported or malformed value falls back to English rather than failing.
+Send `Accept-Language: de` and the document gains a `localized` member carrying
+the same title and detail in German. Nothing above it changes.
 
-`detail` is still English in every language today: it is composed per occurrence
-at the point the error is raised, and those sites have not been converted yet. A
-localized client should keep translating `code` for now.
+```json
+{
+  "type": "https://eenemeene.github.io/kitamanager-go/en/docs/reference/api/errors/#not_found",
+  "title": "Resource not found",
+  "status": 404,
+  "detail": "child 7 not found in this organization",
+  "code": "not_found",
+  "request_id": "0e03dc7d-9baa-4a23-a8ba-bc54ad5b30b9",
+  "localized": {
+    "locale": "de",
+    "title": "Ressource nicht gefunden",
+    "detail": "Kind 7 wurde in dieser Organisation nicht gefunden"
+  }
+}
+```
+
+The rule for a client: **branch on `code`, show `localized.detail` when present
+and `detail` otherwise, log `detail`.**
+
+`localized` is omitted entirely for an English request — the top level already is
+that language. `locale` states what was actually served, which is not always what
+was asked for: an unsupported language is answered in English. Quality values and
+regional subtags are honoured, so `de-AT;q=0.9, en;q=0.8` selects German.
+
+Because the body then carries two languages, `Content-Language` lists both
+(`en, de`) rather than just the negotiated one. `Vary: Accept-Language` is always
+set so a shared cache keys correctly.
+
+Every user-facing message is translated, and a test fails the build if one is
+added or reworded without a translation — so a missing `localized` means English
+was requested, not that a translation was forgotten.
 
 ## Which member to use
 
@@ -47,6 +74,7 @@ localized client should keep translating `code` for now.
 | `instance` | The request path. |
 | `request_id` | Quote this when reporting a problem; it matches the server log line. |
 | `invalid_params` | Present on validation failures: one entry per rejected field. |
+| `localized` | The same title and detail in the negotiated language. Absent for English. |
 | `params` | The specifics as key/value data, where the endpoint provides them. |
 
 `title` and `detail` are English and always will be — the API has one language.
@@ -75,8 +103,10 @@ mark the offending inputs instead of printing one sentence above all of them.
   "detail": "email must be a valid email address; weekly_hours is required",
   "code": "validation_error",
   "invalid_params": [
-    { "field": "email", "reason": "must be a valid email address", "rule": "email" },
-    { "field": "weekly_hours", "reason": "is required", "rule": "required" }
+    { "field": "email", "reason": "must be a valid email address", "rule": "email",
+      "localized_reason": "muss eine gültige E-Mail-Adresse sein" },
+    { "field": "weekly_hours", "reason": "is required", "rule": "required",
+      "localized_reason": "ist erforderlich" }
   ]
 }
 ```

@@ -1557,6 +1557,16 @@ definitions:
         items:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.InvalidParam'
         type: array
+      localized:
+        allOf:
+        - $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.LocalizedMessage'
+        description: |-
+          Localized carries the user-facing rendering when the client negotiated a
+          language the catalogue covers. The members above stay English, always:
+          they are what a log, a captured response or an integrator's console shows,
+          and losing the English is how a support ticket becomes unreadable to
+          whoever is handling it. This follows Google's AIP-193, where the
+          developer-facing message and the localized one travel together.
       params:
         additionalProperties:
           type: string
@@ -2654,6 +2664,15 @@ definitions:
       field:
         example: weekly_hours
         type: string
+      localized_reason:
+        description: |-
+          LocalizedReason is Reason in the negotiated language, present on the same
+          terms as Localized above. It sits beside Reason rather than in a parallel
+          array inside Localized: a form iterating these needs both strings for the
+          same field together, and matching two arrays by index is a bug waiting to
+          happen.
+        example: ist erforderlich
+        type: string
       param:
         example: "8"
         type: string
@@ -2662,6 +2681,21 @@ definitions:
         type: string
       rule:
         example: required
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.LocalizedMessage:
+    properties:
+      detail:
+        example: Kind 7 wurde in dieser Organisation nicht gefunden
+        type: string
+      locale:
+        description: |-
+          Locale is the language actually served, which is not always the one
+          requested — an unsupported language is answered in English.
+        example: de
+        type: string
+      title:
+        example: Ressource nicht gefunden
         type: string
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.LoginFactorDescriptor:

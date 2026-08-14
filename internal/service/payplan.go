@@ -597,7 +597,7 @@ func (s *PayPlanService) CalculateSalary(ctx context.Context, payplanID uint, gr
 	period, err := s.store.FindActivePeriod(ctx, payplanID, date)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
-			return 0, apperror.NotFound("no active pay plan period found for the given date")
+			return 0, apperror.NotFound("active pay plan period for the given date")
 		}
 		return 0, apperror.InternalWrap(err, "failed to fetch pay plan period")
 	}
@@ -605,7 +605,7 @@ func (s *PayPlanService) CalculateSalary(ctx context.Context, payplanID uint, gr
 	entry, err := s.store.FindEntry(ctx, period.ID, grade, step)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
-			return 0, apperror.NotFound("no pay plan entry found for the given grade and step")
+			return 0, apperror.NotFound("pay plan entry for the given grade and step")
 		}
 		return 0, apperror.InternalWrap(err, "failed to fetch pay plan entry")
 	}

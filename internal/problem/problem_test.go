@@ -99,45 +99,9 @@ func TestEveryCodeHasATitle(t *testing.T) {
 		apperror.CodePreconditionRequired, apperror.CodePreconditionFailed,
 	}
 	for _, code := range codes {
-		if problem.Title(nil, code) == code {
+		if problem.Title(code) == code {
 			t.Errorf("code %q has no registered title, so its problem documents would repeat the code as their title", code)
 		}
-	}
-}
-
-// TestTitleIsLocalized checks the one member of the document that step 1 can
-// already translate: the title is a fixed phrase per code, so it lives in the
-// catalogue, while `detail` is still built as an English sentence at ~368 call
-// sites and stays English until those are converted.
-func TestTitleIsLocalized(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	r.Use(i18n.Middleware())
-	r.GET("/x", func(c *gin.Context) {
-		problem.Write(c, http.StatusNotFound, apperror.CodeNotFound, "child 42 not found")
-	})
-
-	req := httptest.NewRequest(http.MethodGet, "/x", nil)
-	req.Header.Set("Accept-Language", "de")
-	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, req)
-
-	var got models.ErrorResponse
-	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-		t.Fatalf("body is not JSON: %v", err)
-	}
-	if got.Title != "Ressource nicht gefunden" {
-		t.Errorf("title = %q, want the German one", got.Title)
-	}
-	// The code is not translated: it is the client's contract, not prose.
-	if got.Code != apperror.CodeNotFound {
-		t.Errorf("code = %q, want %q", got.Code, apperror.CodeNotFound)
-	}
-	// Detail is still English, and this asserts it deliberately — step 1 does
-	// not touch the ~368 sites that build it, so a change here is a change in
-	// scope, not an improvement that slipped in.
-	if got.Detail != "child 42 not found" {
-		t.Errorf("detail = %q, want the English sentence", got.Detail)
 	}
 }
 
@@ -195,14 +159,21 @@ func TestInternalErrorsDoNotLeakDetail(t *testing.T) {
 	}
 }
 
-// TestDetailIsLocalizedWithArguments is the point of the whole change: a message
-// whose specifics are arguments rather than baked-in text can be translated and
-// still name the record it is about.
-//
-// Before the constructors kept the format apart from the arguments, this could
-// not work — "child 7 not found in this organization" is a string with no
-// structure, so a German reader either saw the English or lost the 7.
-func TestDetailIsLocalizedWithArguments(t *testing.T) {
+// TestErrorTextStaysEnglishForLogs pins the other half of the split. Whatever
+// language a response was rendered in, err.Error() is English — a German user's
+// failure must not produce a log line that an English-speaking operator cannot
+// grep for.
+func TestErrorTextStaysEnglishForLogs(t *testing.T) {
+	err := apperror.BadRequest("child %d not found in this organization", 7)
+	if err.Error() != "child 7 not found in this organization" {
+		t.Errorf("Error() = %q, want the English rendering", err.Error())
+	}
+}
+
+// TestLocalizedSitsBesideEnglish is the shape this design turns on: the top
+// level stays English so a captured response is readable by whoever handles the
+// support ticket, and the reader's language rides alongside.
+func TestLocalizedSitsBesideEnglish(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.Use(i18n.Middleware())
@@ -219,25 +190,44 @@ func TestDetailIsLocalizedWithArguments(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("body is not JSON: %v", err)
 	}
-	const want = "Kind 7 wurde in dieser Organisation nicht gefunden"
-	if got.Detail != want {
-		t.Errorf("detail = %q, want %q", got.Detail, want)
+
+	if got.Detail != "child 7 not found in this organization" {
+		t.Errorf("detail = %q, want the English rendering", got.Detail)
+	}
+	if got.Title != "Malformed request" {
+		t.Errorf("title = %q, want the English title", got.Title)
+	}
+	if got.Localized == nil {
+		t.Fatal("localized is absent for a German request")
+	}
+	if got.Localized.Locale != "de" {
+		t.Errorf("localized.locale = %q, want de", got.Localized.Locale)
+	}
+	// The specifics survive the translation: the 7 is still in the sentence.
+	if got.Localized.Detail != "Kind 7 wurde in dieser Organisation nicht gefunden" {
+		t.Errorf("localized.detail = %q", got.Localized.Detail)
+	}
+	if got.Localized.Title != "Fehlerhafte Anfrage" {
+		t.Errorf("localized.title = %q", got.Localized.Title)
+	}
+	// The body carries two languages, so the header must say so.
+	if cl := rec.Header().Get("Content-Language"); cl != "en, de" {
+		t.Errorf("Content-Language = %q, want %q", cl, "en, de")
 	}
 }
 
-// TestDetailStaysEnglishWhenUntranslated covers the state the tree is actually
-// in: most messages have no German entry yet, and those must render in English
-// rather than as a blank or a format string.
-func TestDetailStaysEnglishWhenUntranslated(t *testing.T) {
+// TestLocalizedAbsentForEnglish keeps the document small for the common case:
+// the top level already is the reader's language, so echoing it would be noise.
+func TestLocalizedAbsentForEnglish(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.Use(i18n.Middleware())
 	r.GET("/x", func(c *gin.Context) {
-		problem.WriteError(c, apperror.BadRequest("widget %d has no translation yet", 3))
+		problem.WriteError(c, apperror.BadRequest("child %d not found in this organization", 7))
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/x", nil)
-	req.Header.Set("Accept-Language", "de")
+	req.Header.Set("Accept-Language", "en")
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -245,18 +235,30 @@ func TestDetailStaysEnglishWhenUntranslated(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("body is not JSON: %v", err)
 	}
-	if got.Detail != "widget 3 has no translation yet" {
-		t.Errorf("detail = %q, want the English rendering with the argument applied", got.Detail)
+	if got.Localized != nil {
+		t.Errorf("localized = %+v, want it omitted for an English request", got.Localized)
+	}
+	if cl := rec.Header().Get("Content-Language"); cl != "en" {
+		t.Errorf("Content-Language = %q, want %q", cl, "en")
 	}
 }
 
-// TestErrorTextStaysEnglishForLogs pins the other half of the split. Whatever
-// language a response was rendered in, err.Error() is English — a German user's
-// failure must not produce a log line that an English-speaking operator cannot
-// grep for.
-func TestErrorTextStaysEnglishForLogs(t *testing.T) {
-	err := apperror.BadRequest("child %d not found in this organization", 7)
-	if err.Error() != "child 7 not found in this organization" {
-		t.Errorf("Error() = %q, want the English rendering", err.Error())
+// TestFiveHundredCarriesNoLocalizedDetail: the English detail is already fixed
+// text on a 5xx, and the params behind it describe an internal failure.
+func TestFiveHundredCarriesNoLocalizedDetail(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(i18n.Middleware())
+	r.GET("/x", func(c *gin.Context) {
+		problem.WriteError(c, apperror.Internal("pq: relation \"secret_table\" does not exist"))
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/x", nil)
+	req.Header.Set("Accept-Language", "de")
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if strings.Contains(rec.Body.String(), "secret_table") {
+		t.Errorf("500 body leaked the underlying error: %s", rec.Body.String())
 	}
 }

@@ -33,6 +33,13 @@ type ErrorResponse struct {
 	Code string `json:"code" example:"not_found"`
 	// RequestID ties this response to the server logs for the same request.
 	RequestID string `json:"request_id,omitempty" example:"0e03dc7d-9baa-4a23-a8ba-bc54ad5b30b9"`
+	// Localized carries the user-facing rendering when the client negotiated a
+	// language the catalogue covers. The members above stay English, always:
+	// they are what a log, a captured response or an integrator's console shows,
+	// and losing the English is how a support ticket becomes unreadable to
+	// whoever is handling it. This follows Google's AIP-193, where the
+	// developer-facing message and the localized one travel together.
+	Localized *LocalizedMessage `json:"localized,omitempty"`
 	// Params carries the specifics of this occurrence as key/value data, so a
 	// client that renders in another language can interpolate them into its own
 	// message instead of parsing them back out of Detail.
@@ -40,6 +47,16 @@ type ErrorResponse struct {
 	// InvalidParams lists the fields a validation error rejected, so a form can
 	// mark the offending inputs instead of showing one sentence above all of them.
 	InvalidParams []InvalidParam `json:"invalid_params,omitempty"`
+}
+
+// LocalizedMessage is the user-facing view of a problem, in the language the
+// client asked for.
+type LocalizedMessage struct {
+	// Locale is the language actually served, which is not always the one
+	// requested — an unsupported language is answered in English.
+	Locale string `json:"locale" example:"de"`
+	Title  string `json:"title,omitempty" example:"Ressource nicht gefunden"`
+	Detail string `json:"detail,omitempty" example:"Kind 7 wurde in dieser Organisation nicht gefunden"`
 }
 
 // InvalidParam names one field that failed validation.
@@ -53,6 +70,12 @@ type InvalidParam struct {
 	Reason string `json:"reason" example:"is required"`
 	Rule   string `json:"rule" example:"required"`
 	Param  string `json:"param,omitempty" example:"8"`
+	// LocalizedReason is Reason in the negotiated language, present on the same
+	// terms as Localized above. It sits beside Reason rather than in a parallel
+	// array inside Localized: a form iterating these needs both strings for the
+	// same field together, and matching two arrays by index is a bug waiting to
+	// happen.
+	LocalizedReason string `json:"localized_reason,omitempty" example:"ist erforderlich"`
 }
 
 // LoginRequest represents the login request body.

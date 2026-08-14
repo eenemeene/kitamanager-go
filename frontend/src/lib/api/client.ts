@@ -162,28 +162,12 @@ class ApiClient {
       async (error: AxiosError) => {
         const originalRequest = error.config as typeof error.config | undefined;
 
-        // Enrich 429 responses with a user-friendly message.
+        // 429s used to be enriched here with an English sentence built from
+        // Retry-After, because the body had no usable message. The server now
+        // sends one, localized, so synthesising a second — in one language —
+        // would only override it. Retry-After is still on the response for any
+        // caller that wants to show a countdown.
         if (error.response?.status === 429) {
-          const retryAfter = error.response.headers['retry-after'];
-          // The rate limiter already sends a problem document; this only adds the
-          // Retry-After seconds, which live in a header and so cannot reach the
-          // body any other way. It fills `detail` rather than replacing it, so a
-          // German user still gets the translated `code` message.
-          const data = error.response.data as Record<string, unknown> | undefined;
-          if (data && retryAfter) {
-            // As data, not prose: the wait lives in a header, and a German
-            // reader needs the number to interpolate, not an English sentence to
-            // read. `detail` is filled too, for anything reading the body raw.
-            data.params = {
-              ...(data.params as Record<string, string>),
-              seconds: String(retryAfter),
-            };
-          }
-          if (data && !data.detail) {
-            data.detail = retryAfter
-              ? `Rate limit exceeded. Please try again in ${retryAfter} seconds.`
-              : 'Rate limit exceeded. Please try again later.';
-          }
           return Promise.reject(error);
         }
 

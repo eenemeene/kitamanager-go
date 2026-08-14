@@ -1,65 +1,239 @@
 package i18n
 
+// Code generated from the translation tables. DO NOT EDIT by hand for bulk
+// changes; add a message here and its text to locales/en.json and de.json.
+//
 // The registry maps an English message to the catalogue entry that localizes it.
 //
-// Call sites keep writing English format strings — `apperror.BadRequest("child
-// %d not found in this organization", id)` — because that is what makes an error
-// readable where it is raised, and what keeps `Error()` English for the logs.
-// This table is the bridge from that string to a stable message ID.
-//
-// Why a bridge instead of putting IDs at the call sites: the English string is a
-// poor translation key, because rewording it silently orphans the translation,
-// but it is an excellent thing to read in code. The registry gets both — the
-// call site stays prose, the catalogue gets an ID that survives rewording, and
-// TestRegistryMatchesSource fails if a message is reworded without updating the
-// entry, which is the failure that would otherwise be silent.
-//
-// Only messages worth localizing need an entry. Anything absent renders in
-// English, which is the correct outcome for the internal-failure messages that
-// make up most of the tree.
+// Call sites keep writing English format strings, because that is what makes an
+// error readable where it is raised and what keeps Error() English for the logs.
+// This table is the bridge from that string to a stable message ID: the English
+// text is a poor translation key, since rewording it would orphan the
+// translation, but an excellent thing to read in code. Rewording is not silent —
+// TestEveryUserFacingMessageIsRegistered fails until this table is updated too.
 
 // entry describes how one English message becomes a localized one.
 type entry struct {
-	// ID is the catalogue key. Stable across rewordings of the English text.
+	// ID is the catalogue key, stable across rewordings of the English text.
 	ID string
-	// Args names the format's verbs, in order, so the catalogue can refer to
-	// them by name. A translator writing German needs to move them around the
-	// sentence, and "{{.Count}}" can be moved where "%d" cannot.
+	// Args names the format's verbs in order, so a translator can move them
+	// around the sentence. "{{.Count}}" can be moved where "%d" cannot.
 	Args []string
-	// Plural is the name of the argument that selects the plural form, empty if
-	// the message does not pluralize. go-i18n applies CLDR rules per language,
-	// so German gets German's rules rather than English's.
+	// Plural names the argument that selects the plural form, empty when the
+	// message does not pluralize. go-i18n applies CLDR rules per language, so
+	// German gets German's rules rather than English's.
 	Plural string
 }
 
 // registry is keyed by the exact English format string a call site passes.
+// For NotFound the key is the composed "<resource> not found", because that is
+// what the constructor builds and therefore what reaches the localizer.
 var registry = map[string]entry{
-	"child %d not found in this organization": {
-		ID:   "child.not_found_in_organization",
-		Args: []string{"ChildID"},
-	},
-	"section %d not found in this organization": {
-		ID:   "section.not_found_in_organization",
-		Args: []string{"SectionID"},
-	},
-	// This one is why the plural support is not theoretical: the English source
-	// reads "with 1 currently-assigned children" today, which is wrong before
-	// any translation is involved.
-	"cannot delete section with %d currently-assigned children; reassign them first": {
-		ID:     "section.delete.has_children",
-		Args:   []string{"Count"},
-		Plural: "Count",
-	},
-	"cannot delete section with %d currently-assigned employees; reassign them first": {
-		ID:     "section.delete.has_employees",
-		Args:   []string{"Count"},
-		Plural: "Count",
-	},
-}
-
-// titleID returns the catalogue ID for an error code's title. Derived rather
-// than tabulated: the code is already a stable slug, so a new code gets a
-// predictable ID and there is no second list to forget to update.
-func titleID(code string) string {
-	return "error.title." + code
+	"check-in time must be before check-out time":                  {ID: "attendance.checkin_after_checkout"},
+	"date is required for non-present status":                      {ID: "attendance.date_required"},
+	"attendance record already exists for this child on this date": {ID: "attendance.exists"},
+	"invalid status": {ID: "attendance.invalid_status"},
+	"invalid status, must be one of: present, absent, sick, vacation":          {ID: "attendance.invalid_status_values"},
+	"actor password is incorrect":                                              {ID: "auth.actor_password_incorrect"},
+	"actor_password is required":                                               {ID: "auth.actor_password_required"},
+	"credential mismatch":                                                      {ID: "auth.credential_mismatch"},
+	"current password is incorrect":                                            {ID: "auth.current_password_incorrect"},
+	"invalid credentials":                                                      {ID: "auth.invalid_credentials"},
+	"invalid pending token":                                                    {ID: "auth.invalid_pending_token"},
+	"invalid user id":                                                          {ID: "auth.invalid_user_id"},
+	"not authenticated":                                                        {ID: "auth.not_authenticated"},
+	"password is required":                                                     {ID: "auth.password_required"},
+	"insufficient permissions for this organization":                           {ID: "authz.insufficient_permissions"},
+	"invalid bill_id parameter":                                                {ID: "bill.invalid_id"},
+	"bill for the specified date not found":                                    {ID: "bill.none_for_date"},
+	"bills for this organization not found":                                    {ID: "bill.none_for_organization"},
+	"the boundary must leave the earlier contract at least one day":            {ID: "boundary.earlier_min_day"},
+	"the earlier contract has no end date, so the two do not share a boundary": {ID: "boundary.earlier_open_ended"},
+	"the boundary must leave the later contract at least one day":              {ID: "boundary.later_min_day"},
+	"the two contracts are not adjacent, so they share no boundary; set each end date instead":                   {ID: "boundary.not_adjacent"},
+	"earlier_id and later_id must name different contracts":                                                      {ID: "boundary.same_contract"},
+	"earlier_id must name the contract that starts first":                                                        {ID: "boundary.wrong_order"},
+	"category must be 'income' or 'expense'":                                                                     {ID: "budget.category_values"},
+	"cannot change category while entries exist; delete entries first or create a new budget item":               {ID: "budget.change_category"},
+	"cannot change category and per_child while entries exist; delete entries first or create a new budget item": {ID: "budget.change_category_per_child"},
+	"cannot change per_child while entries exist; delete entries first or create a new budget item":              {ID: "budget.change_per_child"},
+	"budget item entry overlaps with existing entry":                                                             {ID: "budget.entry_overlap"},
+	"monthly_amount must be >= 0":                                                                                {ID: "budget.monthly_amount"},
+	"budget item with this name already exists in the organization":                                              {ID: "budget.name_exists"},
+	"add_child_contracts[%d]: child_id is required":                                                              {ID: "bulk.child_contracts.child_id", Args: []string{"I"}},
+	"add_child_contracts[%d]: from is required":                                                                  {ID: "bulk.child_contracts.from", Args: []string{"I"}},
+	"add_child_contracts[%d]: section_id is required":                                                            {ID: "bulk.child_contracts.section_id", Args: []string{"I"}},
+	"add_child_contracts[%d]: section_id %d does not match request section_id %d":                                {ID: "bulk.child_contracts.section_mismatch", Args: []string{"I", "Got", "Want"}},
+	"add_children[%d]: birthdate is required":                                                                    {ID: "bulk.children.birthdate", Args: []string{"I"}},
+	"add_children[%d].contracts[%d]: from is required":                                                           {ID: "bulk.children.contract.from", Args: []string{"I", "J"}},
+	"add_children[%d].contracts[%d]: section_id is required":                                                     {ID: "bulk.children.contract.section_id", Args: []string{"I", "J"}},
+	"add_children[%d].contracts[%d]: section_id %d does not match request section_id %d":                         {ID: "bulk.children.contract.section_mismatch", Args: []string{"I", "J", "Got", "Want"}},
+	"add_children[%d]: at least one contract is required":                                                        {ID: "bulk.children.contract_required", Args: []string{"I"}},
+	"add_employee_contracts[%d]: employee_id is required":                                                        {ID: "bulk.employee_contracts.employee_id", Args: []string{"I"}},
+	"add_employee_contracts[%d]: from is required":                                                               {ID: "bulk.employee_contracts.from", Args: []string{"I"}},
+	"add_employee_contracts[%d]: grade is required":                                                              {ID: "bulk.employee_contracts.grade", Args: []string{"I"}},
+	"add_employee_contracts[%d]: payplan_id is required":                                                         {ID: "bulk.employee_contracts.payplan_id", Args: []string{"I"}},
+	"add_employee_contracts[%d]: section_id is required":                                                         {ID: "bulk.employee_contracts.section_id", Args: []string{"I"}},
+	"add_employee_contracts[%d]: section_id %d does not match request section_id %d":                             {ID: "bulk.employee_contracts.section_mismatch", Args: []string{"I", "Got", "Want"}},
+	"add_employee_contracts[%d]: staff_category is required":                                                     {ID: "bulk.employee_contracts.staff_category", Args: []string{"I"}},
+	"add_employee_contracts[%d]: step must be >= 1":                                                              {ID: "bulk.employee_contracts.step", Args: []string{"I"}},
+	"add_employee_contracts[%d]: weekly_hours must be > 0":                                                       {ID: "bulk.employee_contracts.weekly_hours", Args: []string{"I"}},
+	"add_employees[%d].contracts[%d]: from is required":                                                          {ID: "bulk.employees.contract.from", Args: []string{"I", "J"}},
+	"add_employees[%d].contracts[%d]: grade is required":                                                         {ID: "bulk.employees.contract.grade", Args: []string{"I", "J"}},
+	"add_employees[%d].contracts[%d]: payplan_id is required":                                                    {ID: "bulk.employees.contract.payplan_id", Args: []string{"I", "J"}},
+	"add_employees[%d].contracts[%d]: section_id is required":                                                    {ID: "bulk.employees.contract.section_id", Args: []string{"I", "J"}},
+	"add_employees[%d].contracts[%d]: section_id %d does not match request section_id %d":                        {ID: "bulk.employees.contract.section_mismatch", Args: []string{"I", "J", "Got", "Want"}},
+	"add_employees[%d].contracts[%d]: staff_category is required":                                                {ID: "bulk.employees.contract.staff_category", Args: []string{"I", "J"}},
+	"add_employees[%d].contracts[%d]: step must be >= 1":                                                         {ID: "bulk.employees.contract.step", Args: []string{"I", "J"}},
+	"add_employees[%d].contracts[%d]: weekly_hours must be > 0":                                                  {ID: "bulk.employees.contract.weekly_hours", Args: []string{"I", "J"}},
+	"add_employees[%d]: at least one contract is required":                                                       {ID: "bulk.employees.contract_required", Args: []string{"I"}},
+	"child %d contract %d: from date is required":                                                                {ID: "child.contract.from_required", Args: []string{"ChildIndex", "ContractIndex"}},
+	"child %d not found in this organization":                                                                    {ID: "child.not_found_in_organization", Args: []string{"ChildID"}},
+	"effective_from must be after the contract's start date; correct the contract in place instead":              {ID: "contract.effective_from_before_start"},
+	"contract end date cannot be before birthdate":                                                               {ID: "contract.end_before_birthdate"},
+	"the contract already ended before effective_from; amending it would extend it":                              {ID: "contract.ended_before_effective_from"},
+	"from cannot be null: every contract has a start date":                                                       {ID: "contract.from_not_null"},
+	"contract dates overlap with an existing contract":                                                           {ID: "contract.overlap"},
+	"contract start date cannot be before birthdate":                                                             {ID: "contract.start_before_birthdate"},
+	"'to' date must not be before 'from' date":                                                                   {ID: "contract.to_before_from"},
+	"to must be on or after from":                                                                                {ID: "contract.to_not_after_from"},
+	"to is required; send null to reopen the contract as ongoing":                                                {ID: "contract.to_required"},
+	"this contract was changed by someone else since you read it \u2014 reload and reapply your change":          {ID: "contract.version_conflict_reload"},
+	"this contract was changed by someone else \u2014 reload and try again":                                      {ID: "contract.version_conflict_retry"},
+	"employee %d contract %d: %s":                                                                                {ID: "employee.contract.detail", Args: []string{"EmployeeIndex", "ContractIndex", "Detail"}},
+	"employee %d contract %d: from date is required":                                                             {ID: "employee.contract.from_required", Args: []string{"EmployeeIndex", "ContractIndex"}},
+	"employee %d not found in this organization":                                                                 {ID: "employee.not_found_in_organization", Args: []string{"EmployeeID"}},
+	"staff_category cannot be null":                                                                              {ID: "employment.staff_category_not_null"},
+	"staff_category must be one of: qualified, supplementary, non_pedagogical":                                   {ID: "employment.staff_category_values"},
+	"weekly_hours cannot exceed 168 hours per week":                                                              {ID: "employment.weekly_hours_max"},
+	"weekly_hours cannot be null; send 0 for a contract with no hours":                                           {ID: "employment.weekly_hours_not_null"},
+	"weekly_hours must be > 0":                                                                                   {ID: "employment.weekly_hours_positive"},
+	"weekly_hours is required; send 0 for a contract with no hours":                                              {ID: "employment.weekly_hours_required"},
+	"max_age must be greater than min_age":                                                                       {ID: "funding.max_age_gt"},
+	"max_age must be greater than or equal to min_age":                                                           {ID: "funding.max_age_gte"},
+	"max_age_months cannot be negative":                                                                          {ID: "funding.max_age_negative"},
+	"min_age_months cannot be negative":                                                                          {ID: "funding.min_age_negative"},
+	"min_age_months must be less than max_age_months":                                                            {ID: "funding.min_lt_max"},
+	"government funding for this state already exists":                                                           {ID: "funding.state_exists"},
+	"state query parameter is required":                                                                          {ID: "funding.state_required"},
+	"If-Match must carry exactly one version, not a list":                                                        {ID: "ifmatch.list"},
+	"If-Match must be a contract version, e.g. If-Match: \"3\"":                                                  {ID: "ifmatch.not_a_version"},
+	"If-Match requires a strong validator, so W/\"...\" is not accepted":                                         {ID: "ifmatch.weak"},
+	"%s %d (%s %s): birthdate is required":                                                                       {ID: "import.birthdate_required", Args: []string{"Kind", "Index", "First", "Last"}},
+	"duplicate (grade, step) entries in the same imported period":                                                {ID: "import.duplicate_grade_step"},
+	"%s %d: first_name and last_name are required":                                                               {ID: "import.names_required", Args: []string{"Kind", "Index"}},
+	"no children in import data":                                                                                 {ID: "import.no_children"},
+	"no employees in import data":                                                                                {ID: "import.no_employees"},
+	"imported periods overlap":                                                                                   {ID: "import.periods_overlap"},
+	"backup_codes factors are auto-activated; do not call activate on them":                                      {ID: "mfa.backup_auto_activated"},
+	"backup_codes factors are auto-created; do not enroll directly":                                              {ID: "mfa.backup_auto_created"},
+	"a current TOTP or backup code is required":                                                                  {ID: "mfa.code_required"},
+	"factor already activated":                                                                                   {ID: "mfa.factor_already_active"},
+	"invalid code":                                                                                               {ID: "mfa.invalid_code"},
+	"regenerate is only valid for backup_codes factors":                                                          {ID: "mfa.regenerate_backup_only"},
+	"too many wrong codes; re-enroll the factor":                                                                 {ID: "mfa.too_many_codes_reenroll"},
+	"too many wrong codes, please restart login":                                                                 {ID: "mfa.too_many_codes_restart"},
+	"unsupported factor type":                                                                                    {ID: "mfa.unsupported_factor"},
+	"unsupported factor type: %s":                                                                                {ID: "mfa.unsupported_factor_named", Args: []string{"Type"}},
+	"active contract not found":                                                                                  {ID: "notfound.active_contract"},
+	"attendance record not found":                                                                                {ID: "notfound.attendance"},
+	"audit log not found":                                                                                        {ID: "notfound.audit_log"},
+	"bill period not found":                                                                                      {ID: "notfound.bill_period"},
+	"budget item not found":                                                                                      {ID: "notfound.budget_item"},
+	"budget item entry not found":                                                                                {ID: "notfound.budget_item_entry"},
+	"child not found":                                                                                            {ID: "notfound.child"},
+	"entry not found":                                                                                            {ID: "notfound.entry"},
+	"factor not found":                                                                                           {ID: "notfound.factor"},
+	"government funding not found":                                                                               {ID: "notfound.government_funding"},
+	"user-organization membership not found":                                                                     {ID: "notfound.membership"},
+	"pay plan not found":                                                                                         {ID: "notfound.payplan"},
+	"payplan_id not found":                                                                                       {ID: "notfound.payplan_id"},
+	"period not found":                                                                                           {ID: "notfound.period"},
+	"property not found":                                                                                         {ID: "notfound.property"},
+	"section not found":                                                                                          {ID: "notfound.section"},
+	"session not found":                                                                                          {ID: "notfound.session"},
+	"user not found":                                                                                             {ID: "notfound.user"},
+	"voucher not found":                                                                                          {ID: "notfound.voucher"},
+	"organization with this name already exists":                                                                 {ID: "organization.name_exists"},
+	"employer_contribution_rate must be in [0, 10000] (hundredths of a percent)":                                 {ID: "payplan.employer_rate_range"},
+	"an entry with this grade and step already exists in this period":                                            {ID: "payplan.entry_exists"},
+	"grade cannot be empty":                                                                                      {ID: "payplan.grade_empty"},
+	"grade cannot be null; send an empty string to clear it":                                                     {ID: "payplan.grade_not_null"},
+	"payplan_id cannot be null: every contract has a pay plan":                                                   {ID: "payplan.id_not_null"},
+	"pay plan with this name already exists in this organization":                                                {ID: "payplan.name_exists"},
+	"active pay plan period for the given date not found":                                                        {ID: "payplan.no_active_period"},
+	"pay plan has no entry for the given (grade, step) at the contract's start date":                             {ID: "payplan.no_entry_for_start"},
+	"pay plan entry for the given grade and step not found":                                                      {ID: "payplan.no_entry_found"},
+	"pay plan entry for grade %s step %d not found":                                                              {ID: "payplan.no_entry_grade_step", Args: []string{"Grade", "Step"}},
+	"pay plan has no active period covering the contract's start date":                                           {ID: "payplan.no_period_for_start"},
+	"pay plan %d not found":                                                                                      {ID: "payplan.not_found_id", Args: []string{"PayPlanID"}},
+	"period overlaps with existing period":                                                                       {ID: "payplan.period_overlap"},
+	"invalid periods_limit parameter":                                                                            {ID: "payplan.periods_limit_invalid"},
+	"periods_limit must not exceed %d":                                                                           {ID: "payplan.periods_limit_max", Args: []string{"Max"}},
+	"periods_limit must be non-negative":                                                                         {ID: "payplan.periods_limit_negative"},
+	"pay plan is referenced by one or more employee contracts and cannot be deleted":                             {ID: "payplan.referenced"},
+	"step must be >= 1":                                                                                          {ID: "payplan.step_min"},
+	"step_min_years must be >= 0":                                                                                {ID: "payplan.step_min_years"},
+	"step cannot be null":                                                                                        {ID: "payplan.step_not_null"},
+	"payplan does not belong to this organization":                                                               {ID: "payplan.wrong_organization"},
+	"pay plan %d does not belong to this organization":                                                           {ID: "payplan.wrong_organization_id", Args: []string{"PayPlanID"}},
+	"too many failed attempts, please try again later":                                                           {ID: "ratelimit.generic"},
+	"too many failed login attempts, please try again later":                                                     {ID: "ratelimit.login"},
+	"too many failed MFA attempts, please try again later":                                                       {ID: "ratelimit.mfa"},
+	"too many failed password-change attempts, please try again later":                                           {ID: "ratelimit.password_change"},
+	"missing request body":                                                                                       {ID: "request.body_missing"},
+	"request body must contain exactly one JSON value":                                                           {ID: "request.body_single_value"},
+	"request body exceeds maximum of %d bytes":                                                                   {ID: "request.body_too_large", Args: []string{"Max"}},
+	"failed to read request body":                                                                                {ID: "request.body_unreadable"},
+	"date range must not exceed %d months":                                                                       {ID: "request.date_range_max", Args: []string{"Max"}, Plural: "Max"},
+	"file is required":                                                                                           {ID: "request.file_required"},
+	"file size exceeds maximum of %d MB":                                                                         {ID: "request.file_too_large", Args: []string{"Max"}},
+	"unsupported file type":                                                                                      {ID: "request.file_type"},
+	"failed to read uploaded file":                                                                               {ID: "request.file_unreadable"},
+	"both 'from' and 'to' query parameters are required":                                                         {ID: "request.from_to_required"},
+	"invalid date format, expected YYYY-MM-DD":                                                                   {ID: "request.invalid_date"},
+	"invalid pagination parameters":                                                                              {ID: "request.invalid_pagination"},
+	"search query must not exceed %d characters":                                                                 {ID: "request.search_too_long", Args: []string{"Max"}},
+	"%s was changed by someone else (you have version %d, current is %d) \u2014 reload and reapply your change": {ID: "resource.version_conflict", Args: []string{"Resource", "Yours", "Current"}},
+	"default_section_name is required":                                                {ID: "section.default_name_required"},
+	"cannot delete the default section":                                               {ID: "section.delete.default"},
+	"cannot delete section with %d currently-assigned children; reassign them first":  {ID: "section.delete.has_children", Args: []string{"Count"}, Plural: "Count"},
+	"cannot delete section with %d currently-assigned employees; reassign them first": {ID: "section.delete.has_employees", Args: []string{"Count"}, Plural: "Count"},
+	"section_id cannot be null: every contract belongs to a section":                  {ID: "section.id_not_null"},
+	"section with this name already exists in the organization":                       {ID: "section.name_exists"},
+	"section with this name already exists in this organization":                      {ID: "section.name_exists_this"},
+	"section %d not found in this organization":                                       {ID: "section.not_found_in_organization", Args: []string{"SectionID"}},
+	"section does not belong to this organization":                                    {ID: "section.wrong_organization"},
+	"user is already a member of this organization":                                   {ID: "user.already_member"},
+	"invalid role: must be admin, manager, or member":                                 {ID: "user.invalid_role"},
+	"cannot delete the last superadmin":                                               {ID: "user.last_superadmin_delete"},
+	"cannot demote the last superadmin":                                               {ID: "user.last_superadmin_demote"},
+	"cannot purge the last superadmin":                                                {ID: "user.last_superadmin_purge"},
+	"cannot delete your own account":                                                  {ID: "user.self_delete"},
+	"cannot purge your own account":                                                   {ID: "user.self_purge"},
+	"only superadmins can reset a superadmin's password":                              {ID: "user.superadmin_password_reset"},
+	"use /me/password to change your own password":                                    {ID: "user.use_me_password"},
+	"invalid birthdate format, expected YYYY-MM-DD":                                   {ID: "validation.birthdate_format"},
+	"first_name cannot be empty or whitespace only":                                   {ID: "validation.first_name_empty"},
+	"gender must be one of: male, female, diverse":                                    {ID: "validation.gender"},
+	"key cannot be empty or whitespace only":                                          {ID: "validation.key_empty"},
+	"label cannot be empty or whitespace only":                                        {ID: "validation.label_empty"},
+	"label must be 100 characters or fewer":                                           {ID: "validation.label_max"},
+	"last_name cannot be empty or whitespace only":                                    {ID: "validation.last_name_empty"},
+	"name cannot be empty or whitespace only":                                         {ID: "validation.name_empty"},
+	"value cannot be empty or whitespace only":                                        {ID: "validation.value_empty"},
+	"voucher %s is already assigned to another child":                                 {ID: "voucher.assigned_elsewhere", Args: []string{"Voucher"}},
+	"assertion verification failed: %v":                                               {ID: "webauthn.assertion_failed", Args: []string{"Detail"}},
+	"attestation verification failed: %v":                                             {ID: "webauthn.attestation_failed", Args: []string{"Detail"}},
+	"registration challenge expired":                                                  {ID: "webauthn.challenge_expired"},
+	"WebAuthn is not enabled":                                                         {ID: "webauthn.disabled"},
+	"WebAuthn is not enabled on this deployment":                                      {ID: "webauthn.disabled_deployment"},
+	"invalid webauthn response":                                                       {ID: "webauthn.invalid_response"},
+	"invalid webauthn response: %v":                                                   {ID: "webauthn.invalid_response_detail", Args: []string{"Detail"}},
+	"this security key is already registered":                                         {ID: "webauthn.key_registered"},
+	"no webauthn challenge issued; call /auth/mfa/challenge first":                    {ID: "webauthn.no_challenge"},
+	"no registration challenge on factor":                                             {ID: "webauthn.no_registration_challenge"},
+	"factor is not an active webauthn credential":                                     {ID: "webauthn.not_active_credential"},
+	"webauthn_response is required":                                                   {ID: "webauthn.response_required"},
+	"webauthn factors must be verified via the webauthn assertion endpoint":           {ID: "webauthn.use_assertion_endpoint"},
 }
