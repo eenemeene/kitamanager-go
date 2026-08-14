@@ -1,6 +1,6 @@
 module github.com/eenemeene/kitamanager-go
 
-go 1.25.13
+go 1.26.6
 
 require (
 	github.com/casbin/casbin/v3 v3.11.0
