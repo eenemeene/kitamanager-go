@@ -36,6 +36,24 @@ zusätzlich zur Übersetzung an — nicht stattdessen.
 }
 ```
 
+## Sprache
+
+Die API ist englisch. `code`, `type`, Feldnamen und sämtliche Log-Ausgaben
+bleiben englisch, unabhängig davon, was ein Client anfragt — und englisch ist
+auch die Voreinstellung.
+
+Über `Accept-Language` lassen sich die Fließtext-Felder aushandeln: Mit `de`
+kommt `title` auf Deutsch zurück. Die Antwort nennt in `Content-Language`, was
+tatsächlich ausgeliefert wurde, und enthält `Vary: Accept-Language`, damit
+zwischengeschaltete Caches korrekt unterscheiden. Qualitätswerte und regionale
+Subtags werden berücksichtigt — `de-AT;q=0.9, en;q=0.8` wählt Deutsch —, und ein
+nicht unterstützter oder fehlerhafter Wert führt zu Englisch statt zu einem
+Fehler.
+
+`detail` ist derzeit in jeder Sprache englisch: Es wird an der Stelle
+zusammengesetzt, an der der Fehler entsteht, und diese Stellen sind noch nicht
+umgestellt. Ein lokalisierter Client sollte vorerst weiterhin `code` übersetzen.
+
 ## Welches Feld wofür
 
 | Feld | Verwendung |

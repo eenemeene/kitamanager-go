@@ -21,6 +21,21 @@ plain-text body.
 }
 ```
 
+## Language
+
+The API is English. `code`, `type`, field names and every log line stay English
+regardless of what a client asks for, and English is what you get by default.
+
+`Accept-Language` negotiates the prose members. Send `de` and `title` comes back
+in German; the response states what it actually served in `Content-Language`, and
+carries `Vary: Accept-Language` so a shared cache keys on it. Quality values and
+regional subtags are honoured — `de-AT;q=0.9, en;q=0.8` selects German — and an
+unsupported or malformed value falls back to English rather than failing.
+
+`detail` is still English in every language today: it is composed per occurrence
+at the point the error is raised, and those sites have not been converted yet. A
+localized client should keep translating `code` for now.
+
 ## Which member to use
 
 | Member | Use it for |

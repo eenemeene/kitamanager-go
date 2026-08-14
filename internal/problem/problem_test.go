@@ -9,8 +9,10 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/text/language"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
+	"github.com/eenemeene/kitamanager-go/internal/i18n"
 	"github.com/eenemeene/kitamanager-go/internal/middleware"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/problem"
@@ -97,8 +99,72 @@ func TestEveryCodeHasATitle(t *testing.T) {
 		apperror.CodePreconditionRequired, apperror.CodePreconditionFailed,
 	}
 	for _, code := range codes {
-		if problem.Title(code) == code {
+		if problem.Title(nil, code) == code {
 			t.Errorf("code %q has no registered title, so its problem documents would repeat the code as their title", code)
+		}
+	}
+}
+
+// TestTitleIsLocalized checks the one member of the document that step 1 can
+// already translate: the title is a fixed phrase per code, so it lives in the
+// catalogue, while `detail` is still built as an English sentence at ~368 call
+// sites and stays English until those are converted.
+func TestTitleIsLocalized(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(i18n.Middleware())
+	r.GET("/x", func(c *gin.Context) {
+		problem.Write(c, http.StatusNotFound, apperror.CodeNotFound, "child 42 not found")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/x", nil)
+	req.Header.Set("Accept-Language", "de")
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	var got models.ErrorResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("body is not JSON: %v", err)
+	}
+	if got.Title != "Ressource nicht gefunden" {
+		t.Errorf("title = %q, want the German one", got.Title)
+	}
+	// The code is not translated: it is the client's contract, not prose.
+	if got.Code != apperror.CodeNotFound {
+		t.Errorf("code = %q, want %q", got.Code, apperror.CodeNotFound)
+	}
+	// Detail is still English, and this asserts it deliberately — step 1 does
+	// not touch the ~368 sites that build it, so a change here is a change in
+	// scope, not an improvement that slipped in.
+	if got.Detail != "child 42 not found" {
+		t.Errorf("detail = %q, want the English sentence", got.Detail)
+	}
+}
+
+// TestEveryTitleIsTranslated is the drift gate.
+//
+// Adding an error code means adding a title, and a title with no German entry
+// renders in English — correct behaviour, and invisible. Without this test the
+// catalogue rots one code at a time and nobody notices until a German user
+// reports a half-English message. Here it is a build failure naming the string
+// to translate.
+//
+// It deliberately checks the shipped catalogue rather than a fixture: the thing
+// that can be wrong is the file we release.
+func TestEveryTitleIsTranslated(t *testing.T) {
+	codes := []string{
+		apperror.CodeNotFound, apperror.CodeBadRequest, apperror.CodeValidation,
+		apperror.CodeConflict, apperror.CodeUnauthorized, apperror.CodeForbidden,
+		apperror.CodeTooManyRequests, apperror.CodeInternal, apperror.CodeEmailConflict,
+		apperror.CodeContractConflict, apperror.CodeDuplicateBillHash,
+		apperror.CodeDuplicateBillMonth, apperror.CodeMethodNotAllowed,
+		apperror.CodePreconditionRequired, apperror.CodePreconditionFailed,
+	}
+	for _, code := range codes {
+		english := problem.Title(nil, code)
+		if !i18n.Translated(language.German, english) {
+			t.Errorf("title %q (code %q) has no German translation; add it to internal/i18n/locales/de.json",
+				english, code)
 		}
 	}
 }

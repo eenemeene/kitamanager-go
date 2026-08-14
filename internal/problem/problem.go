@@ -21,6 +21,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
+	"github.com/eenemeene/kitamanager-go/internal/i18n"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
@@ -72,11 +73,17 @@ var titles = map[string]string{
 // Title returns the registered title for a code, falling back to the code
 // itself so an unregistered code still produces a valid document rather than an
 // empty title.
-func Title(code string) string {
-	if t, ok := titles[code]; ok {
-		return t
+//
+// The English title is the catalogue key, so a request that negotiated German
+// gets the German title and one that did not gets the English string back
+// unchanged. RFC 9457 asks for exactly this: a title is the same for every
+// occurrence of a type "except for purposes of localization".
+func Title(c *gin.Context, code string) string {
+	t, ok := titles[code]
+	if !ok {
+		return code
 	}
-	return code
+	return i18n.For(c).Sprintf(t) //nolint:govet // t is a catalogue key, not a format literal
 }
 
 // TypeURI returns the type URI for a code.
@@ -97,7 +104,7 @@ func TypeURI(code string) string {
 func New(c *gin.Context, status int, code, detail string) models.ErrorResponse {
 	p := models.ErrorResponse{
 		Type:   TypeURI(code),
-		Title:  Title(code),
+		Title:  Title(c, code),
 		Status: status,
 		Detail: detail,
 		Code:   code,

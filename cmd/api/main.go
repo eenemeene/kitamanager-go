@@ -23,6 +23,7 @@ import (
 	cryptopkg "github.com/eenemeene/kitamanager-go/internal/crypto"
 	"github.com/eenemeene/kitamanager-go/internal/database"
 	"github.com/eenemeene/kitamanager-go/internal/handlers"
+	"github.com/eenemeene/kitamanager-go/internal/i18n"
 	"github.com/eenemeene/kitamanager-go/internal/importer"
 	"github.com/eenemeene/kitamanager-go/internal/middleware"
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -401,6 +402,11 @@ func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices
 			"An unexpected error occurred. Quote the request_id when reporting this.")
 	}))
 	r.Use(middleware.StructuredLogger())
+	// Language negotiation precedes every handler that writes a problem document,
+	// NoRoute and NoMethod included — they run the global chain, so registering
+	// this after them would leave exactly the router-generated responses
+	// untranslated.
+	r.Use(i18n.Middleware())
 
 	// Unrouted paths and wrong methods are answered with the same document type
 	// as everything else. gin's defaults are a plain-text "404 page not found"

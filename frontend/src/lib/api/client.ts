@@ -1,5 +1,5 @@
 import axios, { type AxiosInstance, type AxiosError } from 'axios';
-import { getProblem, problemMessage } from './problem';
+import { currentLocale, getProblem, problemMessage } from './problem';
 import type {
   AgeDistributionResponse,
   AuditLogListParams,
@@ -143,6 +143,11 @@ class ApiClient {
             config.headers['X-CSRF-Token'] = csrfToken;
           }
         }
+        // The reader's language, so the server can answer in it. next-intl keeps
+        // the choice in a cookie, and the browser's own Accept-Language is the
+        // wrong source: a German user on an English-locale laptop has already
+        // told us which they want, in the app.
+        config.headers['Accept-Language'] = currentLocale();
         return config;
       },
       (error) => Promise.reject(error)
