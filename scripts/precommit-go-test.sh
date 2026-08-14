@@ -40,4 +40,9 @@ echo "go test -race -p 1 for the packages this commit touches:"
 printf '  %s\n' $packages
 
 # shellcheck disable=SC2086 -- word splitting is intended: one argument per package
-exec go test -race -p 1 $packages
+# The default 10-minute per-package timeout is not enough for internal/service
+# under -race: that package alone runs ~4 minutes without the race detector, and
+# the detector's overhead pushes it past the limit — the failure is a panic
+# reporting "test timed out", which reads like a hang rather than a budget.
+# Serialized testcontainer startup is part of that cost and is deliberate.
+exec go test -race -p 1 -timeout 30m $packages

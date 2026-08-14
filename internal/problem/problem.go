@@ -79,11 +79,15 @@ var titles = map[string]string{
 // unchanged. RFC 9457 asks for exactly this: a title is the same for every
 // occurrence of a type "except for purposes of localization".
 func Title(c *gin.Context, code string) string {
-	t, ok := titles[code]
-	if !ok {
-		return code
+	if t := i18n.Title(c, code); t != "" {
+		return t
 	}
-	return i18n.For(c).Sprintf(t) //nolint:govet // t is a catalogue key, not a format literal
+	// No catalogue entry: fall back to the English map, then to the code itself,
+	// so an unregistered code still produces a valid document.
+	if t, ok := titles[code]; ok {
+		return t
+	}
+	return code
 }
 
 // TypeURI returns the type URI for a code.
@@ -152,7 +156,20 @@ func WriteError(c *gin.Context, err error) {
 		params = appErr.GetParams()
 	}
 
+	// Re-render the message in the request's language. This is the whole reason
+	// AppError keeps the format string and its arguments apart: err.Error() is
+	// the English rendering and stays that way for the log below, while the same
+	// pieces produce a German sentence here when the client asked for one.
+	//
+	// A message with no translation renders as its English self, so this is safe
+	// while the catalogue is incomplete — which it is: the translations land
+	// separately from this plumbing.
 	detail := err.Error()
+	if appErr != nil && appErr.MessageID != "" {
+		if localized, ok := i18n.Localize(c, appErr.MessageID, appErr.Args...); ok {
+			detail = localized
+		}
+	}
 	if status >= http.StatusInternalServerError {
 		slog.Error("Internal error",
 			"error", err,

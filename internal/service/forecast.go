@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"maps"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
@@ -142,12 +141,12 @@ func (s *StatisticsService) validateOverlay(ctx context.Context, req *models.For
 	// burn round trips on requests that can never succeed.
 	for i, ac := range req.AddEmployeeContracts {
 		if ac.EmployeeID == 0 {
-			return apperror.BadRequest(fmt.Sprintf("add_employee_contracts[%d]: employee_id is required", i))
+			return apperror.BadRequest("add_employee_contracts[%d]: employee_id is required", i)
 		}
 	}
 	for i, ac := range req.AddChildContracts {
 		if ac.ChildID == 0 {
-			return apperror.BadRequest(fmt.Sprintf("add_child_contracts[%d]: child_id is required", i))
+			return apperror.BadRequest("add_child_contracts[%d]: child_id is required", i)
 		}
 	}
 
@@ -188,7 +187,7 @@ func (s *StatisticsService) validateOverlaySectionsExist(ctx context.Context, re
 	}
 	for _, id := range ids {
 		if _, ok := found[id]; !ok {
-			return apperror.BadRequest(fmt.Sprintf("section %d not found in this organization", id))
+			return apperror.BadRequest("section %d not found in this organization", id)
 		}
 	}
 	return nil
@@ -210,10 +209,10 @@ func (s *StatisticsService) validateOverlayPayPlansBelongToOrg(ctx context.Conte
 	for _, id := range ids {
 		pp, ok := loaded[id]
 		if !ok {
-			return apperror.BadRequest(fmt.Sprintf("pay plan %d not found", id))
+			return apperror.BadRequest("pay plan %d not found", id)
 		}
 		if pp.OrganizationID != orgID {
-			return apperror.BadRequest(fmt.Sprintf("pay plan %d does not belong to this organization", id))
+			return apperror.BadRequest("pay plan %d does not belong to this organization", id)
 		}
 	}
 	return nil
@@ -245,7 +244,7 @@ func (s *StatisticsService) validateOverlayEmployeesExist(ctx context.Context, r
 	}
 	for _, id := range ids {
 		if _, ok := found[id]; !ok {
-			return apperror.BadRequest(fmt.Sprintf("employee %d not found in this organization", id))
+			return apperror.BadRequest("employee %d not found in this organization", id)
 		}
 	}
 	return nil
@@ -276,7 +275,7 @@ func (s *StatisticsService) validateOverlayChildrenExist(ctx context.Context, re
 	}
 	for _, id := range ids {
 		if _, ok := found[id]; !ok {
-			return apperror.BadRequest(fmt.Sprintf("child %d not found in this organization", id))
+			return apperror.BadRequest("child %d not found in this organization", id)
 		}
 	}
 	return nil
@@ -290,33 +289,33 @@ func validateOverlaySectionMatches(req *models.ForecastRequest, want uint) error
 	for i := range req.AddEmployees {
 		for j, ct := range req.AddEmployees[i].Contracts {
 			if ct.SectionID != want {
-				return apperror.BadRequest(fmt.Sprintf(
+				return apperror.BadRequest(
 					"add_employees[%d].contracts[%d]: section_id %d does not match request section_id %d",
-					i, j, ct.SectionID, want))
+					i, j, ct.SectionID, want)
 			}
 		}
 	}
 	for i, ct := range req.AddEmployeeContracts {
 		if ct.SectionID != want {
-			return apperror.BadRequest(fmt.Sprintf(
+			return apperror.BadRequest(
 				"add_employee_contracts[%d]: section_id %d does not match request section_id %d",
-				i, ct.SectionID, want))
+				i, ct.SectionID, want)
 		}
 	}
 	for i := range req.AddChildren {
 		for j, ct := range req.AddChildren[i].Contracts {
 			if ct.SectionID != want {
-				return apperror.BadRequest(fmt.Sprintf(
+				return apperror.BadRequest(
 					"add_children[%d].contracts[%d]: section_id %d does not match request section_id %d",
-					i, j, ct.SectionID, want))
+					i, j, ct.SectionID, want)
 			}
 		}
 	}
 	for i, ct := range req.AddChildContracts {
 		if ct.SectionID != want {
-			return apperror.BadRequest(fmt.Sprintf(
+			return apperror.BadRequest(
 				"add_child_contracts[%d]: section_id %d does not match request section_id %d",
-				i, ct.SectionID, want))
+				i, ct.SectionID, want)
 		}
 	}
 	return nil
@@ -326,17 +325,17 @@ func validateOverlaySectionMatches(req *models.ForecastRequest, want uint) error
 func validateOverlayChildren(children []models.Child) error {
 	for i, c := range children {
 		if c.Birthdate.IsZero() {
-			return apperror.BadRequest(fmt.Sprintf("add_children[%d]: birthdate is required", i))
+			return apperror.BadRequest("add_children[%d]: birthdate is required", i)
 		}
 		if len(c.Contracts) == 0 {
-			return apperror.BadRequest(fmt.Sprintf("add_children[%d]: at least one contract is required", i))
+			return apperror.BadRequest("add_children[%d]: at least one contract is required", i)
 		}
 		for j, ct := range c.Contracts {
 			if ct.From.IsZero() {
-				return apperror.BadRequest(fmt.Sprintf("add_children[%d].contracts[%d]: from is required", i, j))
+				return apperror.BadRequest("add_children[%d].contracts[%d]: from is required", i, j)
 			}
 			if ct.SectionID == 0 {
-				return apperror.BadRequest(fmt.Sprintf("add_children[%d].contracts[%d]: section_id is required", i, j))
+				return apperror.BadRequest("add_children[%d].contracts[%d]: section_id is required", i, j)
 			}
 		}
 	}
@@ -347,13 +346,13 @@ func validateOverlayChildren(children []models.Child) error {
 func validateOverlayChildContracts(contracts []models.ChildContract) error {
 	for i, ct := range contracts {
 		if ct.ChildID == 0 {
-			return apperror.BadRequest(fmt.Sprintf("add_child_contracts[%d]: child_id is required", i))
+			return apperror.BadRequest("add_child_contracts[%d]: child_id is required", i)
 		}
 		if ct.From.IsZero() {
-			return apperror.BadRequest(fmt.Sprintf("add_child_contracts[%d]: from is required", i))
+			return apperror.BadRequest("add_child_contracts[%d]: from is required", i)
 		}
 		if ct.SectionID == 0 {
-			return apperror.BadRequest(fmt.Sprintf("add_child_contracts[%d]: section_id is required", i))
+			return apperror.BadRequest("add_child_contracts[%d]: section_id is required", i)
 		}
 	}
 	return nil
@@ -363,29 +362,29 @@ func validateOverlayChildContracts(contracts []models.ChildContract) error {
 func validateOverlayEmployees(employees []models.Employee) error {
 	for i, e := range employees {
 		if len(e.Contracts) == 0 {
-			return apperror.BadRequest(fmt.Sprintf("add_employees[%d]: at least one contract is required", i))
+			return apperror.BadRequest("add_employees[%d]: at least one contract is required", i)
 		}
 		for j, ct := range e.Contracts {
 			if ct.From.IsZero() {
-				return apperror.BadRequest(fmt.Sprintf("add_employees[%d].contracts[%d]: from is required", i, j))
+				return apperror.BadRequest("add_employees[%d].contracts[%d]: from is required", i, j)
 			}
 			if ct.SectionID == 0 {
-				return apperror.BadRequest(fmt.Sprintf("add_employees[%d].contracts[%d]: section_id is required", i, j))
+				return apperror.BadRequest("add_employees[%d].contracts[%d]: section_id is required", i, j)
 			}
 			if ct.PayPlanID == 0 {
-				return apperror.BadRequest(fmt.Sprintf("add_employees[%d].contracts[%d]: payplan_id is required", i, j))
+				return apperror.BadRequest("add_employees[%d].contracts[%d]: payplan_id is required", i, j)
 			}
 			if ct.Grade == "" {
-				return apperror.BadRequest(fmt.Sprintf("add_employees[%d].contracts[%d]: grade is required", i, j))
+				return apperror.BadRequest("add_employees[%d].contracts[%d]: grade is required", i, j)
 			}
 			if ct.Step < 1 {
-				return apperror.BadRequest(fmt.Sprintf("add_employees[%d].contracts[%d]: step must be >= 1", i, j))
+				return apperror.BadRequest("add_employees[%d].contracts[%d]: step must be >= 1", i, j)
 			}
 			if ct.WeeklyHours <= 0 {
-				return apperror.BadRequest(fmt.Sprintf("add_employees[%d].contracts[%d]: weekly_hours must be > 0", i, j))
+				return apperror.BadRequest("add_employees[%d].contracts[%d]: weekly_hours must be > 0", i, j)
 			}
 			if ct.StaffCategory == "" {
-				return apperror.BadRequest(fmt.Sprintf("add_employees[%d].contracts[%d]: staff_category is required", i, j))
+				return apperror.BadRequest("add_employees[%d].contracts[%d]: staff_category is required", i, j)
 			}
 		}
 	}
@@ -396,28 +395,28 @@ func validateOverlayEmployees(employees []models.Employee) error {
 func validateOverlayEmployeeContracts(contracts []models.EmployeeContract) error {
 	for i, ct := range contracts {
 		if ct.EmployeeID == 0 {
-			return apperror.BadRequest(fmt.Sprintf("add_employee_contracts[%d]: employee_id is required", i))
+			return apperror.BadRequest("add_employee_contracts[%d]: employee_id is required", i)
 		}
 		if ct.From.IsZero() {
-			return apperror.BadRequest(fmt.Sprintf("add_employee_contracts[%d]: from is required", i))
+			return apperror.BadRequest("add_employee_contracts[%d]: from is required", i)
 		}
 		if ct.SectionID == 0 {
-			return apperror.BadRequest(fmt.Sprintf("add_employee_contracts[%d]: section_id is required", i))
+			return apperror.BadRequest("add_employee_contracts[%d]: section_id is required", i)
 		}
 		if ct.PayPlanID == 0 {
-			return apperror.BadRequest(fmt.Sprintf("add_employee_contracts[%d]: payplan_id is required", i))
+			return apperror.BadRequest("add_employee_contracts[%d]: payplan_id is required", i)
 		}
 		if ct.Grade == "" {
-			return apperror.BadRequest(fmt.Sprintf("add_employee_contracts[%d]: grade is required", i))
+			return apperror.BadRequest("add_employee_contracts[%d]: grade is required", i)
 		}
 		if ct.Step < 1 {
-			return apperror.BadRequest(fmt.Sprintf("add_employee_contracts[%d]: step must be >= 1", i))
+			return apperror.BadRequest("add_employee_contracts[%d]: step must be >= 1", i)
 		}
 		if ct.WeeklyHours <= 0 {
-			return apperror.BadRequest(fmt.Sprintf("add_employee_contracts[%d]: weekly_hours must be > 0", i))
+			return apperror.BadRequest("add_employee_contracts[%d]: weekly_hours must be > 0", i)
 		}
 		if ct.StaffCategory == "" {
-			return apperror.BadRequest(fmt.Sprintf("add_employee_contracts[%d]: staff_category is required", i))
+			return apperror.BadRequest("add_employee_contracts[%d]: staff_category is required", i)
 		}
 	}
 	return nil

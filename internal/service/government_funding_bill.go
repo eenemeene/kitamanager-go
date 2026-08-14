@@ -421,7 +421,7 @@ func (s *GovernmentFundingBillService) AssignVoucher(ctx context.Context, childI
 			result = existing
 			return nil
 		}
-		return apperror.Conflict(fmt.Sprintf("voucher %s is already assigned to another child", voucherNumber))
+		return apperror.Conflict("voucher %s is already assigned to another child", voucherNumber)
 	})
 	if err != nil {
 		return nil, err

@@ -51,7 +51,7 @@ const MaxSearchLength = 255
 func parseSearch(c *gin.Context) (string, bool) {
 	search := c.Query("search")
 	if len(search) > MaxSearchLength {
-		respondError(c, apperror.BadRequest(fmt.Sprintf("search query must not exceed %d characters", MaxSearchLength)))
+		respondError(c, apperror.BadRequest("search query must not exceed %d characters", MaxSearchLength))
 		return "", false
 	}
 	return search, true
@@ -264,7 +264,7 @@ func bindJSON[T any](c *gin.Context) (*T, bool) {
 	if err != nil {
 		var maxErr *http.MaxBytesError
 		if errors.As(err, &maxErr) {
-			respondError(c, apperror.BadRequest(fmt.Sprintf("request body exceeds maximum of %d bytes", MaxJSONBodySize)))
+			respondError(c, apperror.BadRequest("request body exceeds maximum of %d bytes", MaxJSONBodySize))
 			return nil, false
 		}
 		respondError(c, apperror.BadRequest("failed to read request body"))
@@ -462,7 +462,7 @@ func readUploadFileWithHeader(c *gin.Context) ([]byte, *multipart.FileHeader, bo
 	}
 
 	if fileHeader.Size > MaxUploadSize {
-		respondError(c, apperror.BadRequest(fmt.Sprintf("file size exceeds maximum of %d MB", MaxUploadSize>>20)))
+		respondError(c, apperror.BadRequest("file size exceeds maximum of %d MB", MaxUploadSize>>20))
 		return nil, nil, false
 	}
 
@@ -480,7 +480,7 @@ func readUploadFileWithHeader(c *gin.Context) ([]byte, *multipart.FileHeader, bo
 		return nil, nil, false
 	}
 	if int64(len(fileBytes)) > MaxUploadSize {
-		respondError(c, apperror.BadRequest(fmt.Sprintf("file size exceeds maximum of %d MB", MaxUploadSize>>20)))
+		respondError(c, apperror.BadRequest("file size exceeds maximum of %d MB", MaxUploadSize>>20))
 		return nil, nil, false
 	}
 
@@ -533,7 +533,7 @@ func validateDateRange(from, to time.Time, maxMonths int) error {
 	}
 	maxEnd := from.AddDate(0, maxMonths, 0)
 	if to.After(maxEnd) {
-		return apperror.BadRequest(fmt.Sprintf("date range must not exceed %d months", maxMonths))
+		return apperror.BadRequest("date range must not exceed %d months", maxMonths)
 	}
 	return nil
 }

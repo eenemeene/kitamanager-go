@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
@@ -222,9 +221,8 @@ func (s *SectionService) DeleteByIDAndOrg(ctx context.Context, id, orgID uint) e
 			// the cost lands precisely where the user is already
 			// facing an error.
 			n, _ := s.store.CountActiveChildren(txCtx, id, today)
-			return apperror.BadRequest(fmt.Sprintf(
-				"cannot delete section with %d currently-assigned children; reassign them first",
-				n))
+			return apperror.BadRequest(
+				"cannot delete section with %d currently-assigned children; reassign them first", n)
 		}
 
 		hasEmployees, err := s.store.HasActiveEmployees(txCtx, id, today)
@@ -233,9 +231,8 @@ func (s *SectionService) DeleteByIDAndOrg(ctx context.Context, id, orgID uint) e
 		}
 		if hasEmployees {
 			n, _ := s.store.CountActiveEmployees(txCtx, id, today)
-			return apperror.BadRequest(fmt.Sprintf(
-				"cannot delete section with %d currently-assigned employees; reassign them first",
-				n))
+			return apperror.BadRequest(
+				"cannot delete section with %d currently-assigned employees; reassign them first", n)
 		}
 
 		// Soft-delete via gorm's DeletedAt machinery. Section.Delete

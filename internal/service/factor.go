@@ -293,7 +293,7 @@ func (s *FactorService) ActivateFactor(ctx context.Context, userID, factorID uin
 	case models.FactorTypeBackupCodes:
 		return nil, apperror.BadRequest("backup_codes factors are auto-activated; do not call activate on them")
 	default:
-		return nil, apperror.BadRequest(fmt.Sprintf("unsupported factor type: %s", f.Type))
+		return nil, apperror.BadRequest("unsupported factor type: %s", f.Type)
 	}
 
 	// Atomic activation — compare-and-set on enabled_at=NULL.
@@ -606,7 +606,7 @@ func (s *FactorService) activateWebAuthnFactor(ctx context.Context, userID uint,
 
 	parsed, err := webauthnpkg.ParseCreationResponse(responseBody)
 	if err != nil {
-		return apperror.BadRequest(fmt.Sprintf("invalid webauthn response: %v", err))
+		return apperror.BadRequest("invalid webauthn response: %v", err)
 	}
 
 	existingCreds, err := s.gatherUserWebAuthnCredentials(ctx, userID)
@@ -621,7 +621,7 @@ func (s *FactorService) activateWebAuthnFactor(ctx context.Context, userID uint,
 
 	cred, err := s.webAuthn.Lib().CreateCredential(wuser, sessionData, parsed)
 	if err != nil {
-		return apperror.Unauthorized(fmt.Sprintf("attestation verification failed: %v", err))
+		return apperror.Unauthorized("attestation verification failed: %v", err)
 	}
 
 	// Uniqueness pre-check — the DB index will also enforce, but
@@ -735,7 +735,7 @@ func (s *FactorService) VerifyWebAuthnAssertion(ctx context.Context, userID, fac
 
 	cred, err := s.webAuthn.Lib().ValidateLogin(wuser, sessionData, parsed)
 	if err != nil {
-		return false, apperror.Unauthorized(fmt.Sprintf("assertion verification failed: %v", err))
+		return false, apperror.Unauthorized("assertion verification failed: %v", err)
 	}
 
 	// Cross-check the credential actually belongs to the factor the
@@ -984,7 +984,7 @@ func (s *FactorService) VerifyCodeForLogin(ctx context.Context, userID, factorID
 		// TOTP/backup.
 		return f.Type, apperror.BadRequest("webauthn factors must be verified via the webauthn assertion endpoint")
 	default:
-		return f.Type, apperror.BadRequest(fmt.Sprintf("unsupported factor type: %s", f.Type))
+		return f.Type, apperror.BadRequest("unsupported factor type: %s", f.Type)
 	}
 }
 

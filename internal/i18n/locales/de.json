@@ -1,17 +1,28 @@
 {
-  "Resource not found": "Ressource nicht gefunden",
-  "Malformed request": "Fehlerhafte Anfrage",
-  "Validation failed": "Validierung fehlgeschlagen",
-  "Conflict with current state": "Konflikt mit dem aktuellen Zustand",
-  "Authentication required": "Anmeldung erforderlich",
-  "Not permitted": "Nicht berechtigt",
-  "Too many requests": "Zu viele Anfragen",
-  "Internal server error": "Interner Serverfehler",
-  "Email address already in use": "E-Mail-Adresse wird bereits verwendet",
-  "Contract periods overlap": "Vertragszeiträume überschneiden sich",
-  "Bill already imported": "Rechnung bereits importiert",
-  "Bill already exists for this month": "Für diesen Monat existiert bereits eine Rechnung",
-  "Method not allowed": "Methode nicht erlaubt",
-  "If-Match header required": "If-Match-Header erforderlich",
-  "Resource was modified": "Ressource wurde geändert"
+  "error.title.not_found": "Ressource nicht gefunden",
+  "error.title.bad_request": "Fehlerhafte Anfrage",
+  "error.title.validation_error": "Validierung fehlgeschlagen",
+  "error.title.conflict": "Konflikt mit dem aktuellen Zustand",
+  "error.title.unauthorized": "Anmeldung erforderlich",
+  "error.title.forbidden": "Nicht berechtigt",
+  "error.title.too_many_requests": "Zu viele Anfragen",
+  "error.title.internal_error": "Interner Serverfehler",
+  "error.title.email_conflict": "E-Mail-Adresse wird bereits verwendet",
+  "error.title.contract_overlap": "Vertragszeiträume überschneiden sich",
+  "error.title.duplicate_bill_hash": "Rechnung bereits importiert",
+  "error.title.duplicate_bill_month": "Für diesen Monat existiert bereits eine Rechnung",
+  "error.title.method_not_allowed": "Methode nicht erlaubt",
+  "error.title.precondition_required": "If-Match-Header erforderlich",
+  "error.title.precondition_failed": "Ressource wurde geändert",
+
+  "child.not_found_in_organization": "Kind {{.ChildID}} wurde in dieser Organisation nicht gefunden",
+  "section.not_found_in_organization": "Bereich {{.SectionID}} wurde in dieser Organisation nicht gefunden",
+  "section.delete.has_children": {
+    "one": "Der Bereich kann nicht gelöscht werden, da ihm noch {{.Count}} Kind zugeordnet ist; bitte zuerst umbuchen",
+    "other": "Der Bereich kann nicht gelöscht werden, da ihm noch {{.Count}} Kinder zugeordnet sind; bitte zuerst umbuchen"
+  },
+  "section.delete.has_employees": {
+    "one": "Der Bereich kann nicht gelöscht werden, da ihm noch {{.Count}} Mitarbeiterin oder Mitarbeiter zugeordnet ist; bitte zuerst umbuchen",
+    "other": "Der Bereich kann nicht gelöscht werden, da ihm noch {{.Count}} Mitarbeitende zugeordnet sind; bitte zuerst umbuchen"
+  }
 }

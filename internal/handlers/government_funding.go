@@ -92,7 +92,7 @@ func (h *GovernmentFundingHandler) Get(c *gin.Context) {
 			return
 		}
 		if periodsLimit > maxPeriodsLimit {
-			respondError(c, apperror.BadRequest(fmt.Sprintf("periods_limit must not exceed %d", maxPeriodsLimit)))
+			respondError(c, apperror.BadRequest("periods_limit must not exceed %d", maxPeriodsLimit))
 			return
 		}
 	}
