@@ -141,16 +141,15 @@ func TestTitleIsLocalized(t *testing.T) {
 	}
 }
 
-// TestEveryTitleIsTranslated is the drift gate.
+// TestEveryTitleIsTranslated is the drift gate for titles.
 //
 // Adding an error code means adding a title, and a title with no German entry
-// renders in English — correct behaviour, and invisible. Without this test the
+// renders in English — correct behaviour, and invisible. Without this the
 // catalogue rots one code at a time and nobody notices until a German user
-// reports a half-English message. Here it is a build failure naming the string
-// to translate.
+// reports a half-English message. Here it is a build failure naming the code.
 //
-// It deliberately checks the shipped catalogue rather than a fixture: the thing
-// that can be wrong is the file we release.
+// It checks the shipped catalogue rather than a fixture: the thing that can be
+// wrong is the file we release.
 func TestEveryTitleIsTranslated(t *testing.T) {
 	codes := []string{
 		apperror.CodeNotFound, apperror.CodeBadRequest, apperror.CodeValidation,
@@ -161,10 +160,12 @@ func TestEveryTitleIsTranslated(t *testing.T) {
 		apperror.CodePreconditionRequired, apperror.CodePreconditionFailed,
 	}
 	for _, code := range codes {
-		english := problem.Title(nil, code)
-		if !i18n.Translated(language.German, english) {
-			t.Errorf("title %q (code %q) has no German translation; add it to internal/i18n/locales/de.json",
-				english, code)
+		id := "error.title." + code
+		if !i18n.Has(language.English, id, false) {
+			t.Errorf("code %q has no English title under id %q in locales/en.json", code, id)
+		}
+		if !i18n.Has(language.German, id, false) {
+			t.Errorf("code %q has no German title under id %q in locales/de.json", code, id)
 		}
 	}
 }
@@ -191,5 +192,71 @@ func TestInternalErrorsDoNotLeakDetail(t *testing.T) {
 	if got.Code != apperror.CodeInternal || got.Status != http.StatusInternalServerError {
 		t.Errorf("code/status = %q/%d, want %q/%d", got.Code, got.Status,
 			apperror.CodeInternal, http.StatusInternalServerError)
+	}
+}
+
+// TestDetailIsLocalizedWithArguments is the point of the whole change: a message
+// whose specifics are arguments rather than baked-in text can be translated and
+// still name the record it is about.
+//
+// Before the constructors kept the format apart from the arguments, this could
+// not work — "child 7 not found in this organization" is a string with no
+// structure, so a German reader either saw the English or lost the 7.
+func TestDetailIsLocalizedWithArguments(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(i18n.Middleware())
+	r.GET("/x", func(c *gin.Context) {
+		problem.WriteError(c, apperror.BadRequest("child %d not found in this organization", 7))
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/x", nil)
+	req.Header.Set("Accept-Language", "de")
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	var got models.ErrorResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("body is not JSON: %v", err)
+	}
+	const want = "Kind 7 wurde in dieser Organisation nicht gefunden"
+	if got.Detail != want {
+		t.Errorf("detail = %q, want %q", got.Detail, want)
+	}
+}
+
+// TestDetailStaysEnglishWhenUntranslated covers the state the tree is actually
+// in: most messages have no German entry yet, and those must render in English
+// rather than as a blank or a format string.
+func TestDetailStaysEnglishWhenUntranslated(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(i18n.Middleware())
+	r.GET("/x", func(c *gin.Context) {
+		problem.WriteError(c, apperror.BadRequest("widget %d has no translation yet", 3))
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/x", nil)
+	req.Header.Set("Accept-Language", "de")
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	var got models.ErrorResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("body is not JSON: %v", err)
+	}
+	if got.Detail != "widget 3 has no translation yet" {
+		t.Errorf("detail = %q, want the English rendering with the argument applied", got.Detail)
+	}
+}
+
+// TestErrorTextStaysEnglishForLogs pins the other half of the split. Whatever
+// language a response was rendered in, err.Error() is English — a German user's
+// failure must not produce a log line that an English-speaking operator cannot
+// grep for.
+func TestErrorTextStaysEnglishForLogs(t *testing.T) {
+	err := apperror.BadRequest("child %d not found in this organization", 7)
+	if err.Error() != "child 7 not found in this organization" {
+		t.Errorf("Error() = %q, want the English rendering", err.Error())
 	}
 }

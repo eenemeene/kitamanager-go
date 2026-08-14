@@ -17,10 +17,6 @@ repos:
       - id: conventional-pre-commit
         stages: [commit-msg]
 
-  - repo: https://github.com/golangci/golangci-lint
-    rev: v2.11.4
-    hooks:
-      - id: golangci-lint
 
   - repo: local
     hooks:
@@ -124,6 +120,22 @@ repos:
       # golangci-lint (general lint). False positives get a #nosec line
       # with an explicit justification, same shape as the existing
       # annotations in internal/seed and internal/importer.
+      # Provisioned with the project's own toolchain rather than from the
+      # golangci-lint pre-commit repo, which builds the linter with whatever Go
+      # its own environment has. After the move to Go 1.26.6 that produced a
+      # linter built with go1.25 refusing to load the config at all:
+      #   "the Go language version (go1.25) used to build golangci-lint is lower
+      #    than the targeted Go version (1.26.6)"
+      # Installing it here cannot skew, because it is built by the same toolchain
+      # the module targets — and it is exactly what CI does, so local and CI now
+      # run the same version instead of two pinned separately.
+      - id: golangci-lint
+        name: golangci-lint
+        entry: bash -c 'go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest && golangci-lint run'
+        language: system
+        types: [go]
+        pass_filenames: false
+
       - id: gosec
         name: gosec
         entry: bash -c 'go install github.com/securego/gosec/v2/cmd/gosec@latest && gosec -quiet ./...'

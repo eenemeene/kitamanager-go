@@ -1,0 +1,28 @@
+{
+  "error.title.not_found": "Resource not found",
+  "error.title.bad_request": "Malformed request",
+  "error.title.validation_error": "Validation failed",
+  "error.title.conflict": "Conflict with current state",
+  "error.title.unauthorized": "Authentication required",
+  "error.title.forbidden": "Not permitted",
+  "error.title.too_many_requests": "Too many requests",
+  "error.title.internal_error": "Internal server error",
+  "error.title.email_conflict": "Email address already in use",
+  "error.title.contract_overlap": "Contract periods overlap",
+  "error.title.duplicate_bill_hash": "Bill already imported",
+  "error.title.duplicate_bill_month": "Bill already exists for this month",
+  "error.title.method_not_allowed": "Method not allowed",
+  "error.title.precondition_required": "If-Match header required",
+  "error.title.precondition_failed": "Resource was modified",
+
+  "child.not_found_in_organization": "Child {{.ChildID}} not found in this organization",
+  "section.not_found_in_organization": "Section {{.SectionID}} not found in this organization",
+  "section.delete.has_children": {
+    "one": "Cannot delete section with {{.Count}} currently-assigned child; reassign them first",
+    "other": "Cannot delete section with {{.Count}} currently-assigned children; reassign them first"
+  },
+  "section.delete.has_employees": {
+    "one": "Cannot delete section with {{.Count}} currently-assigned employee; reassign them first",
+    "other": "Cannot delete section with {{.Count}} currently-assigned employees; reassign them first"
+  }
+}

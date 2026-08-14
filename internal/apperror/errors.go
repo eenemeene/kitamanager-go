@@ -50,6 +50,17 @@ type AppError struct {
 	Code      int
 	ErrorCode string // machine-readable error code
 
+	// MessageID is the message before formatting — the English format string a
+	// call site wrote. It is also the translation key: the response writer
+	// re-renders it in the request's language, which is only possible while the
+	// arguments are still separate from the text.
+	//
+	// Message holds the already-rendered English, and stays the value Error()
+	// returns, so a log line is English no matter who made the request.
+	MessageID string
+	// Args are MessageID's formatting arguments, kept for that re-render.
+	Args []any
+
 	// Params carries the specifics of this occurrence as data rather than as
 	// prose: the dates that overlapped, the month already billed. Message says
 	// the same thing in an English sentence, and that sentence is the only place
@@ -113,24 +124,43 @@ func (e *AppError) GetErrorCode() string {
 	}
 }
 
+// render builds the English message and keeps the pieces needed to build it
+// again in another language.
+//
+// Constructors take a format string and its arguments rather than an
+// already-formatted string. That is what makes a translated message possible:
+// "child %d not found" can be looked up and re-rendered, while
+// "child 7 not found" can only be shown as-is. A call with no arguments is the
+// common case and stays a plain string.
+func render(e *AppError, msg string, args []any) *AppError {
+	e.MessageID = msg
+	e.Args = args
+	if len(args) == 0 {
+		e.Message = msg
+		return e
+	}
+	e.Message = fmt.Sprintf(msg, args...)
+	return e
+}
+
 // NotFound creates a not found error
-func NotFound(resource string) *AppError {
-	return &AppError{Err: ErrNotFound, Message: resource + " not found", Code: http.StatusNotFound, ErrorCode: CodeNotFound}
+func NotFound(resource string, args ...any) *AppError {
+	return render(&AppError{Err: ErrNotFound, Code: http.StatusNotFound, ErrorCode: CodeNotFound}, resource+" not found", args)
 }
 
 // BadRequest creates a bad request error
-func BadRequest(msg string) *AppError {
-	return &AppError{Err: ErrBadRequest, Message: msg, Code: http.StatusBadRequest, ErrorCode: CodeBadRequest}
+func BadRequest(msg string, args ...any) *AppError {
+	return render(&AppError{Err: ErrBadRequest, Code: http.StatusBadRequest, ErrorCode: CodeBadRequest}, msg, args)
 }
 
 // Validation creates a validation error (subset of bad request)
-func Validation(msg string) *AppError {
-	return &AppError{Err: ErrBadRequest, Message: msg, Code: http.StatusBadRequest, ErrorCode: CodeValidation}
+func Validation(msg string, args ...any) *AppError {
+	return render(&AppError{Err: ErrBadRequest, Code: http.StatusBadRequest, ErrorCode: CodeValidation}, msg, args)
 }
 
 // Conflict creates a conflict error
-func Conflict(msg string) *AppError {
-	return &AppError{Err: ErrConflict, Message: msg, Code: http.StatusConflict, ErrorCode: CodeConflict}
+func Conflict(msg string, args ...any) *AppError {
+	return render(&AppError{Err: ErrConflict, Code: http.StatusConflict, ErrorCode: CodeConflict}, msg, args)
 }
 
 // EmailConflict creates an error for duplicate email
@@ -139,51 +169,53 @@ func EmailConflict() *AppError {
 }
 
 // ContractConflict creates an error for overlapping contracts
-func ContractConflict(msg string) *AppError {
-	return &AppError{Err: ErrConflict, Message: msg, Code: http.StatusConflict, ErrorCode: CodeContractConflict}
+func ContractConflict(msg string, args ...any) *AppError {
+	return render(&AppError{Err: ErrConflict, Code: http.StatusConflict, ErrorCode: CodeContractConflict}, msg, args)
 }
 
 // PreconditionRequired creates a 428 for a write that arrived without the
 // If-Match precondition it is required to carry. Distinct from 412: nothing was
 // compared, so the client has to read the resource and try again with its
 // version rather than assume it lost a race.
-func PreconditionRequired(msg string) *AppError {
-	return &AppError{Err: ErrBadRequest, Message: msg, Code: http.StatusPreconditionRequired, ErrorCode: CodePreconditionRequired}
+func PreconditionRequired(msg string, args ...any) *AppError {
+	return render(&AppError{Err: ErrBadRequest, Code: http.StatusPreconditionRequired, ErrorCode: CodePreconditionRequired}, msg, args)
 }
 
 // PreconditionFailed creates a 412 for a write whose If-Match version no longer
 // matches the stored one: someone else changed the record since the client read
 // it. The remedy is to reload and reapply, which is why this is not a 409 — no
 // overlap or constraint was violated.
-func PreconditionFailed(msg string) *AppError {
-	return &AppError{Err: ErrConflict, Message: msg, Code: http.StatusPreconditionFailed, ErrorCode: CodePreconditionFailed}
+func PreconditionFailed(msg string, args ...any) *AppError {
+	return render(&AppError{Err: ErrConflict, Code: http.StatusPreconditionFailed, ErrorCode: CodePreconditionFailed}, msg, args)
 }
 
 // TooManyRequests creates a 429 rate-limit error
-func TooManyRequests(msg string) *AppError {
-	return &AppError{Err: ErrTooManyRequests, Message: msg, Code: http.StatusTooManyRequests, ErrorCode: CodeTooManyRequests}
+func TooManyRequests(msg string, args ...any) *AppError {
+	return render(&AppError{Err: ErrTooManyRequests, Code: http.StatusTooManyRequests, ErrorCode: CodeTooManyRequests}, msg, args)
 }
 
 // Forbidden creates a forbidden error
-func Forbidden(msg string) *AppError {
-	return &AppError{Err: ErrForbidden, Message: msg, Code: http.StatusForbidden, ErrorCode: CodeForbidden}
+func Forbidden(msg string, args ...any) *AppError {
+	return render(&AppError{Err: ErrForbidden, Code: http.StatusForbidden, ErrorCode: CodeForbidden}, msg, args)
 }
 
 // Internal creates an internal server error
-func Internal(msg string) *AppError {
-	return &AppError{Err: ErrInternalServer, Message: msg, Code: http.StatusInternalServerError, ErrorCode: CodeInternal}
+func Internal(msg string, args ...any) *AppError {
+	return render(&AppError{Err: ErrInternalServer, Code: http.StatusInternalServerError, ErrorCode: CodeInternal}, msg, args)
 }
 
 // InternalWrap creates an internal server error that wraps the original error.
 // The original error is available via Unwrap() for logging/debugging but is not
 // exposed in HTTP responses.
-func InternalWrap(err error, msg string) *AppError {
-	return &AppError{Err: fmt.Errorf("%s: %w", msg, err), Message: msg, Code: http.StatusInternalServerError, ErrorCode: CodeInternal}
+func InternalWrap(err error, msg string, args ...any) *AppError {
+	wrapped := render(&AppError{Code: http.StatusInternalServerError, ErrorCode: CodeInternal}, msg, args)
+	wrapped.Err = fmt.Errorf("%s: %w", wrapped.Message, err)
+	return wrapped
 }
 
 // Unauthorized creates an unauthorized error
-func Unauthorized(msg string) *AppError {
-	return &AppError{Err: ErrUnauthorized, Message: msg, Code: http.StatusUnauthorized, ErrorCode: CodeUnauthorized}
+func Unauthorized(msg string, args ...any) *AppError {
+	return render(&AppError{Err: ErrUnauthorized, Code: http.StatusUnauthorized, ErrorCode: CodeUnauthorized}, msg, args)
 }
 
 // NewAppError creates a custom AppError with specified code

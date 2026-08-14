@@ -110,7 +110,7 @@ func (s *EmployeeService) Import(ctx context.Context, orgID uint, data *models.E
 			// Create contracts.
 			for j, c := range emp.Contracts {
 				if c.From.IsZero() {
-					return apperror.BadRequest(fmt.Sprintf("employee %d contract %d: from date is required", i+1, j+1))
+					return apperror.BadRequest("employee %d contract %d: from date is required", i+1, j+1)
 				}
 
 				// Resolve section by name.
@@ -122,7 +122,7 @@ func (s *EmployeeService) Import(ctx context.Context, orgID uint, data *models.E
 				// Resolve pay plan by name.
 				payPlanID, err := s.resolvePayPlan(txCtx, c.PayPlanName, orgID, payPlanCache)
 				if err != nil {
-					return apperror.BadRequest(fmt.Sprintf("employee %d contract %d: %s", i+1, j+1, err.Error()))
+					return apperror.BadRequest("employee %d contract %d: %s", i+1, j+1, err.Error())
 				}
 
 				req := &models.EmployeeContractCreateRequest{

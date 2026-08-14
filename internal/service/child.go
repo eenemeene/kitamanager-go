@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -111,7 +110,7 @@ func (s *ChildService) Import(ctx context.Context, orgID uint, data *models.Chil
 
 			for j, c := range ch.Contracts {
 				if c.From.IsZero() {
-					return apperror.BadRequest(fmt.Sprintf("child %d contract %d: from date is required", i+1, j+1))
+					return apperror.BadRequest("child %d contract %d: from date is required", i+1, j+1)
 				}
 
 				sectionID, err := resolveSection(txCtx, s.sectionStore, c.SectionName, orgID, sectionCache)

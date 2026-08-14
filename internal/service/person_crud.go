@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
@@ -142,17 +141,17 @@ func personImportUpsert[T any](
 	orgID uint,
 ) (uint, error) {
 	if item.FirstName == "" || item.LastName == "" {
-		return 0, apperror.BadRequest(fmt.Sprintf("%s %d: first_name and last_name are required", resourceName, item.Index))
+		return 0, apperror.BadRequest("%s %d: first_name and last_name are required", resourceName, item.Index)
 	}
 	if item.Birthdate.IsZero() {
-		return 0, apperror.BadRequest(fmt.Sprintf("%s %d (%s %s): birthdate is required", resourceName, item.Index, item.FirstName, item.LastName))
+		return 0, apperror.BadRequest("%s %d (%s %s): birthdate is required", resourceName, item.Index, item.FirstName, item.LastName)
 	}
 
 	existing, err := findByNameBirthdateAndOrg(ctx, item.FirstName, item.LastName, item.Birthdate, orgID)
 	if err == nil {
 		getPerson(existing).Gender = item.Gender
 		if err := updateFn(ctx, existing); err != nil {
-			return 0, apperror.InternalWrap(err, fmt.Sprintf("failed to update %s %s %s", resourceName, item.FirstName, item.LastName))
+			return 0, apperror.InternalWrap(err, "failed to update %s %s %s", resourceName, item.FirstName, item.LastName)
 		}
 		if err := deleteContracts(ctx, getID(existing)); err != nil {
 			return 0, apperror.InternalWrap(err, "failed to clear existing contracts")
@@ -171,7 +170,7 @@ func personImportUpsert[T any](
 		Birthdate:      item.Birthdate,
 	})
 	if err := createFn(ctx, entity); err != nil {
-		return 0, apperror.InternalWrap(err, fmt.Sprintf("failed to create %s %s %s", resourceName, item.FirstName, item.LastName))
+		return 0, apperror.InternalWrap(err, "failed to create %s %s %s", resourceName, item.FirstName, item.LastName)
 	}
 	return getID(entity), nil
 }

@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
@@ -40,9 +39,9 @@ func checkVersion(expected *int64, current int64, what string) error {
 	if expected == nil || *expected == current {
 		return nil
 	}
-	return apperror.PreconditionFailed(fmt.Sprintf(
+	return apperror.PreconditionFailed(
 		"%s was changed by someone else (you have version %d, current is %d) — reload and reapply your change",
-		what, *expected, current))
+		what, *expected, current)
 }
 
 // mapVersionRace reports a version-guarded write that matched no rows, choosing

@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -78,8 +77,8 @@ func snapAndValidateRange(from, to *time.Time) (time.Time, time.Time, error) {
 		return start, end, apperror.BadRequest("'to' date must not be before 'from' date")
 	}
 	if monthCount(start, end) > MaxStatisticsRangeMonths {
-		return start, end, apperror.BadRequest(fmt.Sprintf(
-			"date range must not exceed %d months", MaxStatisticsRangeMonths))
+		return start, end, apperror.BadRequest(
+			"date range must not exceed %d months", MaxStatisticsRangeMonths)
 	}
 	return start, end, nil
 }
@@ -427,7 +426,7 @@ func (s *StatisticsService) EstimateEmployeeCost(ctx context.Context, orgID uint
 	entryIdx := buildEntryIndex(period.Entries)
 	entry := entryIdx[gradeStepKey{req.Grade, req.Step}]
 	if entry == nil {
-		return nil, apperror.NotFound(fmt.Sprintf("no pay plan entry for grade %s step %d", req.Grade, req.Step))
+		return nil, apperror.NotFound("no pay plan entry for grade %s step %d", req.Grade, req.Step)
 	}
 
 	gross, contrib := employeeMonthlyCost(entry.MonthlyAmount, req.WeeklyHours, period.WeeklyHours, period.EmployerContributionRate)
