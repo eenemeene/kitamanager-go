@@ -82,6 +82,8 @@ func run(inPath, outPath string) error {
 	assignOperationIDs(v3)
 	declareContractETag(v3)
 	declareProblemContentType(v3)
+	declareServer(v3)
+	upgradeTo31(v3)
 
 	// kin-openapi marshals fields in a stable order via tagged structs;
 	// the only non-determinism left would come from unordered maps in the
@@ -123,6 +125,99 @@ func run(inPath, outPath string) error {
 // Only responses that actually carry the error schema are moved. A 4xx that
 // returns something else (there are none today, but a file endpoint could)
 // keeps its own media type.
+// declareServer replaces the server list the 2.0 conversion produces.
+//
+// swaggo's @host is "localhost:8080", and the converter defaults the scheme to
+// https when none is declared, so the published contract claimed the API lives at
+// https://localhost:8080/ — a developer's machine, over a scheme that port does
+// not speak. A relative server is both correct and deployment-agnostic: it
+// resolves against whatever host served the document, which is what every
+// consumer of this file actually wants.
+func declareServer(doc *openapi3.T) {
+	doc.Servers = openapi3.Servers{{
+		URL:         "/",
+		Description: "The host serving this document. All paths are absolute from the root.",
+	}}
+}
+
+// upgradeTo31 turns the 3.0 document the converter emits into 3.1.
+//
+// The conversion path is swaggo 2.0 -> kin-openapi 3.0, and kin-openapi does not
+// target 3.1, so the last step happens here. Only one construct in this spec
+// differs between the versions: 3.0's `nullable: true` is not a keyword in 3.1,
+// where nullability is expressed by including "null" in the type. There are nine
+// of them, all from the presence-aware contract fields.
+//
+// Verified type-neutral before adopting: openapi-typescript generates a
+// byte-identical file from the 3.0 and 3.1 forms of this spec, so the frontend
+// contract does not move. What it buys is a document that is valid JSON Schema
+// 2020-12, which is what tooling increasingly assumes.
+func upgradeTo31(doc *openapi3.T) {
+	doc.OpenAPI = "3.1.0"
+
+	seen := map[*openapi3.Schema]bool{}
+	var walk func(*openapi3.SchemaRef)
+	walk = func(ref *openapi3.SchemaRef) {
+		if ref == nil || ref.Value == nil || seen[ref.Value] {
+			return
+		}
+		seen[ref.Value] = true
+		sch := ref.Value
+
+		if sch.Nullable {
+			sch.Nullable = false
+			if sch.Type != nil {
+				types := append(sch.Type.Slice(), "null")
+				sch.Type = &openapi3.Types{}
+				*sch.Type = types
+			}
+		}
+
+		for _, child := range sch.Properties {
+			walk(child)
+		}
+		walk(sch.Items)
+		walk(sch.AdditionalProperties.Schema)
+		for _, group := range [][]*openapi3.SchemaRef{sch.AllOf, sch.AnyOf, sch.OneOf} {
+			for _, child := range group {
+				walk(child)
+			}
+		}
+		walk(sch.Not)
+	}
+
+	for _, ref := range doc.Components.Schemas {
+		walk(ref)
+	}
+	for _, item := range doc.Paths.Map() {
+		for _, op := range item.Operations() {
+			if op == nil {
+				continue
+			}
+			for _, param := range op.Parameters {
+				if param.Value != nil {
+					walk(param.Value.Schema)
+				}
+			}
+			if op.RequestBody != nil && op.RequestBody.Value != nil {
+				for _, mt := range op.RequestBody.Value.Content {
+					walk(mt.Schema)
+				}
+			}
+			if op.Responses != nil {
+				for _, resp := range op.Responses.Map() {
+					if resp.Value == nil {
+						continue
+					}
+					for _, mt := range resp.Value.Content {
+						walk(mt.Schema)
+					}
+				}
+			}
+		}
+	}
+}
+
 func declareProblemContentType(doc *openapi3.T) {
 	if doc.Paths == nil {
 		return

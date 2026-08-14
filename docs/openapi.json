@@ -1019,8 +1019,10 @@
                     },
                     "properties": {
                         "additionalProperties": true,
-                        "nullable": true,
-                        "type": "object"
+                        "type": [
+                            "object",
+                            "null"
+                        ]
                     },
                     "section_id": {
                         "example": 2,
@@ -1029,8 +1031,10 @@
                     "to": {
                         "example": "2025-12-31",
                         "format": "date-time",
-                        "nullable": true,
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
                 },
                 "required": [
@@ -1077,8 +1081,10 @@
                     },
                     "properties": {
                         "additionalProperties": true,
-                        "nullable": true,
-                        "type": "object"
+                        "type": [
+                            "object",
+                            "null"
+                        ]
                     },
                     "section_id": {
                         "example": 2,
@@ -1087,8 +1093,10 @@
                     "to": {
                         "example": "2025-12-31",
                         "format": "date-time",
-                        "nullable": true,
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
                 },
                 "type": "object"
@@ -1613,8 +1621,10 @@
                     "to": {
                         "example": "2025-12-31",
                         "format": "date-time",
-                        "nullable": true,
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
                 },
                 "type": "object"
@@ -1840,8 +1850,10 @@
                     },
                     "properties": {
                         "additionalProperties": true,
-                        "nullable": true,
-                        "type": "object"
+                        "type": [
+                            "object",
+                            "null"
+                        ]
                     },
                     "section_id": {
                         "example": 2,
@@ -1858,8 +1870,10 @@
                     "to": {
                         "example": "2025-12-31",
                         "format": "date-time",
-                        "nullable": true,
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "weekly_hours": {
                         "example": 40,
@@ -1918,8 +1932,10 @@
                     },
                     "properties": {
                         "additionalProperties": true,
-                        "nullable": true,
-                        "type": "object"
+                        "type": [
+                            "object",
+                            "null"
+                        ]
                     },
                     "section_id": {
                         "example": 2,
@@ -1936,8 +1952,10 @@
                     "to": {
                         "example": "2025-12-31",
                         "format": "date-time",
-                        "nullable": true,
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "weekly_hours": {
                         "example": 40,
@@ -6548,7 +6566,7 @@
         "title": "KitaManager API",
         "version": "1.0"
     },
-    "openapi": "3.0.3",
+    "openapi": "3.1.0",
     "paths": {
         "/api/v1/audit-logs": {
             "get": {
@@ -20772,7 +20790,8 @@
     },
     "servers": [
         {
-            "url": "https://localhost:8080/"
+            "description": "The host serving this document. All paths are absolute from the root.",
+            "url": "/"
         }
     ]
 }
