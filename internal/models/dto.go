@@ -33,15 +33,26 @@ type ErrorResponse struct {
 	Code string `json:"code" example:"not_found"`
 	// RequestID ties this response to the server logs for the same request.
 	RequestID string `json:"request_id,omitempty" example:"0e03dc7d-9baa-4a23-a8ba-bc54ad5b30b9"`
+	// Params carries the specifics of this occurrence as key/value data, so a
+	// client that renders in another language can interpolate them into its own
+	// message instead of parsing them back out of Detail.
+	Params map[string]string `json:"params,omitempty"`
 	// InvalidParams lists the fields a validation error rejected, so a form can
 	// mark the offending inputs instead of showing one sentence above all of them.
 	InvalidParams []InvalidParam `json:"invalid_params,omitempty"`
 }
 
 // InvalidParam names one field that failed validation.
+//
+// Reason is the English sentence fragment; Rule and Param are the same fact in
+// machine-readable form, so a localized client can build its own sentence. Rule
+// is the validator tag ("required", "email", "min", "max", "voucher") and Param
+// its argument where the tag takes one.
 type InvalidParam struct {
 	Field  string `json:"field" example:"weekly_hours"`
-	Reason string `json:"reason" example:"must be between 0 and 168"`
+	Reason string `json:"reason" example:"is required"`
+	Rule   string `json:"rule" example:"required"`
+	Param  string `json:"param,omitempty" example:"8"`
 }
 
 // LoginRequest represents the login request body.

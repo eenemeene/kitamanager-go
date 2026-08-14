@@ -2392,6 +2392,13 @@
                         },
                         "type": "array"
                     },
+                    "params": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "description": "Params carries the specifics of this occurrence as key/value data, so a\nclient that renders in another language can interpolate them into its own\nmessage instead of parsing them back out of Detail.",
+                        "type": "object"
+                    },
                     "request_id": {
                         "description": "RequestID ties this response to the server logs for the same request.",
                         "example": "0e03dc7d-9baa-4a23-a8ba-bc54ad5b30b9",
@@ -2418,6 +2425,7 @@
                     "detail",
                     "instance",
                     "invalid_params",
+                    "params",
                     "request_id",
                     "status",
                     "title",
@@ -4148,14 +4156,24 @@
                         "example": "weekly_hours",
                         "type": "string"
                     },
+                    "param": {
+                        "example": "8",
+                        "type": "string"
+                    },
                     "reason": {
-                        "example": "must be between 0 and 168",
+                        "example": "is required",
+                        "type": "string"
+                    },
+                    "rule": {
+                        "example": "required",
                         "type": "string"
                     }
                 },
                 "required": [
                     "field",
-                    "reason"
+                    "param",
+                    "reason",
+                    "rule"
                 ],
                 "type": "object"
             },

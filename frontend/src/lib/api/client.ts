@@ -165,6 +165,15 @@ class ApiClient {
           // body any other way. It fills `detail` rather than replacing it, so a
           // German user still gets the translated `code` message.
           const data = error.response.data as Record<string, unknown> | undefined;
+          if (data && retryAfter) {
+            // As data, not prose: the wait lives in a header, and a German
+            // reader needs the number to interpolate, not an English sentence to
+            // read. `detail` is filled too, for anything reading the body raw.
+            data.params = {
+              ...(data.params as Record<string, string>),
+              seconds: String(retryAfter),
+            };
+          }
           if (data && !data.detail) {
             data.detail = retryAfter
               ? `Rate limit exceeded. Please try again in ${retryAfter} seconds.`
