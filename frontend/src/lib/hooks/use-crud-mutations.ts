@@ -26,6 +26,15 @@ export interface UseCrudMutationsConfig<TItem, TCreate, TUpdate> {
   onUpdateSuccess?: (item: TItem) => void;
   /** Callback when delete mutation succeeds */
   onDeleteSuccess?: () => void;
+  /**
+   * Called when a create or update is rejected, before the toast.
+   *
+   * Exists so a caller can mark the fields the server named. Returning true
+   * means the caller displayed the problem itself and the toast is suppressed —
+   * which is only correct if every violation was surfaced, since a toast is the
+   * last thing standing between a rejected submit and silence.
+   */
+  onMutationError?: (error: unknown) => boolean | void;
 }
 
 export interface UseCrudMutationsResult<TItem, TCreate, TUpdate> {
@@ -54,6 +63,7 @@ export function useCrudMutations<TItem, TCreate, TUpdate>({
   onCreateSuccess,
   onUpdateSuccess,
   onDeleteSuccess,
+  onMutationError,
 }: UseCrudMutationsConfig<TItem, TCreate, TUpdate>): UseCrudMutationsResult<
   TItem,
   TCreate,
@@ -86,6 +96,9 @@ export function useCrudMutations<TItem, TCreate, TUpdate>({
       onCreateSuccess?.(item);
     },
     onError: (error: Error) => {
+      if (onMutationError?.(error) === true) {
+        return;
+      }
       showErrorToast(
         t('common.error'),
         error,
@@ -108,6 +121,9 @@ export function useCrudMutations<TItem, TCreate, TUpdate>({
       onUpdateSuccess?.(item);
     },
     onError: (error: Error) => {
+      if (onMutationError?.(error) === true) {
+        return;
+      }
       showErrorToast(
         t('common.error'),
         error,

@@ -21,6 +21,7 @@ import { useCrudDialogs, type UseCrudDialogsResult } from './use-crud-dialogs';
 import { useCrudMutations, type UseCrudMutationsResult } from './use-crud-mutations';
 import { useResourceListFilters } from './use-resource-list-filters';
 import { validationTiming } from '@/lib/forms/validation-timing';
+import { applyProblemToForm } from '@/lib/forms/apply-problem-to-form';
 
 interface UseCrudPageConfig<
   TItem extends { id: number },
@@ -29,6 +30,13 @@ interface UseCrudPageConfig<
   TUpdate,
 > {
   resourceName: string;
+  /**
+   * Maps an API field name to this form's name, where they differ — money
+   * entered in euros but sent in cents, a date pair prefixed because the form
+   * carries two. Without an entry the violation is reported rather than marked,
+   * which is noisy but never silent.
+   */
+  fieldAliases?: Record<string, string>;
   schema: ZodType<TFormData>;
   defaultValues: TFormData;
   itemToFormData: (item: TItem) => TFormData;
@@ -105,6 +113,8 @@ export function useCrudPage<
     reset,
     setValue,
     setError,
+    clearErrors,
+    getValues,
     watch,
     formState: { errors },
   } = useForm<TFormData>({
@@ -150,6 +160,20 @@ export function useCrudPage<
     deleteFn: (id) => config.deleteFn(orgId, id),
     onSuccess: dialogs.closeDialog,
     onDeleteSuccess: dialogs.closeDeleteDialog,
+    onMutationError: (error) => {
+      // Mark the fields the server named, so a rejected submit points at the
+      // inputs to change instead of describing them in a sentence.
+      const { applied, unmapped } = applyProblemToForm(
+        error,
+        { setError, clearErrors, getValues },
+        config.fieldAliases
+      );
+      // The toast is suppressed only when every violation landed on a field.
+      // Anything unmapped — a collection-level failure, a field this form does
+      // not collect — still needs saying, and the toast is the only thing that
+      // says it until the error summary lands.
+      return applied > 0 && unmapped.length === 0;
+    },
   });
 
   const onSubmit = (data: TFormData) => {
