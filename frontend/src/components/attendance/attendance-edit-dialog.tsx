@@ -17,6 +17,7 @@ import {
 import { attendanceSchema, type AttendanceFormData } from '@/lib/schemas/attendance';
 import type { ChildAttendanceResponse, ChildAttendanceStatus } from '@/lib/api/types';
 import { formatTime } from '@/lib/utils/formatting';
+import { validationTiming } from '@/lib/forms/validation-timing';
 
 interface AttendanceEditDialogProps {
   open: boolean;
@@ -41,6 +42,7 @@ export function AttendanceEditDialog({
   const tCommon = useTranslations('common');
 
   const { register, handleSubmit, reset, setValue, watch } = useForm<AttendanceFormData>({
+    ...validationTiming,
     resolver: zodResolver(attendanceSchema),
     defaultValues: {
       status: 'present',

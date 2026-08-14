@@ -46,6 +46,7 @@ import { PersonFormDialog } from '@/components/crud/person-form-dialog';
 import { EmployeesTable } from '@/components/employees/employees-table';
 import { EmployeeContractDialog } from '@/components/employees/employee-contract-dialog';
 import { useToast } from '@/lib/hooks/use-toast';
+import { validationTiming } from '@/lib/forms/validation-timing';
 import {
   employeeSchema,
   employeeContractSchema,
@@ -195,6 +196,7 @@ export default function EmployeesPage() {
     watch: watchEmployee,
     formState: { errors: errorsEmployee },
   } = useForm<EmployeeFormData>({
+    ...validationTiming,
     resolver: zodResolver(employeeSchema),
     defaultValues: {
       first_name: '',
@@ -212,6 +214,7 @@ export default function EmployeesPage() {
     setValue: setValueContract,
     formState: { errors: errorsContract },
   } = useForm<EmployeeContractFormData>({
+    ...validationTiming,
     resolver: zodResolver(employeeContractSchema),
     defaultValues: {
       from: '',

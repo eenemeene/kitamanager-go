@@ -41,6 +41,7 @@ import { EmployeeContractDialog } from '@/components/employees/employee-contract
 import { employeeContractSchema, type EmployeeContractFormData } from '@/lib/schemas';
 import { useToast } from '@/lib/hooks/use-toast';
 import { showErrorToast } from '@/lib/utils/show-error-toast';
+import { validationTiming } from '@/lib/forms/validation-timing';
 
 export default function EmployeeContractsPage() {
   const params = useParams();
@@ -192,6 +193,7 @@ export default function EmployeeContractsPage() {
     setValue,
     formState: { errors },
   } = useForm<EmployeeContractFormData>({
+    ...validationTiming,
     resolver: zodResolver(employeeContractSchema),
     defaultValues: {
       from: '',

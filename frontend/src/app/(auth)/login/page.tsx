@@ -14,6 +14,7 @@ import { getErrorMessage } from '@/lib/api/client';
 import { loginSchema, type LoginFormData } from '@/lib/schemas';
 import type { LoginFactorDescriptor } from '@/lib/api/types';
 import { MfaVerifyForm } from '@/components/auth/mfa-verify-form';
+import { validationTiming } from '@/lib/forms/validation-timing';
 
 /**
  * Validate that a path is safe for redirect (prevents open redirect attacks).
@@ -55,6 +56,7 @@ export default function LoginPage() {
     handleSubmit,
     formState: { errors },
   } = useForm<LoginFormData>({
+    ...validationTiming,
     resolver: zodResolver(loginSchema),
   });
 

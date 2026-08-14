@@ -27,6 +27,7 @@ import { useFundingAttributes } from '@/lib/hooks/use-funding-attributes';
 import { calculateContractEndDate } from '@/lib/utils/school-enrollment';
 import { childWithContractSchema, type ChildWithContractFormData } from '@/lib/schemas';
 import type { Gender, Section } from '@/lib/api/types';
+import { validationTiming } from '@/lib/forms/validation-timing';
 
 export interface ChildCreateDialogProps {
   open: boolean;
@@ -58,6 +59,7 @@ export function ChildCreateDialog({
     control,
     formState: { errors },
   } = useForm<ChildWithContractFormData>({
+    ...validationTiming,
     resolver: zodResolver(childWithContractSchema),
     defaultValues: {
       first_name: '',

@@ -55,6 +55,7 @@ import {
   centsToEuros,
 } from '@/lib/utils/formatting';
 import { budgetItemEntrySchema, type BudgetItemEntryFormData } from '@/lib/schemas';
+import { validationTiming } from '@/lib/forms/validation-timing';
 
 export default function BudgetItemDetailPage() {
   const params = useParams();
@@ -79,6 +80,7 @@ export default function BudgetItemDetailPage() {
     reset,
     formState: { errors },
   } = useForm<BudgetItemEntryFormData>({
+    ...validationTiming,
     resolver: zodResolver(budgetItemEntrySchema),
     defaultValues: { from: '', to: '', amount_euros: 0, notes: '' },
   });

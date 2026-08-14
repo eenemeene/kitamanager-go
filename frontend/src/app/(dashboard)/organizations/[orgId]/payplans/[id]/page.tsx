@@ -61,6 +61,7 @@ import {
 } from '@/lib/utils/formatting';
 import { PayPlanGrid } from '@/components/payplans/payplan-grid';
 import { PayPlanSalaryChart } from '@/components/charts/payplan-salary-chart';
+import { validationTiming } from '@/lib/forms/validation-timing';
 import {
   payPlanPeriodSchema,
   payPlanEntrySchema,
@@ -184,6 +185,7 @@ export default function PayPlanDetailPage() {
     reset: resetPeriod,
     formState: { errors: errorsPeriod },
   } = useForm<PayPlanPeriodFormData>({
+    ...validationTiming,
     resolver: zodResolver(payPlanPeriodSchema),
     defaultValues: { from: '', to: '', weekly_hours: 39, employer_contribution_rate: 0 },
   });
@@ -194,6 +196,7 @@ export default function PayPlanDetailPage() {
     reset: resetEntry,
     formState: { errors: errorsEntry },
   } = useForm<PayPlanEntryFormData>({
+    ...validationTiming,
     resolver: zodResolver(payPlanEntrySchema),
     defaultValues: { grade: '', step: 1, monthly_amount_euros: 0, step_min_years: undefined },
   });

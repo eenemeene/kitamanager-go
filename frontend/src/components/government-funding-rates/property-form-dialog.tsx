@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { validationTiming } from '@/lib/forms/validation-timing';
 import {
   governmentFundingPropertySchema,
   type GovernmentFundingPropertyFormData,
@@ -39,6 +40,7 @@ export function PropertyFormDialog({
     reset,
     formState: { errors },
   } = useForm<GovernmentFundingPropertyFormData>({
+    ...validationTiming,
     resolver: zodResolver(governmentFundingPropertySchema),
     defaultValues: {
       key: '',

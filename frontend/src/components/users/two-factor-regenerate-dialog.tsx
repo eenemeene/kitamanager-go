@@ -42,6 +42,11 @@ export function TwoFactorRegenerateDialog({ open, onOpenChange, factorId, onComp
   const [error, setError] = useState<string | null>(null);
   const form = useForm<FactorStepUpWithCodeFormData>({
     resolver: zodResolver(factorStepUpWithCodeSchema),
+    // Deliberately onChange, not the shared validationTiming. This form gates
+    // its submit button on formState.isValid, and under `onTouched` that stays
+    // false until the field is blurred — so someone who types the code and goes
+    // straight for the button finds it disabled. Short form, fixed-length input,
+    // no "told you are wrong too early" problem to solve here.
     mode: 'onChange',
     defaultValues: { password: '', code: '' },
   });

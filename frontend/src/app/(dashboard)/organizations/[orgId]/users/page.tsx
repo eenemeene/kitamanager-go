@@ -38,6 +38,7 @@ import {
 } from '@/lib/schemas';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { UserMembershipDialog } from '@/components/users/user-membership-dialog';
+import { validationTiming } from '@/lib/forms/validation-timing';
 
 const createDefaultValues: UserCreateFormData = {
   name: '',
@@ -70,6 +71,7 @@ export default function UsersPage() {
     watch: watchCreate,
     formState: { errors: errorsCreate },
   } = useForm<UserCreateFormData>({
+    ...validationTiming,
     resolver: zodResolver(userCreateSchema) as any,
     defaultValues: createDefaultValues,
   });
@@ -82,6 +84,7 @@ export default function UsersPage() {
     watch: watchUpdate,
     formState: { errors: errorsUpdate },
   } = useForm<UserUpdateFormData>({
+    ...validationTiming,
     resolver: zodResolver(userUpdateSchema) as any,
     defaultValues: updateDefaultValues,
   });
