@@ -38,6 +38,15 @@ import (
 )
 
 // @title KitaManager API
+//
+// The version below is the *contract* version, which is what OpenAPI's
+// info.version means — not the build. It is deliberately not wired to the git
+// tag: docs/openapi.json is committed and diff-checked by `make swagger-check`,
+// so a value derived from `git describe` would change on every commit, and
+// would differ between a local checkout and CI (which clones without tags).
+// The build version is reported by the /health endpoint, from ldflags.
+//
+// Bump this when the API contract changes in a way a client must notice.
 // @version 1.0
 // @description REST API for a Kita management system: children and their care
 // @description contracts, employees and theirs, sections, attendance, and the
