@@ -62,7 +62,16 @@ export function MonthStepper({ value, onChange }: MonthStepperProps) {
 
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant="outline" className="text-sm font-medium md:min-w-[180px]">
+          <Button
+            variant="outline"
+            // The rendered label is localized and, below `sm`, abbreviated.
+            // Tests and any other machine reader use this instead, so they do
+            // not break when the presentation changes — which is exactly what
+            // happened when the short form landed.
+            data-testid="month-stepper-value"
+            data-value={format(value, 'yyyy-MM-dd')}
+            className="text-sm font-medium md:min-w-[180px]"
+          >
             {/* Two renderings, toggled by CSS rather than a media-query hook, so
               there is no hydration mismatch and no layout shift after mount.
               The long form is what a desktop user reads; the short one exists
