@@ -60,7 +60,23 @@ DialogHeader.displayName = 'DialogHeader';
 
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn('flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2', className)}
+    className={cn(
+      // Pinned to the bottom of the dialog's own scrollport.
+      //
+      // DialogContent is the scroll container (max-h-[85vh], overflow-y-auto),
+      // so anything added above the footer pushes it down and out of view. That
+      // is exactly what the error summary does: press Save, the summary appears
+      // at the top, the form grows, and the button you just pressed is now below
+      // the fold — with the scroll jumped to the top, because focus moved to the
+      // summary. You then have to scroll back down to try again.
+      //
+      // Sticky costs nothing when the content fits: it only engages once there
+      // is something to scroll. The negative margins pull it to the container's
+      // edges so the background covers the full width as content passes beneath,
+      // and the padding restores the inset the container's own p-6 provided.
+      'bg-background sticky bottom-0 z-10 -mx-6 -mb-6 flex flex-col-reverse gap-2 border-t px-6 py-4 sm:flex-row sm:justify-end sm:space-x-2',
+      className
+    )}
     {...props}
   />
 );

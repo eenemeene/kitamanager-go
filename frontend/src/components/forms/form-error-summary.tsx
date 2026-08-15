@@ -53,6 +53,16 @@ interface FormErrorSummaryProps<T extends FieldValues> {
    * every field a form can report has one.
    */
   labels?: Record<string, string>;
+  /**
+   * Moves focus to a field by its form name — pass react-hook-form's `setFocus`.
+   *
+   * Without it this falls back to `document.getElementById(name)`, which only
+   * works where the input's DOM id happens to equal its form name. It does not
+   * on the child-create dialog, whose ids are prefixed (`create_first_name`), so
+   * activating an item there found nothing and did nothing at all — silently,
+   * because there is no element to fail against.
+   */
+  onJump?: (name: string) => void;
 }
 
 function prefersReducedMotion(): boolean {
@@ -67,6 +77,7 @@ export function FormErrorSummary<T extends FieldValues>({
   errors,
   unmapped = [],
   labels = {},
+  onJump,
 }: FormErrorSummaryProps<T>) {
   const t = useTranslations();
   const container = useRef<HTMLDivElement>(null);
@@ -105,13 +116,19 @@ export function FormErrorSummary<T extends FieldValues>({
   }
 
   const jumpTo = (name: string) => {
-    const field = document.getElementById(name);
+    let field: HTMLElement | null = null;
+    if (onJump) {
+      onJump(name);
+      field = document.activeElement as HTMLElement | null;
+    } else {
+      field = document.getElementById(name);
+      // Focus first without scrolling, then scroll deliberately: letting focus
+      // do the scrolling top-aligns the field under the keyboard on a phone.
+      field?.focus({ preventScroll: true });
+    }
     if (!field) {
       return;
     }
-    // Focus first without scrolling, then scroll deliberately: letting focus do
-    // the scrolling top-aligns the field under the keyboard on a phone.
-    field.focus({ preventScroll: true });
     field.scrollIntoView({
       behavior: prefersReducedMotion() ? 'auto' : 'smooth',
       block: 'center',
