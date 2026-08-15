@@ -25,6 +25,7 @@ import {
 import { Pagination } from '@/components/ui/pagination';
 import { SectionKanbanBoard } from '@/components/sections/section-kanban-board';
 import { sectionSchema, type SectionFormData } from '@/lib/schemas';
+import { FormErrorSummary } from '@/components/forms/form-error-summary';
 
 const defaultValues: SectionFormData = {
   name: '',
@@ -178,6 +179,11 @@ export default function SectionsPage() {
             onSubmit={crud.handleSubmit(crud.onSubmit)}
             isSaving={crud.mutations.isMutating}
           >
+            <FormErrorSummary
+              errors={crud.errors}
+              unmapped={crud.unmappedViolations}
+              labels={{ name: t('common.name'), description: t('common.description') }}
+            />
             <div className="space-y-2">
               <Label htmlFor="name">{t('common.name')}</Label>
               <Input

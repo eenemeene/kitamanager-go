@@ -32,6 +32,7 @@ import {
 import { Pagination } from '@/components/ui/pagination';
 import { SearchInput } from '@/components/ui/search-input';
 import { budgetItemWithEntrySchema, type BudgetItemWithEntryFormData } from '@/lib/schemas';
+import { FormErrorSummary } from '@/components/forms/form-error-summary';
 import {
   formatDateForApi,
   eurosToCents,
@@ -226,6 +227,11 @@ export default function BudgetItemsPage() {
         onSubmit={crud.handleSubmit(onSubmit)}
         isSaving={crud.mutations.isMutating}
       >
+        <FormErrorSummary
+          errors={crud.errors}
+          unmapped={crud.unmappedViolations}
+          labels={{ name: t('common.name'), description: t('common.description') }}
+        />
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">{t('common.name')}</Label>

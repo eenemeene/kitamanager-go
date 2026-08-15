@@ -25,6 +25,7 @@ import { Pagination } from '@/components/ui/pagination';
 import { SearchInput } from '@/components/ui/search-input';
 import { payPlanSchema, type PayPlanFormData } from '@/lib/schemas';
 import { useToast } from '@/lib/hooks/use-toast';
+import { FormErrorSummary } from '@/components/forms/form-error-summary';
 
 const defaultValues: PayPlanFormData = {
   name: '',
@@ -166,6 +167,11 @@ export default function PayPlansPage() {
         onSubmit={crud.handleSubmit(crud.onSubmit)}
         isSaving={crud.mutations.isMutating}
       >
+        <FormErrorSummary
+          errors={crud.errors}
+          unmapped={crud.unmappedViolations}
+          labels={{ name: t('common.name'), description: t('common.description') }}
+        />
         <div className="space-y-2">
           <Label htmlFor="name">{t('common.name')}</Label>
           <Input id="name" {...crud.register('name')} />

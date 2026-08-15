@@ -1174,5 +1174,10 @@
     "sectionStaffing": "Staffing",
     "sectionFinancials": "Financials",
     "printAction": "Print report"
+  },
+  "forms": {
+    "errorSummary": {
+      "title": "Please correct {count, plural, one {# entry} other {# entries}}"
+    }
   }
 }
