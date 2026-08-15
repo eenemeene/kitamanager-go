@@ -50,6 +50,7 @@ import { VouchersDialog } from '@/components/children/vouchers-dialog';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useUiStore } from '@/stores/ui-store';
 import { validationTiming } from '@/lib/forms/validation-timing';
+import { getInvalidParams } from '@/lib/api/problem';
 import {
   childSchema,
   type ChildFormData,
@@ -186,6 +187,10 @@ export default function ChildrenPage() {
     deleteFn: (id) => apiClient.deleteChild(orgId, id),
     onSuccess: () => dialogs.closeDialog(),
     onDeleteSuccess: () => dialogs.closeDeleteDialog(),
+    // The dialog lists the fields this named, so a toast repeating them is
+    // noise. Anything without field violations — a conflict, a network failure
+    // — still gets one.
+    onMutationError: (error) => getInvalidParams(error).length > 0,
   });
 
   const createContractMutation = useContractMutation<
@@ -490,6 +495,7 @@ export default function ChildrenPage() {
       {/* Child Create Dialog (with initial contract) */}
       {!dialogs.editingItem && (
         <ChildCreateDialog
+          submitError={mutations.createMutation.error ?? mutations.updateMutation.error}
           open={dialogs.isDialogOpen}
           onOpenChange={dialogs.setIsDialogOpen}
           orgId={orgId}
