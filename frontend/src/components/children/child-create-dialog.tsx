@@ -28,6 +28,8 @@ import { calculateContractEndDate } from '@/lib/utils/school-enrollment';
 import { childWithContractSchema, type ChildWithContractFormData } from '@/lib/schemas';
 import type { Gender, Section } from '@/lib/api/types';
 import { validationTiming } from '@/lib/forms/validation-timing';
+import { FormErrorSummary } from '@/components/forms/form-error-summary';
+import { useProblemFormErrors } from '@/lib/forms/use-problem-form-errors';
 
 export interface ChildCreateDialogProps {
   open: boolean;
@@ -37,6 +39,11 @@ export interface ChildCreateDialogProps {
   sections: Section[];
   isSaving: boolean;
   onSubmit: (data: ChildWithContractFormData) => void;
+  /**
+   * The last rejection from the mutation that saves this form, so the fields it
+   * named can be marked. The page owns the mutation; the form lives here.
+   */
+  submitError?: unknown;
 }
 
 export function ChildCreateDialog({
@@ -47,6 +54,7 @@ export function ChildCreateDialog({
   sections,
   isSaving,
   onSubmit,
+  submitError,
 }: ChildCreateDialogProps) {
   const t = useTranslations();
 
@@ -57,6 +65,9 @@ export function ChildCreateDialog({
     setValue,
     watch,
     control,
+    setError,
+    clearErrors,
+    getValues,
     formState: { errors },
   } = useForm<ChildWithContractFormData>({
     ...validationTiming,
@@ -72,6 +83,15 @@ export function ChildCreateDialog({
       properties: undefined,
     },
   });
+
+  // The form's own field names differ from the API's for the contract dates:
+  // this dialog carries the child and its first contract at once, so the
+  // contract's `from`/`to` are prefixed to keep them apart from the child's.
+  const unmapped = useProblemFormErrors(
+    submitError,
+    { setError, clearErrors, getValues },
+    { from: 'contract_from', to: 'contract_to' }
+  );
 
   const birthdate = watch('birthdate');
   const contractFrom = watch('contract_from');
@@ -128,6 +148,19 @@ export function ChildCreateDialog({
           <DialogTitle>{t('children.create')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <FormErrorSummary
+            errors={errors}
+            unmapped={unmapped}
+            labels={{
+              first_name: t('children.firstName'),
+              last_name: t('children.lastName'),
+              birthdate: t('children.birthDate'),
+              gender: t('common.gender'),
+              contract_from: t('contracts.from'),
+              contract_to: t('contracts.to'),
+              section_id: t('common.section'),
+            }}
+          />
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="create_first_name">{t('children.firstName')}</Label>
