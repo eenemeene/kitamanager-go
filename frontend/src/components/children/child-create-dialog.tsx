@@ -66,6 +66,7 @@ export function ChildCreateDialog({
     watch,
     control,
     setError,
+    setFocus,
     clearErrors,
     getValues,
     formState: { errors },
@@ -149,6 +150,7 @@ export function ChildCreateDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <FormErrorSummary
+            onJump={(name) => setFocus(name as keyof ChildWithContractFormData as never)}
             errors={errors}
             unmapped={unmapped}
             labels={{
@@ -164,14 +166,24 @@ export function ChildCreateDialog({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="create_first_name">{t('children.firstName')}</Label>
-              <Input id="create_first_name" {...register('first_name')} />
+              <Input
+                id="create_first_name"
+                aria-invalid={!!errors.first_name}
+                aria-describedby={errors.first_name ? 'create_first_name-error' : undefined}
+                {...register('first_name')}
+              />
               {errors.first_name && (
                 <p className="text-destructive text-sm">{t('validation.firstNameRequired')}</p>
               )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="create_last_name">{t('children.lastName')}</Label>
-              <Input id="create_last_name" {...register('last_name')} />
+              <Input
+                id="create_last_name"
+                aria-invalid={!!errors.last_name}
+                aria-describedby={errors.last_name ? 'create_last_name-error' : undefined}
+                {...register('last_name')}
+              />
               {errors.last_name && (
                 <p className="text-destructive text-sm">{t('validation.lastNameRequired')}</p>
               )}
@@ -191,7 +203,13 @@ export function ChildCreateDialog({
 
           <div className="space-y-2">
             <Label htmlFor="create_birthdate">{t('children.birthdate')}</Label>
-            <Input id="create_birthdate" type="date" {...register('birthdate')} />
+            <Input
+              id="create_birthdate"
+              aria-invalid={!!errors.birthdate}
+              aria-describedby={errors.birthdate ? 'create_birthdate-error' : undefined}
+              type="date"
+              {...register('birthdate')}
+            />
             {errors.birthdate && (
               <p className="text-destructive text-sm">{t('validation.birthdateRequired')}</p>
             )}
@@ -203,7 +221,13 @@ export function ChildCreateDialog({
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="create_contract_from">{t('contracts.startDate')}</Label>
-                <Input id="create_contract_from" type="date" {...register('contract_from')} />
+                <Input
+                  id="create_contract_from"
+                  aria-invalid={!!errors.contract_from}
+                  aria-describedby={errors.contract_from ? 'create_contract_from-error' : undefined}
+                  type="date"
+                  {...register('contract_from')}
+                />
                 {errors.contract_from && (
                   <p className="text-destructive text-sm">
                     {errors.contract_from.type === 'custom'
@@ -214,7 +238,13 @@ export function ChildCreateDialog({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="create_contract_to">{t('contracts.endDateOptional')}</Label>
-                <Input id="create_contract_to" type="date" {...register('contract_to')} />
+                <Input
+                  id="create_contract_to"
+                  aria-invalid={!!errors.contract_to}
+                  aria-describedby={errors.contract_to ? 'create_contract_to-error' : undefined}
+                  type="date"
+                  {...register('contract_to')}
+                />
                 {birthdate && orgState && (
                   <p className="text-muted-foreground text-xs">{t('children.contractEndHint')}</p>
                 )}

@@ -33,4 +33,19 @@
 export const validationTiming = {
   mode: 'onTouched',
   reValidateMode: 'onChange',
+  /**
+   * The error summary takes focus after a rejected submit, not the first bad
+   * input.
+   *
+   * React Hook Form focuses the first invalid field by default, which competes
+   * with the summary and wins — and on a phone or a tablet in portrait it also
+   * summons the on-screen keyboard, taking roughly 40% of the viewport and
+   * potentially hiding the field it just focused. The summary is a div, so
+   * focusing it announces the problem to a screen reader and scrolls to the top
+   * of the form without opening anything.
+   *
+   * Forms that show no summary keep react-hook-form's behaviour by not
+   * spreading this.
+   */
+  shouldFocusError: false,
 } as const;
