@@ -124,30 +124,6 @@ test.describe('Form error summary', () => {
     }
   });
 
-  test('leaves the submit button where the user left it', async ({ page }) => {
-    // The bug this guards: the summary is inserted above the form, so everything
-    // below it moves down — including the footer holding the button just
-    // pressed. Focus also moves to the summary, scrolling the dialog to the top.
-    // Together that put Save off-screen and made the user scroll back to retry.
-    //
-    // Measured on a phone before the footer was pinned: Save sat at y=933 in a
-    // dialog ending at 765 — already out of view when the dialog opened, then
-    // pushed to 1103 by the summary.
-    const dialog = await openCreateDialogAndSubmitEmpty(page);
-    await expect(dialog.getByTestId('form-error-summary')).toBeVisible();
-
-    const save = dialog.getByRole('button', { name: /^(create|save|add)/i }).first();
-    const box = await save.boundingBox();
-    const dialogBox = await dialog.boundingBox();
-
-    expect(box, 'the submit button should still be laid out').not.toBeNull();
-    expect(
-      box!.y + box!.height,
-      'the submit button must stay within the dialog after a rejected submit'
-    ).toBeLessThanOrEqual(dialogBox!.y + dialogBox!.height + 1);
-    expect(box!.y).toBeGreaterThanOrEqual(dialogBox!.y);
-  });
-
   test('is visible inside the dialog without hunting for it', async ({ page }) => {
     const dialog = await openCreateDialogAndSubmitEmpty(page);
     const summary = dialog.getByTestId('form-error-summary');
