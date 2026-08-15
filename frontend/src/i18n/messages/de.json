@@ -1174,5 +1174,10 @@
     "sectionStaffing": "Personal",
     "sectionFinancials": "Finanzen",
     "printAction": "Bericht drucken"
+  },
+  "forms": {
+    "errorSummary": {
+      "title": "Bitte korrigieren Sie {count, plural, one {# Angabe} other {# Angaben}}"
+    }
   }
 }
