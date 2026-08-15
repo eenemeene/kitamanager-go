@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -148,154 +149,157 @@ export function ChildCreateDialog({
         <DialogHeader>
           <DialogTitle>{t('children.create')}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <FormErrorSummary
-            onJump={(name) => setFocus(name as keyof ChildWithContractFormData as never)}
-            errors={errors}
-            unmapped={unmapped}
-            labels={{
-              first_name: t('children.firstName'),
-              last_name: t('children.lastName'),
-              birthdate: t('children.birthDate'),
-              gender: t('common.gender'),
-              contract_from: t('contracts.from'),
-              contract_to: t('contracts.to'),
-              section_id: t('common.section'),
-            }}
-          />
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="create_first_name">{t('children.firstName')}</Label>
-              <Input
-                id="create_first_name"
-                aria-invalid={!!errors.first_name}
-                aria-describedby={errors.first_name ? 'create_first_name-error' : undefined}
-                {...register('first_name')}
-              />
-              {errors.first_name && (
-                <p className="text-destructive text-sm">{t('validation.firstNameRequired')}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="create_last_name">{t('children.lastName')}</Label>
-              <Input
-                id="create_last_name"
-                aria-invalid={!!errors.last_name}
-                aria-describedby={errors.last_name ? 'create_last_name-error' : undefined}
-                {...register('last_name')}
-              />
-              {errors.last_name && (
-                <p className="text-destructive text-sm">{t('validation.lastNameRequired')}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="create_gender">{t('gender.label')}</Label>
-            <GenderSelect
-              value={watch('gender')}
-              onValueChange={(value: Gender) => setValue('gender', value)}
+        <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
+          <DialogBody className="space-y-4">
+            <FormErrorSummary
+              onJump={(name) => setFocus(name as keyof ChildWithContractFormData as never)}
+              errors={errors}
+              unmapped={unmapped}
+              labels={{
+                first_name: t('children.firstName'),
+                last_name: t('children.lastName'),
+                birthdate: t('children.birthDate'),
+                gender: t('common.gender'),
+                contract_from: t('contracts.from'),
+                contract_to: t('contracts.to'),
+                section_id: t('common.section'),
+              }}
             />
-            {errors.gender && (
-              <p className="text-destructive text-sm">{t('validation.genderRequired')}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="create_birthdate">{t('children.birthdate')}</Label>
-            <Input
-              id="create_birthdate"
-              aria-invalid={!!errors.birthdate}
-              aria-describedby={errors.birthdate ? 'create_birthdate-error' : undefined}
-              type="date"
-              {...register('birthdate')}
-            />
-            {errors.birthdate && (
-              <p className="text-destructive text-sm">{t('validation.birthdateRequired')}</p>
-            )}
-          </div>
-
-          <div className="border-t pt-4">
-            <h4 className="mb-3 text-sm font-medium">{t('children.initialContract')}</h4>
-
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="create_contract_from">{t('contracts.startDate')}</Label>
+                <Label htmlFor="create_first_name">{t('children.firstName')}</Label>
                 <Input
-                  id="create_contract_from"
-                  aria-invalid={!!errors.contract_from}
-                  aria-describedby={errors.contract_from ? 'create_contract_from-error' : undefined}
-                  type="date"
-                  {...register('contract_from')}
+                  id="create_first_name"
+                  aria-invalid={!!errors.first_name}
+                  aria-describedby={errors.first_name ? 'create_first_name-error' : undefined}
+                  {...register('first_name')}
                 />
-                {errors.contract_from && (
-                  <p className="text-destructive text-sm">
-                    {errors.contract_from.type === 'custom'
-                      ? t('validation.contractBeforeBirthdate')
-                      : t('contracts.startDateRequired')}
-                  </p>
+                {errors.first_name && (
+                  <p className="text-destructive text-sm">{t('validation.firstNameRequired')}</p>
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="create_contract_to">{t('contracts.endDateOptional')}</Label>
+                <Label htmlFor="create_last_name">{t('children.lastName')}</Label>
                 <Input
-                  id="create_contract_to"
-                  aria-invalid={!!errors.contract_to}
-                  aria-describedby={errors.contract_to ? 'create_contract_to-error' : undefined}
-                  type="date"
-                  {...register('contract_to')}
+                  id="create_last_name"
+                  aria-invalid={!!errors.last_name}
+                  aria-describedby={errors.last_name ? 'create_last_name-error' : undefined}
+                  {...register('last_name')}
                 />
-                {birthdate && orgState && (
-                  <p className="text-muted-foreground text-xs">{t('children.contractEndHint')}</p>
+                {errors.last_name && (
+                  <p className="text-destructive text-sm">{t('validation.lastNameRequired')}</p>
                 )}
               </div>
             </div>
 
-            {sections.length > 0 && (
-              <div className="mt-4 space-y-2">
-                <Label htmlFor="create_section">{t('sections.title')} *</Label>
-                <Select
-                  value={watch('section_id')?.toString() || ''}
-                  onValueChange={(value) => setValue('section_id', value ? Number(value) : 0)}
-                >
-                  <SelectTrigger id="create_section">
-                    <SelectValue placeholder={t('sections.selectSection')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sections.map((section) => (
-                      <SelectItem key={section.id} value={section.id.toString()}>
-                        {section.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.section_id && (
-                  <p className="text-destructive text-sm">{t('validation.sectionRequired')}</p>
-                )}
-              </div>
-            )}
-
-            <div className="mt-4 space-y-2">
-              <Label htmlFor="create_properties">{t('contracts.propertiesLabel')}</Label>
-              <Controller
-                name="properties"
-                control={control}
-                render={({ field }) => (
-                  <PropertyTagInput
-                    id="create_properties"
-                    value={field.value as Record<string, string> | undefined}
-                    onChange={field.onChange}
-                    fundingAttributes={fundingAttributes}
-                    attributesByKey={attributesByKey}
-                    placeholder={t('contracts.propertiesPlaceholder')}
-                    suggestionsLabel={t('contracts.suggestedProperties')}
-                  />
-                )}
+            <div className="space-y-2">
+              <Label htmlFor="create_gender">{t('gender.label')}</Label>
+              <GenderSelect
+                value={watch('gender')}
+                onValueChange={(value: Gender) => setValue('gender', value)}
               />
-              <p className="text-muted-foreground text-xs">{t('contracts.propertiesHelp')}</p>
+              {errors.gender && (
+                <p className="text-destructive text-sm">{t('validation.genderRequired')}</p>
+              )}
             </div>
-          </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="create_birthdate">{t('children.birthdate')}</Label>
+              <Input
+                id="create_birthdate"
+                aria-invalid={!!errors.birthdate}
+                aria-describedby={errors.birthdate ? 'create_birthdate-error' : undefined}
+                type="date"
+                {...register('birthdate')}
+              />
+              {errors.birthdate && (
+                <p className="text-destructive text-sm">{t('validation.birthdateRequired')}</p>
+              )}
+            </div>
+
+            <div className="border-t pt-4">
+              <h4 className="mb-3 text-sm font-medium">{t('children.initialContract')}</h4>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="create_contract_from">{t('contracts.startDate')}</Label>
+                  <Input
+                    id="create_contract_from"
+                    aria-invalid={!!errors.contract_from}
+                    aria-describedby={
+                      errors.contract_from ? 'create_contract_from-error' : undefined
+                    }
+                    type="date"
+                    {...register('contract_from')}
+                  />
+                  {errors.contract_from && (
+                    <p className="text-destructive text-sm">
+                      {errors.contract_from.type === 'custom'
+                        ? t('validation.contractBeforeBirthdate')
+                        : t('contracts.startDateRequired')}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="create_contract_to">{t('contracts.endDateOptional')}</Label>
+                  <Input
+                    id="create_contract_to"
+                    aria-invalid={!!errors.contract_to}
+                    aria-describedby={errors.contract_to ? 'create_contract_to-error' : undefined}
+                    type="date"
+                    {...register('contract_to')}
+                  />
+                  {birthdate && orgState && (
+                    <p className="text-muted-foreground text-xs">{t('children.contractEndHint')}</p>
+                  )}
+                </div>
+              </div>
+
+              {sections.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <Label htmlFor="create_section">{t('sections.title')} *</Label>
+                  <Select
+                    value={watch('section_id')?.toString() || ''}
+                    onValueChange={(value) => setValue('section_id', value ? Number(value) : 0)}
+                  >
+                    <SelectTrigger id="create_section">
+                      <SelectValue placeholder={t('sections.selectSection')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sections.map((section) => (
+                        <SelectItem key={section.id} value={section.id.toString()}>
+                          {section.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.section_id && (
+                    <p className="text-destructive text-sm">{t('validation.sectionRequired')}</p>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-4 space-y-2">
+                <Label htmlFor="create_properties">{t('contracts.propertiesLabel')}</Label>
+                <Controller
+                  name="properties"
+                  control={control}
+                  render={({ field }) => (
+                    <PropertyTagInput
+                      id="create_properties"
+                      value={field.value as Record<string, string> | undefined}
+                      onChange={field.onChange}
+                      fundingAttributes={fundingAttributes}
+                      attributesByKey={attributesByKey}
+                      placeholder={t('contracts.propertiesPlaceholder')}
+                      suggestionsLabel={t('contracts.suggestedProperties')}
+                    />
+                  )}
+                />
+                <p className="text-muted-foreground text-xs">{t('contracts.propertiesHelp')}</p>
+              </div>
+            </div>
+          </DialogBody>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {t('common.cancel')}
