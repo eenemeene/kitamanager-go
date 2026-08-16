@@ -5,6 +5,7 @@ import { UseFormRegister, UseFormWatch, UseFormSetValue, FieldErrors } from 'rea
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -57,69 +58,70 @@ export function PersonFormDialog({
             {isEditing ? t(`${translationPrefix}.edit`) : t(`${translationPrefix}.create`)}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
+          <DialogBody className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="first_name">{t(`${translationPrefix}.firstName`)}</Label>
+                <Input
+                  id="first_name"
+                  aria-invalid={!!errors.first_name}
+                  aria-describedby={errors.first_name ? 'first-name-error' : undefined}
+                  {...register('first_name')}
+                />
+                {errors.first_name && (
+                  <p id="first-name-error" className="text-destructive text-sm">
+                    {t('validation.firstNameRequired')}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="last_name">{t(`${translationPrefix}.lastName`)}</Label>
+                <Input
+                  id="last_name"
+                  aria-invalid={!!errors.last_name}
+                  aria-describedby={errors.last_name ? 'last-name-error' : undefined}
+                  {...register('last_name')}
+                />
+                {errors.last_name && (
+                  <p id="last-name-error" className="text-destructive text-sm">
+                    {t('validation.lastNameRequired')}
+                  </p>
+                )}
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="first_name">{t(`${translationPrefix}.firstName`)}</Label>
-              <Input
-                id="first_name"
-                aria-invalid={!!errors.first_name}
-                aria-describedby={errors.first_name ? 'first-name-error' : undefined}
-                {...register('first_name')}
+              <Label htmlFor="gender">{t('gender.label')}</Label>
+              <GenderSelect
+                value={watch('gender')}
+                onValueChange={(value: Gender) => setValue('gender', value)}
+                aria-invalid={!!errors.gender}
+                aria-describedby={errors.gender ? 'gender-error' : undefined}
               />
-              {errors.first_name && (
-                <p id="first-name-error" className="text-destructive text-sm">
-                  {t('validation.firstNameRequired')}
+              {errors.gender && (
+                <p id="gender-error" className="text-destructive text-sm">
+                  {t('validation.genderRequired')}
                 </p>
               )}
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="last_name">{t(`${translationPrefix}.lastName`)}</Label>
+              <Label htmlFor="birthdate">{t(`${translationPrefix}.birthdate`)}</Label>
               <Input
-                id="last_name"
-                aria-invalid={!!errors.last_name}
-                aria-describedby={errors.last_name ? 'last-name-error' : undefined}
-                {...register('last_name')}
+                id="birthdate"
+                type="date"
+                aria-invalid={!!errors.birthdate}
+                aria-describedby={errors.birthdate ? 'birthdate-error' : undefined}
+                {...register('birthdate')}
               />
-              {errors.last_name && (
-                <p id="last-name-error" className="text-destructive text-sm">
-                  {t('validation.lastNameRequired')}
+              {errors.birthdate && (
+                <p id="birthdate-error" className="text-destructive text-sm">
+                  {t('validation.birthdateRequired')}
                 </p>
               )}
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="gender">{t('gender.label')}</Label>
-            <GenderSelect
-              value={watch('gender')}
-              onValueChange={(value: Gender) => setValue('gender', value)}
-              aria-invalid={!!errors.gender}
-              aria-describedby={errors.gender ? 'gender-error' : undefined}
-            />
-            {errors.gender && (
-              <p id="gender-error" className="text-destructive text-sm">
-                {t('validation.genderRequired')}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="birthdate">{t(`${translationPrefix}.birthdate`)}</Label>
-            <Input
-              id="birthdate"
-              type="date"
-              aria-invalid={!!errors.birthdate}
-              aria-describedby={errors.birthdate ? 'birthdate-error' : undefined}
-              {...register('birthdate')}
-            />
-            {errors.birthdate && (
-              <p id="birthdate-error" className="text-destructive text-sm">
-                {t('validation.birthdateRequired')}
-              </p>
-            )}
-          </div>
-
+          </DialogBody>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {t('common.cancel')}

@@ -4,6 +4,7 @@ import type { FormEvent, ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -50,8 +51,11 @@ export function CrudFormDialog({
             {isEditing ? t(`${translationPrefix}.edit`) : t(`${translationPrefix}.create`)}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={onSubmit} className="space-y-4">
-          {children}
+        {/* The form is the flex column: its fields scroll, its actions do not.
+            Seven pages render their dialogs through this component, so they all
+            get a footer that stays put and never covers a field. */}
+        <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
+          <DialogBody className="space-y-4">{children}</DialogBody>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {t('common.cancel')}

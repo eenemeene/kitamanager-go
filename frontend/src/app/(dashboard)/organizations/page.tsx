@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -186,73 +187,74 @@ export default function OrganizationsPage() {
               {dialogs.isEditing ? t('organizations.edit') : t('organizations.create')}
             </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit as never)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">{t('common.name')}</Label>
-              <Input
-                id="name"
-                aria-invalid={!!errors.name}
-                aria-describedby={errors.name ? 'name-error' : undefined}
-                {...register('name')}
-              />
-              {errors.name && (
-                <p id="name-error" className="text-destructive text-sm">
-                  {t('validation.nameRequired')}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="state">{t('states.state')}</Label>
-              <Select value={watch('state')} onValueChange={(value) => setValue('state', value)}>
-                <SelectTrigger
-                  aria-invalid={!!errors.state}
-                  aria-describedby={errors.state ? 'state-error' : undefined}
-                >
-                  <SelectValue placeholder={t('states.selectState')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {VALID_STATES.map((state) => (
-                    <SelectItem key={state} value={state}>
-                      {t(`states.${state}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.state && (
-                <p id="state-error" className="text-destructive text-sm">
-                  {t('validation.stateRequired')}
-                </p>
-              )}
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="active"
-                checked={activeValue}
-                onCheckedChange={(checked) => setValue('active', checked)}
-              />
-              <Label htmlFor="active">{t('common.active')}</Label>
-            </div>
-
-            {!dialogs.isEditing && (
+          <form onSubmit={handleSubmit(onSubmit as never)} className="flex min-h-0 flex-1 flex-col">
+            <DialogBody className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="default_section_name">
-                  {t('organizations.defaultSectionName')}
-                </Label>
+                <Label htmlFor="name">{t('common.name')}</Label>
                 <Input
-                  id="default_section_name"
-                  {...register('default_section_name')}
-                  placeholder={t('organizations.defaultSectionNamePlaceholder')}
+                  id="name"
+                  aria-invalid={!!errors.name}
+                  aria-describedby={errors.name ? 'name-error' : undefined}
+                  {...register('name')}
                 />
-                {errors.default_section_name && (
-                  <p className="text-destructive text-sm">
-                    {t('validation.defaultSectionNameRequired')}
+                {errors.name && (
+                  <p id="name-error" className="text-destructive text-sm">
+                    {t('validation.nameRequired')}
                   </p>
                 )}
               </div>
-            )}
 
+              <div className="space-y-2">
+                <Label htmlFor="state">{t('states.state')}</Label>
+                <Select value={watch('state')} onValueChange={(value) => setValue('state', value)}>
+                  <SelectTrigger
+                    aria-invalid={!!errors.state}
+                    aria-describedby={errors.state ? 'state-error' : undefined}
+                  >
+                    <SelectValue placeholder={t('states.selectState')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {VALID_STATES.map((state) => (
+                      <SelectItem key={state} value={state}>
+                        {t(`states.${state}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.state && (
+                  <p id="state-error" className="text-destructive text-sm">
+                    {t('validation.stateRequired')}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="active"
+                  checked={activeValue}
+                  onCheckedChange={(checked) => setValue('active', checked)}
+                />
+                <Label htmlFor="active">{t('common.active')}</Label>
+              </div>
+
+              {!dialogs.isEditing && (
+                <div className="space-y-2">
+                  <Label htmlFor="default_section_name">
+                    {t('organizations.defaultSectionName')}
+                  </Label>
+                  <Input
+                    id="default_section_name"
+                    {...register('default_section_name')}
+                    placeholder={t('organizations.defaultSectionNamePlaceholder')}
+                  />
+                  {errors.default_section_name && (
+                    <p className="text-destructive text-sm">
+                      {t('validation.defaultSectionNameRequired')}
+                    </p>
+                  )}
+                </div>
+              )}
+            </DialogBody>
             <DialogFooter>
               <Button
                 type="button"
