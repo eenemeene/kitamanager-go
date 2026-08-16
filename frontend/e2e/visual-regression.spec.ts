@@ -178,28 +178,36 @@ test.describe('Visual Regression - Dialogs', () => {
     // dialog overlay shows today's date in the week navigator, which
     // changes daily and causes pixel diffs.
     //
-    // Wait for the funding property chips before capturing. They arrive after two
-    // chained requests — the funding list, then that funding's periods — so the
-    // dialog is visible well before its lower half is complete. Screenshotting on
-    // visibility alone captured whichever moment the run happened to reach: this
-    // snapshot has been observed with zero, four and eight chips, and each extra
-    // row of chips shifts everything below it. That is what the old
-    // `maxDiffPixelRatio` was absorbing, and why the tablet copy failed in CI
-    // while passing locally.
-    // Wait for the funding property chips before capturing. They arrive after two
-    // chained requests — the funding list, then that funding's periods — so the
-    // dialog is visible long before its lower half is complete, and the union of
-    // properties grows as periods arrive. Capturing on visibility alone caught
-    // whichever moment the run reached: this snapshot has been seen with four
-    // chips and with the full eight, and each extra row shifts everything below.
+    // Wait for the funding property chips to stop arriving before capturing.
     //
-    // "integration a" comes from a period other than the current one, so its
-    // presence means every period has loaded and the set has settled. That is the
-    // condition to wait for — not a diff ratio, and not a mask: the dialog's
-    // content is identical in every environment once loading finishes.
-    await expect(dialog.getByRole('button', { name: 'integration a', exact: true })).toBeVisible({
-      timeout: 10000,
-    });
+    // They come from two chained requests — the funding, then its periods — and
+    // the set of chips is the union across periods, so it grows as responses
+    // land. The dialog is visible long before that finishes, and each extra row
+    // shifts everything below it.
+    //
+    // This used to wait for one specific chip, "integration a", on the reasoning
+    // that it comes from a non-current period and so implies the rest have
+    // loaded. That turned a slow response into a hard failure: CI captured the
+    // dialog with four chips and no "integration a" at all, and the test spent
+    // ten seconds waiting for something that was never going to appear in time.
+    //
+    // Waiting for the count to settle makes no assumption about which chips
+    // exist. If the set really does differ between environments — the open
+    // question behind this test — that now shows up as a snapshot difference
+    // naming the actual problem, rather than as a timeout that does not.
+    const chips = dialog.locator('[data-testid="property-suggestions"] button');
+    await expect(chips.first()).toBeVisible({ timeout: 15000 });
+    await expect
+      .poll(
+        async () => {
+          const before = await chips.count();
+          await page.waitForTimeout(400);
+          const after = await chips.count();
+          return before === after ? after : -1;
+        },
+        { timeout: 15000, message: 'funding property chips never stopped changing' }
+      )
+      .toBeGreaterThan(0);
 
     await expect(dialog).toHaveScreenshot('create-child-dialog.png');
   });
