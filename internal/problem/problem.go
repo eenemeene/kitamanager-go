@@ -15,6 +15,7 @@ package problem
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -51,10 +52,11 @@ const TypeBase = "https://eenemeene.github.io/kitamanager-go/en/docs/reference/a
 // requires not to vary between occurrences of the same type. The detail carries
 // what was specific to this one.
 //
-// These are English, and deliberately so: the API speaks English, and the code
-// is the key the UI translates by. A German user sees German because the
-// frontend looks the code up in its message catalogue, not because the server
-// guessed at an Accept-Language header.
+// These are English, and deliberately so: they are what a log, a captured
+// response or an integrator's console shows. A German user sees German because
+// the server renders it into "localized" from the language it negotiated — the
+// frontend keeps no catalogue of its own, so there is exactly one place a
+// message can be wrong.
 var titles = map[string]string{
 	apperror.CodeNotFound:             "Resource not found",
 	apperror.CodeBadRequest:           "Malformed request",
@@ -73,19 +75,15 @@ var titles = map[string]string{
 	apperror.CodePreconditionFailed:   "Resource was modified",
 }
 
-// Title returns the registered title for a code, falling back to the code
-// itself so an unregistered code still produces a valid document rather than an
-// empty title.
-//
-// The English title is the catalogue key, so a request that negotiated German
-// gets the German title and one that did not gets the English string back
-// unchanged. RFC 9457 asks for exactly this: a title is the same for every
-// occurrence of a type "except for purposes of localization".
 // Title returns the English title for a code, falling back to the code itself so
-// an unregistered code still produces a valid document.
+// an unregistered code still produces a valid document rather than an empty
+// title.
 //
 // English, deliberately: the top level of a problem document is the developer's
-// view. The reader's language lives under "localized".
+// view, and it is also the catalogue key the German title is looked up by. The
+// reader's language lives under "localized". RFC 9457 asks for exactly this — a
+// title is the same for every occurrence of a type "except for purposes of
+// localization".
 func Title(code string) string {
 	if t, ok := titles[code]; ok {
 		return t
@@ -161,6 +159,21 @@ func localizedFor(c *gin.Context, code, messageID string, args []any) *models.Lo
 // rejected request goes on to run the handler anyway.
 func Write(c *gin.Context, status int, code, detail string) {
 	WriteProblem(c, New(c, status, code, detail))
+}
+
+// Writef is Write for a detail that has to be composed.
+//
+// The format and its arguments stay apart all the way here, because the
+// catalogue is keyed by the English format string: a detail assembled by
+// concatenation at the call site arrives as a one-off sentence with no key to
+// look up, and comes back English while everything around it is translated.
+// That is not a hypothetical — the router's own 404 and 405 were built that way
+// and were the last two English-only messages in the API.
+func Writef(c *gin.Context, status int, code, format string, args ...any) {
+	doc := New(c, status, code, fmt.Sprintf(format, args...))
+	// New could only look the rendered sentence up; this looks up the format.
+	doc.Localized = localizedFor(c, code, format, args)
+	WriteProblem(c, doc)
 }
 
 // WriteProblem sends an already-built document, for the callers that attach

@@ -67,16 +67,12 @@ type AppError struct {
 	Fields []FieldViolation
 
 	// Params carries the specifics of this occurrence as data rather than as
-	// prose: the dates that overlapped, the month already billed. Message says
-	// the same thing in an English sentence, and that sentence is the only place
-	// the information exists for the ~600 sites that have not been converted.
+	// prose: the dates that overlapped, the month already billed.
 	//
-	// Anything that has to render an error in another language needs the data,
-	// not the sentence — a translation cannot recover "2026-01-01" from a string
-	// it does not parse. Where Params is set, the UI produces a fully translated
-	// message with the specifics in it; where it is not, the UI falls back to
-	// showing the English sentence alongside the translation, so a German reader
-	// is never told less than an English one.
+	// The server renders the localized message itself, from MessageID and Args,
+	// so Params is not what makes translation work — it is what lets a client
+	// that wants to compose its own wording get at the specifics without parsing
+	// them back out of an English sentence.
 	Params map[string]string
 }
 
