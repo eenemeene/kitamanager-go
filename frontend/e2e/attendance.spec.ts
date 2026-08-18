@@ -420,26 +420,24 @@ test.describe('Attendance Editable Times', () => {
   });
 
   test('edit check-out time after full check-in/out', async ({ page }) => {
-    // The attendance grid shows Mon-Fri only. On weekends there is no "today" column,
-    // so we navigate to next week and use Monday's column (index 0). This works because
-    // the check-out edit time is constructed as "next-Monday 16:45", which is always
-    // after the check-in time ("now", i.e. this Saturday/Sunday), so backend validation
-    // (check-in < check-out) still passes.
-    const dayOfWeek = new Date().getDay(); // 0=Sun..6=Sat
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-
-    if (isWeekend) {
-      await page.getByRole('button', { name: 'Next week' }).click();
-      await expect(page.getByText(childFirstName)).toBeVisible({ timeout: 10000 });
-    }
+    // Always next Monday, never today.
+    //
+    // This used to pick today's column from `new Date().getDay()` and edit the
+    // check-out to a fixed 23:45. Both read the wall clock, and CI's runner is
+    // UTC while the app renders Europe/Berlin, so after 22:00 UTC they disagree
+    // about what day it is: the test checked into Tuesday's column while the app
+    // recorded the check-in at Wednesday 00:17, and every edited time then landed
+    // before the check-in. The backend correctly refused, and the success toast
+    // this waits for never came.
+    //
+    // A column in the future removes the whole class of problem. Any time on a
+    // later date is after a check-in recorded now, whatever the runner's clock
+    // says and whichever side of midnight it is.
+    await page.getByRole('button', { name: 'Next week' }).click();
+    await expect(page.getByText(childFirstName)).toBeVisible({ timeout: 10000 });
 
     const row = page.getByRole('row').filter({ hasText: childFirstName });
-
-    // On weekdays use today's column so that check-in time (now) and the edited
-    // check-out time (same date + "16:45") are on the same calendar day.
-    // On weekends we navigated to next week so Monday (index 0) is always in the future
-    // relative to now, ensuring the edited check-out time is after the check-in time.
-    const colIndex = isWeekend ? 0 : (dayOfWeek + 6) % 7; // 0=Mon..4=Fri
+    const colIndex = 0; // Monday of next week
 
     // Get all check-in buttons in the row and click the target column's
     const checkInButtons = row.getByRole('button', { name: /check-in/i });
@@ -466,23 +464,8 @@ test.describe('Attendance Editable Times', () => {
       timeout: 10000,
     });
 
-    // Pin BOTH times rather than one, so the assertion does not depend on the
-    // wall clock at all. 23:45 was chosen to be "always after check-in
-    // regardless of timezone" -- true of timezones, but not of the time of day:
-    // between 23:45 and midnight Berlin the check-in this test just recorded is
-    // later than 23:45, the backend correctly rejects check-in > check-out, and
-    // no success toast ever arrives. CI hit that 15-minute window on 2026-08-18.
-    //
-    // Which end to move first is decided by the check-in the app is showing, not
-    // by the runner's clock -- the runner is UTC and the app renders Berlin.
-    // Moving the near end first would fail the same validation it is avoiding.
-    const shownCheckIn = await row
-      .locator('button[aria-label="Check-in"]')
-      .filter({ hasText: /\d{2}:\d{2}/ })
-      .first()
-      .innerText();
-    const checkInHour = Number(shownCheckIn.trim().split(':')[0]);
-
+    // Pin both times rather than leaving either at "now", so what is asserted
+    // does not drift with the clock either.
     const editTime = async (label: 'Check-in' | 'Check-out', value: string) => {
       await row
         .locator(`button[aria-label="${label}"]`)
@@ -502,13 +485,8 @@ test.describe('Attendance Editable Times', () => {
       });
     };
 
-    if (checkInHour >= 8) {
-      await editTime('Check-in', '08:00');
-      await editTime('Check-out', '09:00');
-    } else {
-      await editTime('Check-out', '09:00');
-      await editTime('Check-in', '08:00');
-    }
+    await editTime('Check-out', '16:45');
+    await editTime('Check-in', '08:00');
 
     const timeInput = row.locator('input[type="time"][aria-label="Check-out"]');
 
