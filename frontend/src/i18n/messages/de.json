@@ -1139,6 +1139,7 @@
     "moveTo": "Verschieben nach {section}"
   },
   "auditLog": {
+    "showDetails": "Details zu diesem Eintrag anzeigen",
     "title": "Protokoll",
     "description": "Aktuelle Änderungen in dieser Organisation. Anmelde- und Passwortereignisse werden hier nicht angezeigt — sie bleiben ausschließlich den Systemadministratoren vorbehalten.",
     "from": "Von",

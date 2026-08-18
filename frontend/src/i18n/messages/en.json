@@ -1139,6 +1139,7 @@
     "moveTo": "Move to {section}"
   },
   "auditLog": {
+    "showDetails": "Show details for this entry",
     "title": "Audit Log",
     "description": "Recent changes in this organization. Login and password events are not shown here — they remain visible only to system administrators.",
     "from": "From",

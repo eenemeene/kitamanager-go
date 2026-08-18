@@ -160,8 +160,11 @@ export function ChildCreateDialog({
                 last_name: t('children.lastName'),
                 birthdate: t('children.birthDate'),
                 gender: t('common.gender'),
-                contract_from: t('contracts.from'),
-                contract_to: t('contracts.to'),
+                // Start/End Date, not From/To: the summary tells the user which
+                // field to fix, so it has to use the words printed above that
+                // field. There is no control on this form labelled "To".
+                contract_from: t('contracts.startDate'),
+                contract_to: t('contracts.endDate'),
                 section_id: t('common.section'),
               }}
             />
@@ -175,7 +178,9 @@ export function ChildCreateDialog({
                   {...register('first_name')}
                 />
                 {errors.first_name && (
-                  <p className="text-destructive text-sm">{t('validation.firstNameRequired')}</p>
+                  <p id="create_first_name-error" className="text-destructive text-sm">
+                    {t('validation.firstNameRequired')}
+                  </p>
                 )}
               </div>
               <div className="space-y-2">
@@ -187,7 +192,9 @@ export function ChildCreateDialog({
                   {...register('last_name')}
                 />
                 {errors.last_name && (
-                  <p className="text-destructive text-sm">{t('validation.lastNameRequired')}</p>
+                  <p id="create_last_name-error" className="text-destructive text-sm">
+                    {t('validation.lastNameRequired')}
+                  </p>
                 )}
               </div>
             </div>
@@ -213,7 +220,9 @@ export function ChildCreateDialog({
                 {...register('birthdate')}
               />
               {errors.birthdate && (
-                <p className="text-destructive text-sm">{t('validation.birthdateRequired')}</p>
+                <p id="create_birthdate-error" className="text-destructive text-sm">
+                  {t('validation.birthdateRequired')}
+                </p>
               )}
             </div>
 
@@ -233,7 +242,7 @@ export function ChildCreateDialog({
                     {...register('contract_from')}
                   />
                   {errors.contract_from && (
-                    <p className="text-destructive text-sm">
+                    <p id="create_contract_from-error" className="text-destructive text-sm">
                       {errors.contract_from.type === 'custom'
                         ? t('validation.contractBeforeBirthdate')
                         : t('contracts.startDateRequired')}
@@ -249,7 +258,12 @@ export function ChildCreateDialog({
                     type="date"
                     {...register('contract_to')}
                   />
-                  {birthdate && orgState && (
+                  {errors.contract_to && (
+                    <p id="create_contract_to-error" className="text-destructive text-sm">
+                      {t('validation.toDateMustBeAfterFromDate')}
+                    </p>
+                  )}
+                  {birthdate && orgState && !errors.contract_to && (
                     <p className="text-muted-foreground text-xs">{t('children.contractEndHint')}</p>
                   )}
                 </div>

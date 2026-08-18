@@ -11,6 +11,15 @@ import {
 // Ensure English locale for all tests
 test.use({ locale: 'en-US' });
 
+/**
+ * The app's own alerts. Next.js mounts a permanently-present, permanently-empty
+ * `role="alert"` route announcer, so a bare getByRole('alert') either matches it
+ * or trips strict mode -- either way it says nothing about the app.
+ */
+function appAlert(page: import('@playwright/test').Page) {
+  return page.locator('[role="alert"]:not(#__next-route-announcer__)').first();
+}
+
 test.describe('Form Validation Errors', () => {
   let orgId: number;
 
@@ -33,51 +42,64 @@ test.describe('Form Validation Errors', () => {
     await login(page);
   });
 
-  test('should show validation error when creating organization with empty name', async ({
-    page,
-  }) => {
+  /**
+   * Opens a create dialog, submits it empty, and returns the dialog.
+   *
+   * These used to assert only that the dialog was still open afterwards, which
+   * the dialog already was before the click. That catches "the submit went
+   * through when it should not have" and nothing else -- in particular not the
+   * thing all three names promise, which is that the user was told what to fix.
+   */
+  async function submitEmpty(page: import('@playwright/test').Page, openButton: RegExp) {
+    await page.getByRole('button', { name: openButton }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+    await dialog
+      .getByRole('button', { name: /^(save|create|add)/i })
+      .first()
+      .click();
+    return dialog;
+  }
+
+  /**
+   * The bar every rejected form has to clear: the submit did not go through, at
+   * least one input is marked for assistive technology, and there is prose next
+   * to it saying why. A marked field with no message is a red outline the user
+   * cannot act on; a message with no marking cannot be found by a screen reader.
+   */
+  async function expectRejectedWithReason(dialog: import('@playwright/test').Locator) {
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator('[aria-invalid="true"]').first()).toBeVisible({ timeout: 5000 });
+
+    const marked = dialog.locator('[aria-invalid="true"]').first();
+    const describedBy = await marked.getAttribute('aria-describedby');
+    expect(describedBy, 'a marked field must point at the text explaining it').toBeTruthy();
+    await expect(dialog.locator(`#${describedBy}`)).not.toBeEmpty();
+  }
+
+  test('rejecting an organization with no name says which field is wrong', async ({ page }) => {
     await page.goto('/organizations');
     await page.waitForLoadState('load');
-
-    // Open create dialog
-    await page.getByRole('button', { name: /new organization/i }).click();
-    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-
-    // Try to submit empty form
-    await page.getByRole('button', { name: /save/i }).click();
-
-    // Should stay on dialog (not close) - form validation prevents submission
-    await expect(page.getByRole('dialog')).toBeVisible();
+    await expectRejectedWithReason(await submitEmpty(page, /new organization/i));
   });
 
-  test('should show validation error for invalid employee data', async ({ page }) => {
+  test('rejecting an employee with no name says which field is wrong', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/employees`);
     await page.waitForLoadState('load');
-
-    // Open create dialog
-    await page.getByRole('button', { name: /new employee/i }).click();
-    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-
-    // Try to submit empty form
-    await page.getByRole('button', { name: /save/i }).click();
-
-    // Dialog should remain open because of validation errors
-    await expect(page.getByRole('dialog')).toBeVisible();
+    await expectRejectedWithReason(await submitEmpty(page, /new employee/i));
   });
 
-  test('should show validation error for invalid child data', async ({ page }) => {
+  test('rejecting a child with no name says which field is wrong', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/children`);
     await page.waitForLoadState('load');
+    const dialog = await submitEmpty(page, /new child/i);
+    await expectRejectedWithReason(dialog);
 
-    // Open create dialog
-    await page.getByRole('button', { name: /new child/i }).click();
-    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-
-    // Try to submit empty form
-    await page.getByRole('button', { name: /save/i }).click();
-
-    // Dialog should remain open because of validation errors
-    await expect(page.getByRole('dialog')).toBeVisible();
+    // The child dialog is one of the four that also renders the summary, so it
+    // can be held to the higher bar: every problem listed in one place.
+    const summary = dialog.getByTestId('form-error-summary');
+    await expect(summary).toBeVisible();
+    expect(Number(await summary.getAttribute('data-count'))).toBeGreaterThan(0);
   });
 });
 
@@ -94,7 +116,7 @@ test.describe('Authentication Error Scenarios', () => {
     await expect(page).toHaveURL(/.*login/, { timeout: 10000 });
   });
 
-  test('should show error for invalid login credentials', async ({ page }) => {
+  test('rejected credentials are explained, not just refused', async ({ page }) => {
     await page.goto('/login');
     await expect(page.getByLabel(/email/i)).toBeVisible({ timeout: 10000 });
 
@@ -102,15 +124,28 @@ test.describe('Authentication Error Scenarios', () => {
     await page.getByLabel(/password/i).fill('wrongpassword123');
     await page.getByRole('button', { name: /sign in|login/i }).click();
 
-    await expect(page).toHaveURL(/.*login/, { timeout: 10000 });
+    // Staying on /login was the whole of this assertion, twice over, on
+    // consecutive lines. Wrong credentials keep you here whether or not the
+    // page says anything, so it could not see the failure it was named for.
+    const alert = appAlert(page);
+    await expect(alert).toBeVisible({ timeout: 10000 });
+    await expect(alert).not.toBeEmpty();
     await expect(page).toHaveURL(/.*login/);
   });
 
-  test('should show error for empty login form submission', async ({ page }) => {
+  test('an empty login form names the fields it needs', async ({ page }) => {
     await page.goto('/login');
     await expect(page.getByLabel(/email/i)).toBeVisible({ timeout: 10000 });
 
     await page.getByRole('button', { name: /sign in|login/i }).click();
+
+    // Client-side rules, so this is field marking rather than the server's
+    // alert -- and the marking has to carry its reason with it.
+    const marked = page.locator('[aria-invalid="true"]').first();
+    await expect(marked).toBeVisible({ timeout: 5000 });
+    const describedBy = await marked.getAttribute('aria-describedby');
+    expect(describedBy, 'a marked field must point at the text explaining it').toBeTruthy();
+    await expect(page.locator(`#${describedBy}`)).not.toBeEmpty();
     await expect(page).toHaveURL(/.*login/);
   });
 });
@@ -137,35 +172,43 @@ test.describe('Not Found Scenarios', () => {
     await login(page);
   });
 
-  test('should handle non-existent organization gracefully', async ({ page }) => {
-    await page.goto('/organizations/99999/employees');
-    await page.waitForLoadState('load');
+  /**
+   * These three asserted that the body was a non-empty string and that the text
+   * "TypeError" was not on screen. Both hold for a blank page, a 500, and -- as
+   * the organization case turned out -- a fully working page belonging to
+   * somebody else. They could not fail.
+   */
 
-    const bodyText = await page.locator('body').textContent();
-    expect(bodyText).toBeTruthy();
-    expect(bodyText!.length).toBeGreaterThan(0);
-
-    await expect(page.getByText(/TypeError|ReferenceError|Cannot read/i)).not.toBeVisible({
-      timeout: 3000,
-    });
-  });
-
-  test('should handle non-existent employee gracefully', async ({ page }) => {
+  test('a missing employee is reported, not rendered as an empty history', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/employees/99999/contracts`);
     await page.waitForLoadState('load');
 
-    await expect(page.getByText(/TypeError|ReferenceError|Cannot read/i)).not.toBeVisible({
-      timeout: 3000,
-    });
+    const alert = appAlert(page);
+    await expect(alert).toBeVisible({ timeout: 10000 });
+    await expect(alert).not.toBeEmpty();
   });
 
-  test('should handle non-existent child gracefully', async ({ page }) => {
+  test('a missing child is reported, not rendered as an empty history', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/children/99999/contracts`);
     await page.waitForLoadState('load');
 
-    await expect(page.getByText(/TypeError|ReferenceError|Cannot read/i)).not.toBeVisible({
-      timeout: 3000,
-    });
+    const alert = appAlert(page);
+    await expect(alert).toBeVisible({ timeout: 10000 });
+    await expect(alert).not.toBeEmpty();
+  });
+
+  // Known defect, deliberately not skipped quietly. /organizations/99999/...
+  // renders a working page for an organization that does not exist, with a
+  // *different* organization's name in the selector and an empty state inviting
+  // the user to add their first employee. Nothing tells them the org is wrong.
+  //
+  // fixme rather than a weakened assertion: what a user should see here is a
+  // product decision, and a passing test would go on claiming this is handled.
+  test.fixme('a missing organization is reported to the user', async ({ page }) => {
+    await page.goto('/organizations/99999/employees');
+    await page.waitForLoadState('load');
+
+    await expect(appAlert(page)).toBeVisible({ timeout: 10000 });
   });
 });
 
