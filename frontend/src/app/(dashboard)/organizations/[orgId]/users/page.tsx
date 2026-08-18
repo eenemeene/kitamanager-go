@@ -21,6 +21,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { formatDate } from '@/lib/utils/formatting';
 import { useAuthStore } from '@/stores/auth-store';
 import { useCrudMutations } from '@/lib/hooks/use-crud-mutations';
+import { FormErrorSummary } from '@/components/forms/form-error-summary';
+import { useProblemFormErrors } from '@/lib/forms/use-problem-form-errors';
+import { getInvalidParams } from '@/lib/api/problem';
 import { useCrudDialogs } from '@/lib/hooks/use-crud-dialogs';
 import {
   CrudPageHeader,
@@ -69,6 +72,9 @@ export default function UsersPage() {
     reset: resetCreate,
     setValue: setValueCreate,
     watch: watchCreate,
+    setError: setErrorCreate,
+    clearErrors: clearErrorsCreate,
+    getValues: getValuesCreate,
     formState: { errors: errorsCreate },
   } = useForm<UserCreateFormData>({
     ...validationTiming,
@@ -82,6 +88,9 @@ export default function UsersPage() {
     reset: resetUpdate,
     setValue: setValueUpdate,
     watch: watchUpdate,
+    setError: setErrorUpdate,
+    clearErrors: clearErrorsUpdate,
+    getValues: getValuesUpdate,
     formState: { errors: errorsUpdate },
   } = useForm<UserUpdateFormData>({
     ...validationTiming,
@@ -131,8 +140,19 @@ export default function UsersPage() {
     defaultValues: updateDefaultValues,
   });
 
+  const userFieldLabels = {
+    name: t('common.name'),
+    email: t('common.email'),
+    password: t('users.password'),
+    active: t('common.active'),
+  };
+
   const mutations = useCrudMutations<User, UserCreateRequest, UserUpdateRequest>({
     resourceName: 'users',
+    // Two forms share this hook -- create and edit differ enough to warrant it --
+    // so the marking is wired per form below rather than here, and this only
+    // decides whether the toast would be a duplicate.
+    onMutationError: (error) => getInvalidParams(error).length > 0,
     queryKey: queryKeys.users.all(),
     createFn: (data) => apiClient.createUser(data),
     updateFn: (id, data) => apiClient.updateUser(id, data),
@@ -164,6 +184,19 @@ export default function UsersPage() {
     dialogs.setIsDialogOpen(true);
     resetCreate(createDefaultValues);
   };
+
+  // Each form reacts to the mutation that submits it, so an edit rejection
+  // cannot mark fields on the create form or the other way round.
+  const unmappedCreate = useProblemFormErrors(mutations.createMutation.error, {
+    setError: setErrorCreate,
+    clearErrors: clearErrorsCreate,
+    getValues: getValuesCreate,
+  });
+  const unmappedUpdate = useProblemFormErrors(mutations.updateMutation.error, {
+    setError: setErrorUpdate,
+    clearErrors: clearErrorsUpdate,
+    getValues: getValuesUpdate,
+  });
 
   const onSubmitCreate = (data: UserCreateFormData) => {
     mutations.createMutation.mutate(data);
@@ -319,6 +352,11 @@ export default function UsersPage() {
       >
         {dialogs.isEditing ? (
           <>
+            <FormErrorSummary
+              errors={errorsUpdate}
+              unmapped={unmappedUpdate}
+              labels={userFieldLabels}
+            />
             <div className="space-y-2">
               <Label htmlFor="name">{t('common.name')}</Label>
               <Input id="name" {...registerUpdate('name')} />
@@ -346,6 +384,11 @@ export default function UsersPage() {
           </>
         ) : (
           <>
+            <FormErrorSummary
+              errors={errorsCreate}
+              unmapped={unmappedCreate}
+              labels={userFieldLabels}
+            />
             <div className="space-y-2">
               <Label htmlFor="name">{t('common.name')}</Label>
               <Input id="name" {...registerCreate('name')} />

@@ -1,9 +1,29 @@
 'use client';
 
+import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
+import type {
+  FieldValues,
+  UseFormClearErrors,
+  UseFormGetValues,
+  UseFormSetError,
+} from 'react-hook-form';
 import { useToast } from './use-toast';
 import { showErrorToast } from '@/lib/utils/show-error-toast';
+import { applyProblemToForm } from '@/lib/forms/apply-problem-to-form';
+import type { InvalidParam } from '@/lib/api/problem';
+
+/**
+ * The slice of react-hook-form this hook needs to mark a rejected field. Taking
+ * the three callbacks rather than the whole form object keeps the dependency
+ * narrow and matches what applyProblemToForm already expects.
+ */
+export interface CrudMutationForm<T extends FieldValues = FieldValues> {
+  setError: UseFormSetError<T>;
+  clearErrors: UseFormClearErrors<T>;
+  getValues: UseFormGetValues<T>;
+}
 
 export interface UseCrudMutationsConfig<TItem, TCreate, TUpdate> {
   /** Resource name for i18n keys (e.g., 'groups', 'organizations') */
@@ -35,6 +55,27 @@ export interface UseCrudMutationsConfig<TItem, TCreate, TUpdate> {
    * last thing standing between a rejected submit and silence.
    */
   onMutationError?: (error: unknown) => boolean | void;
+  /**
+   * The form whose fields a rejected create or update should mark.
+   *
+   * Supplying it is what turns "something went wrong" into an outline around the
+   * input to change. Every page that owns a form should pass it; the hook then
+   * applies the server's field violations, keeps the ones it could not place in
+   * `unmappedViolations` for the summary to show, and suppresses its own toast
+   * whenever it surfaced anything -- and only then, since a conflict or a
+   * network failure has no field violations and still needs the toast.
+   *
+   * Optional because the hook is also used for delete-only flows, which have no
+   * form to mark.
+   */
+  form?: CrudMutationForm<never>;
+  /**
+   * Maps an API field name to this form's name, where they differ -- money
+   * entered in euros but sent in cents, a date pair prefixed because the form
+   * carries two. Without an entry the violation is reported in the summary
+   * rather than marked, which is noisy but never silent.
+   */
+  fieldAliases?: Record<string, string>;
 }
 
 export interface UseCrudMutationsResult<TItem, TCreate, TUpdate> {
@@ -46,6 +87,17 @@ export interface UseCrudMutationsResult<TItem, TCreate, TUpdate> {
   deleteMutation: ReturnType<typeof useMutation<void, Error, number>>;
   /** True if any mutation is currently pending */
   isMutating: boolean;
+  /**
+   * Server violations that named a field this form does not have. The summary
+   * must still show them -- a violation nobody displays is a rejected submit the
+   * user cannot explain.
+   */
+  unmappedViolations: InvalidParam[];
+  /**
+   * Clears the previous attempt's collection-level problems. Call it as the form
+   * is submitted, so a corrected form does not keep showing stale ones.
+   */
+  clearUnmappedViolations: () => void;
 }
 
 /**
@@ -64,6 +116,8 @@ export function useCrudMutations<TItem, TCreate, TUpdate>({
   onUpdateSuccess,
   onDeleteSuccess,
   onMutationError,
+  form,
+  fieldAliases,
 }: UseCrudMutationsConfig<TItem, TCreate, TUpdate>): UseCrudMutationsResult<
   TItem,
   TCreate,
@@ -72,6 +126,20 @@ export function useCrudMutations<TItem, TCreate, TUpdate>({
   const t = useTranslations();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [unmappedViolations, setUnmappedViolations] = useState<InvalidParam[]>([]);
+
+  /**
+   * Marks what the server named, then answers whether the toast is still needed.
+   *
+   * Runs before any caller-supplied onMutationError so a page can still add its
+   * own handling; a caller returning true suppresses the toast regardless.
+   */
+  const handleFieldViolations = (error: unknown): boolean => {
+    if (!form) return false;
+    const { applied, unmapped } = applyProblemToForm(error, form, fieldAliases);
+    setUnmappedViolations(unmapped);
+    return applied + unmapped.length > 0;
+  };
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey });
@@ -96,7 +164,8 @@ export function useCrudMutations<TItem, TCreate, TUpdate>({
       onCreateSuccess?.(item);
     },
     onError: (error: Error) => {
-      if (onMutationError?.(error) === true) {
+      const marked = handleFieldViolations(error);
+      if (onMutationError?.(error) === true || marked) {
         return;
       }
       showErrorToast(
@@ -121,7 +190,8 @@ export function useCrudMutations<TItem, TCreate, TUpdate>({
       onUpdateSuccess?.(item);
     },
     onError: (error: Error) => {
-      if (onMutationError?.(error) === true) {
+      const marked = handleFieldViolations(error);
+      if (onMutationError?.(error) === true || marked) {
         return;
       }
       showErrorToast(
@@ -198,5 +268,7 @@ export function useCrudMutations<TItem, TCreate, TUpdate>({
     updateMutation,
     deleteMutation,
     isMutating,
+    unmappedViolations,
+    clearUnmappedViolations: () => setUnmappedViolations([]),
   };
 }

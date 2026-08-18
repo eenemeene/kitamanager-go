@@ -194,6 +194,9 @@ export default function EmployeesPage() {
     reset: resetEmployee,
     setValue: setValueEmployee,
     watch: watchEmployee,
+    setError: setErrorEmployee,
+    clearErrors: clearErrorsEmployee,
+    getValues: getValuesEmployee,
     formState: { errors: errorsEmployee },
   } = useForm<EmployeeFormData>({
     ...validationTiming,
@@ -248,6 +251,11 @@ export default function EmployeesPage() {
   >({
     resourceName: 'employees',
     queryKey: queryKeys.employees.all(orgId),
+    form: {
+      setError: setErrorEmployee,
+      clearErrors: clearErrorsEmployee,
+      getValues: getValuesEmployee,
+    } as never,
     createFn: (data) => apiClient.createEmployee(orgId, data),
     updateFn: (id, data) => apiClient.updateEmployee(orgId, id, data),
     deleteFn: (id) => apiClient.deleteEmployee(orgId, id),
@@ -480,6 +488,7 @@ export default function EmployeesPage() {
         register={registerEmployee}
         onSubmit={handleSubmitEmployee(onSubmitEmployee)}
         errors={errorsEmployee}
+        unmapped={mutations.unmappedViolations}
         watch={watchEmployee}
         setValue={setValueEmployee}
         isSaving={mutations.isMutating}

@@ -37,6 +37,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useCrudMutations } from '@/lib/hooks/use-crud-mutations';
+import { FormErrorSummary } from '@/components/forms/form-error-summary';
 import { useCrudDialogs } from '@/lib/hooks/use-crud-dialogs';
 import {
   CrudPageHeader,
@@ -66,6 +67,9 @@ export default function OrganizationsPage() {
     reset,
     setValue,
     watch,
+    setError,
+    clearErrors,
+    getValues,
     formState: { errors },
   } = useForm<OrganizationFormData>({
     ...validationTiming,
@@ -100,6 +104,7 @@ export default function OrganizationsPage() {
   >({
     resourceName: 'organizations',
     queryKey: queryKeys.organizations.all(),
+    form: { setError, clearErrors, getValues } as never,
     createFn: (data) => apiClient.createOrganization(data),
     updateFn: (id, data) => apiClient.updateOrganization(id, data),
     deleteFn: (id) => apiClient.deleteOrganization(id),
@@ -114,6 +119,7 @@ export default function OrganizationsPage() {
   });
 
   const onSubmit = (data: OrganizationFormData) => {
+    mutations.clearUnmappedViolations();
     if (dialogs.editingItem) {
       const { default_section_name: _, ...updateData } = data;
       mutations.updateMutation.mutate({ id: dialogs.editingItem.id, data: updateData });
@@ -189,6 +195,16 @@ export default function OrganizationsPage() {
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit as never)} className="flex min-h-0 flex-1 flex-col">
             <DialogBody className="space-y-4">
+              <FormErrorSummary
+                errors={errors}
+                unmapped={mutations.unmappedViolations}
+                labels={{
+                  name: t('common.name'),
+                  state: t('states.state'),
+                  default_section_name: t('organizations.defaultSectionName'),
+                  active: t('common.active'),
+                }}
+              />
               <div className="space-y-2">
                 <Label htmlFor="name">{t('common.name')}</Label>
                 <Input

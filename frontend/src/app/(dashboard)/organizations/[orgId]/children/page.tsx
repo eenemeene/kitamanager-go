@@ -51,6 +51,7 @@ import { useToast } from '@/lib/hooks/use-toast';
 import { useUiStore } from '@/stores/ui-store';
 import { validationTiming } from '@/lib/forms/validation-timing';
 import { getInvalidParams } from '@/lib/api/problem';
+import { useProblemFormErrors } from '@/lib/forms/use-problem-form-errors';
 import {
   childSchema,
   type ChildFormData,
@@ -226,6 +227,9 @@ export default function ChildrenPage() {
     reset: resetChild,
     setValue: setValueChild,
     watch: watchChild,
+    setError: setErrorChild,
+    clearErrors: clearErrorsChild,
+    getValues: getValuesChild,
     formState: { errors: errorsChild },
   } = useForm<ChildFormData>({
     ...validationTiming,
@@ -236,6 +240,14 @@ export default function ChildrenPage() {
       gender: 'male',
       birthdate: '',
     },
+  });
+
+  // The edit form keys on the update mutation alone: a rejected create belongs
+  // to the create dialog, which has its own fields and its own summary.
+  const unmappedChild = useProblemFormErrors(mutations.updateMutation.error, {
+    setError: setErrorChild,
+    clearErrors: clearErrorsChild,
+    getValues: getValuesChild,
   });
 
   const dialogs = useCrudDialogs<Child, ChildFormData>({
@@ -485,6 +497,7 @@ export default function ChildrenPage() {
           register={registerChild}
           onSubmit={handleSubmitChild(onSubmitChild)}
           errors={errorsChild}
+          unmapped={unmappedChild}
           watch={watchChild}
           setValue={setValueChild}
           isSaving={mutations.updateMutation.isPending}
