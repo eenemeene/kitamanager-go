@@ -1407,8 +1407,14 @@ func TestChildAttendanceService_ListByDate(t *testing.T) {
 	tc := setupChildAttendanceTest(t)
 	ctx := context.Background()
 
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	// Pin the clock. Create derives the date from models.Today(), which is
+	// Europe/Berlin, while this test used to build "today" from time.Now() on the
+	// runner -- UTC in CI. Between 22:00 and midnight UTC those are different
+	// days, so the record landed on one date and the query asked for the other
+	// and found nothing. CI hit that on 2026-08-18 at 22:20 UTC.
+	restore := models.SetNow(time.Date(2026, 3, 17, 9, 0, 0, 0, time.UTC))
+	defer restore()
+	today := models.Today()
 
 	req := &models.ChildAttendanceCreateRequest{
 		Status: models.ChildAttendanceStatusPresent,
