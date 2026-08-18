@@ -1,5 +1,5 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
-import { login, getFirstOrganization } from './utils/test-helpers';
+import { login, getFirstOrganization, pinFundingProperties } from './utils/test-helpers';
 
 // Ensure English locale for consistent text rendering
 test.use({ locale: 'en-US' });
@@ -133,6 +133,17 @@ test.describe('Visual Regression - Dialogs', () => {
     await login(page);
     const org = await getFirstOrganization(page);
     orgId = org.id;
+    // The create-child dialog renders one chip per funding property, and the
+    // funding is a global singleton some tests must delete and rebuild — "berlin"
+    // is the only valid state and the state is unique, so testing that a funding
+    // can be created means deleting the seeded one. The dialog therefore showed
+    // the seeded eight properties or the rebuilt four depending on which shard
+    // ran first, and the baseline was only correct by luck: adding two tests
+    // anywhere re-split the shards and turned this into a 26px height difference.
+    //
+    // Pinning the set makes the capture say what it means. The rebuild puts back
+    // exactly this set, so the two agree whichever order they run in.
+    await pinFundingProperties(page);
     await page.close();
   });
 
