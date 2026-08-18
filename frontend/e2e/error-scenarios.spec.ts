@@ -197,18 +197,51 @@ test.describe('Not Found Scenarios', () => {
     await expect(alert).not.toBeEmpty();
   });
 
-  // Known defect, deliberately not skipped quietly. /organizations/99999/...
-  // renders a working page for an organization that does not exist, with a
-  // *different* organization's name in the selector and an empty state inviting
-  // the user to add their first employee. Nothing tells them the org is wrong.
-  //
-  // fixme rather than a weakened assertion: what a user should see here is a
-  // product decision, and a passing test would go on claiming this is handled.
-  test.fixme('a missing organization is reported to the user', async ({ page }) => {
+  test('a missing organization is reported to the user', async ({ page }) => {
+    // This used to render a working Employees page for an organization that
+    // does not exist -- heading, toolbar, and an empty state inviting the user
+    // to add their first employee -- with a *different* organization's name in
+    // the selector, because the sidebar reads the selected org from the store
+    // while the page reads the id from the URL.
     await page.goto('/organizations/99999/employees');
     await page.waitForLoadState('load');
 
-    await expect(appAlert(page)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: /organization not found/i })).toBeVisible({
+      timeout: 10000,
+    });
+    // And a way out, so the reader is not left reaching for the back button.
+    await expect(page.getByRole('link', { name: /back to organizations/i })).toBeVisible();
+  });
+
+  test('an organization id that is not a number is reported the same way', async ({ page }) => {
+    await page.goto('/organizations/abc/employees');
+    await page.waitForLoadState('load');
+
+    await expect(page.getByRole('heading', { name: /organization not found/i })).toBeVisible({
+      timeout: 10000,
+    });
+  });
+
+  test('a server failure is not reported as a missing organization', async ({ page }) => {
+    // The guard keys on a 404 and nothing else. Telling somebody their
+    // organization does not exist because the server hiccuped, or because their
+    // laptop dropped off the wifi, would be a worse bug than the one it fixes --
+    // they would go looking for a deleted Kita that is fine.
+    await page.route(/\/api\/v1\/organizations\/\d+$/, (route) =>
+      route.fulfill({
+        status: 500,
+        contentType: 'application/problem+json',
+        body: JSON.stringify({ status: 500, title: 'Internal server error', code: 'internal' }),
+      })
+    );
+
+    await page.goto(`/organizations/${orgId}/employees`);
+    await page.waitForLoadState('load');
+
+    await expect(page.getByRole('heading', { name: /organization not found/i })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: /employees/i }).first()).toBeVisible({
+      timeout: 10000,
+    });
   });
 });
 
