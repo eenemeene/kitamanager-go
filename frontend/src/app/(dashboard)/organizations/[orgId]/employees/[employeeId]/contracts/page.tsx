@@ -42,6 +42,7 @@ import { employeeContractSchema, type EmployeeContractFormData } from '@/lib/sch
 import { useToast } from '@/lib/hooks/use-toast';
 import { showErrorToast } from '@/lib/utils/show-error-toast';
 import { validationTiming } from '@/lib/forms/validation-timing';
+import { useProblemFormErrors, suppressesToast } from '@/lib/forms/use-problem-form-errors';
 
 export default function EmployeeContractsPage() {
   const params = useParams();
@@ -101,6 +102,7 @@ export default function EmployeeContractsPage() {
   ];
 
   const createMutation = useResourceMutation({
+    onMutationError: suppressesToast,
     mutationFn: (data: EmployeeContractCreateRequest) =>
       apiClient.createEmployeeContract(orgId, employeeId, data),
     invalidateQueryKey: invalidateKeys,
@@ -114,6 +116,7 @@ export default function EmployeeContractsPage() {
   });
 
   const correctMutation = useResourceMutation({
+    onMutationError: suppressesToast,
     // The whole contract, not just its id: correcting it needs the version as an
     // If-Match precondition, so an edit cannot silently overwrite someone else's.
     mutationFn: ({
@@ -191,6 +194,9 @@ export default function EmployeeContractsPage() {
     reset,
     watch,
     setValue,
+    setError,
+    clearErrors,
+    getValues,
     formState: { errors },
   } = useForm<EmployeeContractFormData>({
     ...validationTiming,
@@ -205,6 +211,13 @@ export default function EmployeeContractsPage() {
       step: 1,
       weekly_hours: 39,
     },
+  });
+
+  // Create and correct both submit this one dialog.
+  const unmappedViolations = useProblemFormErrors([createMutation.error, correctMutation.error], {
+    setError,
+    clearErrors,
+    getValues,
   });
 
   const handleCreate = () => {
@@ -474,6 +487,7 @@ export default function EmployeeContractsPage() {
         errors={errors}
         watch={watch}
         setValue={setValue}
+        unmapped={unmappedViolations}
         isSaving={createMutation.isPending || correctMutation.isPending}
         payPlans={payPlans}
         sections={sections}

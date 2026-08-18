@@ -62,6 +62,8 @@ import {
 import { PayPlanGrid } from '@/components/payplans/payplan-grid';
 import { PayPlanSalaryChart } from '@/components/charts/payplan-salary-chart';
 import { validationTiming } from '@/lib/forms/validation-timing';
+import { useProblemFormErrors, suppressesToast } from '@/lib/forms/use-problem-form-errors';
+import { FormErrorSummary } from '@/components/forms/form-error-summary';
 import {
   payPlanPeriodSchema,
   payPlanEntrySchema,
@@ -99,6 +101,7 @@ export default function PayPlanDetailPage() {
 
   // Period mutations
   const createPeriodMutation = useResourceMutation({
+    onMutationError: suppressesToast,
     mutationFn: (data: PayPlanPeriodCreateRequest) =>
       apiClient.createPayPlanPeriod(orgId, payPlanId, data),
     invalidateQueryKey: detailQueryKey,
@@ -111,6 +114,7 @@ export default function PayPlanDetailPage() {
   });
 
   const updatePeriodMutation = useResourceMutation({
+    onMutationError: suppressesToast,
     mutationFn: ({ periodId, data }: { periodId: number; data: PayPlanPeriodUpdateRequest }) =>
       apiClient.updatePayPlanPeriod(orgId, payPlanId, periodId, data),
     invalidateQueryKey: detailQueryKey,
@@ -136,6 +140,7 @@ export default function PayPlanDetailPage() {
 
   // Entry mutations
   const createEntryMutation = useResourceMutation({
+    onMutationError: suppressesToast,
     mutationFn: ({ periodId, data }: { periodId: number; data: PayPlanEntryCreateRequest }) =>
       apiClient.createPayPlanEntry(orgId, payPlanId, periodId, data),
     invalidateQueryKey: detailQueryKey,
@@ -148,6 +153,7 @@ export default function PayPlanDetailPage() {
   });
 
   const updateEntryMutation = useResourceMutation({
+    onMutationError: suppressesToast,
     mutationFn: ({
       periodId,
       entryId,
@@ -183,6 +189,9 @@ export default function PayPlanDetailPage() {
     register: registerPeriod,
     handleSubmit: handleSubmitPeriod,
     reset: resetPeriod,
+    setError: setErrorPeriod,
+    clearErrors: clearErrorsPeriod,
+    getValues: getValuesPeriod,
     formState: { errors: errorsPeriod },
   } = useForm<PayPlanPeriodFormData>({
     ...validationTiming,
@@ -194,12 +203,26 @@ export default function PayPlanDetailPage() {
     register: registerEntry,
     handleSubmit: handleSubmitEntry,
     reset: resetEntry,
+    setError: setErrorEntry,
+    clearErrors: clearErrorsEntry,
+    getValues: getValuesEntry,
     formState: { errors: errorsEntry },
   } = useForm<PayPlanEntryFormData>({
     ...validationTiming,
     resolver: zodResolver(payPlanEntrySchema),
     defaultValues: { grade: '', step: 1, monthly_amount_euros: 0, step_min_years: undefined },
   });
+
+  // Each form watches only the mutations that submit it: a rejected period must
+  // not mark fields on the entry form, which is a different dialog entirely.
+  const unmappedPeriod = useProblemFormErrors(
+    [createPeriodMutation.error, updatePeriodMutation.error],
+    { setError: setErrorPeriod, clearErrors: clearErrorsPeriod, getValues: getValuesPeriod }
+  );
+  const unmappedEntry = useProblemFormErrors(
+    [createEntryMutation.error, updateEntryMutation.error],
+    { setError: setErrorEntry, clearErrors: clearErrorsEntry, getValues: getValuesEntry }
+  );
 
   const handleAddPeriod = () => {
     setEditingPeriod(null);
@@ -502,17 +525,37 @@ export default function PayPlanDetailPage() {
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmitPeriod(onSubmitPeriod)} className="space-y-4">
+              <FormErrorSummary
+                errors={errorsPeriod}
+                unmapped={unmappedPeriod}
+                labels={{
+                  from: t('payPlans.fromDate'),
+                  to: t('payPlans.toDateOptional'),
+                  weekly_hours: t('payPlans.weeklyHoursLabel'),
+                  employer_contribution_rate: t('payPlans.employerContributionRateLabel'),
+                }}
+              />
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="from">{t('payPlans.fromDate')}</Label>
-                  <Input id="from" type="date" {...registerPeriod('from')} />
+                  <Input
+                    id="from"
+                    type="date"
+                    aria-invalid={!!errorsPeriod.from}
+                    {...registerPeriod('from')}
+                  />
                   {errorsPeriod.from && (
                     <p className="text-destructive text-sm">{t('validation.fromDateRequired')}</p>
                   )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="to">{t('payPlans.toDateOptional')}</Label>
-                  <Input id="to" type="date" {...registerPeriod('to')} />
+                  <Input
+                    id="to"
+                    type="date"
+                    aria-invalid={!!errorsPeriod.to}
+                    {...registerPeriod('to')}
+                  />
                 </div>
               </div>
 
@@ -525,6 +568,7 @@ export default function PayPlanDetailPage() {
                     min={0}
                     max={168}
                     step={0.5}
+                    aria-invalid={!!errorsPeriod.weekly_hours}
                     {...registerPeriod('weekly_hours', { valueAsNumber: true })}
                   />
                   {errorsPeriod.weekly_hours && (
@@ -541,6 +585,7 @@ export default function PayPlanDetailPage() {
                     min={0}
                     max={100}
                     step={0.01}
+                    aria-invalid={!!errorsPeriod.employer_contribution_rate}
                     {...registerPeriod('employer_contribution_rate', { valueAsNumber: true })}
                   />
                   {errorsPeriod.employer_contribution_rate && (
@@ -587,10 +632,25 @@ export default function PayPlanDetailPage() {
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmitEntry(onSubmitEntry)} className="space-y-4">
+              <FormErrorSummary
+                errors={errorsEntry}
+                unmapped={unmappedEntry}
+                labels={{
+                  grade: t('payPlans.gradeLabel'),
+                  step: t('payPlans.stepLabel'),
+                  monthly_amount_euros: t('payPlans.monthlyAmountInEuros'),
+                  step_min_years: t('payPlans.stepMinYearsLabel'),
+                }}
+              />
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="grade">{t('payPlans.gradeLabel')}</Label>
-                  <Input id="grade" {...registerEntry('grade')} placeholder="S8a" />
+                  <Input
+                    id="grade"
+                    aria-invalid={!!errorsEntry.grade}
+                    {...registerEntry('grade')}
+                    placeholder="S8a"
+                  />
                   {errorsEntry.grade && (
                     <p className="text-destructive text-sm">{t('payPlans.gradeRequired')}</p>
                   )}
@@ -602,6 +662,7 @@ export default function PayPlanDetailPage() {
                     type="number"
                     min={1}
                     max={6}
+                    aria-invalid={!!errorsEntry.step}
                     {...registerEntry('step', { valueAsNumber: true })}
                   />
                   {errorsEntry.step && (
@@ -617,6 +678,7 @@ export default function PayPlanDetailPage() {
                   type="number"
                   min={0}
                   step={0.01}
+                  aria-invalid={!!errorsEntry.monthly_amount_euros}
                   {...registerEntry('monthly_amount_euros', { valueAsNumber: true })}
                 />
                 {errorsEntry.monthly_amount_euros && (
@@ -630,6 +692,7 @@ export default function PayPlanDetailPage() {
                   id="step_min_years"
                   type="number"
                   min={0}
+                  aria-invalid={!!errorsEntry.step_min_years}
                   {...registerEntry('step_min_years', { valueAsNumber: true })}
                 />
               </div>

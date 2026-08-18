@@ -56,6 +56,8 @@ import {
 } from '@/lib/utils/formatting';
 import { budgetItemEntrySchema, type BudgetItemEntryFormData } from '@/lib/schemas';
 import { validationTiming } from '@/lib/forms/validation-timing';
+import { useProblemFormErrors, suppressesToast } from '@/lib/forms/use-problem-form-errors';
+import { FormErrorSummary } from '@/components/forms/form-error-summary';
 
 export default function BudgetItemDetailPage() {
   const params = useParams();
@@ -78,6 +80,9 @@ export default function BudgetItemDetailPage() {
     register,
     handleSubmit,
     reset,
+    setError,
+    clearErrors,
+    getValues,
     formState: { errors },
   } = useForm<BudgetItemEntryFormData>({
     ...validationTiming,
@@ -95,6 +100,7 @@ export default function BudgetItemDetailPage() {
   const statisticsKey = queryKeys.statistics.all(orgId);
 
   const createEntryMutation = useResourceMutation({
+    onMutationError: suppressesToast,
     mutationFn: (data: BudgetItemEntryCreateRequest) =>
       apiClient.createBudgetItemEntry(orgId, budgetItemId, data),
     invalidateQueryKey: [detailQueryKey, statisticsKey],
@@ -108,6 +114,7 @@ export default function BudgetItemDetailPage() {
   });
 
   const updateEntryMutation = useResourceMutation({
+    onMutationError: suppressesToast,
     mutationFn: ({ entryId, data }: { entryId: number; data: BudgetItemEntryUpdateRequest }) =>
       apiClient.updateBudgetItemEntry(orgId, budgetItemId, entryId, data),
     invalidateQueryKey: [detailQueryKey, statisticsKey],
@@ -119,6 +126,13 @@ export default function BudgetItemDetailPage() {
       reset();
     },
   });
+
+  // Both mutations feed the one entry form -- it is the same dialog for adding
+  // and editing an entry.
+  const unmappedViolations = useProblemFormErrors(
+    [createEntryMutation.error, updateEntryMutation.error],
+    { setError, clearErrors, getValues }
+  );
 
   const deleteEntryMutation = useResourceMutation({
     mutationFn: (entryId: number) => apiClient.deleteBudgetItemEntry(orgId, budgetItemId, entryId),
@@ -272,6 +286,16 @@ export default function BudgetItemDetailPage() {
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmitEntry)} className="space-y-4">
+            <FormErrorSummary
+              errors={errors}
+              unmapped={unmappedViolations}
+              labels={{
+                from: t('budgetItems.fromDate'),
+                to: t('budgetItems.toDateOptional'),
+                amount_euros: t('budgetItems.amountInEuros'),
+                notes: t('budgetItems.notes'),
+              }}
+            />
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="from">{t('budgetItems.fromDate')}</Label>

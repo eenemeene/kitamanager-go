@@ -57,6 +57,8 @@ import { useToast } from '@/lib/hooks/use-toast';
 import { showErrorToast } from '@/lib/utils/show-error-toast';
 import { useUiStore } from '@/stores/ui-store';
 import { validationTiming } from '@/lib/forms/validation-timing';
+import { useProblemFormErrors, suppressesToast } from '@/lib/forms/use-problem-form-errors';
+import { FormErrorSummary } from '@/components/forms/form-error-summary';
 
 export default function ChildContractsPage() {
   const params = useParams();
@@ -112,6 +114,7 @@ export default function ChildContractsPage() {
   ];
 
   const createMutation = useResourceMutation({
+    onMutationError: suppressesToast,
     mutationFn: (data: ChildContractCreateRequest) =>
       apiClient.createChildContract(orgId, childId, data),
     invalidateQueryKey: invalidateKeys,
@@ -125,6 +128,7 @@ export default function ChildContractsPage() {
   });
 
   const correctMutation = useResourceMutation({
+    onMutationError: suppressesToast,
     // The whole contract, not just its id: correcting it needs the version as an
     // If-Match precondition, so an edit cannot silently overwrite someone else's.
     mutationFn: ({
@@ -203,6 +207,9 @@ export default function ChildContractsPage() {
     control,
     watch,
     setValue,
+    setError,
+    clearErrors,
+    getValues,
     formState: { errors },
   } = useForm<ChildContractFormData>({
     ...validationTiming,
@@ -212,6 +219,13 @@ export default function ChildContractsPage() {
       to: '',
       properties: undefined,
     },
+  });
+
+  // Create and correct both submit this one dialog.
+  const unmappedViolations = useProblemFormErrors([createMutation.error, correctMutation.error], {
+    setError,
+    clearErrors,
+    getValues,
   });
 
   // Get org state for school enrollment date calculation
@@ -496,17 +510,27 @@ export default function ChildContractsPage() {
         onSubmit={handleSubmit(onSubmit)}
         isSaving={createMutation.isPending || correctMutation.isPending}
       >
+        <FormErrorSummary
+          errors={errors}
+          unmapped={unmappedViolations}
+          labels={{
+            from: t('contracts.startDate'),
+            to: t('contracts.endDateOptional'),
+            section_id: t('sections.title'),
+            properties: t('contracts.propertiesLabel'),
+          }}
+        />
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="from">{t('contracts.startDate')}</Label>
-            <Input id="from" type="date" {...register('from')} />
+            <Input id="from" type="date" aria-invalid={!!errors.from} {...register('from')} />
             {errors.from && (
               <p className="text-destructive text-sm">{t('contracts.startDateRequired')}</p>
             )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="to">{t('contracts.endDateOptional')}</Label>
-            <Input id="to" type="date" {...register('to')} />
+            <Input id="to" type="date" aria-invalid={!!errors.to} {...register('to')} />
             {!editingContract && child && orgState && (
               <p className="text-muted-foreground text-xs">{t('children.contractEndHint')}</p>
             )}

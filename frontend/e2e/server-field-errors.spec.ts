@@ -1,5 +1,11 @@
 import { test, expect, type Page } from '@playwright/test';
-import { login, createTestOrg, deleteTestOrg, uniqueName } from './utils/test-helpers';
+import {
+  login,
+  createTestOrg,
+  deleteTestOrg,
+  uniqueName,
+  createPayPlanViaApi,
+} from './utils/test-helpers';
 
 /**
  * A field the *server* rejected is marked on the form that submitted it.
@@ -120,6 +126,40 @@ test.describe('Server field violations', () => {
     await expect(summary).toBeVisible({ timeout: 10000 });
     expect(mock.fired, 'the mocked rejection never fired — this test proved nothing').toBe(true);
     await expect(summary).toContainText(/billing_reference|not recognised/i);
+  });
+
+  test('a pay-plan period form marks the field the server named', async ({ page }) => {
+    // A detail page rather than a list dialog, and a mutation that goes through
+    // useResourceMutation rather than useCrudMutations -- the two shapes reach
+    // the form by the same route now, and this is the half that was not covered.
+    const mock = await rejectCreateWith(
+      page,
+      /\/api\/v1\/organizations\/\d+\/pay-plans\/\d+\/periods$/,
+      [{ field: 'weekly_hours', reason: 'must be greater than zero' }]
+    );
+
+    await login(page);
+    const plan = await createPayPlanViaApi(page, orgId, uniqueName('FieldErrPlan'));
+    await page.goto(`/organizations/${orgId}/payplans/${plan.id}`);
+    await page.waitForLoadState('load');
+
+    // The detail page opens in table view; adding a period is offered from the
+    // panels view, which is the path a user takes to get this dialog at all.
+    await page.getByRole('button', { name: /^panels$/i }).click();
+    await page.getByRole('button', { name: /add period/i }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await dialog.getByLabel(/from date/i).fill('2026-01-01');
+    await dialog
+      .getByRole('button', { name: /^(save|create|add)/i })
+      .first()
+      .click();
+
+    const summary = dialog.getByTestId('form-error-summary');
+    await expect(summary).toBeVisible({ timeout: 10000 });
+    expect(mock.fired, 'the mocked rejection never fired — this test proved nothing').toBe(true);
+    await expect(dialog.locator('#weekly_hours')).toHaveAttribute('aria-invalid', 'true');
+    await expect(summary).toContainText(/weekly hours/i);
   });
 
   test('a rejection with no fields still reaches the user', async ({ page }) => {
