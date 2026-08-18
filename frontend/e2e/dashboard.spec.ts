@@ -25,19 +25,21 @@ test.describe('Dashboard', () => {
     await expect(page.getByText(/staffing coverage/i)).toBeVisible({ timeout: 10000 });
   });
 
-  test('should display widgets when data exists', async ({ page }) => {
-    // Dashboard widgets are conditional on data; verify the page renders without errors.
-    // At minimum, stat cards should have loaded their data (no skeleton).
+  test('renders its widgets, not an error boundary', async ({ page }) => {
+    // The error-boundary check here used to be written as
+    // `expect(...).not.toBeVisible().catch(() => {})`. A failed expectation
+    // returns a rejected promise and the catch discarded it, so the assertion
+    // was a no-op even with the boundary on screen. Nothing else in the test
+    // looked at a widget, despite the name.
     await expect(page.getByText(/active employees/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('[data-testid="error-boundary"]')).toHaveCount(0);
+    await expect(page.getByText(/something went wrong/i)).toHaveCount(0);
 
-    // Check that at least one widget section renders (step promotions, upcoming children, or age alerts).
-    // These are Cards with headings. We can't guarantee which ones appear, so just verify
-    // the page is interactive and no error boundary is shown.
-    await expect(page.locator('[data-testid="error-boundary"]'))
-      .not.toBeVisible()
-      .catch(() => {
-        // No error boundary test ID — that's fine, just ensure no "Something went wrong" text
-      });
-    await expect(page.getByText(/something went wrong/i)).not.toBeVisible();
+    // Which widgets render depends on the data, so the assertion is that the
+    // dashboard put *something* below the stat cards -- a card with a heading.
+    // Zero of them means every widget query failed, which is the regression
+    // this test exists for and the one it could not previously see.
+    const headings = page.getByRole('heading');
+    expect(await headings.count(), 'dashboard should render widget headings').toBeGreaterThan(3);
   });
 });

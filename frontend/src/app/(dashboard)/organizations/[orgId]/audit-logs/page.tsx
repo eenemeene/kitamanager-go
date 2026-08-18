@@ -268,9 +268,18 @@ function AuditRow({ entry, onSelect }: AuditRowProps) {
 
   return (
     <TableRow
+      // Same testid as the phone card below: one log entry, two presentations,
+      // so a test can assert the entry rather than the layout it happens to be
+      // rendered in.
+      data-testid="audit-entry"
       className="hover:bg-muted cursor-pointer"
       onClick={onSelect}
-      role="button"
+      // No role="button" here. It overrode the row's implicit role="row", so a
+      // screen reader announced each entry as a button with no column context
+      // and no position in the table -- losing exactly the structure that makes
+      // a log readable. The row stays focusable and Enter/Space still opens the
+      // detail, which is what the role was reaching for.
+      aria-label={t('auditLog.showDetails')}
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -315,6 +324,7 @@ function AuditCard({ entry, onSelect }: AuditRowProps) {
   return (
     <button
       type="button"
+      data-testid="audit-entry"
       onClick={onSelect}
       className="hover:bg-muted flex w-full flex-col gap-1 rounded border px-3 py-2 text-left"
     >
