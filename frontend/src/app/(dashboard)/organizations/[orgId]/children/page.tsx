@@ -199,6 +199,7 @@ export default function ChildrenPage() {
     ChildContract,
     ChildContractAmendResponse
   >({
+    onMutationError: suppressesToast,
     createFn: (childId, data) => apiClient.createChildContract(orgId, childId, data),
     amendFn: (childId, contractId, version, data) =>
       apiClient.amendChildContract(orgId, childId, contractId, version, data),
@@ -537,6 +538,7 @@ export default function ChildrenPage() {
         child={contractChild}
         sections={sections}
         isSaving={createContractMutation.isPending}
+        submitError={createContractMutation.error}
         onSubmit={onSubmitContract}
       />
 

@@ -33,6 +33,8 @@ import { getActiveContract, isDateBefore } from '@/lib/utils/contracts';
 import { calculateContractEndDate } from '@/lib/utils/school-enrollment';
 import type { Child, Section, ContractProperties } from '@/lib/api/types';
 import { validationTiming } from '@/lib/forms/validation-timing';
+import { useProblemFormErrors } from '@/lib/forms/use-problem-form-errors';
+import { FormErrorSummary } from '@/components/forms/form-error-summary';
 
 export interface ChildContractCreateDialogProps {
   open: boolean;
@@ -43,11 +45,17 @@ export interface ChildContractCreateDialogProps {
   sections: Section[];
   isSaving: boolean;
   onSubmit: (data: ChildContractFormData, child: Child, endCurrentContract: boolean) => void;
+  /**
+   * The rejection from the mutation this dialog submits, so the fields the
+   * server named get marked rather than described in a toast that scrolls away.
+   */
+  submitError?: unknown;
 }
 
 export function ChildContractCreateDialog({
   open,
   onOpenChange,
+  submitError,
   orgId,
   orgState,
   child,
@@ -67,6 +75,9 @@ export function ChildContractCreateDialog({
     watch,
     setValue,
     control,
+    setError,
+    clearErrors,
+    getValues,
     formState: { errors },
   } = useForm<ChildContractFormData>({
     ...validationTiming,
@@ -78,6 +89,8 @@ export function ChildContractCreateDialog({
       properties: undefined,
     },
   });
+
+  const unmapped = useProblemFormErrors(submitError, { setError, clearErrors, getValues });
 
   const contractFromDate = watch('from');
   const contractToDate = watch('to');
@@ -173,6 +186,16 @@ export function ChildContractCreateDialog({
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
+          <FormErrorSummary
+            errors={errors}
+            unmapped={unmapped}
+            labels={{
+              from: t('contracts.startDate'),
+              to: t('contracts.endDateOptional'),
+              section_id: t('sections.title'),
+              properties: t('contracts.propertiesLabel'),
+            }}
+          />
           {activeContract && (
             <Alert>
               <AlertDescription className="space-y-3">
@@ -206,14 +229,14 @@ export function ChildContractCreateDialog({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="from">{t('contracts.startDate')}</Label>
-              <Input id="from" type="date" {...register('from')} />
+              <Input id="from" type="date" aria-invalid={!!errors.from} {...register('from')} />
               {errors.from && (
                 <p className="text-destructive text-sm">{t('contracts.startDateRequired')}</p>
               )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="to">{t('contracts.endDateOptional')}</Label>
-              <Input id="to" type="date" {...register('to')} />
+              <Input id="to" type="date" aria-invalid={!!errors.to} {...register('to')} />
               {child && orgState && (
                 <p className="text-muted-foreground text-xs">{t('children.contractEndHint')}</p>
               )}

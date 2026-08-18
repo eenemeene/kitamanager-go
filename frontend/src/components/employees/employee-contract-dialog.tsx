@@ -24,6 +24,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import type { EmployeeContract, PayPlan, Section } from '@/lib/api/types';
 import { formatDate } from '@/lib/utils/formatting';
 import type { EmployeeContractFormData } from '@/lib/schemas';
+import { FormErrorSummary } from '@/components/forms/form-error-summary';
+import type { InvalidParam } from '@/lib/api/problem';
 
 interface ActiveContractInfo {
   contract: EmployeeContract;
@@ -38,6 +40,12 @@ export interface EmployeeContractDialogProps {
   register: UseFormRegister<EmployeeContractFormData>;
   onSubmit: (e: React.FormEvent) => void;
   errors: FieldErrors<EmployeeContractFormData>;
+  /**
+   * Server violations naming a field this form does not have. The dialog serves
+   * both the employees list and the contract history page, so wiring the summary
+   * here covers both.
+   */
+  unmapped?: InvalidParam[];
   watch: UseFormWatch<EmployeeContractFormData>;
   setValue: UseFormSetValue<EmployeeContractFormData>;
   isSaving: boolean;
@@ -53,6 +61,7 @@ export function EmployeeContractDialog({
   register,
   onSubmit,
   errors,
+  unmapped,
   watch,
   setValue,
   isSaving,
@@ -69,6 +78,20 @@ export function EmployeeContractDialog({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
+          <FormErrorSummary
+            errors={errors}
+            unmapped={unmapped}
+            labels={{
+              from: t('contracts.startDate'),
+              to: t('contracts.endDateOptional'),
+              section_id: t('sections.title'),
+              payplan_id: t('payPlans.title'),
+              staff_category: t('employees.staffCategory'),
+              grade: t('payPlans.gradeLabel'),
+              step: t('payPlans.stepLabel'),
+              weekly_hours: t('payPlans.weeklyHoursLabel'),
+            }}
+          />
           {activeContractInfo && (
             <Alert>
               <AlertDescription className="space-y-3">
@@ -105,14 +128,14 @@ export function EmployeeContractDialog({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="from">{t('contracts.startDate')}</Label>
-              <Input id="from" type="date" {...register('from')} />
+              <Input id="from" type="date" aria-invalid={!!errors.from} {...register('from')} />
               {errors.from && (
                 <p className="text-destructive text-sm">{t('contracts.startDateRequired')}</p>
               )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="to">{t('contracts.endDateOptional')}</Label>
-              <Input id="to" type="date" {...register('to')} />
+              <Input id="to" type="date" aria-invalid={!!errors.to} {...register('to')} />
             </div>
           </div>
 
@@ -191,7 +214,12 @@ export function EmployeeContractDialog({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="grade">{t('employees.grade')}</Label>
-              <Input id="grade" {...register('grade')} placeholder="S8a" />
+              <Input
+                id="grade"
+                aria-invalid={!!errors.grade}
+                {...register('grade')}
+                placeholder="S8a"
+              />
               {errors.grade && (
                 <p className="text-destructive text-sm">{t('payPlans.gradeRequired')}</p>
               )}
@@ -203,6 +231,7 @@ export function EmployeeContractDialog({
                 type="number"
                 min={1}
                 max={6}
+                aria-invalid={!!errors.step}
                 {...register('step', { valueAsNumber: true })}
               />
               {errors.step && (
@@ -219,6 +248,7 @@ export function EmployeeContractDialog({
               min={0}
               max={168}
               step={0.5}
+              aria-invalid={!!errors.weekly_hours}
               {...register('weekly_hours', { valueAsNumber: true })}
             />
             {errors.weekly_hours && (

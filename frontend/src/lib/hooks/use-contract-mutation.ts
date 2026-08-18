@@ -31,6 +31,15 @@ interface ContractMutationConfig<TCreateData, TAmendData, TContract, TAmendResul
   extraInvalidateKeys?: (entityId: number) => QueryKey[];
   /** Called after a successful mutation (use for closing dialogs, resetting state, etc.). */
   onSuccess?: () => void;
+  /**
+   * Called when the mutation is rejected, before the toast. Returning true
+   * suppresses it.
+   *
+   * Pass `suppressesToast` from lib/forms when the rejection is already being
+   * shown on a form. Like the other mutation hooks, this one knows nothing about
+   * forms -- marking fields is done by watching the mutation's error.
+   */
+  onMutationError?: (error: unknown) => boolean | void;
 }
 
 interface ContractMutationVariables<TCreateData> {
@@ -90,6 +99,9 @@ export function useContractMutation<TCreateData, TAmendData, TContract, TAmendRe
       config.onSuccess?.();
     },
     onError: (error: unknown) => {
+      if (config.onMutationError?.(error) === true) {
+        return;
+      }
       showErrorToast(
         t('common.error'),
         error,

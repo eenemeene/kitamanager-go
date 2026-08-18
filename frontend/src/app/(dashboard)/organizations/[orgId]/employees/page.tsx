@@ -216,6 +216,9 @@ export default function EmployeesPage() {
     reset: resetContract,
     watch: watchContract,
     setValue: setValueContract,
+    setError: setErrorContract,
+    clearErrors: clearErrorsContract,
+    getValues: getValuesContract,
     formState: { errors: errorsContract },
   } = useForm<EmployeeContractFormData>({
     ...validationTiming,
@@ -230,6 +233,12 @@ export default function EmployeesPage() {
       step: 1,
       weekly_hours: 39,
     },
+  });
+
+  const unmappedContract = useProblemFormErrors(createContractMutation.error, {
+    setError: setErrorContract,
+    clearErrors: clearErrorsContract,
+    getValues: getValuesContract,
   });
 
   const activeContract = contractEmployee ? getActiveContract(contractEmployee.contracts) : null;
@@ -513,6 +522,7 @@ export default function EmployeesPage() {
         errors={errorsContract}
         watch={watchContract}
         setValue={setValueContract}
+        unmapped={unmappedContract}
         isSaving={createContractMutation.isPending}
         payPlans={payPlans}
         sections={sections}

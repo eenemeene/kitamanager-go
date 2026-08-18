@@ -14,6 +14,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { validationTiming } from '@/lib/forms/validation-timing';
+import { useProblemFormErrors } from '@/lib/forms/use-problem-form-errors';
+import { FormErrorSummary } from '@/components/forms/form-error-summary';
 import {
   governmentFundingPropertySchema,
   type GovernmentFundingPropertyFormData,
@@ -22,6 +24,11 @@ import {
 interface PropertyFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * The rejection from the mutation this dialog submits, so the fields the
+   * server named get marked rather than described in a toast that scrolls away.
+   */
+  submitError?: unknown;
   onSubmit: (data: GovernmentFundingPropertyFormData) => void;
   isSaving: boolean;
 }
@@ -29,6 +36,7 @@ interface PropertyFormDialogProps {
 export function PropertyFormDialog({
   open,
   onOpenChange,
+  submitError,
   onSubmit,
   isSaving,
 }: PropertyFormDialogProps) {
@@ -38,6 +46,9 @@ export function PropertyFormDialog({
     register,
     handleSubmit,
     reset,
+    setError,
+    clearErrors,
+    getValues,
     formState: { errors },
   } = useForm<GovernmentFundingPropertyFormData>({
     ...validationTiming,
@@ -53,6 +64,8 @@ export function PropertyFormDialog({
       comment: '',
     },
   });
+
+  const unmapped = useProblemFormErrors(submitError, { setError, clearErrors, getValues });
 
   const handleOpenChange = (isOpen: boolean) => {
     if (isOpen) {
@@ -77,9 +90,28 @@ export function PropertyFormDialog({
           <DialogTitle>{t('governmentFundings.addProperty')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <FormErrorSummary
+            errors={errors}
+            unmapped={unmapped}
+            labels={{
+              label: t('governmentFundings.label'),
+              key: t('governmentFundings.key'),
+              value: t('governmentFundings.value'),
+              payment_euros: t('governmentFundings.paymentInEuros'),
+              requirement: t('governmentFundings.requirement'),
+              min_age: t('governmentFundings.minAge'),
+              max_age: t('governmentFundings.maxAge'),
+              comment: t('common.comment'),
+            }}
+          />
           <div className="space-y-2">
             <Label htmlFor="label">{t('governmentFundings.label')}</Label>
-            <Input id="label" placeholder="Full-Time" {...register('label')} />
+            <Input
+              id="label"
+              placeholder="Full-Time"
+              aria-invalid={!!errors.label}
+              {...register('label')}
+            />
             {errors.label && (
               <p className="text-destructive text-sm">{t('validation.labelRequired')}</p>
             )}
@@ -88,14 +120,24 @@ export function PropertyFormDialog({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="key">{t('governmentFundings.key')}</Label>
-              <Input id="key" placeholder="care_type" {...register('key')} />
+              <Input
+                id="key"
+                placeholder="care_type"
+                aria-invalid={!!errors.key}
+                {...register('key')}
+              />
               {errors.key && (
                 <p className="text-destructive text-sm">{t('validation.keyRequired')}</p>
               )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="value">{t('governmentFundings.value')}</Label>
-              <Input id="value" placeholder="ganztag" {...register('value')} />
+              <Input
+                id="value"
+                placeholder="ganztag"
+                aria-invalid={!!errors.value}
+                {...register('value')}
+              />
               {errors.value && (
                 <p className="text-destructive text-sm">{t('validation.valueRequired')}</p>
               )}
@@ -110,6 +152,7 @@ export function PropertyFormDialog({
                 type="number"
                 min={0}
                 step={0.01}
+                aria-invalid={!!errors.payment_euros}
                 {...register('payment_euros', { valueAsNumber: true })}
               />
             </div>
@@ -120,6 +163,7 @@ export function PropertyFormDialog({
                 type="number"
                 min={0}
                 step={0.01}
+                aria-invalid={!!errors.requirement}
                 {...register('requirement', { valueAsNumber: true })}
               />
             </div>
@@ -132,6 +176,7 @@ export function PropertyFormDialog({
                 id="min_age"
                 type="number"
                 min={0}
+                aria-invalid={!!errors.min_age}
                 {...register('min_age', { valueAsNumber: true })}
               />
             </div>
@@ -141,6 +186,7 @@ export function PropertyFormDialog({
                 id="max_age"
                 type="number"
                 min={0}
+                aria-invalid={!!errors.max_age}
                 {...register('max_age', { valueAsNumber: true })}
               />
             </div>
@@ -149,7 +195,7 @@ export function PropertyFormDialog({
 
           <div className="space-y-2">
             <Label htmlFor="comment">{t('common.comment')}</Label>
-            <Input id="comment" {...register('comment')} />
+            <Input id="comment" aria-invalid={!!errors.comment} {...register('comment')} />
           </div>
 
           <DialogFooter>

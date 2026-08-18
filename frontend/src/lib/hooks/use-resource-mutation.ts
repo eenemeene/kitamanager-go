@@ -14,6 +14,16 @@ interface ResourceMutationConfig<TData, TResponse = unknown> {
   errorMessage: string;
   /** Called after a successful mutation (e.g., close dialog, reset form). */
   onSuccess?: () => void;
+  /**
+   * Called when the mutation is rejected, before the toast. Returning true
+   * suppresses it.
+   *
+   * Pass `suppressesToast` from lib/forms when the rejection is already being
+   * shown on a form. Like useCrudMutations, this hook knows nothing about forms
+   * -- marking fields is done by watching the mutation's error, so it works the
+   * same way for every mutation in the codebase.
+   */
+  onMutationError?: (error: unknown) => boolean | void;
 }
 
 /**
@@ -39,6 +49,9 @@ export function useResourceMutation<TData, TResponse = unknown>(
       config.onSuccess?.();
     },
     onError: (error: unknown) => {
+      if (config.onMutationError?.(error) === true) {
+        return;
+      }
       showErrorToast(t('common.error'), error, config.errorMessage);
     },
   });

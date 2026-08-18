@@ -35,6 +35,7 @@ import type {
 } from '@/lib/schemas';
 import { PropertiesGroupedByKey } from '@/components/government-funding-rates/properties-grouped-by-key';
 import { PeriodFormDialog } from '@/components/government-funding-rates/period-form-dialog';
+import { suppressesToast } from '@/lib/forms/use-problem-form-errors';
 import { PropertyFormDialog } from '@/components/government-funding-rates/property-form-dialog';
 
 export default function GovernmentFundingDetailPage() {
@@ -65,6 +66,7 @@ export default function GovernmentFundingDetailPage() {
 
   // Period mutations
   const createPeriodMutation = useResourceMutation({
+    onMutationError: suppressesToast,
     mutationFn: (data: GovernmentFundingPeriodCreateRequest) =>
       apiClient.createGovernmentFundingPeriod(fundingId, data),
     invalidateQueryKey: allFundingsKey,
@@ -86,6 +88,7 @@ export default function GovernmentFundingDetailPage() {
 
   // Property mutations
   const createPropertyMutation = useResourceMutation({
+    onMutationError: suppressesToast,
     mutationFn: ({
       periodId,
       data,
@@ -239,6 +242,7 @@ export default function GovernmentFundingDetailPage() {
       </Card>
 
       <PeriodFormDialog
+        submitError={createPeriodMutation.error}
         open={isPeriodDialogOpen}
         onOpenChange={setIsPeriodDialogOpen}
         onSubmit={onSubmitPeriod}
@@ -246,6 +250,7 @@ export default function GovernmentFundingDetailPage() {
       />
 
       <PropertyFormDialog
+        submitError={createPropertyMutation.error}
         open={isPropertyDialogOpen}
         onOpenChange={setIsPropertyDialogOpen}
         onSubmit={onSubmitProperty}
