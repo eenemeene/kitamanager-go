@@ -50,8 +50,7 @@ import { VouchersDialog } from '@/components/children/vouchers-dialog';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useUiStore } from '@/stores/ui-store';
 import { validationTiming } from '@/lib/forms/validation-timing';
-import { getInvalidParams } from '@/lib/api/problem';
-import { useProblemFormErrors } from '@/lib/forms/use-problem-form-errors';
+import { useProblemFormErrors, suppressesToast } from '@/lib/forms/use-problem-form-errors';
 import {
   childSchema,
   type ChildFormData,
@@ -191,7 +190,7 @@ export default function ChildrenPage() {
     // The dialog lists the fields this named, so a toast repeating them is
     // noise. Anything without field violations — a conflict, a network failure
     // — still gets one.
-    onMutationError: (error) => getInvalidParams(error).length > 0,
+    onMutationError: suppressesToast,
   });
 
   const createContractMutation = useContractMutation<

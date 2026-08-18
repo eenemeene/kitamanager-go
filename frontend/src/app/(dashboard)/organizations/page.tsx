@@ -38,6 +38,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useCrudMutations } from '@/lib/hooks/use-crud-mutations';
 import { FormErrorSummary } from '@/components/forms/form-error-summary';
+import { useProblemFormErrors, suppressesToast } from '@/lib/forms/use-problem-form-errors';
 import { useCrudDialogs } from '@/lib/hooks/use-crud-dialogs';
 import {
   CrudPageHeader,
@@ -104,7 +105,7 @@ export default function OrganizationsPage() {
   >({
     resourceName: 'organizations',
     queryKey: queryKeys.organizations.all(),
-    form: { setError, clearErrors, getValues } as never,
+    onMutationError: suppressesToast,
     createFn: (data) => apiClient.createOrganization(data),
     updateFn: (id, data) => apiClient.updateOrganization(id, data),
     deleteFn: (id) => apiClient.deleteOrganization(id),
@@ -118,8 +119,15 @@ export default function OrganizationsPage() {
     },
   });
 
+  // The one way field violations reach a form: watch what the mutation
+  // rejected. Both mutations feed this form -- it is the same dialog for
+  // create and edit.
+  const unmappedViolations = useProblemFormErrors(
+    [mutations.createMutation.error, mutations.updateMutation.error],
+    { setError, clearErrors, getValues }
+  );
+
   const onSubmit = (data: OrganizationFormData) => {
-    mutations.clearUnmappedViolations();
     if (dialogs.editingItem) {
       const { default_section_name: _, ...updateData } = data;
       mutations.updateMutation.mutate({ id: dialogs.editingItem.id, data: updateData });
@@ -197,7 +205,7 @@ export default function OrganizationsPage() {
             <DialogBody className="space-y-4">
               <FormErrorSummary
                 errors={errors}
-                unmapped={mutations.unmappedViolations}
+                unmapped={unmappedViolations}
                 labels={{
                   name: t('common.name'),
                   state: t('states.state'),

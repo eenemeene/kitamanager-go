@@ -22,8 +22,7 @@ import { formatDate } from '@/lib/utils/formatting';
 import { useAuthStore } from '@/stores/auth-store';
 import { useCrudMutations } from '@/lib/hooks/use-crud-mutations';
 import { FormErrorSummary } from '@/components/forms/form-error-summary';
-import { useProblemFormErrors } from '@/lib/forms/use-problem-form-errors';
-import { getInvalidParams } from '@/lib/api/problem';
+import { useProblemFormErrors, suppressesToast } from '@/lib/forms/use-problem-form-errors';
 import { useCrudDialogs } from '@/lib/hooks/use-crud-dialogs';
 import {
   CrudPageHeader,
@@ -152,7 +151,7 @@ export default function UsersPage() {
     // Two forms share this hook -- create and edit differ enough to warrant it --
     // so the marking is wired per form below rather than here, and this only
     // decides whether the toast would be a duplicate.
-    onMutationError: (error) => getInvalidParams(error).length > 0,
+    onMutationError: suppressesToast,
     queryKey: queryKeys.users.all(),
     createFn: (data) => apiClient.createUser(data),
     updateFn: (id, data) => apiClient.updateUser(id, data),

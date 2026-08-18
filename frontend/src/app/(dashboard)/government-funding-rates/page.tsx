@@ -36,6 +36,7 @@ import {
 import { useCrudDialogs } from '@/lib/hooks/use-crud-dialogs';
 import { useCrudMutations } from '@/lib/hooks/use-crud-mutations';
 import { FormErrorSummary } from '@/components/forms/form-error-summary';
+import { useProblemFormErrors, suppressesToast } from '@/lib/forms/use-problem-form-errors';
 import { useResourceListFilters } from '@/lib/hooks/use-resource-list-filters';
 import { governmentFundingSchema, type GovernmentFundingFormData } from '@/lib/schemas';
 import { SearchInput } from '@/components/ui/search-input';
@@ -79,7 +80,7 @@ export default function GovernmentFundingsPage() {
     GovernmentFundingUpdateRequest
   >({
     resourceName: 'governmentFundings',
-    form: { setError, clearErrors, getValues } as never,
+    onMutationError: suppressesToast,
     queryKey: queryKeys.governmentFundings.all(),
     createFn: (data) => apiClient.createGovernmentFunding(data),
     updateFn: (id, data) => apiClient.updateGovernmentFunding(id, data),
@@ -87,6 +88,14 @@ export default function GovernmentFundingsPage() {
     onSuccess: () => dialogs.closeDialog(),
     onDeleteSuccess: () => dialogs.closeDeleteDialog(),
   });
+
+  // The one way field violations reach a form: watch what the mutation
+  // rejected. Both mutations feed this form -- it is the same dialog for
+  // create and edit.
+  const unmappedViolations = useProblemFormErrors(
+    [mutations.createMutation.error, mutations.updateMutation.error],
+    { setError, clearErrors, getValues }
+  );
 
   const {
     data: paginatedData,
@@ -103,7 +112,6 @@ export default function GovernmentFundingsPage() {
   };
 
   const onSubmit = (data: GovernmentFundingFormData) => {
-    mutations.clearUnmappedViolations();
     if (dialogs.editingItem) {
       mutations.updateMutation.mutate({ id: dialogs.editingItem.id, data: { name: data.name } });
     } else {
@@ -180,7 +188,7 @@ export default function GovernmentFundingsPage() {
       >
         <FormErrorSummary
           errors={errors}
-          unmapped={mutations.unmappedViolations}
+          unmapped={unmappedViolations}
           labels={{ name: t('common.name'), state: t('states.state') }}
         />
         <div className="space-y-2">

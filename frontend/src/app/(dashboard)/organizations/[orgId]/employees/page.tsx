@@ -43,6 +43,7 @@ import { DeleteConfirmDialog } from '@/components/crud/delete-confirm-dialog';
 import { QueryError } from '@/components/crud/query-error';
 import { EmptyState } from '@/components/crud/empty-state';
 import { PersonFormDialog } from '@/components/crud/person-form-dialog';
+import { useProblemFormErrors, suppressesToast } from '@/lib/forms/use-problem-form-errors';
 import { EmployeesTable } from '@/components/employees/employees-table';
 import { EmployeeContractDialog } from '@/components/employees/employee-contract-dialog';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -251,17 +252,21 @@ export default function EmployeesPage() {
   >({
     resourceName: 'employees',
     queryKey: queryKeys.employees.all(orgId),
-    form: {
-      setError: setErrorEmployee,
-      clearErrors: clearErrorsEmployee,
-      getValues: getValuesEmployee,
-    } as never,
+    onMutationError: suppressesToast,
     createFn: (data) => apiClient.createEmployee(orgId, data),
     updateFn: (id, data) => apiClient.updateEmployee(orgId, id, data),
     deleteFn: (id) => apiClient.deleteEmployee(orgId, id),
     onSuccess: () => dialogs.closeDialog(),
     onDeleteSuccess: () => dialogs.closeDeleteDialog(),
   });
+
+  // The one way field violations reach a form: watch what the mutation
+  // rejected. Both mutations feed this form -- it is the same dialog for
+  // create and edit.
+  const unmappedViolations = useProblemFormErrors(
+    [mutations.createMutation.error, mutations.updateMutation.error],
+    { setError: setErrorEmployee, clearErrors: clearErrorsEmployee, getValues: getValuesEmployee }
+  );
 
   const handleAddContract = useCallback(
     (employee: Employee) => {
@@ -488,7 +493,7 @@ export default function EmployeesPage() {
         register={registerEmployee}
         onSubmit={handleSubmitEmployee(onSubmitEmployee)}
         errors={errorsEmployee}
-        unmapped={mutations.unmappedViolations}
+        unmapped={unmappedViolations}
         watch={watchEmployee}
         setValue={setValueEmployee}
         isSaving={mutations.isMutating}
