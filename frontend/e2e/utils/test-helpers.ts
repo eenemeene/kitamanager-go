@@ -545,50 +545,65 @@ export async function createFundingPropertyViaApi(
  * Ensure the Berlin government funding has at least one period with properties.
  * Used by contract tests that depend on property suggestions being available.
  */
+/**
+ * The funding property fixture the suite standardises on.
+ *
+ * Deliberately not the seeded Berlin set from configs/government-fundings: the
+ * seed cannot survive a run. "berlin" is the only valid state and the state is
+ * unique, so the funding CRUD tests have to delete the seeded funding to test
+ * creating one, and what they put back is this set. Any test that renders
+ * funding-derived UI therefore sees the seed or this, depending on shard
+ * assignment — which is not something a test should depend on.
+ */
+const FIXTURE_FUNDING_PROPERTIES = [
+  {
+    key: 'care_type',
+    value: 'ganztag',
+    label: 'Ganztag',
+    payment: 100000,
+    requirement: 0.301,
+    min_age: 0,
+    max_age: 8,
+  },
+  {
+    key: 'care_type',
+    value: 'halbtag',
+    label: 'Halbtag',
+    payment: 70000,
+    requirement: 0.15,
+    min_age: 0,
+    max_age: 8,
+  },
+  {
+    key: 'care_type',
+    value: 'teilzeit',
+    label: 'Teilzeit',
+    payment: 85000,
+    requirement: 0.217,
+    min_age: 0,
+    max_age: 8,
+  },
+  {
+    key: 'ndh',
+    value: 'ndh',
+    label: 'NdH',
+    payment: 10000,
+    requirement: 0.017,
+    min_age: 0,
+    max_age: 8,
+  },
+];
+
+/**
+ * Make sure the Berlin funding has some properties, without disturbing them if
+ * it already does. Callers that only need "the dropdown is not empty".
+ */
 export async function ensureFundingHasProperties(page: Page): Promise<void> {
   const fundings = await getGovernmentFundingsViaApi(page);
   const funding = fundings.find((f) => f.state === 'berlin');
   if (!funding) return;
   const details = await getGovernmentFundingViaApi(page, funding.id);
-
-  const defaultProperties = [
-    {
-      key: 'care_type',
-      value: 'ganztag',
-      label: 'Ganztag',
-      payment: 100000,
-      requirement: 0.301,
-      min_age: 0,
-      max_age: 8,
-    },
-    {
-      key: 'care_type',
-      value: 'halbtag',
-      label: 'Halbtag',
-      payment: 70000,
-      requirement: 0.15,
-      min_age: 0,
-      max_age: 8,
-    },
-    {
-      key: 'care_type',
-      value: 'teilzeit',
-      label: 'Teilzeit',
-      payment: 85000,
-      requirement: 0.217,
-      min_age: 0,
-      max_age: 8,
-    },
-    {
-      key: 'ndh',
-      value: 'ndh',
-      label: 'NdH',
-      payment: 10000,
-      requirement: 0.017,
-      min_age: 0,
-      max_age: 8,
-    },
-  ];
+  const defaultProperties = FIXTURE_FUNDING_PROPERTIES;
 
   if (details.periods && details.periods.length > 0) {
     // Period exists - check if it already has properties
@@ -613,6 +628,45 @@ export async function ensureFundingHasProperties(page: Page): Promise<void> {
 
   for (const prop of defaultProperties) {
     await createFundingPropertyViaApi(page, funding.id, period.id, prop);
+  }
+}
+
+/**
+ * Force the Berlin funding to exactly FIXTURE_FUNDING_PROPERTIES.
+ *
+ * For tests whose output depends on *which* properties exist, not merely that
+ * some do — a screenshot of the contract-property chips, most of all. Those
+ * cannot use ensureFundingHasProperties: it returns early when any period has
+ * properties, so it yields the seeded eight-property set on one shard and the
+ * four-property fixture on another, and a baseline captured under one fails
+ * under the other. Adding a single test elsewhere is enough to flip it, because
+ * Playwright re-splits the shards.
+ *
+ * This is a fixed point: the funding CRUD tests delete the funding and call
+ * ensureFundingHasProperties, which puts back this same set, so pinning and
+ * being pinned agree whichever order they run in.
+ */
+export async function pinFundingProperties(page: Page): Promise<void> {
+  const fundings = await getGovernmentFundingsViaApi(page);
+  const existing = fundings.find((f) => f.state === 'berlin');
+  // A CRUD test may have deleted it and not yet put it back.
+  const fundingId =
+    existing?.id ??
+    (await createGovernmentFundingViaApi(page, { name: 'Berlin', state: 'berlin' })).id;
+
+  // Drop every period, which takes its properties with it, so the set below is
+  // the whole of what the UI can offer rather than a superset of it.
+  const details = await getGovernmentFundingViaApi(page, fundingId);
+  for (const period of details.periods ?? []) {
+    await deleteFundingPeriodViaApi(page, fundingId, period.id).catch(() => {});
+  }
+
+  const period = await createFundingPeriodViaApi(page, fundingId, {
+    from: '2020-01-01',
+    full_time_weekly_hours: 39,
+  });
+  for (const prop of FIXTURE_FUNDING_PROPERTIES) {
+    await createFundingPropertyViaApi(page, fundingId, period.id, prop);
   }
 }
 
