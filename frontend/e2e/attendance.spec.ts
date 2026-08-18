@@ -466,23 +466,51 @@ test.describe('Attendance Editable Times', () => {
       timeout: 10000,
     });
 
-    // Click the check-out time to edit it
-    const checkOutButton = row
-      .locator('button[aria-label="Check-out"]')
-      .filter({ hasText: /\d{2}:\d{2}/ });
-    await checkOutButton.click();
+    // Pin BOTH times rather than one, so the assertion does not depend on the
+    // wall clock at all. 23:45 was chosen to be "always after check-in
+    // regardless of timezone" -- true of timezones, but not of the time of day:
+    // between 23:45 and midnight Berlin the check-in this test just recorded is
+    // later than 23:45, the backend correctly rejects check-in > check-out, and
+    // no success toast ever arrives. CI hit that 15-minute window on 2026-08-18.
+    //
+    // Which end to move first is decided by the check-in the app is showing, not
+    // by the runner's clock -- the runner is UTC and the app renders Berlin.
+    // Moving the near end first would fail the same validation it is avoiding.
+    const shownCheckIn = await row
+      .locator('button[aria-label="Check-in"]')
+      .filter({ hasText: /\d{2}:\d{2}/ })
+      .first()
+      .innerText();
+    const checkInHour = Number(shownCheckIn.trim().split(':')[0]);
 
-    // Change the time — use 23:45 to ensure it's always after check-in regardless of timezone
+    const editTime = async (label: 'Check-in' | 'Check-out', value: string) => {
+      await row
+        .locator(`button[aria-label="${label}"]`)
+        .filter({ hasText: /\d{2}:\d{2}/ })
+        .click();
+      const input = row.locator(`input[type="time"][aria-label="${label}"]`);
+      await expect(input).toBeVisible();
+      await input.fill(value);
+      await expect(input).toHaveValue(value);
+      await input.press('Enter');
+      await expect(page.getByText('Attendance updated', { exact: true })).toBeVisible({
+        timeout: 10000,
+      });
+      // Let the toast clear so the next edit asserts its own, not this one.
+      await expect(page.getByText('Attendance updated', { exact: true })).toBeHidden({
+        timeout: 15000,
+      });
+    };
+
+    if (checkInHour >= 8) {
+      await editTime('Check-in', '08:00');
+      await editTime('Check-out', '09:00');
+    } else {
+      await editTime('Check-out', '09:00');
+      await editTime('Check-in', '08:00');
+    }
+
     const timeInput = row.locator('input[type="time"][aria-label="Check-out"]');
-    await expect(timeInput).toBeVisible();
-    await timeInput.fill('23:45');
-    await expect(timeInput).toHaveValue('23:45');
-    await timeInput.press('Enter');
-
-    // Should show toast (confirms save succeeded)
-    await expect(page.getByText('Attendance updated', { exact: true })).toBeVisible({
-      timeout: 10000,
-    });
 
     // Input should be gone, replaced by a time button again
     await expect(timeInput).toBeHidden({ timeout: 5000 });
