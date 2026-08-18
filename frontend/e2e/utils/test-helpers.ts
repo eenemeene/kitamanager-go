@@ -1,4 +1,17 @@
 import { expect, Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+/**
+ * The government-funding config the API seeds from. Resolved relative to this
+ * file rather than the working directory, which is not the same for `npx
+ * playwright test` run in frontend/ and the make target run from the repo root.
+ * Via import.meta because these specs load as ES modules, where there is no
+ * __dirname.
+ */
+const BERLIN_FUNDING_CONFIG = fileURLToPath(
+  new URL('../../../configs/government-fundings/berlin.yaml', import.meta.url)
+);
 
 /**
  * Test credentials (seeded by API, configurable via env vars)
@@ -632,41 +645,74 @@ export async function ensureFundingHasProperties(page: Page): Promise<void> {
 }
 
 /**
- * Force the Berlin funding to exactly FIXTURE_FUNDING_PROPERTIES.
+ * Rebuild the Berlin funding from configs/government-fundings/berlin.yaml, the
+ * same file the API seeds from.
  *
- * For tests whose output depends on *which* properties exist, not merely that
- * some do — a screenshot of the contract-property chips, most of all. Those
- * cannot use ensureFundingHasProperties: it returns early when any period has
- * properties, so it yields the seeded eight-property set on one shard and the
- * four-property fixture on another, and a baseline captured under one fails
- * under the other. Adding a single test elsewhere is enough to flip it, because
- * Playwright re-splits the shards.
+ * For tests whose output depends on *which* funding properties exist, not merely
+ * that some do -- a screenshot of the contract-property chips, most of all.
  *
- * This is a fixed point: the funding CRUD tests delete the funding and call
- * ensureFundingHasProperties, which puts back this same set, so pinning and
- * being pinned agree whichever order they run in.
+ * The funding is a global singleton: berlin is the only valid state and the
+ * column is unique, so there is exactly one funding row in the system and the
+ * CRUD tests have to delete it to test creating one. What they put back is
+ * ensureFundingHasProperties' four-property stand-in, so the chips were the
+ * seeded set or that, depending on which shard ran first -- and Playwright
+ * re-splits shards whenever a test is added anywhere.
+ *
+ * Importing the real config removes the ambiguity without inventing a fixture
+ * to be ambiguous about. The import is the seeding code path, it reconciles
+ * properties against the file rather than adding to them, and it creates the
+ * funding when a CRUD test has left it deleted. So the fixture is the product's
+ * own data, and it cannot drift from the seed: there is only the one file.
  */
-export async function pinFundingProperties(page: Page): Promise<void> {
+export async function resetBerlinFundingFromConfig(page: Page): Promise<void> {
+  const yaml = readFileSync(BERLIN_FUNDING_CONFIG, 'utf8');
+
   const fundings = await getGovernmentFundingsViaApi(page);
   const existing = fundings.find((f) => f.state === 'berlin');
-  // A CRUD test may have deleted it and not yet put it back.
-  const fundingId =
-    existing?.id ??
-    (await createGovernmentFundingViaApi(page, { name: 'Berlin', state: 'berlin' })).id;
 
-  // Drop every period, which takes its properties with it, so the set below is
-  // the whole of what the UI can offer rather than a superset of it.
-  const details = await getGovernmentFundingViaApi(page, fundingId);
-  for (const period of details.periods ?? []) {
-    await deleteFundingPeriodViaApi(page, fundingId, period.id).catch(() => {});
+  if (existing) {
+    // The import reconciles periods by their from-date: it adds the ones the
+    // YAML has and updates the ones it shares, but never removes a period the
+    // YAML does not mention. A period some other test created would therefore
+    // survive and keep contributing its properties, so clear them out first and
+    // let the import rebuild the whole timeline. Properties go with their
+    // period.
+    const details = await getGovernmentFundingViaApi(page, existing.id);
+    for (const period of details.periods ?? []) {
+      await deleteFundingPeriodViaApi(page, existing.id, period.id).catch(() => {});
+    }
   }
+  // When it does not exist -- a CRUD test deleted it and its cleanup has not run
+  // yet -- the import creates it. No need to make one first.
 
-  const period = await createFundingPeriodViaApi(page, fundingId, {
-    from: '2020-01-01',
-    full_time_weekly_hours: 39,
-  });
-  for (const prop of FIXTURE_FUNDING_PROPERTIES) {
-    await createFundingPropertyViaApi(page, fundingId, period.id, prop);
+  await uploadFundingConfig(page, yaml);
+}
+
+/**
+ * POST the YAML to the import endpoint as a multipart upload.
+ *
+ * Runs in the page rather than through Playwright's request fixture so it
+ * carries the same session cookie and CSRF token as every other helper here.
+ */
+async function uploadFundingConfig(page: Page, yaml: string): Promise<void> {
+  const error = await page.evaluate(async (body) => {
+    const csrfMatch = document.cookie.match(/csrf_token=([^;]+)/);
+    const form = new FormData();
+    form.append('file', new File([body], 'berlin.yaml', { type: 'text/yaml' }));
+
+    const response = await fetch('/api/v1/government-funding-rates/import?state=berlin', {
+      method: 'POST',
+      // No Content-Type: the browser has to set it, because it alone knows the
+      // multipart boundary it generated.
+      headers: csrfMatch ? { 'X-CSRF-Token': csrfMatch[1] } : {},
+      credentials: 'same-origin',
+      body: form,
+    });
+    return response.ok ? null : `${response.status} ${await response.text()}`;
+  }, yaml);
+
+  if (error) {
+    throw new Error(`government funding import failed: ${error}`);
   }
 }
 
