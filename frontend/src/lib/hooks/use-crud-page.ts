@@ -22,6 +22,7 @@ import { useCrudMutations, type UseCrudMutationsResult } from './use-crud-mutati
 import { useResourceListFilters } from './use-resource-list-filters';
 import { validationTiming } from '@/lib/forms/validation-timing';
 import type { InvalidParam } from '@/lib/api/problem';
+import { useProblemFormErrors, suppressesToast } from '@/lib/forms/use-problem-form-errors';
 
 interface UseCrudPageConfig<
   TItem extends { id: number },
@@ -167,17 +168,20 @@ export function useCrudPage<
     deleteFn: (id) => config.deleteFn(orgId, id),
     onSuccess: dialogs.closeDialog,
     onDeleteSuccess: dialogs.closeDeleteDialog,
-    // Marking the fields the server named, and suppressing the toast when it
-    // did, now lives in useCrudMutations — so the pages that call that hook
-    // directly get the same behaviour instead of a copy of it.
-    form: { setError, clearErrors, getValues } as never,
-    fieldAliases: config.fieldAliases,
+    onMutationError: suppressesToast,
   });
+
+  // The one way field violations reach a form: watch what the mutation rejected.
+  // Both mutations feed this form -- it is the same dialog for create and edit.
+  const unmappedViolations = useProblemFormErrors(
+    [mutations.createMutation.error, mutations.updateMutation.error],
+    { setError, clearErrors, getValues },
+    config.fieldAliases
+  );
 
   // Cleared on each submit so a corrected form does not keep showing the
   // previous attempt's collection-level problems.
   const onSubmit = (data: TFormData) => {
-    mutations.clearUnmappedViolations();
     if (dialogs.editingItem) {
       mutations.updateMutation.mutate({
         id: dialogs.editingItem.id,
@@ -205,7 +209,7 @@ export function useCrudPage<
     setValue,
     setError,
     watch,
-    unmappedViolations: mutations.unmappedViolations,
+    unmappedViolations,
     dialogs,
     mutations,
     onSubmit,
