@@ -365,6 +365,9 @@
     "dec": "Dec"
   },
   "organizations": {
+    "notFoundTitle": "Organization not found",
+    "notFoundDescription": "This organization does not exist, or you no longer have access to it. It may have been deleted.",
+    "notFoundAction": "Back to organizations",
     "title": "Organizations",
     "create": "Create Organization",
     "edit": "Edit Organization",
