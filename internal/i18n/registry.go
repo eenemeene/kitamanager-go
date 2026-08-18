@@ -44,6 +44,8 @@ var registry = map[string]entry{
 	"not authenticated":                                                        {ID: "auth.not_authenticated"},
 	"password is required":                                                     {ID: "auth.password_required"},
 	"insufficient permissions for this organization":                           {ID: "authz.insufficient_permissions"},
+	"no endpoint matches %s %s":                                                {ID: "router.no_route", Args: []string{"Method", "Path"}},
+	"%s is not supported on this path":                                         {ID: "router.method_not_allowed", Args: []string{"Method"}},
 	"invalid bill_id parameter":                                                {ID: "bill.invalid_id"},
 	"bill for the specified date not found":                                    {ID: "bill.none_for_date"},
 	"bills for this organization not found":                                    {ID: "bill.none_for_organization"},

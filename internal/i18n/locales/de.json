@@ -156,6 +156,8 @@
   "request.invalid_pagination": "Ungültige Paginierungsparameter",
   "request.search_too_long": "Die Suchanfrage darf {{.Max}} Zeichen nicht überschreiten",
   "resource.version_conflict": "{{.Resource}} wurde von jemand anderem geändert (Sie haben Version {{.Yours}}, aktuell ist {{.Current}}) — bitte neu laden und die Änderung erneut anwenden",
+  "router.method_not_allowed": "{{.Method}} wird auf diesem Pfad nicht unterstützt",
+  "router.no_route": "Kein Endpunkt entspricht {{.Method}} {{.Path}}",
   "section.default_name_required": "default_section_name ist erforderlich",
   "section.delete.default": "Der Standardbereich kann nicht gelöscht werden",
   "section.delete.has_children": {

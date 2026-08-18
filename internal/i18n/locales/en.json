@@ -156,6 +156,8 @@
   "request.invalid_pagination": "invalid pagination parameters",
   "request.search_too_long": "search query must not exceed {{.Max}} characters",
   "resource.version_conflict": "{{.Resource}} was changed by someone else (you have version {{.Yours}}, current is {{.Current}}) — reload and reapply your change",
+  "router.method_not_allowed": "{{.Method}} is not supported on this path",
+  "router.no_route": "no endpoint matches {{.Method}} {{.Path}}",
   "section.default_name_required": "default_section_name is required",
   "section.delete.default": "cannot delete the default section",
   "section.delete.has_children": {

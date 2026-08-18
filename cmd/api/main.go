@@ -385,17 +385,17 @@ func initMiddleware(s *appStores, cfg *config.Config, permissionService *rbac.Pe
 	}
 }
 
-func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices, mw *appMiddleware, transactor store.Transactor) *gin.Engine {
-	r := gin.New()
-
-	// Trusted proxies: explicit allowlist only. An empty list means the app does
-	// not honor any X-Forwarded-* headers, and c.ClientIP() returns the direct
-	// peer's address. Operators put their reverse-proxy CIDRs in TRUSTED_PROXIES.
-	if err := r.SetTrustedProxies(cfg.TrustedProxies); err != nil {
-		slog.Error("Failed to set trusted proxies", "error", err)
-		os.Exit(1)
-	}
-
+// registerErrorPlumbing installs everything that decides what a failed request
+// looks like: the request id it is correlated by, the recovery that turns a
+// panic into a document, the language it is written in, and the two responses
+// the router itself produces.
+//
+// It is one function because the pieces only work in this order, and the order
+// is not visible from any one of them. It is separate from setupRouter so a
+// test can exercise the real wiring — setupRouter needs a database, stores and
+// services, so nothing ever constructed it, and these four behaviours were
+// asserted by comment only.
+func registerErrorPlumbing(r *gin.Engine) {
 	// RequestID is installed before recovery on purpose. A panic is the response
 	// where "which request was this?" matters most, and with gin's own Recovery
 	// outermost the handler ran outside the middleware that assigns the id — so
@@ -411,10 +411,11 @@ func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices
 			"An unexpected error occurred. Quote the request_id when reporting this.")
 	}))
 	r.Use(middleware.StructuredLogger())
-	// Language negotiation precedes every handler that writes a problem document,
-	// NoRoute and NoMethod included — they run the global chain, so registering
-	// this after them would leave exactly the router-generated responses
-	// untranslated.
+	// Language negotiation is global, and has to stay that way. NoRoute and
+	// NoMethod run the engine's global chain — gin rebuilds both whenever Use is
+	// called, so the position of this line does not matter, but scoping it to a
+	// route group would: the two responses the router produces itself would be
+	// the only ones left untranslated, and no handler test would notice.
 	r.Use(i18n.Middleware())
 
 	// Unrouted paths and wrong methods are answered with the same document type
@@ -424,13 +425,28 @@ func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices
 	// missing record.
 	r.HandleMethodNotAllowed = true
 	r.NoRoute(func(c *gin.Context) {
-		problem.Write(c, http.StatusNotFound, apperror.CodeNotFound,
-			"No endpoint matches "+c.Request.Method+" "+c.Request.URL.Path)
+		problem.Writef(c, http.StatusNotFound, apperror.CodeNotFound,
+			"no endpoint matches %s %s", c.Request.Method, c.Request.URL.Path)
 	})
 	r.NoMethod(func(c *gin.Context) {
-		problem.Write(c, http.StatusMethodNotAllowed, apperror.CodeMethodNotAllowed,
-			c.Request.Method+" is not supported on this path")
+		problem.Writef(c, http.StatusMethodNotAllowed, apperror.CodeMethodNotAllowed,
+			"%s is not supported on this path", c.Request.Method)
 	})
+}
+
+func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices, mw *appMiddleware, transactor store.Transactor) *gin.Engine {
+	r := gin.New()
+
+	// Trusted proxies: explicit allowlist only. An empty list means the app does
+	// not honor any X-Forwarded-* headers, and c.ClientIP() returns the direct
+	// peer's address. Operators put their reverse-proxy CIDRs in TRUSTED_PROXIES.
+	if err := r.SetTrustedProxies(cfg.TrustedProxies); err != nil {
+		slog.Error("Failed to set trusted proxies", "error", err)
+		os.Exit(1)
+	}
+
+	registerErrorPlumbing(r)
+
 	r.Use(middleware.SecurityHeaders())
 	r.Use(middleware.Metrics())
 	r.Use(middleware.BodySizeLimit(middleware.MaxRequestBodySize))
