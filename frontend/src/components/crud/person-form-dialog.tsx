@@ -15,6 +15,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { GenderSelect } from '@/components/ui/gender-select';
 import type { Gender } from '@/lib/api/types';
+import { FormErrorSummary } from '@/components/forms/form-error-summary';
+import type { InvalidParam } from '@/lib/api/problem';
 
 export interface PersonFormData {
   first_name: string;
@@ -34,6 +36,12 @@ export interface PersonFormDialogProps {
   setValue: UseFormSetValue<PersonFormData>;
   isSaving: boolean;
   translationPrefix: 'children' | 'employees';
+  /**
+   * Server violations naming a field this form does not have. The dialog is
+   * shared by the child and employee edit forms, so wiring the summary here
+   * gives both of them the same rejected-submit behaviour the create forms got.
+   */
+  unmapped?: InvalidParam[];
 }
 
 export function PersonFormDialog({
@@ -47,6 +55,7 @@ export function PersonFormDialog({
   setValue,
   isSaving,
   translationPrefix,
+  unmapped,
 }: PersonFormDialogProps) {
   const t = useTranslations();
 
@@ -60,6 +69,18 @@ export function PersonFormDialog({
         </DialogHeader>
         <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
           <DialogBody className="space-y-4">
+            {/* Labels come from the same keys the fields below print, so the
+                summary names a control the reader can actually find. */}
+            <FormErrorSummary
+              errors={errors}
+              unmapped={unmapped}
+              labels={{
+                first_name: t(`${translationPrefix}.firstName`),
+                last_name: t(`${translationPrefix}.lastName`),
+                gender: t('gender.label'),
+                birthdate: t(`${translationPrefix}.birthDate`),
+              }}
+            />
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="first_name">{t(`${translationPrefix}.firstName`)}</Label>

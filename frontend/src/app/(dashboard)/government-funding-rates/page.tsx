@@ -35,6 +35,7 @@ import {
 } from '@/components/crud';
 import { useCrudDialogs } from '@/lib/hooks/use-crud-dialogs';
 import { useCrudMutations } from '@/lib/hooks/use-crud-mutations';
+import { FormErrorSummary } from '@/components/forms/form-error-summary';
 import { useResourceListFilters } from '@/lib/hooks/use-resource-list-filters';
 import { governmentFundingSchema, type GovernmentFundingFormData } from '@/lib/schemas';
 import { SearchInput } from '@/components/ui/search-input';
@@ -56,6 +57,9 @@ export default function GovernmentFundingsPage() {
     reset,
     setValue,
     watch,
+    setError,
+    clearErrors,
+    getValues,
     formState: { errors },
   } = useForm<GovernmentFundingFormData>({
     ...validationTiming,
@@ -75,6 +79,7 @@ export default function GovernmentFundingsPage() {
     GovernmentFundingUpdateRequest
   >({
     resourceName: 'governmentFundings',
+    form: { setError, clearErrors, getValues } as never,
     queryKey: queryKeys.governmentFundings.all(),
     createFn: (data) => apiClient.createGovernmentFunding(data),
     updateFn: (id, data) => apiClient.updateGovernmentFunding(id, data),
@@ -98,6 +103,7 @@ export default function GovernmentFundingsPage() {
   };
 
   const onSubmit = (data: GovernmentFundingFormData) => {
+    mutations.clearUnmappedViolations();
     if (dialogs.editingItem) {
       mutations.updateMutation.mutate({ id: dialogs.editingItem.id, data: { name: data.name } });
     } else {
@@ -172,6 +178,11 @@ export default function GovernmentFundingsPage() {
         onSubmit={handleSubmit(onSubmit)}
         isSaving={mutations.isMutating}
       >
+        <FormErrorSummary
+          errors={errors}
+          unmapped={mutations.unmappedViolations}
+          labels={{ name: t('common.name'), state: t('states.state') }}
+        />
         <div className="space-y-2">
           <Label htmlFor="name">{t('common.name')}</Label>
           <Input id="name" {...register('name')} />

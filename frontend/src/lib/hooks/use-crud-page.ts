@@ -21,7 +21,6 @@ import { useCrudDialogs, type UseCrudDialogsResult } from './use-crud-dialogs';
 import { useCrudMutations, type UseCrudMutationsResult } from './use-crud-mutations';
 import { useResourceListFilters } from './use-resource-list-filters';
 import { validationTiming } from '@/lib/forms/validation-timing';
-import { applyProblemToForm } from '@/lib/forms/apply-problem-to-form';
 import type { InvalidParam } from '@/lib/api/problem';
 
 interface UseCrudPageConfig<
@@ -131,8 +130,6 @@ export function useCrudPage<
     defaultValues: config.defaultValues as DefaultValues<TFormData>,
   });
 
-  const [unmappedViolations, setUnmappedViolations] = useState<InvalidParam[]>([]);
-
   const listQueryKey = config.queryKeys
     ? config.queryKeys.list(orgId, page, search)
     : [config.resourceName, orgId, page, search];
@@ -170,27 +167,17 @@ export function useCrudPage<
     deleteFn: (id) => config.deleteFn(orgId, id),
     onSuccess: dialogs.closeDialog,
     onDeleteSuccess: dialogs.closeDeleteDialog,
-    onMutationError: (error) => {
-      // Mark the fields the server named, so a rejected submit points at the
-      // inputs to change instead of describing them in a sentence.
-      const { applied, unmapped } = applyProblemToForm(
-        error,
-        { setError, clearErrors, getValues },
-        config.fieldAliases
-      );
-      setUnmappedViolations(unmapped);
-      // The summary shows both the marked fields and the unmapped violations,
-      // so a toast repeating them is noise. It is suppressed whenever there was
-      // anything to show — and only then: a conflict or a network failure has no
-      // field violations and still needs the toast.
-      return applied + unmapped.length > 0;
-    },
+    // Marking the fields the server named, and suppressing the toast when it
+    // did, now lives in useCrudMutations — so the pages that call that hook
+    // directly get the same behaviour instead of a copy of it.
+    form: { setError, clearErrors, getValues } as never,
+    fieldAliases: config.fieldAliases,
   });
 
   // Cleared on each submit so a corrected form does not keep showing the
   // previous attempt's collection-level problems.
   const onSubmit = (data: TFormData) => {
-    setUnmappedViolations([]);
+    mutations.clearUnmappedViolations();
     if (dialogs.editingItem) {
       mutations.updateMutation.mutate({
         id: dialogs.editingItem.id,
@@ -218,7 +205,7 @@ export function useCrudPage<
     setValue,
     setError,
     watch,
-    unmappedViolations,
+    unmappedViolations: mutations.unmappedViolations,
     dialogs,
     mutations,
     onSubmit,
