@@ -193,7 +193,17 @@ test.describe('Child Contract Timeline', () => {
     }
   });
 
-  test('error rollback on failed batch update', async ({ page }) => {
+  test('a rejected boundary move puts the dates back', async ({ page }) => {
+    // What this test is for: the seam move is applied optimistically, so a
+    // rejection has to put both dates back or the user is left looking at a
+    // timeline the server never agreed to.
+    //
+    // It used to mock `**/contracts/batch` and assert two segments still
+    // existed. The frontend stopped calling that endpoint -- it posts to
+    // /contracts/boundary now -- so the mock never fired, the move actually
+    // succeeded against the real API, and the count was two either way. The test
+    // could not fail. Asserting the dates is the whole point; the count never
+    // changes, whatever happens.
     const child = await createChildViaApi(page, orgId, {
       first_name: uniqueName('TLError'),
       last_name: 'Test',
@@ -215,25 +225,49 @@ test.describe('Child Contract Timeline', () => {
 
       await page.goto(`/organizations/${orgId}/children/${child.id}/contracts`);
       await page.waitForLoadState('load');
-
       await page.getByRole('tab', { name: /Timeline/i }).click();
-      await expect(page.getByTestId('boundary-handle')).toBeVisible({ timeout: 5000 });
 
-      // Intercept batch update API to return error
-      await page.route('**/contracts/batch', (route) => {
-        route.fulfill({
+      // The handle prints the seam it represents: the earlier contract's end and
+      // the later one's start. That text is the thing that must not change.
+      const handle = page.getByTestId('boundary-handle');
+      await expect(handle).toBeVisible({ timeout: 5000 });
+      const seamBefore = (await handle.innerText()).trim();
+      expect(seamBefore, 'the handle should print the seam dates').toMatch(/\d/);
+
+      const rejected = { fired: false };
+      await page.route('**/contracts/boundary', async (route) => {
+        rejected.fired = true;
+        await route.fulfill({
           status: 500,
-          body: JSON.stringify({ error: 'Internal server error' }),
+          contentType: 'application/problem+json',
+          body: JSON.stringify({
+            type: 'u',
+            title: 'Internal server error',
+            status: 500,
+            code: 'internal',
+            detail: 'the move was refused',
+          }),
         });
       });
 
-      // Click boundary and select a different date
-      await page.getByTestId('boundary-handle').click();
+      await handle.click();
       await expect(page.getByRole('grid')).toBeVisible({ timeout: 5000 });
       await page.getByRole('gridcell', { name: '15' }).first().click();
 
-      // Should still have 2 segments (dates reverted after error)
-      await expect(page.getByTestId('timeline-segment').first()).toBeVisible({ timeout: 5000 });
+      // A route pattern that stops matching is exactly how the previous version
+      // of this test rotted, so prove the rejection actually happened before
+      // believing anything that follows from it.
+      await expect.poll(() => rejected.fired, { timeout: 10000 }).toBe(true);
+
+      // The optimistic update moved both dates; after a rejection the user has
+      // to be looking at the server's again.
+      //
+      // What this does and does not pin down: the page recovers twice over, by
+      // restoring the snapshot in onError and by refetching in onSettled, and
+      // either alone produces the correct final state. So removing one is
+      // invisible here and only removing both fails this -- which is the
+      // regression that matters, because that is the one a user can see.
+      await expect(handle).toHaveText(seamBefore, { timeout: 10000 });
       await expect(page.getByTestId('timeline-segment')).toHaveCount(2);
     } finally {
       await deleteChildViaApi(page, orgId, child.id);
