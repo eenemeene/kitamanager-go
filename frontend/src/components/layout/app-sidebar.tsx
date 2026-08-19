@@ -232,11 +232,6 @@ export function AppSidebar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, selectedOrganizationId]);
 
-  // Close mobile sidebar on navigation
-  useEffect(() => {
-    setMobileSidebarOpen(false);
-  }, [pathname, setMobileSidebarOpen]);
-
   const sidebarContent = (
     <>
       {/* Header */}
@@ -436,7 +431,23 @@ export function AppSidebar() {
             aria-hidden="true"
           />
           {/* Sidebar panel */}
-          <aside className="bg-sidebar border-sidebar-border relative flex h-screen w-64 flex-col border-r">
+          <aside
+            className="bg-sidebar border-sidebar-border relative flex h-screen w-64 flex-col border-r"
+            // Close on the tap that navigates, rather than reacting to the path
+            // afterwards. The old effect keyed on `pathname` shut the drawer for
+            // any navigation, including ones the user did not ask for: landing on
+            // `/` renders this whole shell and only then redirects to the org
+            // dashboard once the organization list arrives, so a menu opened in
+            // that second was torn down by a redirect. It also ran on mount.
+            //
+            // Delegating to the panel keeps it to one handler, so a link added
+            // later cannot forget to close the drawer behind itself.
+            onClick={(event) => {
+              if ((event.target as HTMLElement).closest('a')) {
+                setMobileSidebarOpen(false);
+              }
+            }}
+          >
             {sidebarContent}
           </aside>
         </div>

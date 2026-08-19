@@ -103,16 +103,33 @@ test.describe('Mobile Navigation', () => {
     await expect(sidebarNav).not.toBeVisible({ timeout: 5000 });
   });
 
+  test('the drawer survives a redirect the user did not ask for', async ({ page }) => {
+    // Landing on `/` renders this whole shell and only then redirects to the org
+    // dashboard, once the organization list arrives. A menu opened in that second
+    // used to be torn down by the redirect, because the drawer closed reactively
+    // on any pathname change rather than on the tap that caused one.
+    await page.waitForLoadState('load');
+
+    await page.getByRole('button', { name: /menu/i }).click();
+    const overlay = page.locator('div.fixed.inset-0.z-50');
+    await expect(overlay).toBeVisible({ timeout: 10000 });
+
+    // Wait past the redirect, then require the drawer to still be there.
+    await expect(page).toHaveURL(/\/organizations\/\d+\/dashboard$/, { timeout: 15000 });
+    await expect(overlay).toBeVisible();
+  });
+
   test('should navigate via mobile sidebar', async ({ page }) => {
     await page.waitForLoadState('load');
 
-    // Opening and clicking are retried together, because the drawer can close
-    // itself between the two -- see navigateViaMobileSidebar. This test failed on
-    // every local run before that, and passed in CI, which made it look like a
-    // CI-only concern rather than a real race.
+    // Opening and clicking are still retried together: React attaches the
+    // handler on hydration, so a tap before then is swallowed with no feedback.
+    // What no longer needs retrying is the drawer closing underneath -- it now
+    // closes on the tap that navigates, not on the path changing afterwards.
     await navigateViaMobileSidebar(page, /organization/i, /\/organizations\/?$/);
 
-    // Navigating closes the drawer behind you.
+    // The tap closes the drawer behind you and still navigates. Both, because
+    // closing unmounts the anchor: do it too eagerly and the navigation is lost.
     await expect(page.locator('div.fixed.inset-0.z-50')).not.toBeVisible({ timeout: 5000 });
   });
 });
