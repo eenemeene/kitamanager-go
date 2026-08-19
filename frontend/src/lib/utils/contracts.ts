@@ -48,6 +48,40 @@ export function getActiveContract<T extends { from: string; to?: string | null }
 }
 
 /**
+ * Why a child's contract wants attention against their expected school start.
+ *
+ * Two distinct situations, deliberately not collapsed into one boolean: the
+ * sentence you can truthfully say about each is different. A contract that ends
+ * too late *ends* — you can name the date and say it runs past school start. An
+ * open-ended one does not end at all, so the same sentence would be false, which
+ * is why it was previously excluded from the warning altogether rather than
+ * given wording of its own.
+ *
+ * Excluding it is the worse failure. Open-ended is a first-class state here
+ * (nullable `to_date`, optional in the create form, and `ContractEndRequest`
+ * treats a null `to` as "reopen indefinitely"), and a child who left for school
+ * on one keeps being counted until somebody notices by hand. That is precisely
+ * what this warning exists to prevent, so it should fire hardest there.
+ *
+ * Anchored to Europe/Berlin, like every other "is it today yet" decision here.
+ */
+export type SchoolOverrun = 'ends-after-school-start' | 'no-end-past-school-start' | null;
+
+export function classifySchoolOverrun(
+  contract: { to?: string | null } | null | undefined,
+  mussContractEnd: string
+): SchoolOverrun {
+  if (!contract) return null;
+  const schoolEnd = toUTCDate(mussContractEnd);
+  if (contract.to) {
+    return toUTCDate(contract.to) > schoolEnd ? 'ends-after-school-start' : null;
+  }
+  // No end date: only worth flagging once the expected school start has
+  // actually passed. Before then an open-ended contract is ordinary.
+  return todayBerlin() > schoolEnd ? 'no-end-past-school-start' : null;
+}
+
+/**
  * Get the current or most recent contract.
  * Falls back to the contract with the latest start date.
  */

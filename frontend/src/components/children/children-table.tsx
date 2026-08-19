@@ -35,7 +35,7 @@ import type {
 } from '@/lib/api/types';
 import { formatDate, calculateAge, formatCurrency, formatFte } from '@/lib/utils/formatting';
 import { propertiesToLabelKeys } from '@/lib/utils/contract-properties';
-import { getCurrentContract, toUTCDate } from '@/lib/utils/contracts';
+import { classifySchoolOverrun, getCurrentContract } from '@/lib/utils/contracts';
 import { classifySchoolEnrollment } from '@/lib/utils/school-enrollment';
 
 export interface ChildrenTableProps {
@@ -114,10 +114,20 @@ export function ChildrenTable({
             const enrollment = orgState
               ? classifySchoolEnrollment(child.birthdate, orgState)
               : null;
-            const contractOverrun =
-              enrollment && currentContract?.to
-                ? toUTCDate(currentContract.to) > toUTCDate(enrollment.mussContractEnd)
-                : false;
+            const overrun = enrollment
+              ? classifySchoolOverrun(currentContract, enrollment.mussContractEnd)
+              : null;
+            // Same date on both: the school-start date is what the contract
+            // should end on, and what the adjust button sets it to.
+            const overrunMessage =
+              enrollment && overrun
+                ? t(
+                    overrun === 'no-end-past-school-start'
+                      ? 'children.contractHasNoEndPastSchoolStart'
+                      : 'children.contractRunsPastSchoolStart',
+                    { date: formatDate(enrollment.mussContractEnd) }
+                  )
+                : '';
             return (
               <TableRow key={child.id}>
                 <TableCell className="font-medium">
@@ -138,26 +148,20 @@ export function ChildrenTable({
                 <TableCell>
                   <div className="flex items-center gap-2">
                     {currentContract?.section_name && <span>{currentContract.section_name}</span>}
-                    {contractOverrun && enrollment && (
+                    {overrun && enrollment && (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <AlertTriangle
                             className="text-warning h-4 w-4 shrink-0"
-                            aria-label={t('children.contractRunsPastSchoolStart', {
-                              date: formatDate(enrollment.mussContractEnd),
-                            })}
+                            aria-label={overrunMessage}
                           />
                         </TooltipTrigger>
                         <TooltipContent className="max-w-xs">
-                          <p>
-                            {t('children.contractRunsPastSchoolStart', {
-                              date: formatDate(enrollment.mussContractEnd),
-                            })}
-                          </p>
+                          <p>{overrunMessage}</p>
                         </TooltipContent>
                       </Tooltip>
                     )}
-                    {contractOverrun && enrollment && currentContract && onAdjustContractEnd && (
+                    {overrun && enrollment && currentContract && onAdjustContractEnd && (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button

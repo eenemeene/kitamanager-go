@@ -1,10 +1,11 @@
 import {
+  classifySchoolOverrun,
+  compareDates,
   getActiveContract,
+  getContractStatus,
   getCurrentContract,
   getDayBefore,
-  getContractStatus,
   isActivePeriod,
-  compareDates,
   isDateBefore,
   toUTCDate,
 } from '../contracts';
@@ -562,5 +563,60 @@ describe('edge cases', () => {
 
     expect(getContractStatus(withT)).toBe(getContractStatus(withoutT));
     expect(isActivePeriod(withT)).toBe(isActivePeriod(withoutT));
+  });
+});
+
+describe('classifySchoolOverrun', () => {
+  const schoolEnd = '2026-07-31';
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('flags a contract that ends after the expected school start', () => {
+    jest.setSystemTime(new Date('2026-01-15'));
+    expect(classifySchoolOverrun({ to: '2026-12-31' }, schoolEnd)).toBe('ends-after-school-start');
+  });
+
+  it('says nothing about a contract that ends on or before it', () => {
+    jest.setSystemTime(new Date('2026-01-15'));
+    expect(classifySchoolOverrun({ to: schoolEnd }, schoolEnd)).toBeNull();
+    expect(classifySchoolOverrun({ to: '2026-06-30' }, schoolEnd)).toBeNull();
+  });
+
+  // The case the old boolean silently dropped: `enrollment && currentContract?.to`
+  // short-circuited on a null `to`, so a child who left for school on an
+  // open-ended contract never raised the warning meant to catch exactly that.
+  it('flags an open-ended contract once the school start has passed', () => {
+    jest.setSystemTime(new Date('2026-09-01'));
+    expect(classifySchoolOverrun({ to: null }, schoolEnd)).toBe('no-end-past-school-start');
+    expect(classifySchoolOverrun({}, schoolEnd)).toBe('no-end-past-school-start');
+  });
+
+  it('leaves an open-ended contract alone before the school start', () => {
+    jest.setSystemTime(new Date('2026-01-15'));
+    expect(classifySchoolOverrun({ to: null }, schoolEnd)).toBeNull();
+  });
+
+  it('does not fire on the school-start date itself', () => {
+    // Strictly after, so the last legitimate day is not flagged.
+    jest.setSystemTime(new Date('2026-07-31T12:00:00Z'));
+    expect(classifySchoolOverrun({ to: null }, schoolEnd)).toBeNull();
+  });
+
+  it('uses the Berlin calendar day, not the browser UTC day', () => {
+    // 2026-08-01 00:30 Berlin is still 2026-07-31 in UTC. The Berlin day has
+    // ticked past the school end, so the warning must fire.
+    jest.setSystemTime(new Date('2026-07-31T22:30:00Z'));
+    expect(classifySchoolOverrun({ to: null }, schoolEnd)).toBe('no-end-past-school-start');
+  });
+
+  it('returns null when there is no contract at all', () => {
+    jest.setSystemTime(new Date('2026-09-01'));
+    expect(classifySchoolOverrun(null, schoolEnd)).toBeNull();
+    expect(classifySchoolOverrun(undefined, schoolEnd)).toBeNull();
   });
 });
