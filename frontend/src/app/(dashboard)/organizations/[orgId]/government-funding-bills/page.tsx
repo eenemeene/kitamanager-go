@@ -375,8 +375,12 @@ export default function GovernmentFundingBillsPage() {
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
                             <Button variant="ghost" size="icon" asChild>
+                              {/* An icon with no text needs a name, or a screen
+                                  reader announces only "link" and the way into
+                                  the per-child breakdown is unreachable. */}
                               <Link
                                 href={`/organizations/${orgId}/government-funding-bills/${item.id}`}
+                                aria-label={tCommon('viewDetails')}
                               >
                                 <Eye className="h-4 w-4" />
                               </Link>
