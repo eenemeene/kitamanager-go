@@ -132,11 +132,11 @@ export default function SectionsPage() {
               <CardTitle>{t('sections.title')}</CardTitle>
             </CardHeader>
             <CardContent>
-              <QueryError error={crud.error} onRetry={crud.refetch} />
-              {!crud.isLoading &&
-              crud.paginatedData &&
-              crud.paginatedData.total === 0 &&
-              (crud.items?.length ?? 0) === 0 ? (
+              <QueryError error={crud.list.error} onRetry={crud.list.refetch} />
+              {!crud.list.isLoading &&
+              crud.list.paginatedData &&
+              crud.list.paginatedData.total === 0 &&
+              (crud.list.items?.length ?? 0) === 0 ? (
                 <EmptyState
                   icon={LayoutGrid}
                   title="sections.emptyTitle"
@@ -150,22 +150,22 @@ export default function SectionsPage() {
                 />
               ) : (
                 <ResourceTable
-                  items={crud.items}
+                  items={crud.list.items}
                   columns={columns}
                   getItemKey={(section) => section.id}
-                  isLoading={crud.isLoading}
+                  isLoading={crud.list.isLoading}
                   onEdit={crud.dialogs.handleEdit}
                   onDelete={crud.dialogs.handleDelete}
                 />
               )}
-              {crud.paginatedData && crud.paginatedData.total > 0 && (
+              {crud.list.paginatedData && crud.list.paginatedData.total > 0 && (
                 <Pagination
-                  page={crud.paginatedData.page}
-                  totalPages={crud.paginatedData.total_pages}
-                  total={crud.paginatedData.total}
-                  limit={crud.paginatedData.limit}
-                  onPageChange={crud.setPage}
-                  isLoading={crud.isLoading}
+                  page={crud.list.paginatedData.page}
+                  totalPages={crud.list.paginatedData.total_pages}
+                  total={crud.list.paginatedData.total}
+                  limit={crud.list.paginatedData.limit}
+                  onPageChange={crud.list.setPage}
+                  isLoading={crud.list.isLoading}
                 />
               )}
             </CardContent>
@@ -176,23 +176,23 @@ export default function SectionsPage() {
             onOpenChange={crud.dialogs.setIsDialogOpen}
             isEditing={crud.dialogs.isEditing}
             translationPrefix="sections"
-            onSubmit={crud.handleSubmit(crud.onSubmit)}
+            onSubmit={crud.form.handleSubmit(crud.form.onSubmit)}
             isSaving={crud.mutations.isMutating}
           >
             <FormErrorSummary
-              errors={crud.errors}
-              unmapped={crud.unmappedViolations}
+              errors={crud.form.errors}
+              unmapped={crud.form.unmappedViolations}
               labels={{ name: t('common.name'), description: t('common.description') }}
             />
             <div className="space-y-2">
               <Label htmlFor="name">{t('common.name')}</Label>
               <Input
                 id="name"
-                aria-invalid={!!crud.errors.name}
-                aria-describedby={crud.errors.name ? 'name-error' : undefined}
-                {...crud.register('name')}
+                aria-invalid={!!crud.form.errors.name}
+                aria-describedby={crud.form.errors.name ? 'name-error' : undefined}
+                {...crud.form.register('name')}
               />
-              {crud.errors.name && (
+              {crud.form.errors.name && (
                 <p id="name-error" className="text-destructive text-sm">
                   {t('validation.nameRequired')}
                 </p>
@@ -209,7 +209,7 @@ export default function SectionsPage() {
                   id="min_age_months"
                   type="number"
                   min={0}
-                  {...crud.register('min_age_months', {
+                  {...crud.form.register('min_age_months', {
                     setValueAs: (v: unknown) =>
                       v === '' || v === null || v === undefined ? null : Number(v),
                   })}
@@ -224,14 +224,14 @@ export default function SectionsPage() {
                   id="max_age_months"
                   type="number"
                   min={0}
-                  aria-invalid={!!crud.errors.max_age_months}
-                  aria-describedby={crud.errors.max_age_months ? 'max-age-error' : undefined}
-                  {...crud.register('max_age_months', {
+                  aria-invalid={!!crud.form.errors.max_age_months}
+                  aria-describedby={crud.form.errors.max_age_months ? 'max-age-error' : undefined}
+                  {...crud.form.register('max_age_months', {
                     setValueAs: (v: unknown) =>
                       v === '' || v === null || v === undefined ? null : Number(v),
                   })}
                 />
-                {crud.errors.max_age_months && (
+                {crud.form.errors.max_age_months && (
                   <p id="max-age-error" className="text-destructive text-sm">
                     {t('sections.ageRangeError')}
                   </p>

@@ -133,27 +133,27 @@ export default function PayPlansPage() {
         <CardContent className="space-y-4">
           <SearchInput
             id="search-payplans"
-            value={crud.searchInput}
-            onChange={crud.setSearchInput}
+            value={crud.list.searchInput}
+            onChange={crud.list.setSearchInput}
           />
-          <QueryError error={crud.error} onRetry={crud.refetch} />
+          <QueryError error={crud.list.error} onRetry={crud.list.refetch} />
           <ResourceTable
-            items={crud.items}
+            items={crud.list.items}
             columns={columns}
             getItemKey={(payPlan) => payPlan.id}
-            isLoading={crud.isLoading}
+            isLoading={crud.list.isLoading}
             onView={handleView}
             onEdit={crud.dialogs.handleEdit}
             onDelete={crud.dialogs.handleDelete}
           />
-          {crud.paginatedData && (
+          {crud.list.paginatedData && (
             <Pagination
-              page={crud.paginatedData.page}
-              totalPages={crud.paginatedData.total_pages}
-              total={crud.paginatedData.total}
-              limit={crud.paginatedData.limit}
-              onPageChange={crud.setPage}
-              isLoading={crud.isLoading}
+              page={crud.list.paginatedData.page}
+              totalPages={crud.list.paginatedData.total_pages}
+              total={crud.list.paginatedData.total}
+              limit={crud.list.paginatedData.limit}
+              onPageChange={crud.list.setPage}
+              isLoading={crud.list.isLoading}
             />
           )}
         </CardContent>
@@ -164,18 +164,18 @@ export default function PayPlansPage() {
         onOpenChange={crud.dialogs.setIsDialogOpen}
         isEditing={crud.dialogs.isEditing}
         translationPrefix="payPlans"
-        onSubmit={crud.handleSubmit(crud.onSubmit)}
+        onSubmit={crud.form.handleSubmit(crud.form.onSubmit)}
         isSaving={crud.mutations.isMutating}
       >
         <FormErrorSummary
-          errors={crud.errors}
-          unmapped={crud.unmappedViolations}
+          errors={crud.form.errors}
+          unmapped={crud.form.unmappedViolations}
           labels={{ name: t('common.name'), description: t('common.description') }}
         />
         <div className="space-y-2">
           <Label htmlFor="name">{t('common.name')}</Label>
-          <Input id="name" {...crud.register('name')} />
-          {crud.errors.name && (
+          <Input id="name" {...crud.form.register('name')} />
+          {crud.form.errors.name && (
             <p className="text-destructive text-sm">{t('validation.nameRequired')}</p>
           )}
         </div>

@@ -168,13 +168,13 @@ export default function BudgetItemsPage() {
 
   const onSubmit = (data: BudgetItemWithEntryFormData) => {
     if (!isEditing && data.entry_amount_euros <= 0) {
-      crud.setError('entry_amount_euros', {
+      crud.form.setError('entry_amount_euros', {
         type: 'manual',
         message: t('budgetItems.amountMustBePositive'),
       });
       return;
     }
-    crud.onSubmit(data);
+    crud.form.onSubmit(data);
   };
 
   return (
@@ -193,27 +193,27 @@ export default function BudgetItemsPage() {
         <CardContent className="space-y-4">
           <SearchInput
             id="search-budget-items"
-            value={crud.searchInput}
-            onChange={crud.setSearchInput}
+            value={crud.list.searchInput}
+            onChange={crud.list.setSearchInput}
           />
-          <QueryError error={crud.error} onRetry={crud.refetch} />
+          <QueryError error={crud.list.error} onRetry={crud.list.refetch} />
           <ResourceTable
-            items={crud.items}
+            items={crud.list.items}
             columns={columns}
             getItemKey={(item) => item.id}
-            isLoading={crud.isLoading}
+            isLoading={crud.list.isLoading}
             onView={handleView}
             onEdit={crud.dialogs.handleEdit}
             onDelete={crud.dialogs.handleDelete}
           />
-          {crud.paginatedData && (
+          {crud.list.paginatedData && (
             <Pagination
-              page={crud.paginatedData.page}
-              totalPages={crud.paginatedData.total_pages}
-              total={crud.paginatedData.total}
-              limit={crud.paginatedData.limit}
-              onPageChange={crud.setPage}
-              isLoading={crud.isLoading}
+              page={crud.list.paginatedData.page}
+              totalPages={crud.list.paginatedData.total_pages}
+              total={crud.list.paginatedData.total}
+              limit={crud.list.paginatedData.limit}
+              onPageChange={crud.list.setPage}
+              isLoading={crud.list.isLoading}
             />
           )}
         </CardContent>
@@ -224,19 +224,19 @@ export default function BudgetItemsPage() {
         onOpenChange={crud.dialogs.setIsDialogOpen}
         isEditing={isEditing}
         translationPrefix="budgetItems"
-        onSubmit={crud.handleSubmit(onSubmit)}
+        onSubmit={crud.form.handleSubmit(onSubmit)}
         isSaving={crud.mutations.isMutating}
       >
         <FormErrorSummary
-          errors={crud.errors}
-          unmapped={crud.unmappedViolations}
+          errors={crud.form.errors}
+          unmapped={crud.form.unmappedViolations}
           labels={{ name: t('common.name'), description: t('common.description') }}
         />
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">{t('common.name')}</Label>
-            <Input id="name" {...crud.register('name')} />
-            {crud.errors.name && (
+            <Input id="name" {...crud.form.register('name')} />
+            {crud.form.errors.name && (
               <p className="text-destructive text-sm">{t('validation.nameRequired')}</p>
             )}
           </div>
@@ -244,9 +244,11 @@ export default function BudgetItemsPage() {
           <div className="space-y-2">
             <Label htmlFor="category">{t('budgetItems.category')}</Label>
             <Select
-              value={crud.watch('category')}
+              value={crud.form.watch('category')}
               onValueChange={(value) =>
-                crud.setValue('category', value as 'income' | 'expense', { shouldValidate: true })
+                crud.form.setValue('category', value as 'income' | 'expense', {
+                  shouldValidate: true,
+                })
               }
             >
               <SelectTrigger>
@@ -262,9 +264,9 @@ export default function BudgetItemsPage() {
           <div className="flex items-center space-x-2">
             <Checkbox
               id="per_child"
-              checked={crud.watch('per_child')}
+              checked={crud.form.watch('per_child')}
               onCheckedChange={(checked) =>
-                crud.setValue('per_child', checked === true, { shouldValidate: true })
+                crud.form.setValue('per_child', checked === true, { shouldValidate: true })
               }
             />
             <Label htmlFor="per_child">{t('budgetItems.perChild')}</Label>
@@ -278,15 +280,15 @@ export default function BudgetItemsPage() {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="entry_from">{t('budgetItems.fromDate')}</Label>
-                  <Input id="entry_from" type="date" {...crud.register('entry_from')} />
-                  {crud.errors.entry_from && (
+                  <Input id="entry_from" type="date" {...crud.form.register('entry_from')} />
+                  {crud.form.errors.entry_from && (
                     <p className="text-destructive text-sm">{t('validation.fromDateRequired')}</p>
                   )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="entry_to">{t('budgetItems.toDateOptional')}</Label>
-                  <Input id="entry_to" type="date" {...crud.register('entry_to')} />
-                  {crud.errors.entry_to && (
+                  <Input id="entry_to" type="date" {...crud.form.register('entry_to')} />
+                  {crud.form.errors.entry_to && (
                     <p className="text-destructive text-sm">
                       {t('validation.toDateMustBeAfterFromDate')}
                     </p>
@@ -301,9 +303,9 @@ export default function BudgetItemsPage() {
                   type="number"
                   min={0.01}
                   step={0.01}
-                  {...crud.register('entry_amount_euros', { valueAsNumber: true })}
+                  {...crud.form.register('entry_amount_euros', { valueAsNumber: true })}
                 />
-                {crud.errors.entry_amount_euros && (
+                {crud.form.errors.entry_amount_euros && (
                   <p className="text-destructive text-sm">
                     {t('budgetItems.amountMustBePositive')}
                   </p>
@@ -312,7 +314,7 @@ export default function BudgetItemsPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="entry_notes">{t('budgetItems.notes')}</Label>
-                <Input id="entry_notes" {...crud.register('entry_notes')} />
+                <Input id="entry_notes" {...crud.form.register('entry_notes')} />
               </div>
             </>
           )}

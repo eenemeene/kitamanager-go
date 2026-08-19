@@ -92,20 +92,20 @@ describe('useCrudPage', () => {
     });
     const { result } = renderHook(() => useCrudPage(config), { wrapper });
 
-    expect(result.current.items).toBeUndefined();
-    expect(result.current.isLoading).toBe(true);
-    expect(result.current.page).toBe(1);
+    expect(result.current.list.items).toBeUndefined();
+    expect(result.current.list.isLoading).toBe(true);
+    expect(result.current.list.page).toBe(1);
   });
 
   it('returns form utilities (register, handleSubmit, errors, setValue, watch)', () => {
     const config = createMockConfig();
     const { result } = renderHook(() => useCrudPage(config), { wrapper });
 
-    expect(typeof result.current.register).toBe('function');
-    expect(typeof result.current.handleSubmit).toBe('function');
-    expect(result.current.errors).toBeDefined();
-    expect(typeof result.current.setValue).toBe('function');
-    expect(typeof result.current.watch).toBe('function');
+    expect(typeof result.current.form.register).toBe('function');
+    expect(typeof result.current.form.handleSubmit).toBe('function');
+    expect(result.current.form.errors).toBeDefined();
+    expect(typeof result.current.form.setValue).toBe('function');
+    expect(typeof result.current.form.watch).toBe('function');
   });
 
   it('returns dialogs object with expected methods', () => {
@@ -144,7 +144,7 @@ describe('useCrudPage', () => {
     const { result } = renderHook(() => useCrudPage(config), { wrapper });
 
     act(() => {
-      result.current.onSubmit({ name: 'New' });
+      result.current.form.onSubmit({ name: 'New' });
     });
 
     await waitFor(() => {
@@ -163,7 +163,7 @@ describe('useCrudPage', () => {
     });
 
     act(() => {
-      result.current.onSubmit({ name: 'Edited' });
+      result.current.form.onSubmit({ name: 'Edited' });
     });
 
     await waitFor(() => {
@@ -175,12 +175,12 @@ describe('useCrudPage', () => {
     const config = createMockConfig();
     const { result } = renderHook(() => useCrudPage(config), { wrapper });
 
-    expect(result.current.page).toBe(1);
+    expect(result.current.list.page).toBe(1);
 
     act(() => {
-      result.current.setPage(3);
+      result.current.list.setPage(3);
     });
 
-    expect(result.current.page).toBe(3);
+    expect(result.current.list.page).toBe(3);
   });
 });
