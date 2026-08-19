@@ -2,8 +2,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { useToast } from './use-toast';
-import { showErrorToast } from '@/lib/utils/show-error-toast';
+import { useMutationFeedback } from './use-mutation-feedback';
 
 export interface UseCrudMutationsConfig<TItem, TCreate, TUpdate> {
   /** Resource name for i18n keys (e.g., 'groups', 'organizations') */
@@ -78,15 +77,15 @@ export function useCrudMutations<TItem, TCreate, TUpdate>({
   TUpdate
 > {
   const t = useTranslations();
-  const { toast } = useToast();
+  const feedback = useMutationFeedback();
+  // Still needed directly: the optimistic delete reads and rewrites the cache,
+  // which is beyond invalidating it.
   const queryClient = useQueryClient();
 
   const invalidateAll = () => {
-    queryClient.invalidateQueries({ queryKey });
+    feedback.invalidate(queryKey);
     if (extraInvalidateKeys) {
-      for (const key of extraInvalidateKeys) {
-        queryClient.invalidateQueries({ queryKey: key });
-      }
+      feedback.invalidate(extraInvalidateKeys);
     }
   };
 
@@ -99,18 +98,15 @@ export function useCrudMutations<TItem, TCreate, TUpdate>({
     },
     onSuccess: (item) => {
       invalidateAll();
-      toast({ title: t(`${resourceName}.createSuccess`) });
+      feedback.notifySuccess(t(`${resourceName}.createSuccess`));
       onSuccess?.();
       onCreateSuccess?.(item);
     },
     onError: (error: Error) => {
-      if (onMutationError?.(error) === true) {
-        return;
-      }
-      showErrorToast(
-        t('common.error'),
+      feedback.notifyError(
         error,
-        t('common.failedToCreate', { resource: resourceName })
+        t('common.failedToCreate', { resource: resourceName }),
+        onMutationError
       );
     },
   });
@@ -124,18 +120,15 @@ export function useCrudMutations<TItem, TCreate, TUpdate>({
     },
     onSuccess: (item) => {
       invalidateAll();
-      toast({ title: t(`${resourceName}.updateSuccess`) });
+      feedback.notifySuccess(t(`${resourceName}.updateSuccess`));
       onSuccess?.();
       onUpdateSuccess?.(item);
     },
     onError: (error: Error) => {
-      if (onMutationError?.(error) === true) {
-        return;
-      }
-      showErrorToast(
-        t('common.error'),
+      feedback.notifyError(
         error,
-        t('common.failedToSave', { resource: resourceName })
+        t('common.failedToSave', { resource: resourceName }),
+        onMutationError
       );
     },
   });
@@ -176,7 +169,7 @@ export function useCrudMutations<TItem, TCreate, TUpdate>({
       return { previousQueries };
     },
     onSuccess: () => {
-      toast({ title: t(`${resourceName}.deleteSuccess`) });
+      feedback.notifySuccess(t(`${resourceName}.deleteSuccess`));
       onDeleteSuccess?.();
     },
     onError: (error: Error, _id, context) => {
@@ -186,11 +179,7 @@ export function useCrudMutations<TItem, TCreate, TUpdate>({
           queryClient.setQueryData(key, data);
         }
       }
-      showErrorToast(
-        t('common.error'),
-        error,
-        t('common.failedToDelete', { resource: resourceName })
-      );
+      feedback.notifyError(error, t('common.failedToDelete', { resource: resourceName }));
     },
     onSettled: () => {
       // Always refetch after delete to ensure server state consistency
