@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { toLocalDateString } from '@/lib/utils/formatting';
-import { useToast } from '@/lib/hooks/use-toast';
 import { useMutationFeedback } from './use-mutation-feedback';
 
 interface HasContracts {
@@ -60,7 +59,6 @@ export interface MoveContractVariables {
 
 export function useMoveContractMutation<T extends HasContracts>(config: MoveContractConfig<T>) {
   const feedback = useMutationFeedback();
-  const { toast } = useToast();
   const t = useTranslations();
   const queryClient = useQueryClient();
 
@@ -107,17 +105,20 @@ export function useMoveContractMutation<T extends HasContracts>(config: MoveCont
     onSuccess: () => {
       feedback.notifySuccess(t(config.successMessage));
     },
-    onError: (_err, _vars, context) => {
+    onError: (error, _vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData(config.allUnpaginatedKey, context.previous);
       }
-      // Deliberately not feedback.notifyError: this one shows a fixed message
-      // rather than the server's. That is a gap -- a refused seam move explains
-      // itself ("the two contracts are not adjacent", "the boundary must leave
-      // the earlier contract at least one day") and the user sees none of it --
-      // but changing it is a behaviour change, not a refactor, so it is left
-      // alone here.
-      toast({ title: t(config.errorMessage), variant: 'destructive' });
+      // Say why, not just that it failed. Dragging a card here corrects or
+      // amends a contract, and the refusals carry information the fixed string
+      // throws away -- most usefully the stale-version one, which a board left
+      // open for a while will hit: "this contract was changed by someone else
+      // (you have version 3, current is 4) -- reload and reapply your change"
+      // tells the user what to do, where "Failed to move child" does not.
+      //
+      // The configured message stays as the fallback, for the failures that
+      // carry no message of their own.
+      feedback.notifyError(error, t(config.errorMessage));
     },
     onSettled: (_data, _error, variables) => {
       // On settle rather than on success: the optimistic update has to be rolled

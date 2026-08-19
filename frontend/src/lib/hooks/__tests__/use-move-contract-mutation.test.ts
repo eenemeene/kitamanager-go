@@ -4,8 +4,12 @@ import { useMoveContractMutation } from '../use-move-contract-mutation';
 import { createTestQueryClient, createHookWrapper } from '@/test-utils';
 
 const mockToast = jest.fn();
+// Both entry points: the hook reports success through useToast(), and
+// showErrorToast reaches for the module-level toast() so it can be called from
+// outside a component.
 jest.mock('../use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
+  toast: (...args: unknown[]) => mockToast(...args),
 }));
 
 interface TestEntity {
@@ -117,10 +121,71 @@ describe('useMoveContractMutation', () => {
     const cached = queryClient.getQueryData<TestEntity[]>(allKey);
     expect(cached?.[0].contracts?.[0].section_id).toBe(1);
 
-    expect(mockToast).toHaveBeenCalledWith({
-      title: 'sections.movedFailed',
-      variant: 'destructive',
+    // A network failure carries no message of its own, so the configured one is
+    // what the user gets.
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({ description: 'sections.movedFailed', variant: 'destructive' })
+    );
+  });
+
+  it('tells the user why the server refused, not just that it did', async () => {
+    // Dragging a card corrects or amends a contract, and the refusals carry
+    // information worth showing. The stale-version one is the case a board left
+    // open will actually hit, and "Failed to move child" does not tell anyone
+    // what to do about it.
+    const allKey = ['childrenAll', 1];
+    queryClient.setQueryData(allKey, [
+      { id: 10, name: 'Alice', contracts: [{ id: 100, section_id: 1, version: 1 }] },
+    ] satisfies TestEntity[]);
+
+    const staleVersion = {
+      response: {
+        data: {
+          type: 'u',
+          title: 'Resource was modified',
+          status: 412,
+          code: 'precondition_failed',
+          detail:
+            'this contract was changed by someone else (you have version 1, current is 2) — reload and reapply your change',
+        },
+      },
+    };
+
+    const { result } = renderHook(
+      () =>
+        useMoveContractMutation<TestEntity>({
+          orgId: 1,
+          amendFn: jest.fn().mockRejectedValue(staleVersion),
+          correctFn: jest.fn().mockRejectedValue(staleVersion),
+          allUnpaginatedKey: allKey,
+          invalidateKeys: () => [['children', 1]],
+          successMessage: 'sections.movedSuccess',
+          errorMessage: 'sections.movedFailed',
+        }),
+      { wrapper }
+    );
+
+    act(() => {
+      result.current.mutate({
+        entityId: 10,
+        contractId: 100,
+        sectionId: 5,
+        version: 1,
+        from: '2020-01-01',
+      });
     });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: expect.stringContaining('changed by someone else'),
+        variant: 'destructive',
+      })
+    );
+    // And the optimistic move is still undone.
+    const cached = queryClient.getQueryData<TestEntity[]>(allKey);
+    expect(cached?.[0].contracts?.[0].section_id).toBe(1);
   });
 
   it('invalidates all keys including entity-specific keys on settled', async () => {
