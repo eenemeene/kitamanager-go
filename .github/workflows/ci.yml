@@ -432,12 +432,24 @@ jobs:
         run: cd frontend && npx playwright install chromium
 
       - name: Install Playwright system deps
-        # 22 seconds on a healthy run. On 2026-08-18 it hung inside apt on three
-        # shards at once and each burned GitHub's full six-hour job limit before
-        # a single test ran. The job cap alone would bound that, but a step cap
-        # fails in ten minutes and names the step that stalled.
+        # 22 seconds on a healthy run, and it has now hung inside apt twice in a
+        # day -- three shards on 2026-08-18, three more on 2026-08-19 -- each
+        # time with no output at all. The step cap turned a six-hour burn into
+        # ten minutes, but a hang here still failed the whole job before a single
+        # test ran.
+        #
+        # The runner image already ships the libraries chromium needs, so this is
+        # insurance rather than a requirement. Two bounded attempts, and if apt is
+        # still wedged the job carries on: a genuinely missing library then shows
+        # up as a browser that will not launch, which is a clear failure in the
+        # E2E step rather than an unexplained one here.
         timeout-minutes: 10
-        run: cd frontend && npx playwright install-deps chromium
+        continue-on-error: true
+        run: |
+          cd frontend
+          timeout 240 npx playwright install-deps chromium \
+            || timeout 240 npx playwright install-deps chromium \
+            || echo "playwright install-deps did not complete; continuing on the image's own libraries"
 
       - name: Build web
         run: make web-build
@@ -446,6 +458,7 @@ jobs:
         run: make api-build
 
       - name: Start API server
+        id: api
         run: |
           DB_HOST=localhost \
           DB_PORT=5432 \
@@ -566,7 +579,12 @@ jobs:
           cache-to: type=gha,mode=max,scope=report-ci
 
       - name: Generate PDF reports (via container)
-        if: ${{ !cancelled() && matrix.shard == 1 }}
+        # !cancelled() rather than success(), on purpose: the PDFs are still
+        # worth having when a test failed. But they cannot be produced when the
+        # API never started, and attempting it then reports "login failed:
+        # connection refused" -- which reads like the cause and is only the
+        # consequence. Gate on the server actually being up.
+        if: ${{ !cancelled() && matrix.shard == 1 && steps.api.outcome == 'success' }}
         run: |
           mkdir -p /tmp/report-pdfs
           # The non-root `node` user inside the container writes the
