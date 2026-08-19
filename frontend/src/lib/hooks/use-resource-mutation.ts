@@ -1,7 +1,5 @@
-import { useMutation, useQueryClient, type QueryKey } from '@tanstack/react-query';
-import { useTranslations } from 'next-intl';
-import { useToast } from '@/lib/hooks/use-toast';
-import { showErrorToast } from '@/lib/utils/show-error-toast';
+import { useMutation, type QueryKey } from '@tanstack/react-query';
+import { useMutationFeedback } from './use-mutation-feedback';
 
 interface ResourceMutationConfig<TData, TResponse = unknown> {
   /** The mutation function to call. */
@@ -34,25 +32,17 @@ interface ResourceMutationConfig<TData, TResponse = unknown> {
 export function useResourceMutation<TData, TResponse = unknown>(
   config: ResourceMutationConfig<TData, TResponse>
 ) {
-  const queryClient = useQueryClient();
-  const t = useTranslations();
-  const { toast } = useToast();
+  const feedback = useMutationFeedback();
 
   return useMutation({
     mutationFn: config.mutationFn,
     onSuccess: () => {
-      const keys = Array.isArray(config.invalidateQueryKey[0])
-        ? (config.invalidateQueryKey as QueryKey[])
-        : [config.invalidateQueryKey as QueryKey];
-      keys.forEach((key) => queryClient.invalidateQueries({ queryKey: key }));
-      toast({ title: config.successMessage });
+      feedback.invalidate(config.invalidateQueryKey);
+      feedback.notifySuccess(config.successMessage);
       config.onSuccess?.();
     },
     onError: (error: unknown) => {
-      if (config.onMutationError?.(error) === true) {
-        return;
-      }
-      showErrorToast(t('common.error'), error, config.errorMessage);
+      feedback.notifyError(error, config.errorMessage, config.onMutationError);
     },
   });
 }

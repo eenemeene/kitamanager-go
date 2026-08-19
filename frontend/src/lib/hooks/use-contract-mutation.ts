@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { useToast } from '@/lib/hooks/use-toast';
-import { showErrorToast } from '@/lib/utils/show-error-toast';
+import { useMutationFeedback } from './use-mutation-feedback';
 import { getActiveContract } from '@/lib/utils/contracts';
 
 interface ContractMutationConfig<TCreateData, TAmendData, TContract, TAmendResult> {
@@ -66,7 +65,7 @@ export function useContractMutation<TCreateData, TAmendData, TContract, TAmendRe
 ) {
   const queryClient = useQueryClient();
   const t = useTranslations();
-  const { toast } = useToast();
+  const feedback = useMutationFeedback();
 
   return useMutation({
     mutationFn: async (variables: ContractMutationVariables<TCreateData>) => {
@@ -81,31 +80,22 @@ export function useContractMutation<TCreateData, TAmendData, TContract, TAmendRe
       return config.createFn(entityId, data);
     },
     onSuccess: (_data, variables) => {
-      for (const key of config.invalidateQueryKeys) {
-        queryClient.invalidateQueries({ queryKey: key });
-      }
+      feedback.invalidate(config.invalidateQueryKeys);
       if (config.extraInvalidateKeys) {
-        for (const key of config.extraInvalidateKeys(variables.entityId)) {
-          queryClient.invalidateQueries({ queryKey: key });
-        }
+        feedback.invalidate(config.extraInvalidateKeys(variables.entityId));
       }
-
-      toast({
-        title: variables.endCurrentContract
+      feedback.notifySuccess(
+        variables.endCurrentContract
           ? t('contracts.previousContractEnded')
-          : t('contracts.createSuccess'),
-      });
-
+          : t('contracts.createSuccess')
+      );
       config.onSuccess?.();
     },
     onError: (error: unknown) => {
-      if (config.onMutationError?.(error) === true) {
-        return;
-      }
-      showErrorToast(
-        t('common.error'),
+      feedback.notifyError(
         error,
-        t('common.failedToCreate', { resource: 'contract' })
+        t('common.failedToCreate', { resource: 'contract' }),
+        config.onMutationError
       );
     },
   });
