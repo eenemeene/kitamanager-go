@@ -262,33 +262,25 @@ test.describe('Two-factor authentication — full lifecycle', () => {
     // Fall back to TOTP to complete this login (so we can regenerate).
     await page.getByLabel(/verify with/i).click();
     await page.getByRole('option', { name: /authenticator/i }).click();
-    // Wait a full step beyond the one the nextCode consumed so replay
-    // prevention (last_used_step in factor.go:1014) doesn't reject us.
-    // 31s is intentional — the backend hardcodes totpPeriod=30 in
-    // internal/service/factor.go:52 and the only way to remove this
-    // sleep is a configurable period (test-mode env var) or a test-only
-    // "reset last_used_step" endpoint, both gated on SEED_TEST_DATA.
-    // See memory: project_e2e_totp_sleep_debt.md for the planned fix.
-    await page.waitForTimeout(31000);
+    // Land in a window later than the one the last verification consumed,
+    // so replay prevention (the last_used_step CAS in factor.go) accepts
+    // the next code.
+    await waitForNextTotpStep();
     await page.getByTestId('mfa-verify-form').getByLabel(/code/i).fill(generateTotp(enrolSecret));
     await page.getByRole('button', { name: /verify/i }).click();
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
 
     // ---- Step 7: regenerate backup codes, old codes stop working ----
-    // Wait past the current TOTP step so the regenerate step-up code
-    // we generate next is in a fresh window — otherwise it collides
-    // with the per-factor last_used_step set by the most recent login.
-    // Same reason as the previous waitForTimeout(31000) above.
-    await page.waitForTimeout(31000);
+    // Same rule: the regenerate step-up code must come from a window later
+    // than the one the login above consumed.
+    await waitForNextTotpStep();
     await page.goto('/settings', { waitUntil: 'load' });
     await page.getByRole('button', { name: /regenerate recovery codes/i }).click();
     const regenDialog = page.getByRole('dialog', { name: /regenerate recovery codes/i });
     await regenDialog.getByLabel(/current password/i).fill(password);
     // Step-up code is now required (closes A-H-3): supply a fresh
     // TOTP code from the enrolled authenticator.
-    await regenDialog
-      .getByLabel(/authenticator or recovery code/i)
-      .fill(generateTotp(enrolSecret));
+    await regenDialog.getByLabel(/authenticator or recovery code/i).fill(generateTotp(enrolSecret));
     await regenDialog.getByRole('button', { name: /generate new codes/i }).click();
 
     const newBackupDialog = page.getByTestId('backup-codes-dialog');
@@ -325,10 +317,8 @@ test.describe('Two-factor authentication — full lifecycle', () => {
     await page.getByRole('button', { name: /disable two.?factor/i }).click();
     const disableDialog = page.getByRole('dialog', { name: /disable two.?factor/i });
     await disableDialog.getByLabel(/current password/i).fill(password);
-    // Fresh TOTP code — same 30s replay-prevention rule as above.
-    // See the comment at line ~261 for why this sleep is here and what
-    // a permanent fix looks like (memory: project_e2e_totp_sleep_debt.md).
-    await page.waitForTimeout(31000);
+    // Fresh TOTP code — same replay-prevention rule as above.
+    await waitForNextTotpStep();
     await disableDialog
       .getByLabel(/authenticator or recovery code/i)
       .fill(generateTotp(enrolSecret));

@@ -43,13 +43,16 @@ export function extractTotpSecret(otpauthUri: string): string {
  * (activation now bumps last_used_step) for every E2E that activates
  * a factor and then immediately tries to verify the next code.
  *
- * Computed wait — instead of a flat `waitForTimeout(31000)` — keeps
- * CI fast: average ≈ 15 s, worst case ≈ 31 s. The 1-second cushion
- * past the boundary protects against clock skew on slow runners.
+ * Computed rather than a flat 31 s sleep, which is what every one of
+ * these call sites used to be: average ≈ 15 s instead of 31 s, worst
+ * case unchanged. The 1-second cushion past the boundary protects
+ * against clock skew on slow runners, and the backend's ±1-step skew
+ * (totpSkewSteps in internal/service/factor.go) covers verification
+ * drifting into the following window.
  *
- * The proper longer-term fix is a `SEED_TEST_DATA`-gated reset
- * endpoint that nukes `last_used_step` on demand; that work is
- * tracked in memory `project_e2e_totp_sleep_debt.md`.
+ * Waiting at all is still the cost. Removing it needs a
+ * `SEED_TEST_DATA`-gated endpoint that resets `last_used_step` on
+ * demand, or a configurable period — neither exists yet.
  */
 export async function waitForNextTotpStep(): Promise<void> {
   const periodMs = 30_000;
