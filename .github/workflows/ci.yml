@@ -24,6 +24,7 @@ jobs:
   api-lint:
     name: API Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
         with:
@@ -50,6 +51,7 @@ jobs:
   web-lint:
     name: Web Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
         with:
@@ -79,6 +81,7 @@ jobs:
   api-test:
     name: API Unit Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
         with:
@@ -111,6 +114,7 @@ jobs:
   web-test:
     name: Web Unit Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
         with:
@@ -131,6 +135,7 @@ jobs:
   api-integration:
     name: API Integration Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:18-alpine
@@ -170,6 +175,7 @@ jobs:
   backup-restore:
     name: Backup & Restore Test
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
         with:
@@ -187,6 +193,7 @@ jobs:
   api-fuzz:
     name: API Fuzz Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
         with:
@@ -204,6 +211,7 @@ jobs:
   api-build:
     name: API Build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
         with:
@@ -226,6 +234,7 @@ jobs:
   web-build:
     name: Web Build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
         with:
@@ -246,6 +255,7 @@ jobs:
   security:
     name: Security
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
         with:
@@ -265,6 +275,7 @@ jobs:
   docker:
     name: Docker Build & Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
         with:
@@ -322,6 +333,7 @@ jobs:
   api-contract:
     name: API Contract Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:18-alpine
@@ -361,6 +373,7 @@ jobs:
   e2e:
     name: E2E Tests (shard ${{ matrix.shard }}/6)
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     needs: [api-build, web-build]
     strategy:
       fail-fast: false
@@ -419,6 +432,11 @@ jobs:
         run: cd frontend && npx playwright install chromium
 
       - name: Install Playwright system deps
+        # 22 seconds on a healthy run. On 2026-08-18 it hung inside apt on three
+        # shards at once and each burned GitHub's full six-hour job limit before
+        # a single test ran. The job cap alone would bound that, but a step cap
+        # fails in ten minutes and names the step that stalled.
+        timeout-minutes: 10
         run: cd frontend && npx playwright install-deps chromium
 
       - name: Build web
@@ -586,6 +604,7 @@ jobs:
   swagger-docs:
     name: Swagger Docs
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
 
@@ -606,6 +625,7 @@ jobs:
   website-build:
     name: Website Build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
         with:
