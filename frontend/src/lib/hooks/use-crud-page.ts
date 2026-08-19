@@ -56,6 +56,18 @@ interface UseCrudPageConfig<
   };
 }
 
+/**
+ * Grouped by concern rather than returned flat.
+ *
+ * The twenty names this used to hand back were all needed -- every page that
+ * calls this uses nearly all of them -- but flat they gave no clue which piece
+ * belonged to what. `setError` could plausibly have been the form's or the
+ * mutation's, and `error` next to `errors` is a typo waiting to happen.
+ *
+ * The pieces underneath are still separate hooks (useCrudDialogs,
+ * useCrudMutations, useResourceListFilters) and still usable on their own, which
+ * is what the five pages reaching past this one do.
+ */
 interface UseCrudPageResult<
   TItem extends { id: number },
   TFormData extends FieldValues,
@@ -63,34 +75,39 @@ interface UseCrudPageResult<
   TUpdate,
 > {
   orgId: number;
-  items: TItem[] | undefined;
-  paginatedData: PaginatedResponse<TItem> | undefined;
-  isLoading: boolean;
-  error: Error | null;
-  refetch: () => void;
-  page: number;
-  setPage: (page: number) => void;
-  /** Search input value (raw, for binding to SearchInput) — only present when searchable */
-  searchInput: string;
-  /** Set search input (auto-resets page to 1) — only present when searchable */
-  setSearchInput: (value: string) => void;
-  register: UseFormRegister<TFormData>;
-
-  handleSubmit: UseFormHandleSubmit<TFormData, any>;
-  errors: FieldErrors<TFormData>;
-  setValue: UseFormSetValue<TFormData>;
-  setError: UseFormSetError<TFormData>;
-  /**
-   * Server violations with no field on this form — a collection-level failure,
-   * or a field the endpoint validates and the form does not collect. Pass to
-   * FormErrorSummary; they are the half of the problem the marked inputs cannot
-   * show.
-   */
-  unmappedViolations: InvalidParam[];
-  watch: UseFormWatch<TFormData>;
+  /** Everything about showing the rows: the data, its loading state, paging, search. */
+  list: {
+    items: TItem[] | undefined;
+    paginatedData: PaginatedResponse<TItem> | undefined;
+    isLoading: boolean;
+    error: Error | null;
+    refetch: () => void;
+    page: number;
+    setPage: (page: number) => void;
+    /** Search input value (raw, for binding to SearchInput) — only present when searchable */
+    searchInput: string;
+    /** Set search input (auto-resets page to 1) — only present when searchable */
+    setSearchInput: (value: string) => void;
+  };
+  /** Everything about editing one row. */
+  form: {
+    register: UseFormRegister<TFormData>;
+    handleSubmit: UseFormHandleSubmit<TFormData, any>;
+    errors: FieldErrors<TFormData>;
+    setValue: UseFormSetValue<TFormData>;
+    setError: UseFormSetError<TFormData>;
+    watch: UseFormWatch<TFormData>;
+    /**
+     * Server violations with no field on this form — a collection-level failure,
+     * or a field the endpoint validates and the form does not collect. Pass to
+     * FormErrorSummary; they are the half of the problem the marked inputs cannot
+     * show.
+     */
+    unmappedViolations: InvalidParam[];
+    onSubmit: (data: TFormData) => void;
+  };
   dialogs: UseCrudDialogsResult<TItem>;
   mutations: UseCrudMutationsResult<TItem, TCreate, TUpdate>;
-  onSubmit: (data: TFormData) => void;
 }
 
 export function useCrudPage<
@@ -194,24 +211,28 @@ export function useCrudPage<
 
   return {
     orgId,
-    items,
-    paginatedData,
-    isLoading,
-    error,
-    refetch,
-    page,
-    setPage,
-    searchInput,
-    setSearchInput,
-    register,
-    handleSubmit,
-    errors,
-    setValue,
-    setError,
-    watch,
-    unmappedViolations,
+    list: {
+      items,
+      paginatedData,
+      isLoading,
+      error,
+      refetch,
+      page,
+      setPage,
+      searchInput,
+      setSearchInput,
+    },
+    form: {
+      register,
+      handleSubmit,
+      errors,
+      setValue,
+      setError,
+      watch,
+      unmappedViolations,
+      onSubmit,
+    },
     dialogs,
     mutations,
-    onSubmit,
   };
 }
