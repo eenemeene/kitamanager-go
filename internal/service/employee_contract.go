@@ -178,10 +178,19 @@ func (s *EmployeeService) CreateContract(ctx context.Context, employeeID, orgID 
 	return &resp, nil
 }
 
-// BatchUpdateContracts atomically updates multiple contracts for an employee.
-// Unlike single UpdateContract, batch updates are always in-place (no amend mode).
-
-// DeleteContract deletes a contract, validating it belongs to an employee in the specified organization
+// DeleteContract removes one contract, leaving a hole in the timeline where it
+// was. That is deliberate, and the redesign plan's open question about it is
+// settled here: nothing repairs the gap.
+//
+// A gap is a modelled state rather than damage. The timeline renders it as a
+// first-class item with a day count, and staff genuinely do leave and come
+// back. Stretching a neighbour to close the hole would invent contract dates
+// nobody agreed to, and those dates drive the ISBJ bill.
+//
+// It is safe to leave because the date lookup is a containment test
+// (from <= d AND (to IS NULL OR to >= d)), so a date inside the hole resolves to
+// no contract rather than to whichever row happens to be nearest.
+// TestChildService_DeleteContract_LeavesGap (the child equivalent) pins all of that.
 func (s *EmployeeService) DeleteContract(ctx context.Context, contractID, employeeID, orgID uint, expectedVersion *int64) error {
 	// Security: Validate employee belongs to the specified organization (use minimal query - no preloads needed)
 	employee, err := s.store.FindByIDMinimal(ctx, employeeID)
@@ -240,14 +249,3 @@ func (s *EmployeeService) GetContractByID(ctx context.Context, contractID, emplo
 	resp := contract.ToResponse()
 	return &resp, nil
 }
-
-// UpdateContract updates an existing contract with amend semantics.
-// - Contract started today or in the future -> update in place
-// - Contract started before today -> end old contract (yesterday), create new contract (today) with changes
-// - Contract already ended -> reject with 400
-
-// applyEmployeeContractFields applies update request fields to an employee contract.
-
-// updateContractInPlace applies changes directly to the existing employee contract.
-
-// amendContract closes the old employee contract and creates a new one with changes applied.
