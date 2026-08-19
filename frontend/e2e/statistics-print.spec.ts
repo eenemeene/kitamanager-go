@@ -63,6 +63,36 @@ test.describe('Statistics Print Pages', () => {
     await expect(page.getByText(/age distribution/i).first()).toBeVisible({ timeout: 10000 });
   });
 
+  test('the monthly report print page carries the figures it summarises', async ({ page }) => {
+    // The fifth print view, and the only one that had no test. It is not another
+    // chart page -- it is the whole monthly report a Kita hands over, so the
+    // summary figures are the point rather than the layout.
+    await page.goto(`/organizations/${orgId}/statistics/report/print`);
+    await page.waitForLoadState('load');
+
+    await expect(page.getByRole('heading', { name: /kitamanager report/i }).first()).toBeVisible({
+      timeout: 15000,
+    });
+    await expect(page.getByRole('button', { name: /print/i })).toBeVisible();
+
+    // Each headline number, and an actual value beside it -- a report that
+    // renders its labels over blanks is worse than one that fails to load,
+    // because it looks finished.
+    for (const label of [
+      /active children/i,
+      /active employees/i,
+      /total income/i,
+      /total expenses/i,
+      /balance/i,
+    ]) {
+      await expect(page.getByText(label).first()).toBeVisible({ timeout: 15000 });
+    }
+    await expect(page.locator('body')).toContainText(/\d[\d.,]*\s*€/);
+
+    // Same chrome rule as the other print views: no sidebar on paper.
+    await expect(page.locator('[class*="sidebar"]')).toHaveCount(0);
+  });
+
   test('print page redirects to login when unauthenticated', async ({ page }) => {
     // Clear cookies to simulate unauthenticated state
     await page.context().clearCookies();

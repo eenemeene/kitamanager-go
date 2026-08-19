@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { login } from './utils/test-helpers';
+import { login, getFirstOrganization, navigateViaMobileSidebar } from './utils/test-helpers';
 
 // Ensure English locale for all tests
 test.use({ locale: 'en-US' });
@@ -16,19 +16,7 @@ test.describe('Responsive Layout - Mobile', () => {
     await page.waitForLoadState('load');
 
     // Open mobile sidebar to navigate
-    const hamburger = page.getByRole('button', { name: /menu/i });
-    await expect(hamburger).toBeVisible({ timeout: 10000 });
-    await hamburger.click();
-
-    const sidebarOverlay = page.locator('div.fixed.inset-0.z-50');
-    await expect(sidebarOverlay).toBeVisible({ timeout: 5000 });
-
-    // Navigate to children via org-scoped nav
-    const childrenLink = sidebarOverlay.getByRole('link', { name: /children/i }).first();
-    await expect(childrenLink).toBeVisible();
-    await childrenLink.click();
-
-    await page.waitForLoadState('load');
+    await navigateViaMobileSidebar(page, /children/i, /\/children$/);
 
     // Name and Actions columns should be visible
     const nameHeader = page.getByRole('columnheader', { name: /name/i });
@@ -39,26 +27,51 @@ test.describe('Responsive Layout - Mobile', () => {
     await expect(genderHeader).not.toBeVisible();
   });
 
-  test('should stack filter bar on mobile', async ({ page }) => {
-    // Navigate to children page
+  test('the filter controls wrap instead of overflowing', async ({ page }) => {
+    // This used to assert that `.flex.flex-wrap.items-center` was visible. Two
+    // problems: that class string matches the page-header action bar first, not
+    // the filter bar, and "is visible" says nothing about wrapping. It could not
+    // fail, and it was not even looking at the right element.
+    //
+    // What flex-wrap is for is that every control stays reachable on a narrow
+    // screen rather than running off the side, so that is what is measured:
+    // the controls sit on more than one row here, and none of them is clipped.
+    // Straight to the page. The sidebar is not what this measures, and routing
+    // through it would import an unrelated failure mode.
+    const org = await getFirstOrganization(page);
+    await page.goto(`/organizations/${org.id}/children`);
     await page.waitForLoadState('load');
 
-    const hamburger = page.getByRole('button', { name: /menu/i });
-    await expect(hamburger).toBeVisible({ timeout: 10000 });
-    await hamburger.click();
+    const stepper = page.getByTestId('month-stepper-value');
+    const search = page.locator('#search-children');
+    await expect(stepper).toBeVisible({ timeout: 10000 });
+    await expect(search).toBeVisible();
 
-    const sidebarOverlay = page.locator('div.fixed.inset-0.z-50');
-    await expect(sidebarOverlay).toBeVisible({ timeout: 5000 });
+    const stepperBox = await stepper.boundingBox();
+    const searchBox = await search.boundingBox();
+    expect(stepperBox, 'the month stepper should be laid out').not.toBeNull();
+    expect(searchBox, 'the search box should be laid out').not.toBeNull();
 
-    const childrenLink = sidebarOverlay.getByRole('link', { name: /children/i }).first();
-    await expect(childrenLink).toBeVisible();
-    await childrenLink.click();
+    // Different rows: at 375px these cannot sit side by side, so a shared row
+    // means the bar stopped wrapping and something is off screen.
+    const stepperMid = stepperBox!.y + stepperBox!.height / 2;
+    const searchMid = searchBox!.y + searchBox!.height / 2;
+    expect(
+      Math.abs(stepperMid - searchMid),
+      'the filter controls should wrap onto separate rows on a phone'
+    ).toBeGreaterThan(8);
 
-    await page.waitForLoadState('load');
-
-    // Filter controls should be visible and wrapped (flex-wrap)
-    const filterBar = page.locator('.flex.flex-wrap.items-center').first();
-    await expect(filterBar).toBeVisible({ timeout: 10000 });
+    // And nothing runs off the side, which is the point of wrapping at all.
+    const viewport = page.viewportSize()!;
+    for (const [name, box] of [
+      ['month stepper', stepperBox!],
+      ['search box', searchBox!],
+    ] as const) {
+      expect(box.x, `${name} should start inside the viewport`).toBeGreaterThanOrEqual(-1);
+      expect(box.x + box.width, `${name} should end inside the viewport`).toBeLessThanOrEqual(
+        viewport.width + 1
+      );
+    }
   });
 });
 

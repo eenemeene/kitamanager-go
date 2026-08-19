@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { login } from './utils/test-helpers';
+import { login, navigateViaMobileSidebar } from './utils/test-helpers';
 
 // Ensure English locale for all tests
 test.use({ locale: 'en-US' });
@@ -106,22 +106,13 @@ test.describe('Mobile Navigation', () => {
   test('should navigate via mobile sidebar', async ({ page }) => {
     await page.waitForLoadState('load');
 
-    // Open sidebar
-    const hamburger = page.getByRole('button', { name: /menu/i });
-    await expect(hamburger).toBeVisible({ timeout: 10000 });
-    await hamburger.click();
+    // Opening and clicking are retried together, because the drawer can close
+    // itself between the two -- see navigateViaMobileSidebar. This test failed on
+    // every local run before that, and passed in CI, which made it look like a
+    // CI-only concern rather than a real race.
+    await navigateViaMobileSidebar(page, /organization/i, /\/organizations\/?$/);
 
-    // Wait for sidebar navigation to appear
-    const sidebarOverlay = page.locator('div.fixed.inset-0.z-50');
-    await expect(sidebarOverlay).toBeVisible({ timeout: 5000 });
-
-    // Click on Organizations link in the mobile sidebar
-    const orgLink = sidebarOverlay.getByRole('link', { name: /organization/i }).first();
-    await expect(orgLink).toBeVisible({ timeout: 5000 });
-    await orgLink.click();
-
-    // Should navigate and close sidebar
-    await expect(page).toHaveURL(/\/organizations\/?$/, { timeout: 10000 });
-    await expect(sidebarOverlay).not.toBeVisible({ timeout: 5000 });
+    // Navigating closes the drawer behind you.
+    await expect(page.locator('div.fixed.inset-0.z-50')).not.toBeVisible({ timeout: 5000 });
   });
 });

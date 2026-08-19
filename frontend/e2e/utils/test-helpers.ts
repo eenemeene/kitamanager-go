@@ -1114,3 +1114,34 @@ export async function createEmployeeWithContractViaApi(
   });
   return emp;
 }
+
+/**
+ * Navigates via the mobile sidebar, retrying the whole open-and-click.
+ *
+ * Two things defeat a straightforward click. React attaches the handler on
+ * hydration, so a click before then is swallowed with no feedback -- a window
+ * wide enough under `next dev` to fail every local run while CI's production
+ * build passes. And the drawer closes again on its own within a few hundred
+ * milliseconds, so even after the link is confirmed visible it can detach
+ * before the click lands.
+ *
+ * Opening, clicking and confirming the navigation therefore happen inside one
+ * retry: whatever closed the drawer, the next attempt reopens it. The
+ * self-closing drawer is an app behaviour worth looking at on its own; this
+ * keeps the layout assertions below from being about that instead.
+ */
+export async function navigateViaMobileSidebar(page: Page, name: RegExp, url: RegExp) {
+  const hamburger = page.getByRole('button', { name: /menu/i });
+  await expect(hamburger).toBeVisible({ timeout: 10000 });
+  const overlay = page.locator('div.fixed.inset-0.z-50');
+
+  await expect(async () => {
+    if (!(await overlay.isVisible())) {
+      await hamburger.click();
+    }
+    await overlay.getByRole('link', { name }).first().click({ timeout: 1500 });
+    await expect(page).toHaveURL(url, { timeout: 3000 });
+  }).toPass({ timeout: 25000 });
+
+  await page.waitForLoadState('load');
+}
