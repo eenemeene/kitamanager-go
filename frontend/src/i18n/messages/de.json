@@ -515,6 +515,7 @@
     "kannKind": "Kann {year}",
     "schoolEnrollmentTooltip": "Einschulungsregel (Berlin): Muss-Kinder werden im August des Jahres eingeschult, in dem sie bis zum 30. September 6 Jahre alt werden. Kann-Kinder (6. Geburtstag zwischen 1. Oktober und 31. März) können ein Jahr früher eingeschult werden.",
     "contractRunsPastSchoolStart": "Vertragsende liegt nach dem voraussichtlichen Schulanfang ({date}) – ggf. anpassen.",
+    "contractHasNoEndPastSchoolStart": "Vertrag hat kein Enddatum, der voraussichtliche Schulanfang ({date}) ist bereits vorbei – ggf. setzen.",
     "adjustContractEnd": "Vertragsende auf {date} setzen",
     "contractEndAdjusted": "Vertragsende auf {date} gesetzt",
     "exportYaml": "YAML Export",
