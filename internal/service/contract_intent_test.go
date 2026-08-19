@@ -26,6 +26,7 @@ import (
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
+	"github.com/eenemeene/kitamanager-go/internal/store"
 )
 
 // assertAppError checks the HTTP status and, when given, the machine-readable
@@ -851,5 +852,114 @@ func TestChildService_MoveBoundary_ForwardNeedsDeferredConstraint(t *testing.T) 
 	}
 	if l.To == nil || !l.To.Equal(date(2026, 6, 30)) {
 		t.Errorf("later to = %v, want 2026-06-30 — a one-day contract, but not a cleared one", l.To)
+	}
+}
+
+// TestChildService_DeleteContract_LeavesGap pins the decision the redesign plan
+// deferred: deleting a contract from the middle of a timeline leaves a hole, and
+// that is correct rather than something to repair.
+//
+// A gap is a modelled state, not damage. The timeline renders it as a first-class
+// item with a day count, and an e2e test asserts the indicator appears. Children
+// do leave and come back. Closing the hole by stretching a neighbour would invent
+// contract dates nobody agreed to, and those dates drive the ISBJ bill.
+//
+// So the assertions are that nothing else moved -- including the neighbours'
+// versions, which is what would give away a "helpful" rewrite -- and that a date
+// inside the hole resolves to no contract at all.
+func TestChildService_DeleteContract_LeavesGap(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	// The date-scoped lookup lives on the store; the service only exposes
+	// "current". Reaching for it directly is what lets this assert the gap on a
+	// fixed date instead of pinning the clock.
+	contracts := store.NewChildStore(db).Contracts()
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Gap Org")
+	section := createTestSection(t, db, "Nest", org.ID, false)
+	child := createTestChild(t, db, "Gap", "Child", org.ID)
+
+	// 2026: Jan–Mar | Apr–Jun | Jul–onwards
+	first := &models.ChildContract{ChildID: child.ID, BaseContract: models.BaseContract{
+		Period:     models.Period{From: date(2026, 1, 1), To: timePtr(date(2026, 3, 31))},
+		SectionID:  section.ID,
+		Properties: models.ContractProperties{"care_type": "halbtag", "ndh": "ndh"},
+	}}
+	second := &models.ChildContract{ChildID: child.ID, BaseContract: models.BaseContract{
+		Period:     models.Period{From: date(2026, 4, 1), To: timePtr(date(2026, 6, 30))},
+		SectionID:  section.ID,
+		Properties: models.ContractProperties{"care_type": "ganztag", "integration": "integration a"},
+	}}
+	third := &models.ChildContract{ChildID: child.ID, BaseContract: models.BaseContract{
+		Period:     models.Period{From: date(2026, 7, 1)},
+		SectionID:  section.ID,
+		Properties: models.ContractProperties{"care_type": "ganztag"},
+	}}
+	for _, c := range []*models.ChildContract{first, second, third} {
+		if err := db.Create(c).Error; err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+
+	if err := svc.DeleteContract(ctx, second.ID, child.ID, org.ID, &second.Version); err != nil {
+		t.Fatalf("delete middle contract: %v", err)
+	}
+
+	// It is really gone, rather than closed or soft-deleted into the timeline.
+	var count int64
+	if err := db.Model(&models.ChildContract{}).Where("id = ?", second.ID).Count(&count).Error; err != nil {
+		t.Fatalf("count deleted: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("deleted contract still present: count = %d", count)
+	}
+
+	// Neither neighbour was stretched to cover the hole, and neither was
+	// rewritten at all -- an unchanged Version is what proves the second part.
+	var reloadedFirst models.ChildContract
+	if err := db.First(&reloadedFirst, first.ID).Error; err != nil {
+		t.Fatalf("reload first: %v", err)
+	}
+	if !reloadedFirst.From.Equal(date(2026, 1, 1)) ||
+		reloadedFirst.To == nil || !reloadedFirst.To.Equal(date(2026, 3, 31)) {
+		t.Errorf("first contract moved: from=%v to=%v", reloadedFirst.From, reloadedFirst.To)
+	}
+	if reloadedFirst.Version != first.Version {
+		t.Errorf("first contract was rewritten: version %d -> %d", first.Version, reloadedFirst.Version)
+	}
+	if reloadedFirst.Properties["care_type"] != "halbtag" || reloadedFirst.Properties["ndh"] != "ndh" {
+		t.Errorf("first properties = %v, want preserved", reloadedFirst.Properties)
+	}
+
+	var reloadedThird models.ChildContract
+	if err := db.First(&reloadedThird, third.ID).Error; err != nil {
+		t.Fatalf("reload third: %v", err)
+	}
+	if !reloadedThird.From.Equal(date(2026, 7, 1)) || reloadedThird.To != nil {
+		t.Errorf("third contract moved: from=%v to=%v", reloadedThird.From, reloadedThird.To)
+	}
+	if reloadedThird.Version != third.Version {
+		t.Errorf("third contract was rewritten: version %d -> %d", third.Version, reloadedThird.Version)
+	}
+
+	// And the hole reads as a hole. This is what makes leaving it safe: the
+	// lookup is a containment test, so it answers "no contract" rather than
+	// handing back whichever row happens to be nearest.
+	current, err := contracts.GetRecordOn(ctx, child.ID, date(2026, 5, 15))
+	if err != nil {
+		t.Fatalf("get record inside the gap: %v", err)
+	}
+	if current != nil {
+		t.Errorf("a date inside the gap resolved to contract %d, want none", current.ID)
+	}
+
+	// The contracts on either side still resolve, so the gap is a gap and not a
+	// hole punched through the whole timeline.
+	if before, err := contracts.GetRecordOn(ctx, child.ID, date(2026, 2, 15)); err != nil || before == nil {
+		t.Errorf("date before the gap should still resolve: %v, err=%v", before, err)
+	}
+	if after, err := contracts.GetRecordOn(ctx, child.ID, date(2026, 8, 15)); err != nil || after == nil {
+		t.Errorf("date after the gap should still resolve: %v, err=%v", after, err)
 	}
 }

@@ -356,42 +356,6 @@ func (h *ChildHandler) CreateContract(c *gin.Context) {
 		func(r *models.ChildContractResponse) (uint, uint) { return r.ID, r.ChildID })
 }
 
-// UpdateContract godoc
-// @Summary Update child contract
-// @Description Update an existing contract by ID. Date rules as for creation: both dates
-// @Description inclusive, same-day contracts allowed, no overlaps.
-// @Description
-// @Description IMPORTANT — what happens depends on when the contract started, because changing a
-// @Description past contract in place would silently recompute funding for months already billed:
-// @Description
-// @Description   - started BEFORE today: the contract is AMENDED, not edited. The existing row is
-// @Description     closed with to = yesterday and a NEW contract is created starting TODAY carrying
-// @Description     the changes. Any `from` in the request is IGNORED; `to`, if given, applies to the
-// @Description     new contract, so a `to` in the past is rejected (400) as from-after-to.
-// @Description   - starts TODAY or later: updated in place.
-// @Description   - already ENDED (to before today): rejected with 400.
-// @Description
-// @Description So this endpoint records a change going FORWARD. To correct a historical timeline —
-// @Description move a boundary into the past — use the batch endpoint instead.
-// @Description
-// @Description Nullable fields (`to`, `properties`) are replaced wholesale: omitting one CLEARS it.
-// @Description Send the full properties map on every update unless you mean to remove them.
-// @Tags children
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param orgId path int true "Organization ID"
-// @Param childId path int true "Child ID"
-// @Param contractId path int true "Contract ID"
-// @Param request body models.ChildContractUpdateRequest true "Contract data"
-// @Success 200 {object} models.ChildContractResponse
-// @Failure 400 {object} models.ErrorResponse "Invalid request (e.g., from date after to date)"
-// @Failure 401 {object} models.ErrorResponse
-// @Failure 404 {object} models.ErrorResponse "Contract not found"
-// @Failure 409 {object} models.ErrorResponse "Updated dates would overlap with another contract"
-// @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/{childId}/contracts/{contractId} [put]
-
 // childContractChanges builds the audit diff for a child contract. Properties
 // carry the funding-relevant fields (care_type plus supplements), which is why
 // they get their own map-aware comparison — see recordPropertiesChange.
@@ -403,37 +367,6 @@ func childContractChanges(before, after *models.ChildContractResponse) map[strin
 	recordPropertiesChange(changes, "properties", before.Properties, after.Properties)
 	return changes
 }
-
-// BatchUpdateContracts godoc
-// @Summary Batch update child contracts
-// @Description Atomically update multiple contracts for a child. This is the endpoint for
-// @Description CORRECTING A HISTORICAL TIMELINE: unlike the single-contract PUT there is NO amend
-// @Description mode, so dates and fields are written in place even on contracts that started — or
-// @Description ended — in the past. It backs the timeline boundary drag in the UI.
-// @Description
-// @Description Entries are PARTIAL: a field you omit keeps its current value, with one exception —
-// @Description `to` is CLEARED when omitted, because that is how a contract is set back to ongoing.
-// @Description Always send `to` explicitly when you want to keep it, otherwise a contract that has a
-// @Description successor becomes ongoing and collides with it (409). `properties` is carried forward
-// @Description when omitted; send an empty object to clear it deliberately.
-// @Description
-// @Description Adjacent ranges may be swapped within one request (extend A's `to`, shift B's `from`):
-// @Description the no-overlap constraint is deferred to commit, so only the final state must be
-// @Description valid. If any entry fails, the whole batch is rolled back.
-// @Tags children
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param orgId path int true "Organization ID"
-// @Param childId path int true "Child ID"
-// @Param request body models.ChildContractBatchUpdateRequest true "Batch update data"
-// @Success 200 {array} models.ChildContractResponse
-// @Failure 400 {object} models.ErrorResponse "Invalid request (e.g., duplicate IDs, invalid dates)"
-// @Failure 401 {object} models.ErrorResponse
-// @Failure 404 {object} models.ErrorResponse "Child or contract not found"
-// @Failure 409 {object} models.ErrorResponse "Updated dates would overlap"
-// @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/children/{childId}/contracts/batch [put]
 
 // DeleteContract godoc
 // @Summary Delete child contract

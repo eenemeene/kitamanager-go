@@ -349,42 +349,6 @@ func (h *EmployeeHandler) GetContract(c *gin.Context) {
 	handleGetContract(c, "employeeId", h.service.GetContractByID)
 }
 
-// UpdateContract godoc
-// @Summary Update employee contract
-// @Description Update an existing contract by ID. Date rules as for creation: both dates
-// @Description inclusive, same-day contracts allowed, no overlaps.
-// @Description
-// @Description IMPORTANT — what happens depends on when the contract started, because changing a
-// @Description past contract in place would silently recompute funding for months already billed:
-// @Description
-// @Description   - started BEFORE today: the contract is AMENDED, not edited. The existing row is
-// @Description     closed with to = yesterday and a NEW contract is created starting TODAY carrying
-// @Description     the changes. Any `from` in the request is IGNORED; `to`, if given, applies to the
-// @Description     new contract, so a `to` in the past is rejected (400) as from-after-to.
-// @Description   - starts TODAY or later: updated in place.
-// @Description   - already ENDED (to before today): rejected with 400.
-// @Description
-// @Description So this endpoint records a change going FORWARD. To correct a historical timeline —
-// @Description move a boundary into the past — use the batch endpoint instead.
-// @Description
-// @Description Nullable fields (`to`, `properties`) are replaced wholesale: omitting one CLEARS it.
-// @Description Send the full properties map on every update unless you mean to remove them.
-// @Tags employees
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param orgId path int true "Organization ID"
-// @Param employeeId path int true "Employee ID"
-// @Param contractId path int true "Contract ID"
-// @Param request body models.EmployeeContractUpdateRequest true "Contract data"
-// @Success 200 {object} models.EmployeeContractResponse
-// @Failure 400 {object} models.ErrorResponse "Invalid request (e.g., from date after to date)"
-// @Failure 401 {object} models.ErrorResponse
-// @Failure 404 {object} models.ErrorResponse "Contract not found"
-// @Failure 409 {object} models.ErrorResponse "Updated dates would overlap with another contract"
-// @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/{contractId} [put]
-
 // employeeContractChanges builds the audit diff for an employee contract. The
 // salary-bearing fields (grade, step, weekly hours, pay plan) are plain
 // comparables; properties need the map-aware comparison.
@@ -401,37 +365,6 @@ func employeeContractChanges(before, after *models.EmployeeContractResponse) map
 	recordPropertiesChange(changes, "properties", before.Properties, after.Properties)
 	return changes
 }
-
-// BatchUpdateContracts godoc
-// @Summary Batch update employee contracts
-// @Description Atomically update multiple contracts for an employee. This is the endpoint for
-// @Description CORRECTING A HISTORICAL TIMELINE: unlike the single-contract PUT there is NO amend
-// @Description mode, so dates and fields are written in place even on contracts that started — or
-// @Description ended — in the past. It backs the timeline boundary drag in the UI.
-// @Description
-// @Description Entries are PARTIAL: a field you omit keeps its current value, with one exception —
-// @Description `to` is CLEARED when omitted, because that is how a contract is set back to ongoing.
-// @Description Always send `to` explicitly when you want to keep it, otherwise a contract that has a
-// @Description successor becomes ongoing and collides with it (409). `properties` is carried forward
-// @Description when omitted; send an empty object to clear it deliberately.
-// @Description
-// @Description Adjacent ranges may be swapped within one request (extend A's `to`, shift B's `from`):
-// @Description the no-overlap constraint is deferred to commit, so only the final state must be
-// @Description valid. If any entry fails, the whole batch is rolled back.
-// @Tags employees
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param orgId path int true "Organization ID"
-// @Param employeeId path int true "Employee ID"
-// @Param request body models.EmployeeContractBatchUpdateRequest true "Batch update data"
-// @Success 200 {array} models.EmployeeContractResponse
-// @Failure 400 {object} models.ErrorResponse "Invalid request (e.g., duplicate IDs, invalid dates)"
-// @Failure 401 {object} models.ErrorResponse
-// @Failure 404 {object} models.ErrorResponse "Employee or contract not found"
-// @Failure 409 {object} models.ErrorResponse "Updated dates would overlap"
-// @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/organizations/{orgId}/employees/{employeeId}/contracts/batch [put]
 
 // DeleteContract godoc
 // @Summary Delete employee contract
