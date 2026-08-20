@@ -6,7 +6,7 @@
  *   - Kann-Kind: turns 6 between Oct 1 and Mar 31 of the following calendar
  *     year → parents may apply for early enrollment the preceding August.
  */
-import { toUTCDate, todayBerlin } from './contracts';
+import { getDayBefore, toUTCDate, todayBerlin } from './contracts';
 
 type StateRules = {
   stichtag: { month: number; day: number };
@@ -60,14 +60,37 @@ export function calculateContractEndDate(birthdate: string, state: string): stri
  * an open-ended contract past the school start now raises its own warning in
  * the children table.
  */
-export function suggestContractEnd(birthdate: string, state: string, notBefore?: string): string {
-  const suggested = calculateContractEndDate(birthdate, state);
+export function suggestContractEnd(
+  birthdate: string,
+  state: string,
+  notBefore?: string,
+  schoolEntryDate?: string | null
+): string {
+  // A recorded entry date wins: the child leaves the day before it, whatever
+  // the birthdate would have implied.
+  const suggested = schoolEntryDate
+    ? getDayBefore(schoolEntryDate.slice(0, 10))
+    : calculateContractEndDate(birthdate, state);
   if (!suggested) return '';
   const floor = notBefore ? toUTCDate(notBefore) : todayBerlin();
   return toUTCDate(suggested) < floor ? '' : suggested;
 }
 
 export type SchoolEnrollment = {
+  /**
+   * True when these dates come from a recorded school-entry date rather than
+   * from the birthdate -- a Zurückstellung, most often. Worth surfacing rather
+   * than silently showing the new year: it is the difference between "this is
+   * when the rule says" and "somebody was told otherwise".
+   */
+  overridden: boolean;
+  /**
+   * The year the birthdate alone implies, kept alongside an override so a caller
+   * can say which way it diverges -- later is a Zurückstellung, earlier an early
+   * entry. Null when the state has no rules to derive it from, which is the one
+   * case where an override tells us the date without telling us the reason.
+   */
+  computedMussYear: number | null;
   /** Calendar year of the August school-start where the child is a Muss-Kind. */
   mussYear: number;
   /** Calendar year of the earlier August school-start where the child may apply as Kann-Kind, or null. */
@@ -86,8 +109,28 @@ export type SchoolEnrollment = {
  */
 export function classifySchoolEnrollment(
   birthdate: string,
-  state: string
+  state: string,
+  schoolEntryDate?: string | null
 ): SchoolEnrollment | null {
+  // A recorded entry date answers the question outright, so it is checked
+  // before the state rules and works even for a state we have no rules for --
+  // knowing the date does not depend on being able to derive it.
+  const override = schoolEntryDate ? parseBirthdate(schoolEntryDate) : null;
+  if (override) {
+    const bd = parseBirthdate(birthdate);
+    const rules = rulesByState[state];
+    return {
+      overridden: true,
+      computedMussYear: bd && rules ? computeMussYear(bd, rules.stichtag) : null,
+      mussYear: override.getFullYear(),
+      // Kann is a question about which year the child *could* start. Once a
+      // decision is on file it is answered, so offering the alternative is noise.
+      kannYear: null,
+      mussContractEnd: getDayBefore(schoolEntryDate!.slice(0, 10)),
+      kannContractEnd: null,
+    };
+  }
+
   if (!birthdate || !state) return null;
   const bd = parseBirthdate(birthdate);
   if (!bd) return null;
@@ -98,6 +141,8 @@ export function classifySchoolEnrollment(
   const kannYear = computeKannYear(bd, rules, mussYear);
 
   return {
+    overridden: false,
+    computedMussYear: mussYear,
     mussYear,
     kannYear,
     mussContractEnd: `${mussYear}-07-31`,

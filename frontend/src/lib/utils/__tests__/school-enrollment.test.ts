@@ -62,6 +62,8 @@ describe('classifySchoolEnrollment', () => {
     // Child born Jun 1, 2020 → turns 6 Jun 1, 2026 (Apr–Sep 2026 → no Kann window match)
     it('classifies an April–September birthday as Muss-only', () => {
       expect(classifySchoolEnrollment('2020-06-01', 'berlin')).toEqual({
+        overridden: false,
+        computedMussYear: 2026,
         mussYear: 2026,
         kannYear: null,
         mussContractEnd: '2026-07-31',
@@ -71,6 +73,8 @@ describe('classifySchoolEnrollment', () => {
 
     it('classifies Sep 30 (on Stichtag) as Muss-only', () => {
       expect(classifySchoolEnrollment('2020-09-30', 'berlin')).toEqual({
+        overridden: false,
+        computedMussYear: 2026,
         mussYear: 2026,
         kannYear: null,
         mussContractEnd: '2026-07-31',
@@ -80,6 +84,8 @@ describe('classifySchoolEnrollment', () => {
 
     it('classifies Apr 1 as Muss-only (one day after Kann window closes)', () => {
       expect(classifySchoolEnrollment('2021-04-01', 'berlin')).toEqual({
+        overridden: false,
+        computedMussYear: 2027,
         mussYear: 2027,
         kannYear: null,
         mussContractEnd: '2027-07-31',
@@ -94,6 +100,8 @@ describe('classifySchoolEnrollment', () => {
     // also Kann the August before (at age 5½).
     it('classifies a January birthday (before Stichtag) as Muss and Kann', () => {
       expect(classifySchoolEnrollment('2020-01-15', 'berlin')).toEqual({
+        overridden: false,
+        computedMussYear: 2026,
         mussYear: 2026,
         kannYear: 2025,
         mussContractEnd: '2026-07-31',
@@ -103,6 +111,8 @@ describe('classifySchoolEnrollment', () => {
 
     it('classifies Oct 1 as Kann-eligible (window start)', () => {
       expect(classifySchoolEnrollment('2020-10-01', 'berlin')).toEqual({
+        overridden: false,
+        computedMussYear: 2027,
         mussYear: 2027,
         kannYear: 2026,
         mussContractEnd: '2027-07-31',
@@ -112,6 +122,8 @@ describe('classifySchoolEnrollment', () => {
 
     it('classifies a late-autumn birthday as Kann-eligible', () => {
       expect(classifySchoolEnrollment('2020-11-15', 'berlin')).toEqual({
+        overridden: false,
+        computedMussYear: 2027,
         mussYear: 2027,
         kannYear: 2026,
         mussContractEnd: '2027-07-31',
@@ -121,6 +133,8 @@ describe('classifySchoolEnrollment', () => {
 
     it('classifies a Dec 31 birthday as Kann-eligible', () => {
       expect(classifySchoolEnrollment('2019-12-31', 'berlin')).toEqual({
+        overridden: false,
+        computedMussYear: 2026,
         mussYear: 2026,
         kannYear: 2025,
         mussContractEnd: '2026-07-31',
@@ -130,6 +144,8 @@ describe('classifySchoolEnrollment', () => {
 
     it('classifies a February birthday as Kann-eligible', () => {
       expect(classifySchoolEnrollment('2021-02-15', 'berlin')).toEqual({
+        overridden: false,
+        computedMussYear: 2027,
         mussYear: 2027,
         kannYear: 2026,
         mussContractEnd: '2027-07-31',
@@ -139,6 +155,8 @@ describe('classifySchoolEnrollment', () => {
 
     it('classifies Mar 31 as Kann-eligible (window end, inclusive)', () => {
       expect(classifySchoolEnrollment('2021-03-31', 'berlin')).toEqual({
+        overridden: false,
+        computedMussYear: 2027,
         mussYear: 2027,
         kannYear: 2026,
         mussContractEnd: '2027-07-31',
@@ -168,6 +186,8 @@ describe('classifySchoolEnrollment', () => {
     // accept that shape in addition to the form's "YYYY-MM-DD" input.
     it('accepts an ISO datetime birthdate (as returned by the API)', () => {
       expect(classifySchoolEnrollment('2020-01-15T00:00:00Z', 'berlin')).toEqual({
+        overridden: false,
+        computedMussYear: 2026,
         mussYear: 2026,
         kannYear: 2025,
         mussContractEnd: '2026-07-31',
@@ -224,5 +244,64 @@ describe('suggestContractEnd', () => {
     expect(suggestContractEnd('2021-08-20', 'bayern')).toBe('2027-07-31'); // lenient fallback
     expect(suggestContractEnd('', 'berlin')).toBe('');
     expect(suggestContractEnd('2021-08-20', '')).toBe('');
+  });
+});
+
+describe('a recorded school entry date (Zurückstellung)', () => {
+  // Born 2020-05-15: six before the 30 Sep Stichtag, so the birthdate alone
+  // says school in 2026 and Kita until 2026-07-31.
+  const birthdate = '2020-05-15';
+
+  it('overrides the computed year and end date', () => {
+    const e = classifySchoolEnrollment(birthdate, 'berlin', '2027-08-01');
+    expect(e).not.toBeNull();
+    expect(e!.overridden).toBe(true);
+    expect(e!.mussYear).toBe(2027);
+    expect(e!.mussContractEnd).toBe('2027-07-31');
+  });
+
+  it('keeps the computed year so a caller can say which way it diverges', () => {
+    const deferred = classifySchoolEnrollment(birthdate, 'berlin', '2027-08-01');
+    expect(deferred!.computedMussYear).toBe(2026);
+    expect(deferred!.mussYear).toBeGreaterThan(deferred!.computedMussYear!);
+
+    const early = classifySchoolEnrollment(birthdate, 'berlin', '2025-08-01');
+    expect(early!.mussYear).toBeLessThan(early!.computedMussYear!);
+  });
+
+  it('drops the Kann alternative once a decision is on file', () => {
+    const e = classifySchoolEnrollment(birthdate, 'berlin', '2027-08-01');
+    expect(e!.kannYear).toBeNull();
+    expect(e!.kannContractEnd).toBeNull();
+  });
+
+  it('answers even for a state with no rules', () => {
+    // Knowing the date does not depend on being able to derive it.
+    const e = classifySchoolEnrollment(birthdate, 'bayern', '2027-08-01');
+    expect(e).not.toBeNull();
+    expect(e!.mussContractEnd).toBe('2027-07-31');
+    expect(e!.computedMussYear).toBeNull();
+  });
+
+  it('accepts the API date-time form, not just YYYY-MM-DD', () => {
+    const e = classifySchoolEnrollment(birthdate, 'berlin', '2027-08-01T00:00:00Z');
+    expect(e!.mussContractEnd).toBe('2027-07-31');
+  });
+
+  it('falls back to the computed values when no date is recorded', () => {
+    const e = classifySchoolEnrollment(birthdate, 'berlin');
+    expect(e!.overridden).toBe(false);
+    expect(e!.mussYear).toBe(2026);
+    expect(e!.computedMussYear).toBe(2026);
+  });
+
+  it('drives the contract-end suggestion too', () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-08-20T09:00:00Z'));
+    // Without the recorded date this child is past their computed end and gets
+    // no suggestion at all; with it, the deferred year is offered.
+    expect(suggestContractEnd(birthdate, 'berlin', '2026-08-21')).toBe('');
+    expect(suggestContractEnd(birthdate, 'berlin', '2026-08-21', '2027-08-01')).toBe('2027-07-31');
+    jest.useRealTimers();
   });
 });

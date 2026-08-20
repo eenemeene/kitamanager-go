@@ -32,6 +32,7 @@
   "budget.name_exists": "Ein Budgetposten mit diesem Namen existiert bereits in der Organisation",
   "child.contract.from_required": "Kind {{.ChildIndex}}, Vertrag {{.ContractIndex}}: Startdatum ist erforderlich",
   "child.not_found_in_organization": "Kind {{.ChildID}} wurde in dieser Organisation nicht gefunden",
+  "child.school_entry_before_birthdate": "Der Einschulungstermin muss nach dem Geburtsdatum liegen",
   "contract.effective_from_before_start": "effective_from muss nach dem Vertragsbeginn liegen; korrigieren Sie den Vertrag stattdessen direkt",
   "contract.end_before_birthdate": "Das Vertragsende darf nicht vor dem Geburtsdatum liegen",
   "contract.ended_before_effective_from": "Der Vertrag endete bereits vor effective_from; eine Fortschreibung würde ihn verlängern",

@@ -6,7 +6,12 @@ import { endDateAfterStart } from './period';
 // childSchema reuses personBaseSchema. No top-level Person schema in the
 // API (the spec inlines person fields into ChildResponse), so no
 // satisfies target.
-export const childSchema = personBaseSchema;
+export const childSchema = personBaseSchema.extend({
+  // Child-only, so it extends rather than joins personBaseSchema -- employees
+  // keep using that untouched. Empty string means "no recorded date"; the
+  // submit handler turns it into an explicit null so a deferral can be undone.
+  school_entry_date: z.string().optional(),
+});
 
 // childContractSchema is form-only: the form's `properties` value is
 // `Record<string, string>` (single-value tags), while the API's

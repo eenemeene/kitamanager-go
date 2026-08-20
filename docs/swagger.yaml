@@ -390,6 +390,23 @@ definitions:
       organization_id:
         example: 1
         type: integer
+      school_entry_date:
+        description: |-
+          SchoolEntryDate is when the child leaves for school, when that is not the
+          date their birthdate implies -- a Zurückstellung being the reason it
+          usually differs. Nil means "compute it", which is what every child gets
+          until somebody records otherwise.
+
+          A date rather than a flag or a year offset: Bayern's Einschulungskorridor
+          and Bremen's Karenzzeit leave the regular date genuinely undecided for a
+          band of birthdates, so there is no base to offset from, and a Bayern
+          deferral granted up to 31 January does not land a whole number of years
+          from anything.
+
+          On Child and not Person: employees do not go to school.
+        example: "2028-08-01"
+        format: date-time
+        type: string
       updated_at:
         format: date-time
         type: string
@@ -775,6 +792,14 @@ definitions:
         example: Schmidt
         maxLength: 255
         type: string
+      school_entry_date:
+        description: |-
+          SchoolEntryDate is optional; omitted means the date is computed from the
+          birthdate. A plain pointer suffices here because on a create there is no
+          stored value that omitting could destroy.
+        example: "2028-08-01"
+        format: date-time
+        type: string
     required:
     - birthdate
     - first_name
@@ -864,6 +889,12 @@ definitions:
       organization_id:
         example: 1
         type: integer
+      school_entry_date:
+        description: Carries a yaml tag like its neighbours so a YAML round-trip preserves
+          it.
+        example: "2028-08-01"
+        format: date-time
+        type: string
       updated_at:
         format: date-time
         type: string
@@ -892,6 +923,16 @@ definitions:
         example: Schmidt
         maxLength: 255
         type: string
+      school_entry_date:
+        description: |-
+          Opt rather than *time.Time, unlike its neighbours above: a reversed
+          Zurückstellung has to be expressible, and `*T` collapses "left the field
+          alone" into "set it to null" -- so a plain pointer could record a deferral
+          and never undo one.
+        example: "2028-08-01"
+        format: date-time
+        type: string
+        x-nullable: true
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildVoucher:
     properties:
@@ -964,6 +1005,12 @@ definitions:
       organization_id:
         example: 1
         type: integer
+      school_entry_date:
+        description: Carries a yaml tag like its neighbours so a YAML round-trip preserves
+          it.
+        example: "2028-08-01"
+        format: date-time
+        type: string
       suggestions:
         items:
           $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.VoucherSuggestion'

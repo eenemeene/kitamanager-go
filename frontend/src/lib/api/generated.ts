@@ -2659,6 +2659,23 @@ export interface components {
       organization: components['schemas']['Organization'];
       /** @example 1 */
       organization_id: number;
+      /**
+       * Format: date-time
+       * @description SchoolEntryDate is when the child leaves for school, when that is not the
+       *     date their birthdate implies -- a Zurückstellung being the reason it
+       *     usually differs. Nil means "compute it", which is what every child gets
+       *     until somebody records otherwise.
+       *
+       *     A date rather than a flag or a year offset: Bayern's Einschulungskorridor
+       *     and Bremen's Karenzzeit leave the regular date genuinely undecided for a
+       *     band of birthdates, so there is no base to offset from, and a Bayern
+       *     deferral granted up to 31 January does not land a whole number of years
+       *     from anything.
+       *
+       *     On Child and not Person: employees do not go to school.
+       * @example 2028-08-01
+       */
+      school_entry_date: string;
       /** Format: date-time */
       updated_at: string;
       vouchers: components['schemas']['ChildVoucher'][];
@@ -2945,6 +2962,14 @@ export interface components {
       gender: 'male' | 'female' | 'diverse';
       /** @example Schmidt */
       last_name: string;
+      /**
+       * Format: date-time
+       * @description SchoolEntryDate is optional; omitted means the date is computed from the
+       *     birthdate. A plain pointer suffices here because on a create there is no
+       *     stored value that omitting could destroy.
+       * @example 2028-08-01
+       */
+      school_entry_date?: string;
     };
     ChildFundingEstimateRequest: {
       /**
@@ -3001,6 +3026,12 @@ export interface components {
       last_name: string;
       /** @example 1 */
       organization_id: number;
+      /**
+       * Format: date-time
+       * @description Carries a yaml tag like its neighbours so a YAML round-trip preserves it.
+       * @example 2028-08-01
+       */
+      school_entry_date: string;
       /** Format: date-time */
       updated_at: string;
       vouchers: string[];
@@ -3017,6 +3048,15 @@ export interface components {
       gender?: 'male' | 'female' | 'diverse';
       /** @example Schmidt */
       last_name?: string;
+      /**
+       * Format: date-time
+       * @description Opt rather than *time.Time, unlike its neighbours above: a reversed
+       *     Zurückstellung has to be expressible, and `*T` collapses "left the field
+       *     alone" into "set it to null" -- so a plain pointer could record a deferral
+       *     and never undo one.
+       * @example 2028-08-01
+       */
+      school_entry_date?: string | null;
     };
     ChildVoucher: {
       child_id: number;
@@ -3064,6 +3104,12 @@ export interface components {
       last_name: string;
       /** @example 1 */
       organization_id: number;
+      /**
+       * Format: date-time
+       * @description Carries a yaml tag like its neighbours so a YAML round-trip preserves it.
+       * @example 2028-08-01
+       */
+      school_entry_date: string;
       suggestions: components['schemas']['VoucherSuggestion'][];
       /** Format: date-time */
       updated_at: string;

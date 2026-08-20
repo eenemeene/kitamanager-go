@@ -32,6 +32,7 @@
   "budget.name_exists": "budget item with this name already exists in the organization",
   "child.contract.from_required": "child {{.ChildIndex}} contract {{.ContractIndex}}: from date is required",
   "child.not_found_in_organization": "child {{.ChildID}} not found in this organization",
+  "child.school_entry_before_birthdate": "school_entry_date must be after the birthdate",
   "contract.effective_from_before_start": "effective_from must be after the contract's start date; correct the contract in place instead",
   "contract.end_before_birthdate": "contract end date cannot be before birthdate",
   "contract.ended_before_effective_from": "the contract already ended before effective_from; amending it would extend it",

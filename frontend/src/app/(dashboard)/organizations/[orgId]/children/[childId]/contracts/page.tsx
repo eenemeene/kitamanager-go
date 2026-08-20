@@ -249,7 +249,7 @@ export default function ChildContractsPage() {
     if (child && orgState) {
       const birthdate = formatDateForInput(child.birthdate);
       if (birthdate) {
-        suggestedTo = suggestContractEnd(birthdate, orgState);
+        suggestedTo = suggestContractEnd(birthdate, orgState, undefined, child.school_entry_date);
       }
     }
     reset({ from: '', to: suggestedTo, section_id: 0, properties: undefined });

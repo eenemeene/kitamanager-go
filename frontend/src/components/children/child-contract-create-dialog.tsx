@@ -133,7 +133,7 @@ export function ChildContractCreateDialog({
           from: tomorrowStr,
           // Measured against the start this will actually sit next to, so the
           // dialog cannot open with an end date before its own start.
-          to: birthdate && orgState ? suggestContractEnd(birthdate, orgState, tomorrowStr) : '',
+          to: suggestContractEnd(birthdate, orgState ?? '', tomorrowStr, child.school_entry_date),
           section_id: active.section_id,
           properties: active.properties as Record<string, string> | undefined,
         });
@@ -143,7 +143,7 @@ export function ChildContractCreateDialog({
       } else {
         reset({
           from: '',
-          to: birthdate && orgState ? suggestContractEnd(birthdate, orgState) : '',
+          to: suggestContractEnd(birthdate, orgState ?? '', undefined, child.school_entry_date),
           section_id: 0,
           properties: undefined,
         });

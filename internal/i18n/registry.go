@@ -64,6 +64,7 @@ var registry = map[string]entry{
 	"budget item with this name already exists in the organization":                                              {ID: "budget.name_exists"},
 	"child %d contract %d: from date is required":                                                                {ID: "child.contract.from_required", Args: []string{"ChildIndex", "ContractIndex"}},
 	"child %d not found in this organization":                                                                    {ID: "child.not_found_in_organization", Args: []string{"ChildID"}},
+	"school_entry_date must be after the birthdate":                                                              {ID: "child.school_entry_before_birthdate"},
 	"effective_from must be after the contract's start date; correct the contract in place instead":              {ID: "contract.effective_from_before_start"},
 	"contract end date cannot be before birthdate":                                                               {ID: "contract.end_before_birthdate"},
 	"the contract already ended before effective_from; amending it would extend it":                              {ID: "contract.ended_before_effective_from"},

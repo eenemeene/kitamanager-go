@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 )
@@ -178,6 +179,60 @@ func TestChildListFilter_Validate(t *testing.T) {
 		f := ChildListFilter{ActiveOn: &now, ContractAfter: &now}
 		if err := f.Validate(); err == nil {
 			t.Error("Validate() error = nil, want error for mutually exclusive filters")
+		}
+	})
+}
+
+// TestChildUpdateRequest_SchoolEntryDateWireFormat pins the three states the
+// field has to distinguish, and the format it arrives in.
+//
+// The format half is not academic: time.Time parses RFC3339 only, so a bare
+// "2027-08-01" -- which is exactly what an <input type="date"> yields -- is
+// rejected. The frontend therefore has to send it through formatDateForApi,
+// the same helper contract dates already use. Getting this wrong fails no
+// existing test and no E2E; it simply 400s every submit.
+func TestChildUpdateRequest_SchoolEntryDateWireFormat(t *testing.T) {
+	t.Run("absent means leave it alone", func(t *testing.T) {
+		var r ChildUpdateRequest
+		if err := json.Unmarshal([]byte(`{"first_name":"Mira"}`), &r); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if r.SchoolEntryDate.Set {
+			t.Error("Set = true for an absent field; the update would clear a recorded date")
+		}
+	})
+
+	t.Run("explicit null means no longer deferred", func(t *testing.T) {
+		var r ChildUpdateRequest
+		if err := json.Unmarshal([]byte(`{"school_entry_date":null}`), &r); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if !r.SchoolEntryDate.Set {
+			t.Fatal("Set = false for an explicit null; the deferral could never be reversed")
+		}
+		if r.SchoolEntryDate.Value != nil {
+			t.Errorf("Value = %v, want nil", r.SchoolEntryDate.Value)
+		}
+	})
+
+	t.Run("RFC3339 carries the date", func(t *testing.T) {
+		var r ChildUpdateRequest
+		if err := json.Unmarshal([]byte(`{"school_entry_date":"2027-08-01T00:00:00Z"}`), &r); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if r.SchoolEntryDate.Value == nil {
+			t.Fatal("Value = nil, want 2027-08-01")
+		}
+		if got := r.SchoolEntryDate.Value.Format(DateFormat); got != "2027-08-01" {
+			t.Errorf("date = %s, want 2027-08-01", got)
+		}
+	})
+
+	t.Run("a bare date is rejected, so the client must format it", func(t *testing.T) {
+		var r ChildUpdateRequest
+		err := json.Unmarshal([]byte(`{"school_entry_date":"2027-08-01"}`), &r)
+		if err == nil {
+			t.Fatal("a bare YYYY-MM-DD was accepted; this test exists because it is not")
 		}
 	})
 }
