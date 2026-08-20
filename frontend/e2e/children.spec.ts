@@ -157,4 +157,56 @@ test.describe('Children', () => {
     // Child should disappear
     await expect(page.getByText(firstName)).not.toBeVisible({ timeout: 10000 });
   });
+
+  // A Zurückstellung is recorded on the child rather than inferred from their
+  // birthdate. This goes through the edit dialog on purpose: the field crosses
+  // the wire as RFC3339, and the bare "YYYY-MM-DD" a date input produces is
+  // rejected outright by the Go decoder. That break passes every unit test and
+  // every typecheck on both sides -- it only shows up here, where a real form
+  // posts a real payload.
+  test('records a school entry date and reverses it again', async ({ page }) => {
+    const firstName = uniqueName('Deferred');
+    await createChildWithContractViaApi(page, orgId, {
+      first_name: firstName,
+      last_name: 'Sonnenschein',
+      gender: 'female',
+      // Fixed birthdate so nothing here depends on today: this child's computed
+      // school year follows from it, not from when the suite runs.
+      birthdate: '2019-06-10',
+    });
+
+    await page.reload();
+    await page.waitForLoadState('load');
+    await page.getByRole('textbox', { name: /search/i }).fill(firstName);
+    await expect(page.getByText(firstName)).toBeVisible({ timeout: 10000 });
+
+    const row = page.getByRole('row').filter({ hasText: firstName });
+    const dialog = page.getByRole('dialog');
+    const schoolEntry = page.getByLabel(/school entry date/i);
+
+    await row.getByRole('button', { name: /edit/i }).click();
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+    // Empty until somebody records one -- the date is computed by default.
+    await expect(schoolEntry).toHaveValue('');
+
+    await schoolEntry.fill('2026-08-01');
+    await page.getByRole('button', { name: /save/i }).click();
+    // A rejected payload leaves the dialog open with the error on it, so the
+    // dialog closing is itself the assertion that the request was accepted.
+    await expect(dialog).not.toBeVisible({ timeout: 10000 });
+
+    await row.getByRole('button', { name: /edit/i }).click();
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+    await expect(schoolEntry).toHaveValue('2026-08-01');
+
+    // Clearing it has to reverse the deferral. Only an explicit null does that;
+    // an omitted field reads as "leave it alone" and the date would survive.
+    await schoolEntry.fill('');
+    await page.getByRole('button', { name: /save/i }).click();
+    await expect(dialog).not.toBeVisible({ timeout: 10000 });
+
+    await row.getByRole('button', { name: /edit/i }).click();
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+    await expect(schoolEntry).toHaveValue('');
+  });
 });
