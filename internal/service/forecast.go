@@ -107,21 +107,25 @@ func (s *StatisticsService) GetForecast(ctx context.Context, orgID uint, req *mo
 	}, nil
 }
 
-// validateOverlay checks overlay fields and that all referenced IDs belong to the organization.
+// validateOverlay checks what the overlay DTOs' binding tags cannot express.
 //
-// The field-presence checks here overlap the binding tags on the overlay DTOs,
-// which reject the same requests earlier and report every violation at once
-// rather than the first. That is deliberate, not leftover: GetForecast is a
-// public method and does not assume it was reached through the HTTP binding
-// layer, and what it computes decides money. The two layers use the same rule
-// names and the same JSON field paths so a client cannot tell which one
-// answered — TestForecastOverlayBindingReportsJSONPaths pins that. Change one
-// and change the other.
+// Field presence is not checked here. It is declared on the DTOs themselves
+// (see ForecastChildInput and friends), which is the single statement of what a
+// valid overlay looks like — it rejects earlier, reports every violation at
+// once rather than the first, and reaches the OpenAPI spec and the generated
+// TypeScript, so a caller learns the rule from the contract instead of from a
+// 400. Duplicating it here would mean two statements of one rule, and the
+// second would be the one nobody remembers to update.
 //
-// The checks that only exist here are the ones binding cannot express: child_id
-// and employee_id are required for a standalone contract but absent on one
-// nested under a new entity, the section must match the request's section_id,
-// and existence in this organization needs the database.
+// What is left is what a struct tag genuinely cannot say:
+//
+//   - child_id and employee_id, required on a standalone contract but absent on
+//     one nested under a new entity that has no id yet. The same struct serves
+//     both positions.
+//   - Every overlay add must target the request's section_id — a comparison
+//     between two fields.
+//   - Referenced sections, pay plans, employees and children must exist in this
+//     organization, which needs the database.
 func (s *StatisticsService) validateOverlay(ctx context.Context, req *models.ForecastRequest, orgID uint) error {
 	// When the request scopes to a specific section, every overlay add
 	// MUST target that section. The previous behavior silently filtered
@@ -135,25 +139,11 @@ func (s *StatisticsService) validateOverlay(ctx context.Context, req *models.For
 		}
 	}
 
-	// Validate overlay children fields
-	if err := validateOverlayChildren(req.AddChildren); err != nil {
-		return err
-	}
-	if err := validateOverlayChildContracts(req.AddChildContracts); err != nil {
-		return err
-	}
-
-	// Validate overlay employee fields
-	if err := validateOverlayEmployees(req.AddEmployees); err != nil {
-		return err
-	}
-	if err := validateOverlayEmployeeContracts(req.AddEmployeeContracts); err != nil {
-		return err
-	}
-
-	// First pass: cheap, no-DB validation. Catches missing fields and
-	// (for standalone contracts) the parent-id-zero footgun before we
-	// burn round trips on requests that can never succeed.
+	// The parent-id-zero footgun. It is not a binding tag because the same
+	// struct serves both uses: child_id names the existing child a standalone
+	// contract attaches to, and is absent on a contract nested under a new
+	// child in add_children, which has no id yet. Required in one position and
+	// meaningless in the other is not something a struct tag can say.
 	for i, ac := range req.AddEmployeeContracts {
 		if ac.EmployeeID == 0 {
 			return apperror.RequiredField("add_employee_contracts[%d].employee_id", i)
@@ -331,107 +321,6 @@ func validateOverlaySectionMatches(req *models.ForecastRequest, want uint) error
 			return apperror.InvalidFields(apperror.Field(
 				"mismatch", strconv.FormatUint(uint64(want), 10),
 				"add_child_contracts[%d].section_id", i))
-		}
-	}
-	return nil
-}
-
-// validateOverlayChildren validates the calculation-critical fields on overlay children.
-func validateOverlayChildren(children []models.ForecastChildInput) error {
-	for i, c := range children {
-		if c.Birthdate.IsZero() {
-			return apperror.RequiredField("add_children[%d].birthdate", i)
-		}
-		if len(c.Contracts) == 0 {
-			return apperror.InvalidFields(apperror.Field("non_empty", "", "add_children[%d].contracts", i))
-		}
-		for j, ct := range c.Contracts {
-			if ct.From.IsZero() {
-				return apperror.RequiredField("add_children[%d].contracts[%d].from", i, j)
-			}
-			if ct.SectionID == 0 {
-				return apperror.RequiredField("add_children[%d].contracts[%d].section_id", i, j)
-			}
-		}
-	}
-	return nil
-}
-
-// validateOverlayChildContracts validates standalone child contract additions.
-func validateOverlayChildContracts(contracts []models.ForecastChildContractInput) error {
-	for i, ct := range contracts {
-		if ct.ChildID == 0 {
-			return apperror.RequiredField("add_child_contracts[%d].child_id", i)
-		}
-		if ct.From.IsZero() {
-			return apperror.RequiredField("add_child_contracts[%d].from", i)
-		}
-		if ct.SectionID == 0 {
-			return apperror.RequiredField("add_child_contracts[%d].section_id", i)
-		}
-	}
-	return nil
-}
-
-// validateOverlayEmployees validates the calculation-critical fields on overlay employees.
-func validateOverlayEmployees(employees []models.ForecastEmployeeInput) error {
-	for i, e := range employees {
-		if len(e.Contracts) == 0 {
-			return apperror.InvalidFields(apperror.Field("non_empty", "", "add_employees[%d].contracts", i))
-		}
-		for j, ct := range e.Contracts {
-			if ct.From.IsZero() {
-				return apperror.RequiredField("add_employees[%d].contracts[%d].from", i, j)
-			}
-			if ct.SectionID == 0 {
-				return apperror.RequiredField("add_employees[%d].contracts[%d].section_id", i, j)
-			}
-			if ct.PayPlanID == 0 {
-				return apperror.RequiredField("add_employees[%d].contracts[%d].payplan_id", i, j)
-			}
-			if ct.Grade == "" {
-				return apperror.RequiredField("add_employees[%d].contracts[%d].grade", i, j)
-			}
-			if ct.Step < 1 {
-				return apperror.InvalidFields(apperror.Field("min_value", "1", "add_employees[%d].contracts[%d].step", i, j))
-			}
-			if ct.WeeklyHours <= 0 {
-				return apperror.InvalidFields(apperror.Field("positive", "", "add_employees[%d].contracts[%d].weekly_hours", i, j))
-			}
-			if ct.StaffCategory == "" {
-				return apperror.RequiredField("add_employees[%d].contracts[%d].staff_category", i, j)
-			}
-		}
-	}
-	return nil
-}
-
-// validateOverlayEmployeeContracts validates standalone employee contract additions.
-func validateOverlayEmployeeContracts(contracts []models.ForecastEmployeeContractInput) error {
-	for i, ct := range contracts {
-		if ct.EmployeeID == 0 {
-			return apperror.RequiredField("add_employee_contracts[%d].employee_id", i)
-		}
-		if ct.From.IsZero() {
-			return apperror.RequiredField("add_employee_contracts[%d].from", i)
-		}
-		if ct.SectionID == 0 {
-			return apperror.RequiredField("add_employee_contracts[%d].section_id", i)
-		}
-		if ct.PayPlanID == 0 {
-			return apperror.RequiredField("add_employee_contracts[%d].payplan_id", i)
-		}
-		if ct.Grade == "" {
-			return apperror.RequiredField("add_employee_contracts[%d].grade", i)
-		}
-		if ct.Step < 1 {
-			return apperror.InvalidFields(apperror.Field("min_value", "1", "add_employee_contracts[%d].step", i))
-		}
-		if ct.WeeklyHours <= 0 {
-			return apperror.InvalidFields(apperror.Field("positive", "", "add_employee_contracts[%d].weekly_hours", i))
-		}
-		if ct.StaffCategory == "" {
-			return apperror.RequiredField("add_employee_contracts[%d].staff_category", i)
 		}
 	}
 	return nil
