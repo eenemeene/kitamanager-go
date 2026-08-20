@@ -10161,9 +10161,9 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "WebAuthn enrollment branch (referenced via FactorResponse.enrollment)",
+                        "description": "Factor row; the enrollment field carries the type-specific payload",
                         "schema": {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.WebAuthnEnrollmentPayload"
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FactorResponse"
                         }
                     },
                     "400": {
