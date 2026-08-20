@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -59,18 +60,59 @@ func (s *ChildService) GetByID(ctx context.Context, id, orgID uint) (*models.Chi
 	return personGetByID(ctx, s.store.FindByIDAndOrg, (*models.Child).ToResponse, id, orgID, "child")
 }
 
+// validateSchoolEntryDate rejects a school-entry date that cannot belong to this
+// child. Deliberately only that: how far ahead a Zurückstellung may reach is a
+// decision of the Schulaufsichtsbehörde, not something to second-guess here --
+// Bayern alone grants them mid-year and, in exceptional cases, more than once.
+func validateSchoolEntryDate(schoolEntry *time.Time, birthdate time.Time) error {
+	if schoolEntry == nil {
+		return nil
+	}
+	if !schoolEntry.After(birthdate) {
+		return apperror.BadRequest("school_entry_date must be after the birthdate")
+	}
+	return nil
+}
+
 // Create creates a new child
 func (s *ChildService) Create(ctx context.Context, orgID uint, req *models.ChildCreateRequest) (*models.ChildResponse, error) {
+	// personCreate parses and validates the birthdate itself; on a malformed one
+	// this check stands aside so that its message stays the canonical answer.
+	if bd, err := time.Parse(models.DateFormat, req.Birthdate); err == nil {
+		if err := validateSchoolEntryDate(req.SchoolEntryDate, bd); err != nil {
+			return nil, err
+		}
+	}
+
+	// The child-only field rides in on the buildEntity closure, which
+	// personCreate already takes per caller. Nothing shared with Employee moves.
 	return personCreate(ctx,
 		&validation.PersonCreateFields{FirstName: req.FirstName, LastName: req.LastName, Gender: req.Gender, Birthdate: req.Birthdate},
-		func(p models.Person) *models.Child { return &models.Child{Person: p} },
+		func(p models.Person) *models.Child {
+			return &models.Child{Person: p, SchoolEntryDate: req.SchoolEntryDate}
+		},
 		s.store.Create, (*models.Child).ToResponse, orgID, "child")
 }
 
 // Update updates an existing child, validating it belongs to the specified organization
 func (s *ChildService) Update(ctx context.Context, id, orgID uint, req *models.ChildUpdateRequest) (*models.ChildResponse, error) {
+	// personUpdate loads the entity, applies the person fields, then calls this
+	// inside its transaction -- so wrapping the store write is where a
+	// child-only field belongs. personUpdate itself needs no new parameter, and
+	// the employee path is untouched.
+	updateWithSchoolEntry := func(ctx context.Context, ch *models.Child) error {
+		if req.SchoolEntryDate.Set {
+			// Set-and-nil is an explicit null: the deferral was reversed.
+			if err := validateSchoolEntryDate(req.SchoolEntryDate.Value, ch.Birthdate); err != nil {
+				return err
+			}
+			ch.SchoolEntryDate = req.SchoolEntryDate.Value
+		}
+		return s.store.Update(ctx, ch)
+	}
+
 	return personUpdate(ctx, s.transactor, s.store.FindByIDAndOrg, func(ch *models.Child) *models.Person { return &ch.Person },
-		s.store.Update, (*models.Child).ToResponse, id, orgID,
+		updateWithSchoolEntry, (*models.Child).ToResponse, id, orgID,
 		personUpdateFields{FirstName: req.FirstName, LastName: req.LastName, Gender: req.Gender, Birthdate: req.Birthdate},
 		"child")
 }
@@ -100,8 +142,15 @@ func (s *ChildService) Import(ctx context.Context, orgID uint, data *models.Chil
 				s.store.FindByNameBirthdateAndOrg,
 				func(c *models.Child) *models.Person { return &c.Person },
 				func(c *models.Child) uint { return c.ID },
-				s.store.Update, s.store.DeleteContractsByChild,
-				func(p models.Person) *models.Child { return &models.Child{Person: p} },
+				// Matched children: same closure trick as Update.
+				func(ctx context.Context, existing *models.Child) error {
+					existing.SchoolEntryDate = ch.SchoolEntryDate
+					return s.store.Update(ctx, existing)
+				},
+				s.store.DeleteContractsByChild,
+				func(p models.Person) *models.Child {
+					return &models.Child{Person: p, SchoolEntryDate: ch.SchoolEntryDate}
+				},
 				s.store.Create, orgID,
 			)
 			if err != nil {

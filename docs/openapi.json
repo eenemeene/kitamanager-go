@@ -591,6 +591,12 @@
                         "example": 1,
                         "type": "integer"
                     },
+                    "school_entry_date": {
+                        "description": "SchoolEntryDate is when the child leaves for school, when that is not the\ndate their birthdate implies -- a Zurückstellung being the reason it\nusually differs. Nil means \"compute it\", which is what every child gets\nuntil somebody records otherwise.\n\nA date rather than a flag or a year offset: Bayern's Einschulungskorridor\nand Bremen's Karenzzeit leave the regular date genuinely undecided for a\nband of birthdates, so there is no base to offset from, and a Bayern\ndeferral granted up to 31 January does not land a whole number of years\nfrom anything.\n\nOn Child and not Person: employees do not go to school.",
+                        "example": "2028-08-01",
+                        "format": "date-time",
+                        "type": "string"
+                    },
                     "updated_at": {
                         "format": "date-time",
                         "type": "string"
@@ -612,6 +618,7 @@
                     "last_name",
                     "organization",
                     "organization_id",
+                    "school_entry_date",
                     "updated_at",
                     "vouchers"
                 ],
@@ -1210,6 +1217,12 @@
                         "example": "Schmidt",
                         "maxLength": 255,
                         "type": "string"
+                    },
+                    "school_entry_date": {
+                        "description": "SchoolEntryDate is optional; omitted means the date is computed from the\nbirthdate. A plain pointer suffices here because on a create there is no\nstored value that omitting could destroy.",
+                        "example": "2028-08-01",
+                        "format": "date-time",
+                        "type": "string"
                     }
                 },
                 "required": [
@@ -1347,6 +1360,12 @@
                         "example": 1,
                         "type": "integer"
                     },
+                    "school_entry_date": {
+                        "description": "Carries a yaml tag like its neighbours so a YAML round-trip preserves it.",
+                        "example": "2028-08-01",
+                        "format": "date-time",
+                        "type": "string"
+                    },
                     "updated_at": {
                         "format": "date-time",
                         "type": "string"
@@ -1367,6 +1386,7 @@
                     "id",
                     "last_name",
                     "organization_id",
+                    "school_entry_date",
                     "updated_at",
                     "vouchers"
                 ],
@@ -1396,6 +1416,15 @@
                         "example": "Schmidt",
                         "maxLength": 255,
                         "type": "string"
+                    },
+                    "school_entry_date": {
+                        "description": "Opt rather than *time.Time, unlike its neighbours above: a reversed\nZurückstellung has to be expressible, and `*T` collapses \"left the field\nalone\" into \"set it to null\" -- so a plain pointer could record a deferral\nand never undo one.",
+                        "example": "2028-08-01",
+                        "format": "date-time",
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
                 },
                 "type": "object"
@@ -1511,6 +1540,12 @@
                         "example": 1,
                         "type": "integer"
                     },
+                    "school_entry_date": {
+                        "description": "Carries a yaml tag like its neighbours so a YAML round-trip preserves it.",
+                        "example": "2028-08-01",
+                        "format": "date-time",
+                        "type": "string"
+                    },
                     "suggestions": {
                         "items": {
                             "$ref": "#/components/schemas/VoucherSuggestion"
@@ -1537,6 +1572,7 @@
                     "id",
                     "last_name",
                     "organization_id",
+                    "school_entry_date",
                     "suggestions",
                     "updated_at",
                     "vouchers"

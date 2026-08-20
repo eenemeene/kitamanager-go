@@ -42,6 +42,13 @@ export interface PersonFormDialogProps {
    * gives both of them the same rejected-submit behaviour the create forms got.
    */
   unmapped?: InvalidParam[];
+  /**
+   * Fields belonging to one entity and not the other, rendered after the shared
+   * person fields. A slot rather than named props on purpose: children have a
+   * school entry date and employees do not, and the dialog should not have to
+   * know which is which to stay shared.
+   */
+  extraFields?: React.ReactNode;
 }
 
 export function PersonFormDialog({
@@ -56,6 +63,7 @@ export function PersonFormDialog({
   isSaving,
   translationPrefix,
   unmapped,
+  extraFields,
 }: PersonFormDialogProps) {
   const t = useTranslations();
 
@@ -142,6 +150,7 @@ export function PersonFormDialog({
                 </p>
               )}
             </div>
+            {extraFields}
           </DialogBody>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

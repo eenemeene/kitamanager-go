@@ -111,9 +111,11 @@ export function ChildrenTable({
         <TableBody>
           {items.map((child) => {
             const currentContract = getCurrentContract(child.contracts);
-            const enrollment = orgState
-              ? classifySchoolEnrollment(child.birthdate, orgState)
-              : null;
+            const enrollment = classifySchoolEnrollment(
+              child.birthdate,
+              orgState ?? '',
+              child.school_entry_date
+            );
             const overrun = enrollment
               ? classifySchoolOverrun(currentContract, enrollment.mussContractEnd)
               : null;
@@ -142,7 +144,11 @@ export function ChildrenTable({
                 <TableCell className="hidden md:table-cell">
                   <div className="flex flex-col gap-1">
                     <span>{calculateAge(child.birthdate)}</span>
-                    <SchoolEnrollmentBadge birthdate={child.birthdate} state={orgState} />
+                    <SchoolEnrollmentBadge
+                      birthdate={child.birthdate}
+                      state={orgState}
+                      schoolEntryDate={child.school_entry_date}
+                    />
                   </div>
                 </TableCell>
                 <TableCell>

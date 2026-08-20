@@ -11525,6 +11525,12 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 1
                 },
+                "school_entry_date": {
+                    "description": "SchoolEntryDate is when the child leaves for school, when that is not the\ndate their birthdate implies -- a Zurückstellung being the reason it\nusually differs. Nil means \"compute it\", which is what every child gets\nuntil somebody records otherwise.\n\nA date rather than a flag or a year offset: Bayern's Einschulungskorridor\nand Bremen's Karenzzeit leave the regular date genuinely undecided for a\nband of birthdates, so there is no base to offset from, and a Bayern\ndeferral granted up to 31 January does not land a whole number of years\nfrom anything.\n\nOn Child and not Person: employees do not go to school.",
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2028-08-01"
+                },
                 "updated_at": {
                     "type": "string",
                     "format": "date-time"
@@ -12037,6 +12043,12 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "example": "Schmidt"
+                },
+                "school_entry_date": {
+                    "description": "SchoolEntryDate is optional; omitted means the date is computed from the\nbirthdate. A plain pointer suffices here because on a create there is no\nstored value that omitting could destroy.",
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2028-08-01"
                 }
             }
         },
@@ -12155,6 +12167,12 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 1
                 },
+                "school_entry_date": {
+                    "description": "Carries a yaml tag like its neighbours so a YAML round-trip preserves it.",
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2028-08-01"
+                },
                 "updated_at": {
                     "type": "string",
                     "format": "date-time"
@@ -12192,6 +12210,13 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "example": "Schmidt"
+                },
+                "school_entry_date": {
+                    "description": "Opt rather than *time.Time, unlike its neighbours above: a reversed\nZurückstellung has to be expressible, and ` + "`" + `*T` + "`" + ` collapses \"left the field\nalone\" into \"set it to null\" -- so a plain pointer could record a deferral\nand never undo one.",
+                    "type": "string",
+                    "format": "date-time",
+                    "x-nullable": true,
+                    "example": "2028-08-01"
                 }
             }
         },
@@ -12293,6 +12318,12 @@ const docTemplate = `{
                 "organization_id": {
                     "type": "integer",
                     "example": 1
+                },
+                "school_entry_date": {
+                    "description": "Carries a yaml tag like its neighbours so a YAML round-trip preserves it.",
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2028-08-01"
                 },
                 "suggestions": {
                     "type": "array",

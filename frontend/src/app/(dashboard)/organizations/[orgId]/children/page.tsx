@@ -12,6 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChildrenTable } from '@/components/children/children-table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SearchInput } from '@/components/ui/search-input';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { SectionFilter } from '@/components/ui/section-filter';
 import { useCrudMutations } from '@/lib/hooks/use-crud-mutations';
 import { apiClient } from '@/lib/api/client';
@@ -20,6 +22,7 @@ import {
   type Child,
   type ChildContract,
   type ChildContractCreateRequest,
+  type ChildUpdateRequest,
   type ChildContractAmendRequest,
   type ChildContractAmendResponse,
   type ChildFundingResponse,
@@ -165,7 +168,11 @@ export default function ChildrenPage() {
   // Get org state for school enrollment date calculation
   const orgState = useUiStore((state) => state.organizations.find((o) => o.id === orgId)?.state);
 
-  const mutations = useCrudMutations<Child, ChildWithContractFormData, Partial<ChildFormData>>({
+  // The update payload is ChildUpdateRequest, the generated API contract, rather
+  // than a partial of the form type: only the request can express school_entry_date
+  // as an explicit null, and duplicating that shape locally would be a second
+  // definition of something the spec already owns.
+  const mutations = useCrudMutations<Child, ChildWithContractFormData, ChildUpdateRequest>({
     resourceName: 'children',
     queryKey: queryKeys.children.all(orgId),
     createFn: async (data) => {
@@ -257,8 +264,15 @@ export default function ChildrenPage() {
       last_name: child.last_name,
       gender: child.gender,
       birthdate: formatDateForInput(child.birthdate),
+      school_entry_date: child.school_entry_date ? formatDateForInput(child.school_entry_date) : '',
     }),
-    defaultValues: { first_name: '', last_name: '', gender: 'male', birthdate: '' },
+    defaultValues: {
+      first_name: '',
+      last_name: '',
+      gender: 'male',
+      birthdate: '',
+      school_entry_date: '',
+    },
   });
 
   const handleAddContract = useCallback((child: Child) => {
@@ -327,7 +341,16 @@ export default function ChildrenPage() {
   const onSubmitChild = useCallback(
     (data: ChildFormData) => {
       if (dialogs.editingItem) {
-        mutations.updateMutation.mutate({ id: dialogs.editingItem.id, data });
+        // formatDateForApi does both jobs the field needs: the date input's
+        // "YYYY-MM-DD" becomes the RFC3339 the Go time.Time actually parses --
+        // a bare date is rejected outright -- and an emptied field becomes the
+        // explicit null that says "no longer deferred", where omitting it would
+        // read as "leave it alone".
+        const { school_entry_date, ...rest } = data;
+        mutations.updateMutation.mutate({
+          id: dialogs.editingItem.id,
+          data: { ...rest, school_entry_date: formatDateForApi(school_entry_date) },
+        });
       }
     },
     [dialogs.editingItem, mutations.updateMutation]
@@ -502,6 +525,13 @@ export default function ChildrenPage() {
           setValue={setValueChild}
           isSaving={mutations.updateMutation.isPending}
           translationPrefix="children"
+          extraFields={
+            <div className="space-y-2">
+              <Label htmlFor="school_entry_date">{t('children.schoolEntryDate')}</Label>
+              <Input id="school_entry_date" type="date" {...registerChild('school_entry_date')} />
+              <p className="text-muted-foreground text-sm">{t('children.schoolEntryDateHint')}</p>
+            </div>
+          }
         />
       )}
 

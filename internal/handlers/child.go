@@ -222,6 +222,9 @@ func (h *ChildHandler) Update(c *gin.Context) {
 	recordChange(changes, "last_name", before.LastName, child.LastName)
 	recordChange(changes, "gender", before.Gender, child.Gender)
 	recordTimeChange(changes, "birthdate", before.Birthdate, child.Birthdate)
+	// A Zurückstellung is a Bescheid from the Schulaufsichtsbehörde, so who
+	// recorded it and when is a question somebody will eventually ask.
+	recordNullableTimeChange(changes, "school_entry_date", before.SchoolEntryDate, child.SchoolEntryDate)
 	auditUpdateWithChanges(c, h.auditService, "child", child.ID, child.FullName(), changes)
 
 	c.JSON(http.StatusOK, child)

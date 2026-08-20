@@ -8,6 +8,20 @@ import (
 // Child represents a child enrolled in the Kita.
 type Child struct {
 	Person
+	// SchoolEntryDate is when the child leaves for school, when that is not the
+	// date their birthdate implies -- a Zurückstellung being the reason it
+	// usually differs. Nil means "compute it", which is what every child gets
+	// until somebody records otherwise.
+	//
+	// A date rather than a flag or a year offset: Bayern's Einschulungskorridor
+	// and Bremen's Karenzzeit leave the regular date genuinely undecided for a
+	// band of birthdates, so there is no base to offset from, and a Bayern
+	// deferral granted up to 31 January does not land a whole number of years
+	// from anything.
+	//
+	// On Child and not Person: employees do not go to school.
+	SchoolEntryDate *time.Time `gorm:"type:date" json:"school_entry_date,omitempty" format:"date-time" example:"2028-08-01"`
+
 	Contracts []ChildContract `gorm:"foreignKey:ChildID" json:"contracts,omitempty"`
 	Vouchers  []ChildVoucher  `gorm:"foreignKey:ChildID" json:"vouchers,omitempty"`
 }
@@ -40,6 +54,10 @@ type ChildCreateRequest struct {
 	LastName  string `json:"last_name" binding:"required,max=255" example:"Schmidt"`
 	Gender    string `json:"gender" enums:"male,female,diverse" binding:"required" example:"female"`
 	Birthdate string `json:"birthdate" binding:"required" example:"2020-03-10"`
+	// SchoolEntryDate is optional; omitted means the date is computed from the
+	// birthdate. A plain pointer suffices here because on a create there is no
+	// stored value that omitting could destroy.
+	SchoolEntryDate *time.Time `json:"school_entry_date,omitempty" format:"date-time" example:"2028-08-01"`
 }
 
 // ChildUpdateRequest represents the request body for updating a child.
@@ -48,20 +66,27 @@ type ChildUpdateRequest struct {
 	LastName  *string `json:"last_name" binding:"omitempty,max=255" example:"Schmidt"`
 	Gender    *string `json:"gender" enums:"male,female,diverse" binding:"omitempty" example:"female"`
 	Birthdate *string `json:"birthdate" binding:"omitempty" example:"2020-03-10"`
+	// Opt rather than *time.Time, unlike its neighbours above: a reversed
+	// Zurückstellung has to be expressible, and `*T` collapses "left the field
+	// alone" into "set it to null" -- so a plain pointer could record a deferral
+	// and never undo one.
+	SchoolEntryDate Opt[time.Time] `json:"school_entry_date,omitzero" swaggertype:"string" format:"date-time" extensions:"x-nullable" example:"2028-08-01"`
 }
 
 // ChildResponse represents the child response
 type ChildResponse struct {
-	ID             uint                    `json:"id" yaml:"id" example:"1"`
-	OrganizationID uint                    `json:"organization_id" yaml:"organization_id" example:"1"`
-	FirstName      string                  `json:"first_name" yaml:"first_name" example:"Emma"`
-	LastName       string                  `json:"last_name" yaml:"last_name" example:"Schmidt"`
-	Gender         string                  `json:"gender" enums:"male,female,diverse" yaml:"gender" example:"female"`
-	Birthdate      time.Time               `json:"birthdate" format:"date-time" yaml:"birthdate" example:"2020-03-10"`
-	Vouchers       []string                `json:"vouchers,omitempty" yaml:"vouchers"`
-	Contracts      []ChildContractResponse `json:"contracts,omitempty" yaml:"contracts"`
-	CreatedAt      time.Time               `json:"created_at" format:"date-time" yaml:"created_at"`
-	UpdatedAt      time.Time               `json:"updated_at" format:"date-time" yaml:"updated_at"`
+	ID             uint      `json:"id" yaml:"id" example:"1"`
+	OrganizationID uint      `json:"organization_id" yaml:"organization_id" example:"1"`
+	FirstName      string    `json:"first_name" yaml:"first_name" example:"Emma"`
+	LastName       string    `json:"last_name" yaml:"last_name" example:"Schmidt"`
+	Gender         string    `json:"gender" enums:"male,female,diverse" yaml:"gender" example:"female"`
+	Birthdate      time.Time `json:"birthdate" format:"date-time" yaml:"birthdate" example:"2020-03-10"`
+	// Carries a yaml tag like its neighbours so a YAML round-trip preserves it.
+	SchoolEntryDate *time.Time              `json:"school_entry_date,omitempty" format:"date-time" yaml:"school_entry_date,omitempty" example:"2028-08-01"`
+	Vouchers        []string                `json:"vouchers,omitempty" yaml:"vouchers"`
+	Contracts       []ChildContractResponse `json:"contracts,omitempty" yaml:"contracts"`
+	CreatedAt       time.Time               `json:"created_at" format:"date-time" yaml:"created_at"`
+	UpdatedAt       time.Time               `json:"updated_at" format:"date-time" yaml:"updated_at"`
 }
 
 // ChildImportExportData wraps a list of children for YAML import/export.
@@ -76,14 +101,15 @@ func (r ChildResponse) FullName() string {
 
 func (c *Child) ToResponse() ChildResponse {
 	resp := ChildResponse{
-		ID:             c.ID,
-		OrganizationID: c.OrganizationID,
-		FirstName:      c.FirstName,
-		LastName:       c.LastName,
-		Gender:         c.Gender,
-		Birthdate:      c.Birthdate,
-		CreatedAt:      c.CreatedAt,
-		UpdatedAt:      c.UpdatedAt,
+		ID:              c.ID,
+		OrganizationID:  c.OrganizationID,
+		FirstName:       c.FirstName,
+		LastName:        c.LastName,
+		Gender:          c.Gender,
+		Birthdate:       c.Birthdate,
+		SchoolEntryDate: c.SchoolEntryDate,
+		CreatedAt:       c.CreatedAt,
+		UpdatedAt:       c.UpdatedAt,
 	}
 	if len(c.Vouchers) > 0 {
 		resp.Vouchers = make([]string, len(c.Vouchers))

@@ -4147,3 +4147,145 @@ func TestChildService_FindAllByOrganization_Empty(t *testing.T) {
 }
 
 // --- Batch Update Contract Tests ---
+
+// --- school entry date (Zurückstellung) ---
+
+func schoolEntry(t *testing.T, s string) *time.Time {
+	t.Helper()
+	d, err := time.Parse(models.DateFormat, s)
+	if err != nil {
+		t.Fatalf("bad test date %q: %v", s, err)
+	}
+	return &d
+}
+
+func TestChildService_Create_StoresSchoolEntryDate(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Test Org")
+
+	child, err := svc.Create(ctx, org.ID, &models.ChildCreateRequest{
+		FirstName: "Mira", LastName: "Sonnenschein", Gender: "female",
+		Birthdate:       "2020-05-15",
+		SchoolEntryDate: schoolEntry(t, "2027-08-01"),
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if child.SchoolEntryDate == nil {
+		t.Fatal("SchoolEntryDate = nil, want 2027-08-01")
+	}
+	if got := child.SchoolEntryDate.Format(models.DateFormat); got != "2027-08-01" {
+		t.Errorf("SchoolEntryDate = %s, want 2027-08-01", got)
+	}
+}
+
+func TestChildService_Create_DefaultsToNil(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Test Org")
+
+	// Nil is what every existing child has, and it means "compute it".
+	child, err := svc.Create(ctx, org.ID, &models.ChildCreateRequest{
+		FirstName: "Jonas", LastName: "Sonnenschein", Gender: "male", Birthdate: "2020-05-15",
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if child.SchoolEntryDate != nil {
+		t.Errorf("SchoolEntryDate = %v, want nil", child.SchoolEntryDate)
+	}
+}
+
+func TestChildService_Create_RejectsDateBeforeBirthdate(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Test Org")
+
+	_, err := svc.Create(ctx, org.ID, &models.ChildCreateRequest{
+		FirstName: "Mira", LastName: "Sonnenschein", Gender: "female",
+		Birthdate:       "2020-05-15",
+		SchoolEntryDate: schoolEntry(t, "2019-08-01"),
+	})
+	if err == nil {
+		t.Fatal("expected a rejection for a school entry date before the birthdate")
+	}
+}
+
+func TestChildService_Update_SetsAndClearsSchoolEntryDate(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Test Org")
+
+	child, err := svc.Create(ctx, org.ID, &models.ChildCreateRequest{
+		FirstName: "Mira", LastName: "Sonnenschein", Gender: "female", Birthdate: "2020-05-15",
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	// Record a Zurückstellung.
+	updated, err := svc.Update(ctx, child.ID, org.ID, &models.ChildUpdateRequest{
+		SchoolEntryDate: models.Opt[time.Time]{Set: true, Value: schoolEntry(t, "2027-08-01")},
+	})
+	if err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	if updated.SchoolEntryDate == nil || updated.SchoolEntryDate.Format(models.DateFormat) != "2027-08-01" {
+		t.Fatalf("SchoolEntryDate = %v, want 2027-08-01", updated.SchoolEntryDate)
+	}
+
+	// An unrelated edit must leave it alone -- the field is absent, not null.
+	updated, err = svc.Update(ctx, child.ID, org.ID, &models.ChildUpdateRequest{
+		FirstName: strPtr("Mirabel"),
+	})
+	if err != nil {
+		t.Fatalf("update name: %v", err)
+	}
+	if updated.SchoolEntryDate == nil {
+		t.Fatal("editing the name cleared SchoolEntryDate; absent must mean untouched")
+	}
+
+	// Reverse it: present-and-null is the only way to say "no longer deferred".
+	updated, err = svc.Update(ctx, child.ID, org.ID, &models.ChildUpdateRequest{
+		SchoolEntryDate: models.Opt[time.Time]{Set: true, Value: nil},
+	})
+	if err != nil {
+		t.Fatalf("clear: %v", err)
+	}
+	if updated.SchoolEntryDate != nil {
+		t.Errorf("SchoolEntryDate = %v, want nil after an explicit null", updated.SchoolEntryDate)
+	}
+}
+
+func TestChildService_Import_RoundTripsSchoolEntryDate(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+	org := createTestOrganization(t, db, "Test Org")
+
+	bd, _ := time.Parse(models.DateFormat, "2020-05-15")
+	imported, err := svc.Import(ctx, org.ID, &models.ChildImportExportData{
+		Children: []models.ChildResponse{{
+			FirstName: "Mira", LastName: "Sonnenschein", Gender: "female",
+			Birthdate:       bd,
+			SchoolEntryDate: schoolEntry(t, "2027-08-01"),
+		}},
+	})
+	if err != nil {
+		t.Fatalf("import: %v", err)
+	}
+	if len(imported) != 1 {
+		t.Fatalf("imported %d children, want 1", len(imported))
+	}
+	if imported[0].SchoolEntryDate == nil {
+		t.Fatal("import dropped SchoolEntryDate")
+	}
+	if got := imported[0].SchoolEntryDate.Format(models.DateFormat); got != "2027-08-01" {
+		t.Errorf("SchoolEntryDate = %s, want 2027-08-01", got)
+	}
+}

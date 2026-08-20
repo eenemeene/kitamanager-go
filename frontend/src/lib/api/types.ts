@@ -101,7 +101,16 @@ export type EmployeeCreateRequest = Override<S['EmployeeCreateRequest'], 'gender
 export type EmployeeUpdateRequest = S['EmployeeUpdateRequest'];
 export type EmployeeContractCreateRequest = S['EmployeeContractCreateRequest'];
 
-export type Child = Override<S['ChildResponse'], 'gender', Gender>;
+// school_entry_date is optional here because it genuinely is: the API omits it
+// for every child whose school entry follows from their birthdate, which is
+// nearly all of them. The generator marks all response fields required, so
+// without this correction every Child literal in the codebase would have to
+// carry a field the server usually does not send.
+export type Child = OverrideOptional<
+  Override<S['ChildResponse'], 'gender', Gender>,
+  'school_entry_date',
+  string
+>;
 export type ChildContract = OverrideOptional<
   S['ChildContractResponse'],
   'properties',
