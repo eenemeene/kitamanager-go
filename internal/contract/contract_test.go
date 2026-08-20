@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -121,12 +122,22 @@ func setupRouter() *gin.Engine {
 	orgStore := store.NewOrganizationStore(testDB)
 	userStore := store.NewUserStore(testDB)
 	userOrgStore := store.NewUserOrganizationStore(testDB)
+	sectionStore := store.NewSectionStore(testDB)
+	childStore := store.NewChildStore(testDB)
+	employeeStore := store.NewEmployeeStore(testDB)
+	payPlanStore := store.NewPayPlanStore(testDB)
+	fundingStore := store.NewGovernmentFundingStore(testDB)
+	attendanceStore := store.NewChildAttendanceStore(testDB)
 
 	// Setup services
+	transactor := store.NewTransactor(testDB)
 	orgService := service.NewOrganizationService(orgStore, userStore)
 	userService := service.NewUserService(userStore, userOrgStore)
-	transactor := store.NewTransactor(testDB)
 	userOrgService := service.NewUserOrganizationService(userOrgStore, userStore, transactor)
+	sectionService := service.NewSectionService(sectionStore, transactor)
+	childService := service.NewChildService(childStore, orgStore, fundingStore, sectionStore, transactor)
+	employeeService := service.NewEmployeeService(employeeStore, payPlanStore, sectionStore, transactor)
+	attendanceService := service.NewChildAttendanceService(attendanceStore, childStore)
 
 	// Setup audit service
 	auditStore := store.NewAuditStore(testDB)
@@ -135,8 +146,15 @@ func setupRouter() *gin.Engine {
 	// Setup handlers
 	orgHandler := handlers.NewOrganizationHandler(orgService, auditService)
 	userHandler := handlers.NewUserHandler(userService, userOrgService, auditService, nil)
+	sectionHandler := handlers.NewSectionHandler(sectionService, auditService)
+	childHandler := handlers.NewChildHandler(childService, auditService)
+	employeeHandler := handlers.NewEmployeeHandler(employeeService, auditService)
+	attendanceHandler := handlers.NewChildAttendanceHandler(attendanceService, auditService)
 
-	// Routes - matching the actual API structure
+	// Routes. Paths and parameter names must match internal/routes/routes.go
+	// exactly — TestContract_RegisteredRoutesAreDocumented pins that, so a
+	// divergence here fails rather than quietly validating a route the real
+	// API does not serve.
 	api := r.Group("/api/v1")
 	{
 		// Organizations
@@ -149,7 +167,31 @@ func setupRouter() *gin.Engine {
 		// Global user routes
 		api.GET("/users", userHandler.List)
 		api.POST("/users", userHandler.Create)
-		api.GET("/users/:uid", userHandler.Get)
+		api.GET("/users/:userId", userHandler.Get)
+
+		// Sections
+		api.GET("/organizations/:orgId/sections", sectionHandler.List)
+		api.POST("/organizations/:orgId/sections", sectionHandler.Create)
+		api.GET("/organizations/:orgId/sections/:sectionId", sectionHandler.Get)
+
+		// Children and their contracts
+		api.GET("/organizations/:orgId/children", childHandler.List)
+		api.POST("/organizations/:orgId/children", childHandler.Create)
+		api.GET("/organizations/:orgId/children/:childId", childHandler.Get)
+		api.PUT("/organizations/:orgId/children/:childId", childHandler.Update)
+		api.GET("/organizations/:orgId/children/:childId/contracts", childHandler.ListContracts)
+		api.POST("/organizations/:orgId/children/:childId/contracts", childHandler.CreateContract)
+
+		// Employees and their contracts
+		api.GET("/organizations/:orgId/employees", employeeHandler.List)
+		api.POST("/organizations/:orgId/employees", employeeHandler.Create)
+		api.GET("/organizations/:orgId/employees/:employeeId", employeeHandler.Get)
+		api.PUT("/organizations/:orgId/employees/:employeeId", employeeHandler.Update)
+
+		// Attendance
+		api.POST("/organizations/:orgId/children/:childId/attendance", attendanceHandler.Create)
+		api.GET("/organizations/:orgId/children/:childId/attendance", attendanceHandler.ListByChild)
+		api.PUT("/organizations/:orgId/children/:childId/attendance/:attendanceId", attendanceHandler.Update)
 	}
 
 	return r
@@ -361,5 +403,238 @@ func TestContract_UserCreate(t *testing.T) {
 
 	if resp.Code != http.StatusCreated {
 		t.Errorf("expected status 201, got %d: %s", resp.Code, resp.Body.String())
+	}
+}
+
+// TestContract_RegisteredRoutesAreDocumented pins this file's router to the
+// published contract.
+//
+// setupRouter hand-registers its routes rather than calling routes.Setup,
+// because the real wiring needs auth, RBAC and CSRF that these tests
+// deliberately skip. That hand-copy can drift, and a drifted route is worse
+// than an untested one: it validates a shape the real API never serves. The
+// `/users/:uid` route here was exactly that — routes.go says `:userId`, and
+// nothing noticed because no test exercised it.
+//
+// The spec is verified against routes.go by `make swagger-check`, so matching
+// the spec transitively matches the real routes.
+func TestContract_RegisteredRoutesAreDocumented(t *testing.T) {
+	documented := make(map[string]bool)
+	for path, item := range openAPIDoc.Paths.Map() {
+		ginPath := strings.NewReplacer("{", ":", "}", "").Replace(path)
+		for method := range item.Operations() {
+			documented[method+" "+ginPath] = true
+		}
+	}
+
+	for _, route := range testRouter.Routes() {
+		key := route.Method + " " + route.Path
+		if !documented[key] {
+			t.Errorf("route %s is registered here but not in the OpenAPI spec — "+
+				"check it against internal/routes/routes.go", key)
+		}
+	}
+}
+
+// setupOrgFixture creates an organization and returns its id along with the id
+// of the default section every organization is created with. Contract tests
+// need both to address the nested resources.
+func setupOrgFixture(t *testing.T) (orgID, sectionID uint) {
+	t.Helper()
+
+	org := &models.Organization{Name: "Kita Sonnenschein", Active: true, State: "berlin"}
+	if err := testDB.Create(org).Error; err != nil {
+		t.Fatalf("create organization: %v", err)
+	}
+	section := &models.Section{OrganizationID: org.ID, Name: "Sonnengruppe"}
+	if err := testDB.Create(section).Error; err != nil {
+		t.Fatalf("create section: %v", err)
+	}
+	return org.ID, section.ID
+}
+
+func TestContract_SectionsList(t *testing.T) {
+	cleanupBetweenTests()
+	orgID, _ := setupOrgFixture(t)
+
+	resp := performRequest(t, "GET", fmt.Sprintf("/api/v1/organizations/%d/sections", orgID), nil)
+
+	if resp.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", resp.Code, resp.Body.String())
+	}
+}
+
+func TestContract_SectionCreate(t *testing.T) {
+	cleanupBetweenTests()
+	orgID, _ := setupOrgFixture(t)
+
+	resp := performRequest(t, "POST", fmt.Sprintf("/api/v1/organizations/%d/sections", orgID), map[string]any{
+		"name": "Mondgruppe",
+	})
+
+	if resp.Code != http.StatusCreated {
+		t.Errorf("expected status 201, got %d: %s", resp.Code, resp.Body.String())
+	}
+}
+
+func TestContract_ChildCreateAndGet(t *testing.T) {
+	cleanupBetweenTests()
+	orgID, _ := setupOrgFixture(t)
+
+	created := performRequest(t, "POST", fmt.Sprintf("/api/v1/organizations/%d/children", orgID), map[string]any{
+		"first_name": "Emma",
+		"last_name":  "Schmidt",
+		"gender":     "female",
+		// A plain date string, not RFC3339: birthdate is a string on the wire
+		// while its neighbour school_entry_date is a time.Time. The contract
+		// says so, and this pins it.
+		"birthdate": "2022-03-10",
+	})
+	if created.Code != http.StatusCreated {
+		t.Fatalf("create child: expected 201, got %d: %s", created.Code, created.Body.String())
+	}
+
+	var child models.ChildResponse
+	parseResponse(t, created, &child)
+
+	got := performRequest(t, "GET", fmt.Sprintf("/api/v1/organizations/%d/children/%d", orgID, child.ID), nil)
+	if got.Code != http.StatusOK {
+		t.Errorf("get child: expected 200, got %d: %s", got.Code, got.Body.String())
+	}
+}
+
+func TestContract_ChildrenList(t *testing.T) {
+	cleanupBetweenTests()
+	orgID, _ := setupOrgFixture(t)
+
+	resp := performRequest(t, "GET", fmt.Sprintf("/api/v1/organizations/%d/children", orgID), nil)
+
+	if resp.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", resp.Code, resp.Body.String())
+	}
+}
+
+func TestContract_ChildContractCreateAndList(t *testing.T) {
+	cleanupBetweenTests()
+	orgID, sectionID := setupOrgFixture(t)
+
+	created := performRequest(t, "POST", fmt.Sprintf("/api/v1/organizations/%d/children", orgID), map[string]any{
+		"first_name": "Emma",
+		"last_name":  "Schmidt",
+		"gender":     "female",
+		"birthdate":  "2022-03-10",
+	})
+	if created.Code != http.StatusCreated {
+		t.Fatalf("create child: expected 201, got %d: %s", created.Code, created.Body.String())
+	}
+	var child models.ChildResponse
+	parseResponse(t, created, &child)
+
+	base := fmt.Sprintf("/api/v1/organizations/%d/children/%d/contracts", orgID, child.ID)
+	// RFC3339 here, unlike birthdate above: contract dates are time.Time.
+	contract := performRequest(t, "POST", base, map[string]any{
+		"from":       "2026-08-01T00:00:00Z",
+		"section_id": sectionID,
+		"properties": map[string]any{"care_type": "ganztag"},
+	})
+	if contract.Code != http.StatusCreated {
+		t.Fatalf("create contract: expected 201, got %d: %s", contract.Code, contract.Body.String())
+	}
+
+	// The paginated envelope is the shape the frontend reads whole pages from.
+	list := performRequest(t, "GET", base, nil)
+	if list.Code != http.StatusOK {
+		t.Errorf("list contracts: expected 200, got %d: %s", list.Code, list.Body.String())
+	}
+}
+
+func TestContract_EmployeeCreateAndGet(t *testing.T) {
+	cleanupBetweenTests()
+	orgID, _ := setupOrgFixture(t)
+
+	created := performRequest(t, "POST", fmt.Sprintf("/api/v1/organizations/%d/employees", orgID), map[string]any{
+		"first_name": "Max",
+		"last_name":  "Mustermann",
+		"gender":     "male",
+		"birthdate":  "1990-05-15",
+	})
+	if created.Code != http.StatusCreated {
+		t.Fatalf("create employee: expected 201, got %d: %s", created.Code, created.Body.String())
+	}
+
+	var employee models.EmployeeResponse
+	parseResponse(t, created, &employee)
+
+	got := performRequest(t, "GET", fmt.Sprintf("/api/v1/organizations/%d/employees/%d", orgID, employee.ID), nil)
+	if got.Code != http.StatusOK {
+		t.Errorf("get employee: expected 200, got %d: %s", got.Code, got.Body.String())
+	}
+}
+
+func TestContract_EmployeesList(t *testing.T) {
+	cleanupBetweenTests()
+	orgID, _ := setupOrgFixture(t)
+
+	resp := performRequest(t, "GET", fmt.Sprintf("/api/v1/organizations/%d/employees", orgID), nil)
+
+	if resp.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", resp.Code, resp.Body.String())
+	}
+}
+
+// TestContract_AttendanceCheckOutAndUndo walks the check-in / check-out / undo
+// sequence over HTTP, which is the path that was broken: the undo sent `""` for
+// check_out_time and time.Time rejected it. Both the null that clears and the
+// timestamp that sets are validated against the spec here.
+func TestContract_AttendanceCheckOutAndUndo(t *testing.T) {
+	cleanupBetweenTests()
+	orgID, _ := setupOrgFixture(t)
+
+	created := performRequest(t, "POST", fmt.Sprintf("/api/v1/organizations/%d/children", orgID), map[string]any{
+		"first_name": "Emma",
+		"last_name":  "Schmidt",
+		"gender":     "female",
+		"birthdate":  "2022-03-10",
+	})
+	if created.Code != http.StatusCreated {
+		t.Fatalf("create child: expected 201, got %d: %s", created.Code, created.Body.String())
+	}
+	var child models.ChildResponse
+	parseResponse(t, created, &child)
+
+	base := fmt.Sprintf("/api/v1/organizations/%d/children/%d/attendance", orgID, child.ID)
+	checkIn := performRequest(t, "POST", base, map[string]any{
+		"date":          "2026-06-15",
+		"status":        "present",
+		"check_in_time": "2026-06-15T08:00:00Z",
+	})
+	if checkIn.Code != http.StatusCreated {
+		t.Fatalf("check in: expected 201, got %d: %s", checkIn.Code, checkIn.Body.String())
+	}
+	var attendance models.ChildAttendanceResponse
+	parseResponse(t, checkIn, &attendance)
+
+	one := fmt.Sprintf("%s/%d", base, attendance.ID)
+	checkOut := performRequest(t, "PUT", one, map[string]any{
+		"check_out_time": "2026-06-15T16:00:00Z",
+	})
+	if checkOut.Code != http.StatusOK {
+		t.Fatalf("check out: expected 200, got %d: %s", checkOut.Code, checkOut.Body.String())
+	}
+	parseResponse(t, checkOut, &attendance)
+	if attendance.CheckOutTime == nil {
+		t.Fatal("check out: expected check_out_time to be set")
+	}
+
+	undo := performRequest(t, "PUT", one, map[string]any{"check_out_time": nil})
+	if undo.Code != http.StatusOK {
+		t.Fatalf("undo check out: expected 200, got %d: %s", undo.Code, undo.Body.String())
+	}
+	parseResponse(t, undo, &attendance)
+	if attendance.CheckOutTime != nil {
+		t.Errorf("undo check out: expected check_out_time to be cleared, got %v", attendance.CheckOutTime)
+	}
+	if attendance.CheckInTime == nil {
+		t.Error("undo check out: expected check_in_time to survive")
 	}
 }
