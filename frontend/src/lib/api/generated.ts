@@ -3622,10 +3622,10 @@ export interface components {
        * Format: date-time
        * @example 2026-08-01
        */
-      from?: string;
+      from: string;
       properties?: components['schemas']['ContractProperties'];
       /** @example 2 */
-      section_id?: number;
+      section_id: number;
       /**
        * Format: date-time
        * @example 2027-07-31
@@ -3639,8 +3639,8 @@ export interface components {
        *     the one person-level field the calculation actually needs.
        * @example 2023-03-10
        */
-      birthdate?: string;
-      contracts?: components['schemas']['ForecastChildContractInput'][];
+      birthdate: string;
+      contracts: components['schemas']['ForecastChildContractInput'][];
       /** @example Emma */
       first_name?: string;
       /**
@@ -3662,16 +3662,16 @@ export interface components {
        * Format: date-time
        * @example 2026-08-01
        */
-      from?: string;
+      from: string;
       /** @example S8a */
-      grade?: string;
+      grade: string;
       /** @example 1 */
-      payplan_id?: number;
+      payplan_id: number;
       properties?: components['schemas']['ContractProperties'];
       /** @example 2 */
-      section_id?: number;
+      section_id: number;
       /** @example qualified */
-      staff_category?: string;
+      staff_category: string;
       /** @example 3 */
       step?: number;
       /**
@@ -3688,7 +3688,7 @@ export interface components {
        * @example 1990-05-15
        */
       birthdate?: string;
-      contracts?: components['schemas']['ForecastEmployeeContractInput'][];
+      contracts: components['schemas']['ForecastEmployeeContractInput'][];
       /** @example Max */
       first_name?: string;
       /**

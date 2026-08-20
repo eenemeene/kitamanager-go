@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -361,30 +362,66 @@ func invalidParams(c *gin.Context, err error) []models.InvalidParam {
 				field = strings.Join(parts[1:], ".")
 			}
 		}
-		var reason string
-		switch fe.Tag() {
-		case "required":
-			reason = "is required"
-		case "email":
-			reason = "must be a valid email address"
-		case "min":
-			reason = "must be at least " + fe.Param() + " characters"
-		case "max":
-			reason = "must be at most " + fe.Param() + " characters"
-		case "voucher":
-			reason = "must match the voucher format GB-XXXXXXXXXXX-NN"
-		default:
-			reason = "is invalid"
-		}
+		rule, reason := ruleAndReason(fe)
 		params = append(params, models.InvalidParam{
 			Field:           field,
 			Reason:          reason,
-			Rule:            fe.Tag(),
+			Rule:            rule,
 			Param:           fe.Param(),
-			LocalizedReason: i18n.Rule(c, fe.Tag(), fe.Param()),
+			LocalizedReason: i18n.Rule(c, rule, fe.Param()),
 		})
 	}
 	return params
+}
+
+// ruleAndReason translates one validator failure into the rule vocabulary the
+// API publishes, plus its English sentence fragment.
+//
+// The rule names are shared with the hand-built violations in apperror
+// (RequiredField, InvalidFields), so a client branching on `rule` sees one
+// vocabulary no matter which layer rejected the request. That matters where both
+// can: the forecast overlay is checked by binding tags at the boundary and again
+// by the service, which does not assume it was reached over HTTP.
+//
+// The numeric cases are why this is not a bare switch on the tag. validator uses
+// `min` for both "at least N characters" and "at least N", and reporting a
+// weekly-hours minimum as a character count is nonsense — so length and
+// magnitude are separated by the field's kind, and magnitude reuses the
+// `min_value` and `positive` rules apperror already emits.
+func ruleAndReason(fe validator.FieldError) (rule, reason string) {
+	numeric := false
+	switch fe.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64:
+		numeric = true
+	}
+
+	switch fe.Tag() {
+	case "required":
+		return "required", "is required"
+	case "email":
+		return "email", "must be a valid email address"
+	case "voucher":
+		return "voucher", "must match the voucher format GB-XXXXXXXXXXX-NN"
+	case "gt":
+		if numeric && fe.Param() == "0" {
+			return "positive", "must be greater than zero"
+		}
+		return "min_value", "must be greater than " + fe.Param()
+	case "min", "gte":
+		if numeric {
+			return "min_value", "must be at least " + fe.Param()
+		}
+		return "min", "must be at least " + fe.Param() + " characters"
+	case "max", "lte":
+		if numeric {
+			return "max_value", "must be at most " + fe.Param()
+		}
+		return "max", "must be at most " + fe.Param() + " characters"
+	default:
+		return fe.Tag(), "is invalid"
+	}
 }
 
 // auditConfig holds audit configuration for resource operations (contracts, nested resources).

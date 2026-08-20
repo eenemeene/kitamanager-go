@@ -152,7 +152,10 @@ export const useForecastStore = create<ForecastState>()(
         if (s.addEmployees.length > 0)
           req.add_employees = s.addEmployees.map((e, i) => ({
             ...e,
-            birthdate: apiDate(e.birthdate, `add_employees[${i}].birthdate`),
+            // Optional, unlike a child's: nothing in the employee-cost
+            // calculation reads it, so the API does not require it and neither
+            // does this. A child's birthdate picks the funding age bracket.
+            birthdate: apiDateOptional(e.birthdate),
             contracts: e.contracts.map((ct, j) => ({
               ...ct,
               from: apiDate(ct.from, `add_employees[${i}].contracts[${j}].from`),

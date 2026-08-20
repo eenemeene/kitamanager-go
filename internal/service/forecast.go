@@ -108,6 +108,20 @@ func (s *StatisticsService) GetForecast(ctx context.Context, orgID uint, req *mo
 }
 
 // validateOverlay checks overlay fields and that all referenced IDs belong to the organization.
+//
+// The field-presence checks here overlap the binding tags on the overlay DTOs,
+// which reject the same requests earlier and report every violation at once
+// rather than the first. That is deliberate, not leftover: GetForecast is a
+// public method and does not assume it was reached through the HTTP binding
+// layer, and what it computes decides money. The two layers use the same rule
+// names and the same JSON field paths so a client cannot tell which one
+// answered — TestForecastOverlayBindingReportsJSONPaths pins that. Change one
+// and change the other.
+//
+// The checks that only exist here are the ones binding cannot express: child_id
+// and employee_id are required for a standalone contract but absent on one
+// nested under a new entity, the section must match the request's section_id,
+// and existence in this organization needs the database.
 func (s *StatisticsService) validateOverlay(ctx context.Context, req *models.ForecastRequest, orgID uint) error {
 	// When the request scopes to a specific section, every overlay add
 	// MUST target that section. The previous behavior silently filtered

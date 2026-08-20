@@ -57,10 +57,13 @@ export function ForecastEmployeesTab() {
     enabled: !!orgId,
   });
 
-  const canAdd = contractFrom && sectionId && weeklyHours && payPlanId;
+  // grade and step are in here because the forecast service requires them: a
+  // contract without either is rejected, and the failure surfaced on Calculate
+  // pointing at a field this button never asked the user to fill.
+  const canAdd = contractFrom && sectionId && weeklyHours && payPlanId && grade && step;
 
   const handleAdd = () => {
-    if (!canAdd || !sectionId || !payPlanId) return;
+    if (!canAdd || !sectionId || !payPlanId || !step) return;
     // Auto-generate a birthdate (30 years ago) — not relevant for forecast calculations
     const birthYear = new Date().getFullYear() - 30;
     const birthdate = `${birthYear}-01-01`;
@@ -77,8 +80,8 @@ export function ForecastEmployeesTab() {
             to: contractTo || undefined,
             section_id: sectionId,
             staff_category: staffCategory,
-            grade: grade || undefined,
-            step: step ? Number(step) : undefined,
+            grade,
+            step: Number(step),
             weekly_hours: Number(weeklyHours),
             payplan_id: payPlanId,
           },

@@ -12,14 +12,14 @@ type ForecastRequest struct {
 	SectionID *uint      `json:"section_id,omitempty"`
 
 	// Child overlays
-	AddChildren       []ForecastChildInput         `json:"add_children,omitempty"`
+	AddChildren       []ForecastChildInput         `json:"add_children,omitempty" binding:"dive"`
 	RemoveChildIDs    []uint                       `json:"remove_child_ids,omitempty"`
-	AddChildContracts []ForecastChildContractInput `json:"add_child_contracts,omitempty"`
+	AddChildContracts []ForecastChildContractInput `json:"add_child_contracts,omitempty" binding:"dive"`
 
 	// Employee overlays
-	AddEmployees         []ForecastEmployeeInput         `json:"add_employees,omitempty"`
+	AddEmployees         []ForecastEmployeeInput         `json:"add_employees,omitempty" binding:"dive"`
 	RemoveEmployeeIDs    []uint                          `json:"remove_employee_ids,omitempty"`
-	AddEmployeeContracts []ForecastEmployeeContractInput `json:"add_employee_contracts,omitempty"`
+	AddEmployeeContracts []ForecastEmployeeContractInput `json:"add_employee_contracts,omitempty" binding:"dive"`
 }
 
 // ForecastResponse is the combined response from the forecast endpoint.
@@ -56,9 +56,9 @@ type ForecastChildContractInput struct {
 	// unset for contracts nested under a new child in add_children, which have
 	// no id yet.
 	ChildID    uint               `json:"child_id,omitempty" example:"1"`
-	From       time.Time          `json:"from" format:"date-time" example:"2026-08-01"`
+	From       time.Time          `json:"from" binding:"required" format:"date-time" example:"2026-08-01"`
 	To         *time.Time         `json:"to,omitempty" format:"date-time" example:"2027-07-31"`
-	SectionID  uint               `json:"section_id" example:"2"`
+	SectionID  uint               `json:"section_id" binding:"required" example:"2"`
 	Properties ContractProperties `json:"properties,omitempty"`
 }
 
@@ -84,8 +84,8 @@ type ForecastChildInput struct {
 	Gender    string `json:"gender,omitempty" enums:"male,female,diverse" example:"female"`
 	// Birthdate drives the age bracket the funding rate is read from, so it is
 	// the one person-level field the calculation actually needs.
-	Birthdate time.Time                    `json:"birthdate" format:"date-time" example:"2023-03-10"`
-	Contracts []ForecastChildContractInput `json:"contracts"`
+	Birthdate time.Time                    `json:"birthdate" binding:"required" format:"date-time" example:"2023-03-10"`
+	Contracts []ForecastChildContractInput `json:"contracts" binding:"required,dive"`
 }
 
 // ToModel builds the child the calculation works on.
@@ -110,14 +110,14 @@ type ForecastEmployeeContractInput struct {
 	// EmployeeID names the existing employee a standalone contract attaches to.
 	// Unset for contracts nested under a new employee in add_employees.
 	EmployeeID    uint               `json:"employee_id,omitempty" example:"1"`
-	From          time.Time          `json:"from" format:"date-time" example:"2026-08-01"`
+	From          time.Time          `json:"from" binding:"required" format:"date-time" example:"2026-08-01"`
 	To            *time.Time         `json:"to,omitempty" format:"date-time" example:"2027-07-31"`
-	SectionID     uint               `json:"section_id" example:"2"`
-	StaffCategory string             `json:"staff_category" example:"qualified"`
-	Grade         string             `json:"grade" example:"S8a"`
-	Step          int                `json:"step" example:"3"`
-	WeeklyHours   float64            `json:"weekly_hours" example:"40"`
-	PayPlanID     uint               `json:"payplan_id" example:"1"`
+	SectionID     uint               `json:"section_id" binding:"required" example:"2"`
+	StaffCategory string             `json:"staff_category" binding:"required" example:"qualified"`
+	Grade         string             `json:"grade" binding:"required" example:"S8a"`
+	Step          int                `json:"step" binding:"min=1" example:"3"`
+	WeeklyHours   float64            `json:"weekly_hours" binding:"gt=0" example:"40"`
+	PayPlanID     uint               `json:"payplan_id" binding:"required" example:"1"`
 	Properties    ContractProperties `json:"properties,omitempty"`
 }
 
@@ -147,7 +147,7 @@ type ForecastEmployeeInput struct {
 	LastName  string                          `json:"last_name,omitempty" example:"Mustermann"`
 	Gender    string                          `json:"gender,omitempty" enums:"male,female,diverse" example:"male"`
 	Birthdate time.Time                       `json:"birthdate,omitempty" format:"date-time" example:"1990-05-15"`
-	Contracts []ForecastEmployeeContractInput `json:"contracts"`
+	Contracts []ForecastEmployeeContractInput `json:"contracts" binding:"required,dive"`
 }
 
 // ToModel builds the employee the calculation works on.
