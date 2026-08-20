@@ -11658,13 +11658,17 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "check_in_time": {
+                    "description": "Null clears the recorded time; omitting the field leaves it unchanged.",
                     "type": "string",
                     "format": "date-time",
+                    "x-nullable": true,
                     "example": "2025-06-15T08:00:00Z"
                 },
                 "check_out_time": {
+                    "description": "Null clears the recorded time; omitting the field leaves it unchanged.",
                     "type": "string",
                     "format": "date-time",
+                    "x-nullable": true,
                     "example": "2025-06-15T16:00:00Z"
                 },
                 "note": {

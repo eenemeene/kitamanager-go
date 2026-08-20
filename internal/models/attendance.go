@@ -61,11 +61,19 @@ type ChildAttendanceCreateRequest struct {
 }
 
 // ChildAttendanceUpdateRequest represents the request body for updating an attendance record.
+//
+// The time fields are Opt rather than *time.Time because "clear this" and "leave
+// this alone" have to stay distinguishable: `*T` collapses them, so a plain
+// pointer could record a check-out and never take one back. Undoing a mistaken
+// check-out sent `""` for want of a way to say null, and time.Time cannot parse
+// an empty string — the request 400'd.
 type ChildAttendanceUpdateRequest struct {
-	CheckInTime  *time.Time `json:"check_in_time" format:"date-time" example:"2025-06-15T08:00:00Z"`
-	CheckOutTime *time.Time `json:"check_out_time" format:"date-time" example:"2025-06-15T16:00:00Z"`
-	Status       *string    `json:"status" example:"present"`
-	Note         *string    `json:"note" example:"Updated note"`
+	// Null clears the recorded time; omitting the field leaves it unchanged.
+	CheckInTime Opt[time.Time] `json:"check_in_time,omitzero" swaggertype:"string" format:"date-time" extensions:"x-nullable" example:"2025-06-15T08:00:00Z"`
+	// Null clears the recorded time; omitting the field leaves it unchanged.
+	CheckOutTime Opt[time.Time] `json:"check_out_time,omitzero" swaggertype:"string" format:"date-time" extensions:"x-nullable" example:"2025-06-15T16:00:00Z"`
+	Status       *string        `json:"status" example:"present"`
+	Note         *string        `json:"note" example:"Updated note"`
 }
 
 // ChildAttendanceResponse represents the attendance response.

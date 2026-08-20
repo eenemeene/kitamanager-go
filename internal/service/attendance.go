@@ -146,11 +146,15 @@ func (s *ChildAttendanceService) Update(ctx context.Context, id, orgID, childID 
 		return nil, err
 	}
 
-	if req.CheckInTime != nil {
-		attendance.CheckInTime = req.CheckInTime
+	// .Set, not a nil check: an explicit null is the caller asking to clear the
+	// time (undoing a check-out), which is a different instruction from omitting
+	// the field. Value is nil in exactly that case, so the assignment carries
+	// both meanings.
+	if req.CheckInTime.Set {
+		attendance.CheckInTime = req.CheckInTime.Value
 	}
-	if req.CheckOutTime != nil {
-		attendance.CheckOutTime = req.CheckOutTime
+	if req.CheckOutTime.Set {
+		attendance.CheckOutTime = req.CheckOutTime.Value
 	}
 	if req.Status != nil {
 		if !models.IsValidChildAttendanceStatus(*req.Status) {

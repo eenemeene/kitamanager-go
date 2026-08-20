@@ -173,7 +173,11 @@ export default function AttendancePage() {
             onClick={() => {
               apiClient
                 .updateChildAttendance(orgId, variables.childId, variables.attendanceId, {
-                  check_out_time: '',
+                  // null, not '': the field is a Go time.Time, which cannot
+                  // parse an empty string and answered 400. An explicit null is
+                  // what says "clear it" -- omitting the field means "leave it
+                  // alone", so there is no third spelling that works here.
+                  check_out_time: null,
                 })
                 .then(() => {
                   invalidateAttendance();

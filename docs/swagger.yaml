@@ -506,13 +506,17 @@ definitions:
   github_com_eenemeene_kitamanager-go_internal_models.ChildAttendanceUpdateRequest:
     properties:
       check_in_time:
+        description: Null clears the recorded time; omitting the field leaves it unchanged.
         example: "2025-06-15T08:00:00Z"
         format: date-time
         type: string
+        x-nullable: true
       check_out_time:
+        description: Null clears the recorded time; omitting the field leaves it unchanged.
         example: "2025-06-15T16:00:00Z"
         format: date-time
         type: string
+        x-nullable: true
       note:
         example: Updated note
         type: string

@@ -560,8 +560,8 @@ func TestChildAttendanceService_Update_CheckTimes(t *testing.T) {
 	newCheckIn := time.Date(2025, 6, 15, 7, 0, 0, 0, time.UTC)
 	newCheckOut := time.Date(2025, 6, 15, 15, 0, 0, 0, time.UTC)
 	updateReq := &models.ChildAttendanceUpdateRequest{
-		CheckInTime:  &newCheckIn,
-		CheckOutTime: &newCheckOut,
+		CheckInTime:  models.OptOf(newCheckIn),
+		CheckOutTime: models.OptOf(newCheckOut),
 	}
 	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, updateReq)
 	if err != nil {
@@ -593,7 +593,7 @@ func TestChildAttendanceService_Update_StatusToAbsentClearsTimes(t *testing.T) {
 	// Add a check-out time first
 	checkOut := time.Date(2025, 6, 15, 16, 0, 0, 0, time.UTC)
 	_, _ = tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
-		CheckOutTime: &checkOut,
+		CheckOutTime: models.OptOf(checkOut),
 	})
 
 	// Change to absent — both times should be cleared
@@ -651,7 +651,7 @@ func TestChildAttendanceService_Update_StatusToPresentKeepsTimes(t *testing.T) {
 	present := models.ChildAttendanceStatusPresent
 	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		Status:       &present,
-		CheckOutTime: &checkOut,
+		CheckOutTime: models.OptOf(checkOut),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -757,7 +757,7 @@ func TestChildAttendanceService_Update_StatusToPresentWithExplicitTime(t *testin
 	present := models.ChildAttendanceStatusPresent
 	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
 		Status:      &present,
-		CheckInTime: &explicitTime,
+		CheckInTime: models.OptOf(explicitTime),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -809,8 +809,8 @@ func TestChildAttendanceService_Update_TimesAndNonPresentStatusClearsTimesAfterS
 	newCheckOut := time.Date(2025, 6, 15, 15, 0, 0, 0, time.UTC)
 	sick := models.ChildAttendanceStatusSick
 	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
-		CheckInTime:  &newCheckIn,
-		CheckOutTime: &newCheckOut,
+		CheckInTime:  models.OptOf(newCheckIn),
+		CheckOutTime: models.OptOf(newCheckOut),
 		Status:       &sick,
 	})
 	if err != nil {
@@ -850,7 +850,7 @@ func TestChildAttendanceService_Update_AllNonPresentStatusesClearTimes(t *testin
 
 			// Set check-out time first
 			_, _ = tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
-				CheckOutTime: &checkOut,
+				CheckOutTime: models.OptOf(checkOut),
 			})
 
 			// Change to non-present status
@@ -941,8 +941,8 @@ func TestChildAttendanceService_Update_CheckOutBeforeCheckIn_Rejected(t *testing
 	checkIn := time.Date(2025, 6, 15, 15, 0, 0, 0, time.UTC)
 	checkOut := time.Date(2025, 6, 15, 7, 0, 0, 0, time.UTC)
 	_, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
-		CheckInTime:  &checkIn,
-		CheckOutTime: &checkOut,
+		CheckInTime:  models.OptOf(checkIn),
+		CheckOutTime: models.OptOf(checkOut),
 	})
 	if err == nil {
 		t.Fatal("expected error when check-out is before check-in, got nil")
@@ -964,8 +964,8 @@ func TestChildAttendanceService_Update_EqualCheckInAndCheckOut_Rejected(t *testi
 	// Same time for both — invalid (not strictly before)
 	sameTime := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
 	_, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
-		CheckInTime:  &sameTime,
-		CheckOutTime: &sameTime,
+		CheckInTime:  models.OptOf(sameTime),
+		CheckOutTime: models.OptOf(sameTime),
 	})
 	if err == nil {
 		t.Fatal("expected error when check-in equals check-out, got nil")
@@ -989,7 +989,7 @@ func TestChildAttendanceService_Update_CheckOutBeforeExistingCheckIn_Rejected(t 
 	// Set check-out to 09:00, which is before the existing check-in at 10:00
 	earlyCheckOut := time.Date(2025, 6, 15, 9, 0, 0, 0, time.UTC)
 	_, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
-		CheckOutTime: &earlyCheckOut,
+		CheckOutTime: models.OptOf(earlyCheckOut),
 	})
 	if err == nil {
 		t.Fatal("expected error when check-out is before existing check-in, got nil")
@@ -1013,13 +1013,13 @@ func TestChildAttendanceService_Update_CheckInAfterExistingCheckOut_Rejected(t *
 	// First set a valid check-out
 	checkOut := time.Date(2025, 6, 15, 16, 0, 0, 0, time.UTC)
 	_, _ = tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
-		CheckOutTime: &checkOut,
+		CheckOutTime: models.OptOf(checkOut),
 	})
 
 	// Now update check-in to 17:00, which is after the existing check-out at 16:00
 	lateCheckIn := time.Date(2025, 6, 15, 17, 0, 0, 0, time.UTC)
 	_, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
-		CheckInTime: &lateCheckIn,
+		CheckInTime: models.OptOf(lateCheckIn),
 	})
 	if err == nil {
 		t.Fatal("expected error when check-in is after existing check-out, got nil")
@@ -1042,8 +1042,8 @@ func TestChildAttendanceService_Update_ValidCheckInBeforeCheckOut_Accepted(t *te
 	checkIn := time.Date(2025, 6, 15, 7, 30, 0, 0, time.UTC)
 	checkOut := time.Date(2025, 6, 15, 15, 30, 0, 0, time.UTC)
 	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
-		CheckInTime:  &checkIn,
-		CheckOutTime: &checkOut,
+		CheckInTime:  models.OptOf(checkIn),
+		CheckOutTime: models.OptOf(checkOut),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -1069,8 +1069,8 @@ func TestChildAttendanceService_Update_CheckOutOneMinuteAfterCheckIn_Accepted(t 
 	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
 	checkOut := time.Date(2025, 6, 15, 8, 1, 0, 0, time.UTC)
 	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
-		CheckInTime:  &checkIn,
-		CheckOutTime: &checkOut,
+		CheckInTime:  models.OptOf(checkIn),
+		CheckOutTime: models.OptOf(checkOut),
 	})
 	if err != nil {
 		t.Fatalf("expected no error for 1 minute gap, got %v", err)
@@ -1096,8 +1096,8 @@ func TestChildAttendanceService_Update_CheckOutOneSecondAfterCheckIn_Accepted(t 
 	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
 	checkOut := time.Date(2025, 6, 15, 8, 0, 1, 0, time.UTC)
 	_, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
-		CheckInTime:  &checkIn,
-		CheckOutTime: &checkOut,
+		CheckInTime:  models.OptOf(checkIn),
+		CheckOutTime: models.OptOf(checkOut),
 	})
 	if err != nil {
 		t.Fatalf("expected no error for 1 second gap, got %v", err)
@@ -1117,8 +1117,8 @@ func TestChildAttendanceService_Update_CheckOutOneNanosecondBeforeCheckIn_Reject
 	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 1, time.UTC)
 	checkOut := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
 	_, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
-		CheckInTime:  &checkIn,
-		CheckOutTime: &checkOut,
+		CheckInTime:  models.OptOf(checkIn),
+		CheckOutTime: models.OptOf(checkOut),
 	})
 	if err == nil {
 		t.Fatal("expected error for nanosecond-before check-out, got nil")
@@ -1140,7 +1140,7 @@ func TestChildAttendanceService_Update_OnlyCheckInNoCheckOut_NoValidation(t *tes
 	// Update only check-in time, no check-out — should not trigger validation
 	newCheckIn := time.Date(2025, 6, 15, 23, 59, 0, 0, time.UTC)
 	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
-		CheckInTime: &newCheckIn,
+		CheckInTime: models.OptOf(newCheckIn),
 	})
 	if err != nil {
 		t.Fatalf("expected no error when only setting check-in, got %v", err)
@@ -1170,7 +1170,7 @@ func TestChildAttendanceService_Update_OnlyCheckOutNoExistingCheckIn_NoValidatio
 	// Update only check-out, no existing check-in — validation not triggered
 	checkOut := time.Date(2025, 6, 15, 16, 0, 0, 0, time.UTC)
 	resp, err := tc.svc.Update(ctx, attendance.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
-		CheckOutTime: &checkOut,
+		CheckOutTime: models.OptOf(checkOut),
 	})
 	if err != nil {
 		t.Fatalf("expected no error when setting check-out without check-in, got %v", err)
@@ -1195,8 +1195,8 @@ func TestChildAttendanceService_Update_NonPresentStatusSkipsTimeValidation(t *te
 	badCheckOut := time.Date(2025, 6, 15, 7, 0, 0, 0, time.UTC)
 	absent := models.ChildAttendanceStatusAbsent
 	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
-		CheckInTime:  &badCheckIn,
-		CheckOutTime: &badCheckOut,
+		CheckInTime:  models.OptOf(badCheckIn),
+		CheckOutTime: models.OptOf(badCheckOut),
 		Status:       &absent,
 	})
 	if err != nil {
@@ -1224,7 +1224,7 @@ func TestChildAttendanceService_Update_ValidTimesNotCorruptedByValidation(t *tes
 	// Set valid check-out — should pass and persist correctly
 	checkOut := time.Date(2025, 6, 15, 16, 0, 0, 0, time.UTC)
 	_, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
-		CheckOutTime: &checkOut,
+		CheckOutTime: models.OptOf(checkOut),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -1257,7 +1257,7 @@ func TestChildAttendanceService_Update_RejectedUpdateDoesNotPersist(t *testing.T
 	// Try to set an invalid check-out (before check-in)
 	badCheckOut := time.Date(2025, 6, 15, 7, 0, 0, 0, time.UTC)
 	_, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
-		CheckOutTime: &badCheckOut,
+		CheckOutTime: models.OptOf(badCheckOut),
 	})
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -1288,13 +1288,13 @@ func TestChildAttendanceService_Update_SwapTimesInSingleRequest_Rejected(t *test
 	}
 	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, createReq, tc.userID)
 	_, _ = tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
-		CheckOutTime: &checkOut,
+		CheckOutTime: models.OptOf(checkOut),
 	})
 
 	// Try to swap: check-in = old check-out, check-out = old check-in
 	_, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
-		CheckInTime:  &checkOut, // 16:00
-		CheckOutTime: &checkIn,  // 08:00
+		CheckInTime:  models.OptOf(checkOut), // 16:00
+		CheckOutTime: models.OptOf(checkIn),  // 08:00
 	})
 	if err == nil {
 		t.Fatal("expected error when swapping check-in/check-out times, got nil")
@@ -1317,8 +1317,8 @@ func TestChildAttendanceService_Update_MidnightBoundary_Accepted(t *testing.T) {
 	checkIn := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
 	checkOut := time.Date(2025, 6, 15, 23, 59, 0, 0, time.UTC)
 	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
-		CheckInTime:  &checkIn,
-		CheckOutTime: &checkOut,
+		CheckInTime:  models.OptOf(checkIn),
+		CheckOutTime: models.OptOf(checkOut),
 	})
 	if err != nil {
 		t.Fatalf("expected no error for midnight boundary, got %v", err)
@@ -1564,5 +1564,72 @@ func TestChildAttendanceService_GetDailySummary_EmptyDay(t *testing.T) {
 	}
 	if summary.TotalChildren != 0 {
 		t.Errorf("expected 0 total, got %d", summary.TotalChildren)
+	}
+}
+
+// The undo action on the check-out toast: the user checked a child out by
+// mistake and takes it back. An explicit null clears the time; omitting the
+// field leaves it alone. Before Opt these were the same request, so the undo
+// was inexpressible — the frontend sent "" instead and got a 400.
+func TestChildAttendanceService_Update_ExplicitNullClearsCheckOutTime(t *testing.T) {
+	tc := setupChildAttendanceTest(t)
+	ctx := context.Background()
+
+	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, &models.ChildAttendanceCreateRequest{
+		Status:      models.ChildAttendanceStatusPresent,
+		CheckInTime: &checkIn,
+	}, tc.userID)
+
+	checkOut := time.Date(2025, 6, 15, 16, 0, 0, 0, time.UTC)
+	if _, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
+		CheckOutTime: models.OptOf(checkOut),
+	}); err != nil {
+		t.Fatalf("check-out: expected no error, got %v", err)
+	}
+
+	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
+		CheckOutTime: models.OptNull[time.Time](),
+	})
+	if err != nil {
+		t.Fatalf("undo check-out: expected no error, got %v", err)
+	}
+	if resp.CheckOutTime != nil {
+		t.Errorf("expected CheckOutTime to be cleared, got %v", resp.CheckOutTime)
+	}
+	// The check-in must survive: undoing a check-out says nothing about it.
+	if resp.CheckInTime == nil {
+		t.Error("expected CheckInTime to be preserved when only check-out is cleared")
+	}
+}
+
+// The other half of the distinction: a request that does not mention
+// check_out_time must not disturb it.
+func TestChildAttendanceService_Update_OmittedCheckOutTimeIsPreserved(t *testing.T) {
+	tc := setupChildAttendanceTest(t)
+	ctx := context.Background()
+
+	checkIn := time.Date(2025, 6, 15, 8, 0, 0, 0, time.UTC)
+	createResp, _ := tc.svc.Create(ctx, tc.org.ID, tc.child.ID, &models.ChildAttendanceCreateRequest{
+		Status:      models.ChildAttendanceStatusPresent,
+		CheckInTime: &checkIn,
+	}, tc.userID)
+
+	checkOut := time.Date(2025, 6, 15, 16, 0, 0, 0, time.UTC)
+	if _, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
+		CheckOutTime: models.OptOf(checkOut),
+	}); err != nil {
+		t.Fatalf("check-out: expected no error, got %v", err)
+	}
+
+	note := "picked up by grandmother"
+	resp, err := tc.svc.Update(ctx, createResp.ID, tc.org.ID, tc.child.ID, &models.ChildAttendanceUpdateRequest{
+		Note: &note,
+	})
+	if err != nil {
+		t.Fatalf("note update: expected no error, got %v", err)
+	}
+	if resp.CheckOutTime == nil {
+		t.Error("expected CheckOutTime to survive a request that did not mention it")
 	}
 }
