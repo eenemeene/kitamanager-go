@@ -2752,14 +2752,16 @@ export interface components {
     ChildAttendanceUpdateRequest: {
       /**
        * Format: date-time
+       * @description Null clears the recorded time; omitting the field leaves it unchanged.
        * @example 2025-06-15T08:00:00Z
        */
-      check_in_time?: string;
+      check_in_time?: string | null;
       /**
        * Format: date-time
+       * @description Null clears the recorded time; omitting the field leaves it unchanged.
        * @example 2025-06-15T16:00:00Z
        */
-      check_out_time?: string;
+      check_out_time?: string | null;
       /** @example Updated note */
       note?: string;
       /** @example present */
