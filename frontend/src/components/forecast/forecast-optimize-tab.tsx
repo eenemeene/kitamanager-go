@@ -17,7 +17,7 @@ import { LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
 import type { Section, ForecastChild, ForecastRequest } from '@/lib/api/types';
 import { useForecastStore } from '@/stores/forecast-store';
 import { useUiStore } from '@/stores/ui-store';
-import { calculateContractEndDate } from '@/lib/utils/school-enrollment';
+import { suggestContractEnd } from '@/lib/utils/school-enrollment';
 import { formatDateForApi } from '@/lib/utils/formatting';
 
 interface ForecastOptimizeTabProps {
@@ -127,7 +127,15 @@ export function ForecastOptimizeTab({
             birthdate.setMonth(birthdate.getMonth() - offsetMonths);
             birthdate.setDate(1);
             const birthdateStr = `${birthdate.getFullYear()}-${String(birthdate.getMonth() + 1).padStart(2, '0')}-01`;
-            const contractTo = calculateContractEndDate(birthdateStr, orgState) ?? undefined;
+            // Measured against the contract's own start. A section can reach
+            // school age (max_age_months is nullable, and the fallback here is
+            // 72 months), so the oldest generated children had a muss end
+            // already in the past -- an inverted period, which IsActiveOn
+            // matches on no date at all. They were accepted by the overlay
+            // validator and then counted nowhere, so asking for N children
+            // quietly forecast fewer than N. Open-ended keeps them counted.
+            const contractTo =
+              suggestContractEnd(birthdateStr, orgState, contractFrom) || undefined;
 
             children.push({
               first_name: 'Child',

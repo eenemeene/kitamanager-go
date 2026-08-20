@@ -18,7 +18,7 @@ export function toUTCDate(d: string): number {
  * the server. Returned as a UTC-midnight timestamp so it compares directly
  * against `toUTCDate(period.from)`.
  */
-function todayBerlin(): number {
+export function todayBerlin(): number {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Europe/Berlin',
     year: 'numeric',

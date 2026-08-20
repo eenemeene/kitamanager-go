@@ -25,7 +25,7 @@ import {
 import { GenderSelect } from '@/components/ui/gender-select';
 import { PropertyTagInput } from '@/components/ui/tag-input';
 import { useFundingAttributes } from '@/lib/hooks/use-funding-attributes';
-import { calculateContractEndDate } from '@/lib/utils/school-enrollment';
+import { suggestContractEnd } from '@/lib/utils/school-enrollment';
 import { childWithContractSchema, type ChildWithContractFormData } from '@/lib/schemas';
 import type { Gender, Section } from '@/lib/api/types';
 import { validationTiming } from '@/lib/forms/validation-timing';
@@ -108,7 +108,10 @@ export function ChildCreateDialog({
   // Auto-fill contract end date based on birthdate + org state
   useEffect(() => {
     if (birthdate && orgState) {
-      const suggestedEnd = calculateContractEndDate(birthdate, orgState);
+      // No contract_from yet -- the user fills it after the birthdate -- so the
+      // suggestion is measured against today. Left unset rather than cleared,
+      // keeping this effect unable to discard a date the user typed.
+      const suggestedEnd = suggestContractEnd(birthdate, orgState);
       if (suggestedEnd) {
         setValue('contract_to', suggestedEnd);
       }

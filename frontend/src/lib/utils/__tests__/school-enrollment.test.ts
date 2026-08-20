@@ -1,4 +1,8 @@
-import { calculateContractEndDate, classifySchoolEnrollment } from '../school-enrollment';
+import {
+  calculateContractEndDate,
+  classifySchoolEnrollment,
+  suggestContractEnd,
+} from '../school-enrollment';
 
 describe('calculateContractEndDate', () => {
   describe('Berlin (Stichtag: September 30)', () => {
@@ -170,5 +174,55 @@ describe('classifySchoolEnrollment', () => {
         kannContractEnd: '2025-07-31',
       });
     });
+  });
+});
+
+describe('suggestContractEnd', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    // A child born 2020-08-20 turns 6 before the 30 Sep Stichtag, so their
+    // muss school year is 2026 and their contract end 2026-07-31 -- three
+    // weeks in the past on this date.
+    jest.setSystemTime(new Date('2026-08-20T09:00:00Z'));
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('suggests the muss end date while it is still ahead', () => {
+    expect(suggestContractEnd('2021-08-20', 'berlin')).toBe('2027-07-31');
+  });
+
+  it('suggests nothing once the muss end has passed', () => {
+    expect(suggestContractEnd('2020-08-20', 'berlin')).toBe('');
+  });
+
+  it('suggests nothing when the end would precede the start it sits next to', () => {
+    // The dialog's own case: it opens with from = tomorrow.
+    expect(suggestContractEnd('2020-08-20', 'berlin', '2026-08-21')).toBe('');
+  });
+
+  it('measures against the given start, not today', () => {
+    // Backdated entry: a start in 2025 makes a 2026-07-31 end perfectly valid,
+    // even though that date is behind us now.
+    expect(suggestContractEnd('2020-08-20', 'berlin', '2025-09-01')).toBe('2026-07-31');
+  });
+
+  it('does not suggest an end equal to the day before the start', () => {
+    // The one-day case a "is it in the past" test would miss: the end is not
+    // past, but it still precedes the start.
+    jest.setSystemTime(new Date('2026-07-31T09:00:00Z'));
+    expect(suggestContractEnd('2020-08-20', 'berlin', '2026-08-01')).toBe('');
+  });
+
+  it('keeps an end that falls exactly on the start', () => {
+    jest.setSystemTime(new Date('2026-07-01T09:00:00Z'));
+    expect(suggestContractEnd('2020-08-20', 'berlin', '2026-07-31')).toBe('2026-07-31');
+  });
+
+  it('suggests nothing for an unknown state or unusable birthdate', () => {
+    expect(suggestContractEnd('2021-08-20', 'bayern')).toBe('2027-07-31'); // lenient fallback
+    expect(suggestContractEnd('', 'berlin')).toBe('');
+    expect(suggestContractEnd('2021-08-20', '')).toBe('');
   });
 });
