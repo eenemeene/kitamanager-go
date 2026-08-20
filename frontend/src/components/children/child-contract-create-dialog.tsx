@@ -30,7 +30,7 @@ import { childContractSchema, type ChildContractFormData } from '@/lib/schemas';
 import { formatDate, formatDateForInput, toLocalDateString } from '@/lib/utils/formatting';
 import { propertiesToLabelKeys } from '@/lib/utils/contract-properties';
 import { getActiveContract, isDateBefore } from '@/lib/utils/contracts';
-import { calculateContractEndDate } from '@/lib/utils/school-enrollment';
+import { suggestContractEnd } from '@/lib/utils/school-enrollment';
 import type { Child, Section, ContractProperties } from '@/lib/api/types';
 import { validationTiming } from '@/lib/forms/validation-timing';
 import { useProblemFormErrors } from '@/lib/forms/use-problem-form-errors';
@@ -122,8 +122,6 @@ export function ChildContractCreateDialog({
       appliedDefaultsRef.current = false;
 
       const birthdate = formatDateForInput(child.birthdate);
-      const suggestedTo =
-        birthdate && orgState ? calculateContractEndDate(birthdate, orgState) || '' : '';
 
       const active = getActiveContract(child.contracts);
       if (active) {
@@ -133,7 +131,9 @@ export function ChildContractCreateDialog({
 
         reset({
           from: tomorrowStr,
-          to: suggestedTo,
+          // Measured against the start this will actually sit next to, so the
+          // dialog cannot open with an end date before its own start.
+          to: birthdate && orgState ? suggestContractEnd(birthdate, orgState, tomorrowStr) : '',
           section_id: active.section_id,
           properties: active.properties as Record<string, string> | undefined,
         });
@@ -141,7 +141,12 @@ export function ChildContractCreateDialog({
         // defaults effect overwrite them.
         appliedDefaultsRef.current = true;
       } else {
-        reset({ from: '', to: suggestedTo, section_id: 0, properties: undefined });
+        reset({
+          from: '',
+          to: birthdate && orgState ? suggestContractEnd(birthdate, orgState) : '',
+          section_id: 0,
+          properties: undefined,
+        });
       }
     }
   }, [open, child, orgState, reset]);

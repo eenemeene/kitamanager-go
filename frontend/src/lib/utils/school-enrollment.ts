@@ -6,6 +6,8 @@
  *   - Kann-Kind: turns 6 between Oct 1 and Mar 31 of the following calendar
  *     year → parents may apply for early enrollment the preceding August.
  */
+import { toUTCDate, todayBerlin } from './contracts';
+
 type StateRules = {
   stichtag: { month: number; day: number };
   kannWindowEnd: { month: number; day: number };
@@ -35,6 +37,34 @@ export function calculateContractEndDate(birthdate: string, state: string): stri
   if (!bd) return null;
   const stichtag = rulesByState[state]?.stichtag ?? defaultStichtag;
   return `${computeMussYear(bd, stichtag)}-07-31`;
+}
+
+/**
+ * The contract end date to *offer* in a create form, or '' for no suggestion.
+ *
+ * calculateContractEndDate answers "when does this child's Kita time end on
+ * paper", which is a fixed consequence of their birthdate and stays in the past
+ * once it has passed. Offering it as the end of a contract that has not started
+ * yet produces `to` < `from` -- a form that opens already invalid, with the
+ * schema refusing a value the form itself filled in.
+ *
+ * Reachable well beyond the deferral case: a section may carry no upper age
+ * limit at all (the seeded "Grosse" has max_age_months = null), so a Kita can
+ * legitimately hold children past their school start, and every new contract
+ * for one of them hits this.
+ *
+ * `notBefore` is the start date the suggestion will sit next to when the caller
+ * knows it; callers that leave `from` empty for the user to fill get today,
+ * which is the earliest start they are realistically about to type. A date that
+ * is already past is not a suggestion, so return nothing and let them choose --
+ * an open-ended contract past the school start now raises its own warning in
+ * the children table.
+ */
+export function suggestContractEnd(birthdate: string, state: string, notBefore?: string): string {
+  const suggested = calculateContractEndDate(birthdate, state);
+  if (!suggested) return '';
+  const floor = notBefore ? toUTCDate(notBefore) : todayBerlin();
+  return toUTCDate(suggested) < floor ? '' : suggested;
 }
 
 export type SchoolEnrollment = {

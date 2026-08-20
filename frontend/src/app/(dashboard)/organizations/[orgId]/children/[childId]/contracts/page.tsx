@@ -50,7 +50,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { formatDate, formatDateForInput, formatDateForApi } from '@/lib/utils/formatting';
 import { propertiesToLabelKeys } from '@/lib/utils/contract-properties';
-import { calculateContractEndDate } from '@/lib/utils/school-enrollment';
+import { suggestContractEnd } from '@/lib/utils/school-enrollment';
 import { getContractStatus, compareDates } from '@/lib/utils/contracts';
 import { childContractSchema, type ChildContractFormData } from '@/lib/schemas';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -249,7 +249,7 @@ export default function ChildContractsPage() {
     if (child && orgState) {
       const birthdate = formatDateForInput(child.birthdate);
       if (birthdate) {
-        suggestedTo = calculateContractEndDate(birthdate, orgState) || '';
+        suggestedTo = suggestContractEnd(birthdate, orgState);
       }
     }
     reset({ from: '', to: suggestedTo, section_id: 0, properties: undefined });
