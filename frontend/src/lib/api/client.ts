@@ -518,11 +518,17 @@ class ApiClient {
   deleteEmployee = this._employees.delete;
 
   // Employee Contracts
+  //
+  // Every page, not just the first: the endpoint is paginated and defaults to 20,
+  // while the contracts page renders the whole history with no pager. Reading
+  // only `data` therefore dropped contract 21 onwards -- and because the backend
+  // orders by `from_date DESC`, what vanished was the *oldest* history, from the
+  // table and the timeline alike. Each amendment adds a row, so a long-tenured
+  // employee reaches 20.
   async getEmployeeContracts(orgId: number, employeeId: number): Promise<EmployeeContract[]> {
-    const response = await this.client.get<{ data: EmployeeContract[] }>(
+    return this.fetchAllPages<EmployeeContract>(
       `/organizations/${orgId}/employees/${employeeId}/contracts`
     );
-    return response.data.data;
   }
 
   async createEmployeeContract(
@@ -644,11 +650,13 @@ class ApiClient {
   deleteChild = this._children.delete;
 
   // Child Contracts
+  //
+  // Paginated like the employee equivalent above, and truncated the same way
+  // before this used fetchAllPages.
   async getChildContracts(orgId: number, childId: number): Promise<ChildContract[]> {
-    const response = await this.client.get<{ data: ChildContract[] }>(
+    return this.fetchAllPages<ChildContract>(
       `/organizations/${orgId}/children/${childId}/contracts`
     );
-    return response.data.data;
   }
 
   async getChildBillingHistory(
@@ -959,10 +967,13 @@ class ApiClient {
     return `${API_BASE_URL}/organizations/${orgId}/pay-plans/${payplanId}/export`;
   }
 
-  async importPayPlan(orgId: number, file: File): Promise<PayPlan> {
+  // Returns the detail shape, not the list shape: the import answers with the
+  // plan it just built, periods included. Typing it as PayPlan promised a
+  // `periods_count` the response does not carry and hid the `periods` it does.
+  async importPayPlan(orgId: number, file: File): Promise<PayPlanDetail> {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await this.client.post<PayPlan>(
+    const response = await this.client.post<PayPlanDetail>(
       `/organizations/${orgId}/pay-plans/import`,
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } }
