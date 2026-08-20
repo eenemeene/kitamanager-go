@@ -310,14 +310,48 @@ export type ChildrenBillingSummaryResponse = S['ChildrenBillingSummaryResponse']
 // ============================================================
 // Forecast
 //
-// ForecastChild/ForecastEmployee and their Contract sub-shapes are
-// defined in types.handwritten.ts — they're slim "scenario input"
-// shapes, not the full DB-level Response types. The backend's
-// POST /forecast accepts these abbreviated forms.
+// The scenario-input shapes are generated now. They used to be hand-written
+// in types.handwritten.ts because ForecastRequest carried the persistence
+// models, whose every field the generator marked required — a scenario child
+// could not satisfy that type, so the store described one by hand and the page
+// cast through `as unknown`. The request DTOs are real now, so these are
+// aliases like everything else.
 // ============================================================
 
 export type ForecastRequest = S['ForecastRequest'];
 export type ForecastResponse = S['ForecastResponse'];
+// The fields below are re-narrowed to required. The spec leaves them optional
+// because swaggo derives `required` from `binding:"required"` tags, and these
+// DTOs deliberately carry none: the forecast service validates them itself so
+// it can report `add_children[0].contracts[1].from`, a JSON path the frontend
+// maps straight onto a form field. gin's validator reports Go field names
+// instead, so moving the check to a binding tag would cost that. The
+// requirement is real either way, and a scenario builder should not have to
+// re-check what it just set.
+export type ForecastChildContract = Override<
+  Override<S['ForecastChildContractInput'], 'from', string>,
+  'section_id',
+  number
+>;
+export type ForecastChild = Override<
+  Override<S['ForecastChildInput'], 'birthdate', string>,
+  'contracts',
+  ForecastChildContract[]
+>;
+export type ForecastEmployeeContract = Override<
+  Override<
+    Override<Override<S['ForecastEmployeeContractInput'], 'from', string>, 'section_id', number>,
+    'staff_category',
+    string
+  >,
+  'weekly_hours',
+  number
+>;
+export type ForecastEmployee = Override<
+  Override<S['ForecastEmployeeInput'], 'birthdate', string>,
+  'contracts',
+  ForecastEmployeeContract[]
+>;
 
 // ============================================================
 // Audit log
@@ -342,10 +376,6 @@ export type {
   PaginatedResponse,
   AuditLogListParams,
   DashboardStats,
-  ForecastChild,
-  ForecastChildContract,
-  ForecastEmployee,
-  ForecastEmployeeContract,
 } from './types.handwritten';
 export { DEFAULT_PAGE_SIZE, LOOKUP_FETCH_LIMIT, VALID_STATES } from './types.handwritten';
 

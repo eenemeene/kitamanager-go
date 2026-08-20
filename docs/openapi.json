@@ -546,84 +546,6 @@
                 ],
                 "type": "object"
             },
-            "Child": {
-                "properties": {
-                    "birthdate": {
-                        "example": "1990-05-15",
-                        "format": "date-time",
-                        "type": "string"
-                    },
-                    "contracts": {
-                        "items": {
-                            "$ref": "#/components/schemas/ChildContract"
-                        },
-                        "type": "array"
-                    },
-                    "created_at": {
-                        "format": "date-time",
-                        "type": "string"
-                    },
-                    "first_name": {
-                        "example": "Max",
-                        "type": "string"
-                    },
-                    "gender": {
-                        "enum": [
-                            "male",
-                            "female",
-                            "diverse"
-                        ],
-                        "example": "male",
-                        "type": "string"
-                    },
-                    "id": {
-                        "example": 1,
-                        "type": "integer"
-                    },
-                    "last_name": {
-                        "example": "Mustermann",
-                        "type": "string"
-                    },
-                    "organization": {
-                        "$ref": "#/components/schemas/Organization"
-                    },
-                    "organization_id": {
-                        "example": 1,
-                        "type": "integer"
-                    },
-                    "school_entry_date": {
-                        "description": "SchoolEntryDate is when the child leaves for school, when that is not the\ndate their birthdate implies -- a Zurückstellung being the reason it\nusually differs. Nil means \"compute it\", which is what every child gets\nuntil somebody records otherwise.\n\nA date rather than a flag or a year offset: Bayern's Einschulungskorridor\nand Bremen's Karenzzeit leave the regular date genuinely undecided for a\nband of birthdates, so there is no base to offset from, and a Bayern\ndeferral granted up to 31 January does not land a whole number of years\nfrom anything.\n\nOn Child and not Person: employees do not go to school.",
-                        "example": "2028-08-01",
-                        "format": "date-time",
-                        "type": "string"
-                    },
-                    "updated_at": {
-                        "format": "date-time",
-                        "type": "string"
-                    },
-                    "vouchers": {
-                        "items": {
-                            "$ref": "#/components/schemas/ChildVoucher"
-                        },
-                        "type": "array"
-                    }
-                },
-                "required": [
-                    "birthdate",
-                    "contracts",
-                    "created_at",
-                    "first_name",
-                    "gender",
-                    "id",
-                    "last_name",
-                    "organization",
-                    "organization_id",
-                    "school_entry_date",
-                    "updated_at",
-                    "vouchers"
-                ],
-                "type": "object"
-            },
             "ChildAttendanceCreateRequest": {
                 "properties": {
                     "check_in_time": {
@@ -963,65 +885,6 @@
                     "total_billed",
                     "total_calculated",
                     "total_difference"
-                ],
-                "type": "object"
-            },
-            "ChildContract": {
-                "properties": {
-                    "child_id": {
-                        "example": 1,
-                        "type": "integer"
-                    },
-                    "created_at": {
-                        "format": "date-time",
-                        "type": "string"
-                    },
-                    "from": {
-                        "format": "date-time",
-                        "type": "string"
-                    },
-                    "id": {
-                        "example": 1,
-                        "type": "integer"
-                    },
-                    "properties": {
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/ContractProperties"
-                            }
-                        ],
-                        "description": "Properties stores flexible key-value data as JSON.\nFor children: {\"care_type\": \"ganztag\", \"supplements\": [\"ndh\", \"mss\"]}\nFor employees: {\"benefits\": [\"christmas_bonus\"], \"employer_type\": \"normal\"}"
-                    },
-                    "section": {
-                        "$ref": "#/components/schemas/Section"
-                    },
-                    "section_id": {
-                        "type": "integer"
-                    },
-                    "to": {
-                        "format": "date-time",
-                        "type": "string"
-                    },
-                    "updated_at": {
-                        "format": "date-time",
-                        "type": "string"
-                    },
-                    "version": {
-                        "description": "Version is the optimistic-concurrency counter. Every write bumps it, and\nupdates are guarded with `WHERE id = ? AND version = ?` so a writer holding\nstale data affects zero rows instead of silently overwriting a newer state.\nClients echo it back as an If-Match precondition; a contract's care type and\nsupplements determine its funding, so a lost update quietly changes money.",
-                        "type": "integer"
-                    }
-                },
-                "required": [
-                    "child_id",
-                    "created_at",
-                    "from",
-                    "id",
-                    "properties",
-                    "section",
-                    "section_id",
-                    "to",
-                    "updated_at",
-                    "version"
                 ],
                 "type": "object"
             },
@@ -1437,36 +1300,6 @@
                 },
                 "type": "object"
             },
-            "ChildVoucher": {
-                "properties": {
-                    "child_id": {
-                        "type": "integer"
-                    },
-                    "created_at": {
-                        "format": "date-time",
-                        "type": "string"
-                    },
-                    "first_seen": {
-                        "format": "date-time",
-                        "type": "string"
-                    },
-                    "id": {
-                        "type": "integer"
-                    },
-                    "voucher_number": {
-                        "example": "GB-12345678901-02",
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "child_id",
-                    "created_at",
-                    "first_seen",
-                    "id",
-                    "voucher_number"
-                ],
-                "type": "object"
-            },
             "ChildVoucherCreateRequest": {
                 "properties": {
                     "voucher_number": {
@@ -1725,155 +1558,6 @@
                     "key",
                     "label",
                     "value"
-                ],
-                "type": "object"
-            },
-            "Employee": {
-                "properties": {
-                    "birthdate": {
-                        "example": "1990-05-15",
-                        "format": "date-time",
-                        "type": "string"
-                    },
-                    "contracts": {
-                        "items": {
-                            "$ref": "#/components/schemas/EmployeeContract"
-                        },
-                        "type": "array"
-                    },
-                    "created_at": {
-                        "format": "date-time",
-                        "type": "string"
-                    },
-                    "first_name": {
-                        "example": "Max",
-                        "type": "string"
-                    },
-                    "gender": {
-                        "enum": [
-                            "male",
-                            "female",
-                            "diverse"
-                        ],
-                        "example": "male",
-                        "type": "string"
-                    },
-                    "id": {
-                        "example": 1,
-                        "type": "integer"
-                    },
-                    "last_name": {
-                        "example": "Mustermann",
-                        "type": "string"
-                    },
-                    "organization": {
-                        "$ref": "#/components/schemas/Organization"
-                    },
-                    "organization_id": {
-                        "example": 1,
-                        "type": "integer"
-                    },
-                    "updated_at": {
-                        "format": "date-time",
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "birthdate",
-                    "contracts",
-                    "created_at",
-                    "first_name",
-                    "gender",
-                    "id",
-                    "last_name",
-                    "organization",
-                    "organization_id",
-                    "updated_at"
-                ],
-                "type": "object"
-            },
-            "EmployeeContract": {
-                "properties": {
-                    "created_at": {
-                        "format": "date-time",
-                        "type": "string"
-                    },
-                    "employee_id": {
-                        "example": 1,
-                        "type": "integer"
-                    },
-                    "from": {
-                        "format": "date-time",
-                        "type": "string"
-                    },
-                    "grade": {
-                        "example": "S8a",
-                        "type": "string"
-                    },
-                    "id": {
-                        "example": 1,
-                        "type": "integer"
-                    },
-                    "payplan_id": {
-                        "example": 1,
-                        "type": "integer"
-                    },
-                    "properties": {
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/ContractProperties"
-                            }
-                        ],
-                        "description": "Properties stores flexible key-value data as JSON.\nFor children: {\"care_type\": \"ganztag\", \"supplements\": [\"ndh\", \"mss\"]}\nFor employees: {\"benefits\": [\"christmas_bonus\"], \"employer_type\": \"normal\"}"
-                    },
-                    "section": {
-                        "$ref": "#/components/schemas/Section"
-                    },
-                    "section_id": {
-                        "type": "integer"
-                    },
-                    "staff_category": {
-                        "description": "Employee-specific typed fields",
-                        "example": "qualified",
-                        "type": "string"
-                    },
-                    "step": {
-                        "example": 3,
-                        "type": "integer"
-                    },
-                    "to": {
-                        "format": "date-time",
-                        "type": "string"
-                    },
-                    "updated_at": {
-                        "format": "date-time",
-                        "type": "string"
-                    },
-                    "version": {
-                        "description": "Version is the optimistic-concurrency counter. Every write bumps it, and\nupdates are guarded with `WHERE id = ? AND version = ?` so a writer holding\nstale data affects zero rows instead of silently overwriting a newer state.\nClients echo it back as an If-Match precondition; a contract's care type and\nsupplements determine its funding, so a lost update quietly changes money.",
-                        "type": "integer"
-                    },
-                    "weekly_hours": {
-                        "example": 40,
-                        "type": "number"
-                    }
-                },
-                "required": [
-                    "created_at",
-                    "employee_id",
-                    "from",
-                    "grade",
-                    "id",
-                    "payplan_id",
-                    "properties",
-                    "section",
-                    "section_id",
-                    "staff_category",
-                    "step",
-                    "to",
-                    "updated_at",
-                    "version",
-                    "weekly_hours"
                 ],
                 "type": "object"
             },
@@ -2924,31 +2608,172 @@
                 ],
                 "type": "object"
             },
+            "ForecastChildContractInput": {
+                "properties": {
+                    "child_id": {
+                        "description": "ChildID names the existing child a standalone contract attaches to. It is\nunset for contracts nested under a new child in add_children, which have\nno id yet.",
+                        "example": 1,
+                        "type": "integer"
+                    },
+                    "from": {
+                        "example": "2026-08-01",
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "properties": {
+                        "$ref": "#/components/schemas/ContractProperties"
+                    },
+                    "section_id": {
+                        "example": 2,
+                        "type": "integer"
+                    },
+                    "to": {
+                        "example": "2027-07-31",
+                        "format": "date-time",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "ForecastChildInput": {
+                "properties": {
+                    "birthdate": {
+                        "description": "Birthdate drives the age bracket the funding rate is read from, so it is\nthe one person-level field the calculation actually needs.",
+                        "example": "2023-03-10",
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "contracts": {
+                        "items": {
+                            "$ref": "#/components/schemas/ForecastChildContractInput"
+                        },
+                        "type": "array"
+                    },
+                    "first_name": {
+                        "example": "Emma",
+                        "type": "string"
+                    },
+                    "gender": {
+                        "enum": [
+                            "male",
+                            "female",
+                            "diverse"
+                        ],
+                        "example": "female",
+                        "type": "string"
+                    },
+                    "last_name": {
+                        "example": "Schmidt",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "ForecastEmployeeContractInput": {
+                "properties": {
+                    "employee_id": {
+                        "description": "EmployeeID names the existing employee a standalone contract attaches to.\nUnset for contracts nested under a new employee in add_employees.",
+                        "example": 1,
+                        "type": "integer"
+                    },
+                    "from": {
+                        "example": "2026-08-01",
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "grade": {
+                        "example": "S8a",
+                        "type": "string"
+                    },
+                    "payplan_id": {
+                        "example": 1,
+                        "type": "integer"
+                    },
+                    "properties": {
+                        "$ref": "#/components/schemas/ContractProperties"
+                    },
+                    "section_id": {
+                        "example": 2,
+                        "type": "integer"
+                    },
+                    "staff_category": {
+                        "example": "qualified",
+                        "type": "string"
+                    },
+                    "step": {
+                        "example": 3,
+                        "type": "integer"
+                    },
+                    "to": {
+                        "example": "2027-07-31",
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "weekly_hours": {
+                        "example": 40,
+                        "type": "number"
+                    }
+                },
+                "type": "object"
+            },
+            "ForecastEmployeeInput": {
+                "properties": {
+                    "birthdate": {
+                        "example": "1990-05-15",
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "contracts": {
+                        "items": {
+                            "$ref": "#/components/schemas/ForecastEmployeeContractInput"
+                        },
+                        "type": "array"
+                    },
+                    "first_name": {
+                        "example": "Max",
+                        "type": "string"
+                    },
+                    "gender": {
+                        "enum": [
+                            "male",
+                            "female",
+                            "diverse"
+                        ],
+                        "example": "male",
+                        "type": "string"
+                    },
+                    "last_name": {
+                        "example": "Mustermann",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "ForecastRequest": {
                 "properties": {
                     "add_child_contracts": {
                         "items": {
-                            "$ref": "#/components/schemas/ChildContract"
+                            "$ref": "#/components/schemas/ForecastChildContractInput"
                         },
                         "type": "array"
                     },
                     "add_children": {
                         "description": "Child overlays",
                         "items": {
-                            "$ref": "#/components/schemas/Child"
+                            "$ref": "#/components/schemas/ForecastChildInput"
                         },
                         "type": "array"
                     },
                     "add_employee_contracts": {
                         "items": {
-                            "$ref": "#/components/schemas/EmployeeContract"
+                            "$ref": "#/components/schemas/ForecastEmployeeContractInput"
                         },
                         "type": "array"
                     },
                     "add_employees": {
                         "description": "Employee overlays",
                         "items": {
-                            "$ref": "#/components/schemas/Employee"
+                            "$ref": "#/components/schemas/ForecastEmployeeInput"
                         },
                         "type": "array"
                     },
@@ -5800,64 +5625,6 @@
                     "RoleMember",
                     "RoleStaff"
                 ]
-            },
-            "Section": {
-                "properties": {
-                    "created_at": {
-                        "example": "2024-01-15T10:30:00Z",
-                        "format": "date-time",
-                        "type": "string"
-                    },
-                    "created_by": {
-                        "example": "admin@example.com",
-                        "type": "string"
-                    },
-                    "id": {
-                        "example": 1,
-                        "type": "integer"
-                    },
-                    "is_default": {
-                        "example": false,
-                        "type": "boolean"
-                    },
-                    "max_age_months": {
-                        "example": 36,
-                        "type": "integer"
-                    },
-                    "min_age_months": {
-                        "example": 0,
-                        "type": "integer"
-                    },
-                    "name": {
-                        "example": "Krippe",
-                        "type": "string"
-                    },
-                    "organization": {
-                        "$ref": "#/components/schemas/Organization"
-                    },
-                    "organization_id": {
-                        "example": 1,
-                        "type": "integer"
-                    },
-                    "updated_at": {
-                        "example": "2024-01-15T10:30:00Z",
-                        "format": "date-time",
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "created_at",
-                    "created_by",
-                    "id",
-                    "is_default",
-                    "max_age_months",
-                    "min_age_months",
-                    "name",
-                    "organization",
-                    "organization_id",
-                    "updated_at"
-                ],
-                "type": "object"
             },
             "SectionCreateRequest": {
                 "properties": {

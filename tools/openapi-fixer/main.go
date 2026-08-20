@@ -460,7 +460,7 @@ func markResponsePropertiesRequired(spec *openapi3.T) {
 		// nest inside responses.
 		//
 		// Excluded:
-		//   - *Request types: their `required` list comes from
+		//   - *Request and *Input types: their `required` list comes from
 		//     `binding:"required"` Go tags, which is the correct truth
 		//     for inputs; forcing every field required would break
 		//     partial updates.
@@ -470,6 +470,14 @@ func markResponsePropertiesRequired(spec *openapi3.T) {
 		//     types (e.g. ChildBillingSummaryEntry) ARE response shapes
 		//     and should keep the all-required treatment.
 		if strings.HasSuffix(shortName, "Request") {
+			continue
+		}
+		// *Input types are request shapes too: the forecast overlay inputs
+		// (ForecastChildInput and friends) describe what a caller sends, so
+		// their optional fields must stay optional. They are named Input rather
+		// than Request because they are members of ForecastRequest, not
+		// requests in their own right.
+		if strings.HasSuffix(shortName, "Input") {
 			continue
 		}
 		if strings.HasSuffix(shortName, "BatchUpdateEntry") {

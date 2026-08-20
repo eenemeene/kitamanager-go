@@ -2636,50 +2636,6 @@ export interface components {
       /** @example 3 */
       step: number;
     };
-    Child: {
-      /**
-       * Format: date-time
-       * @example 1990-05-15
-       */
-      birthdate: string;
-      contracts: components['schemas']['ChildContract'][];
-      /** Format: date-time */
-      created_at: string;
-      /** @example Max */
-      first_name: string;
-      /**
-       * @example male
-       * @enum {string}
-       */
-      gender: 'male' | 'female' | 'diverse';
-      /** @example 1 */
-      id: number;
-      /** @example Mustermann */
-      last_name: string;
-      organization: components['schemas']['Organization'];
-      /** @example 1 */
-      organization_id: number;
-      /**
-       * Format: date-time
-       * @description SchoolEntryDate is when the child leaves for school, when that is not the
-       *     date their birthdate implies -- a Zurückstellung being the reason it
-       *     usually differs. Nil means "compute it", which is what every child gets
-       *     until somebody records otherwise.
-       *
-       *     A date rather than a flag or a year offset: Bayern's Einschulungskorridor
-       *     and Bremen's Karenzzeit leave the regular date genuinely undecided for a
-       *     band of birthdates, so there is no base to offset from, and a Bayern
-       *     deferral granted up to 31 January does not land a whole number of years
-       *     from anything.
-       *
-       *     On Child and not Person: employees do not go to school.
-       * @example 2028-08-01
-       */
-      school_entry_date: string;
-      /** Format: date-time */
-      updated_at: string;
-      vouchers: components['schemas']['ChildVoucher'][];
-    };
     ChildAttendanceCreateRequest: {
       /**
        * Format: date-time
@@ -2832,36 +2788,6 @@ export interface components {
       total_calculated: number;
       /** @example 0 */
       total_difference: number;
-    };
-    ChildContract: {
-      /** @example 1 */
-      child_id: number;
-      /** Format: date-time */
-      created_at: string;
-      /** Format: date-time */
-      from: string;
-      /** @example 1 */
-      id: number;
-      /**
-       * @description Properties stores flexible key-value data as JSON.
-       *     For children: {"care_type": "ganztag", "supplements": ["ndh", "mss"]}
-       *     For employees: {"benefits": ["christmas_bonus"], "employer_type": "normal"}
-       */
-      properties: components['schemas']['ContractProperties'];
-      section: components['schemas']['Section'];
-      section_id: number;
-      /** Format: date-time */
-      to: string;
-      /** Format: date-time */
-      updated_at: string;
-      /**
-       * @description Version is the optimistic-concurrency counter. Every write bumps it, and
-       *     updates are guarded with `WHERE id = ? AND version = ?` so a writer holding
-       *     stale data affects zero rows instead of silently overwriting a newer state.
-       *     Clients echo it back as an If-Match precondition; a contract's care type and
-       *     supplements determine its funding, so a lost update quietly changes money.
-       */
-      version: number;
     };
     ChildContractAmendRequest: {
       /**
@@ -3060,16 +2986,6 @@ export interface components {
        */
       school_entry_date?: string | null;
     };
-    ChildVoucher: {
-      child_id: number;
-      /** Format: date-time */
-      created_at: string;
-      /** Format: date-time */
-      first_seen: string;
-      id: number;
-      /** @example GB-12345678901-02 */
-      voucher_number: string;
-    };
     ChildVoucherCreateRequest: {
       /** @example GB-12345678901-02 */
       voucher_number: string;
@@ -3182,75 +3098,6 @@ export interface components {
       label: string;
       /** @example ganztag */
       value: string;
-    };
-    Employee: {
-      /**
-       * Format: date-time
-       * @example 1990-05-15
-       */
-      birthdate: string;
-      contracts: components['schemas']['EmployeeContract'][];
-      /** Format: date-time */
-      created_at: string;
-      /** @example Max */
-      first_name: string;
-      /**
-       * @example male
-       * @enum {string}
-       */
-      gender: 'male' | 'female' | 'diverse';
-      /** @example 1 */
-      id: number;
-      /** @example Mustermann */
-      last_name: string;
-      organization: components['schemas']['Organization'];
-      /** @example 1 */
-      organization_id: number;
-      /** Format: date-time */
-      updated_at: string;
-    };
-    EmployeeContract: {
-      /** Format: date-time */
-      created_at: string;
-      /** @example 1 */
-      employee_id: number;
-      /** Format: date-time */
-      from: string;
-      /** @example S8a */
-      grade: string;
-      /** @example 1 */
-      id: number;
-      /** @example 1 */
-      payplan_id: number;
-      /**
-       * @description Properties stores flexible key-value data as JSON.
-       *     For children: {"care_type": "ganztag", "supplements": ["ndh", "mss"]}
-       *     For employees: {"benefits": ["christmas_bonus"], "employer_type": "normal"}
-       */
-      properties: components['schemas']['ContractProperties'];
-      section: components['schemas']['Section'];
-      section_id: number;
-      /**
-       * @description Employee-specific typed fields
-       * @example qualified
-       */
-      staff_category: string;
-      /** @example 3 */
-      step: number;
-      /** Format: date-time */
-      to: string;
-      /** Format: date-time */
-      updated_at: string;
-      /**
-       * @description Version is the optimistic-concurrency counter. Every write bumps it, and
-       *     updates are guarded with `WHERE id = ? AND version = ?` so a writer holding
-       *     stale data affects zero rows instead of silently overwriting a newer state.
-       *     Clients echo it back as an If-Match precondition; a contract's care type and
-       *     supplements determine its funding, so a lost update quietly changes money.
-       */
-      version: number;
-      /** @example 40 */
-      weekly_hours: number;
     };
     EmployeeContractAmendRequest: {
       /**
@@ -3763,13 +3610,102 @@ export interface components {
       /** @example qualified */
       staff_category: string;
     };
+    ForecastChildContractInput: {
+      /**
+       * @description ChildID names the existing child a standalone contract attaches to. It is
+       *     unset for contracts nested under a new child in add_children, which have
+       *     no id yet.
+       * @example 1
+       */
+      child_id?: number;
+      /**
+       * Format: date-time
+       * @example 2026-08-01
+       */
+      from?: string;
+      properties?: components['schemas']['ContractProperties'];
+      /** @example 2 */
+      section_id?: number;
+      /**
+       * Format: date-time
+       * @example 2027-07-31
+       */
+      to?: string;
+    };
+    ForecastChildInput: {
+      /**
+       * Format: date-time
+       * @description Birthdate drives the age bracket the funding rate is read from, so it is
+       *     the one person-level field the calculation actually needs.
+       * @example 2023-03-10
+       */
+      birthdate?: string;
+      contracts?: components['schemas']['ForecastChildContractInput'][];
+      /** @example Emma */
+      first_name?: string;
+      /**
+       * @example female
+       * @enum {string}
+       */
+      gender?: 'male' | 'female' | 'diverse';
+      /** @example Schmidt */
+      last_name?: string;
+    };
+    ForecastEmployeeContractInput: {
+      /**
+       * @description EmployeeID names the existing employee a standalone contract attaches to.
+       *     Unset for contracts nested under a new employee in add_employees.
+       * @example 1
+       */
+      employee_id?: number;
+      /**
+       * Format: date-time
+       * @example 2026-08-01
+       */
+      from?: string;
+      /** @example S8a */
+      grade?: string;
+      /** @example 1 */
+      payplan_id?: number;
+      properties?: components['schemas']['ContractProperties'];
+      /** @example 2 */
+      section_id?: number;
+      /** @example qualified */
+      staff_category?: string;
+      /** @example 3 */
+      step?: number;
+      /**
+       * Format: date-time
+       * @example 2027-07-31
+       */
+      to?: string;
+      /** @example 40 */
+      weekly_hours?: number;
+    };
+    ForecastEmployeeInput: {
+      /**
+       * Format: date-time
+       * @example 1990-05-15
+       */
+      birthdate?: string;
+      contracts?: components['schemas']['ForecastEmployeeContractInput'][];
+      /** @example Max */
+      first_name?: string;
+      /**
+       * @example male
+       * @enum {string}
+       */
+      gender?: 'male' | 'female' | 'diverse';
+      /** @example Mustermann */
+      last_name?: string;
+    };
     ForecastRequest: {
-      add_child_contracts?: components['schemas']['ChildContract'][];
+      add_child_contracts?: components['schemas']['ForecastChildContractInput'][];
       /** @description Child overlays */
-      add_children?: components['schemas']['Child'][];
-      add_employee_contracts?: components['schemas']['EmployeeContract'][];
+      add_children?: components['schemas']['ForecastChildInput'][];
+      add_employee_contracts?: components['schemas']['ForecastEmployeeContractInput'][];
       /** @description Employee overlays */
-      add_employees?: components['schemas']['Employee'][];
+      add_employees?: components['schemas']['ForecastEmployeeInput'][];
       /** Format: date-time */
       from?: string;
       remove_child_ids?: number[];
@@ -4880,33 +4816,6 @@ export interface components {
     };
     /** @enum {string} */
     Role: 'admin' | 'manager' | 'member' | 'staff';
-    Section: {
-      /**
-       * Format: date-time
-       * @example 2024-01-15T10:30:00Z
-       */
-      created_at: string;
-      /** @example admin@example.com */
-      created_by: string;
-      /** @example 1 */
-      id: number;
-      /** @example false */
-      is_default: boolean;
-      /** @example 36 */
-      max_age_months: number;
-      /** @example 0 */
-      min_age_months: number;
-      /** @example Krippe */
-      name: string;
-      organization: components['schemas']['Organization'];
-      /** @example 1 */
-      organization_id: number;
-      /**
-       * Format: date-time
-       * @example 2024-01-15T10:30:00Z
-       */
-      updated_at: string;
-    };
     SectionCreateRequest: {
       /** @example 36 */
       max_age_months?: number;

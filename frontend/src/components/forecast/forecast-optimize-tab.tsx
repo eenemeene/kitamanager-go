@@ -14,7 +14,7 @@ import { useFundingAttributes } from '@/lib/hooks/use-funding-attributes';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
-import type { Section, ForecastChild, ForecastRequest } from '@/lib/api/types';
+import type { Section, ForecastChild } from '@/lib/api/types';
 import { useForecastStore } from '@/stores/forecast-store';
 import { useUiStore } from '@/stores/ui-store';
 import { suggestContractEnd } from '@/lib/utils/school-enrollment';
@@ -217,10 +217,7 @@ export function ForecastOptimizeTab({
         ...baselineReq,
         add_children: [...(baselineReq.add_children ?? []), ...toApiChildren(oneChildChildren)],
       };
-      const oneChildResp = await apiClient.postForecast(
-        orgId,
-        oneChildReq as unknown as ForecastRequest
-      );
+      const oneChildResp = await apiClient.postForecast(orgId, oneChildReq);
       const oneChildBalance = getCumulativeBalance(oneChildResp);
       const perChildImpact = oneChildBalance - baselineBalance;
 
@@ -258,7 +255,7 @@ export function ForecastOptimizeTab({
           ...baselineReq,
           add_children: [...(baselineReq.add_children ?? []), ...toApiChildren(children)],
         };
-        const resp = await apiClient.postForecast(orgId, req as unknown as ForecastRequest);
+        const resp = await apiClient.postForecast(orgId, req);
         const balance = getCumulativeBalance(resp);
 
         if (balance >= targetCents) {

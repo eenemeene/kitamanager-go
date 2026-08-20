@@ -11479,70 +11479,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_eenemeene_kitamanager-go_internal_models.Child": {
-            "type": "object",
-            "properties": {
-                "birthdate": {
-                    "type": "string",
-                    "format": "date-time",
-                    "example": "1990-05-15"
-                },
-                "contracts": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContract"
-                    }
-                },
-                "created_at": {
-                    "type": "string",
-                    "format": "date-time"
-                },
-                "first_name": {
-                    "type": "string",
-                    "example": "Max"
-                },
-                "gender": {
-                    "type": "string",
-                    "enum": [
-                        "male",
-                        "female",
-                        "diverse"
-                    ],
-                    "example": "male"
-                },
-                "id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "last_name": {
-                    "type": "string",
-                    "example": "Mustermann"
-                },
-                "organization": {
-                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Organization"
-                },
-                "organization_id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "school_entry_date": {
-                    "description": "SchoolEntryDate is when the child leaves for school, when that is not the\ndate their birthdate implies -- a Zurückstellung being the reason it\nusually differs. Nil means \"compute it\", which is what every child gets\nuntil somebody records otherwise.\n\nA date rather than a flag or a year offset: Bayern's Einschulungskorridor\nand Bremen's Karenzzeit leave the regular date genuinely undecided for a\nband of birthdates, so there is no base to offset from, and a Bayern\ndeferral granted up to 31 January does not land a whole number of years\nfrom anything.\n\nOn Child and not Person: employees do not go to school.",
-                    "type": "string",
-                    "format": "date-time",
-                    "example": "2028-08-01"
-                },
-                "updated_at": {
-                    "type": "string",
-                    "format": "date-time"
-                },
-                "vouchers": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildVoucher"
-                    }
-                }
-            }
-        },
         "github_com_eenemeene_kitamanager-go_internal_models.ChildAttendanceCreateRequest": {
             "type": "object",
             "required": [
@@ -11820,53 +11756,6 @@ const docTemplate = `{
                 "total_difference": {
                     "type": "integer",
                     "example": 0
-                }
-            }
-        },
-        "github_com_eenemeene_kitamanager-go_internal_models.ChildContract": {
-            "type": "object",
-            "properties": {
-                "child_id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "created_at": {
-                    "type": "string",
-                    "format": "date-time"
-                },
-                "from": {
-                    "type": "string",
-                    "format": "date-time"
-                },
-                "id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "properties": {
-                    "description": "Properties stores flexible key-value data as JSON.\nFor children: {\"care_type\": \"ganztag\", \"supplements\": [\"ndh\", \"mss\"]}\nFor employees: {\"benefits\": [\"christmas_bonus\"], \"employer_type\": \"normal\"}",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties"
-                        }
-                    ]
-                },
-                "section": {
-                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Section"
-                },
-                "section_id": {
-                    "type": "integer"
-                },
-                "to": {
-                    "type": "string",
-                    "format": "date-time"
-                },
-                "updated_at": {
-                    "type": "string",
-                    "format": "date-time"
-                },
-                "version": {
-                    "description": "Version is the optimistic-concurrency counter. Every write bumps it, and\nupdates are guarded with ` + "`" + `WHERE id = ? AND version = ?` + "`" + ` so a writer holding\nstale data affects zero rows instead of silently overwriting a newer state.\nClients echo it back as an If-Match precondition; a contract's care type and\nsupplements determine its funding, so a lost update quietly changes money.",
-                    "type": "integer"
                 }
             }
         },
@@ -12224,29 +12113,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_eenemeene_kitamanager-go_internal_models.ChildVoucher": {
-            "type": "object",
-            "properties": {
-                "child_id": {
-                    "type": "integer"
-                },
-                "created_at": {
-                    "type": "string",
-                    "format": "date-time"
-                },
-                "first_seen": {
-                    "type": "string",
-                    "format": "date-time"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "voucher_number": {
-                    "type": "string",
-                    "example": "GB-12345678901-02"
-                }
-            }
-        },
         "github_com_eenemeene_kitamanager-go_internal_models.ChildVoucherCreateRequest": {
             "type": "object",
             "required": [
@@ -12464,126 +12330,6 @@ const docTemplate = `{
                 "value": {
                     "type": "string",
                     "example": "ganztag"
-                }
-            }
-        },
-        "github_com_eenemeene_kitamanager-go_internal_models.Employee": {
-            "type": "object",
-            "properties": {
-                "birthdate": {
-                    "type": "string",
-                    "format": "date-time",
-                    "example": "1990-05-15"
-                },
-                "contracts": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContract"
-                    }
-                },
-                "created_at": {
-                    "type": "string",
-                    "format": "date-time"
-                },
-                "first_name": {
-                    "type": "string",
-                    "example": "Max"
-                },
-                "gender": {
-                    "type": "string",
-                    "enum": [
-                        "male",
-                        "female",
-                        "diverse"
-                    ],
-                    "example": "male"
-                },
-                "id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "last_name": {
-                    "type": "string",
-                    "example": "Mustermann"
-                },
-                "organization": {
-                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Organization"
-                },
-                "organization_id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "updated_at": {
-                    "type": "string",
-                    "format": "date-time"
-                }
-            }
-        },
-        "github_com_eenemeene_kitamanager-go_internal_models.EmployeeContract": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string",
-                    "format": "date-time"
-                },
-                "employee_id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "from": {
-                    "type": "string",
-                    "format": "date-time"
-                },
-                "grade": {
-                    "type": "string",
-                    "example": "S8a"
-                },
-                "id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "payplan_id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "properties": {
-                    "description": "Properties stores flexible key-value data as JSON.\nFor children: {\"care_type\": \"ganztag\", \"supplements\": [\"ndh\", \"mss\"]}\nFor employees: {\"benefits\": [\"christmas_bonus\"], \"employer_type\": \"normal\"}",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties"
-                        }
-                    ]
-                },
-                "section": {
-                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Section"
-                },
-                "section_id": {
-                    "type": "integer"
-                },
-                "staff_category": {
-                    "description": "Employee-specific typed fields",
-                    "type": "string",
-                    "example": "qualified"
-                },
-                "step": {
-                    "type": "integer",
-                    "example": 3
-                },
-                "to": {
-                    "type": "string",
-                    "format": "date-time"
-                },
-                "updated_at": {
-                    "type": "string",
-                    "format": "date-time"
-                },
-                "version": {
-                    "description": "Version is the optimistic-concurrency counter. Every write bumps it, and\nupdates are guarded with ` + "`" + `WHERE id = ? AND version = ?` + "`" + ` so a writer holding\nstale data affects zero rows instead of silently overwriting a newer state.\nClients echo it back as an If-Match precondition; a contract's care type and\nsupplements determine its funding, so a lost update quietly changes money.",
-                    "type": "integer"
-                },
-                "weekly_hours": {
-                    "type": "number",
-                    "example": 40
                 }
             }
         },
@@ -13475,33 +13221,174 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_eenemeene_kitamanager-go_internal_models.ForecastChildContractInput": {
+            "type": "object",
+            "properties": {
+                "child_id": {
+                    "description": "ChildID names the existing child a standalone contract attaches to. It is\nunset for contracts nested under a new child in add_children, which have\nno id yet.",
+                    "type": "integer",
+                    "example": 1
+                },
+                "from": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-08-01"
+                },
+                "properties": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties"
+                },
+                "section_id": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "to": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2027-07-31"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ForecastChildInput": {
+            "type": "object",
+            "properties": {
+                "birthdate": {
+                    "description": "Birthdate drives the age bracket the funding rate is read from, so it is\nthe one person-level field the calculation actually needs.",
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2023-03-10"
+                },
+                "contracts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastChildContractInput"
+                    }
+                },
+                "first_name": {
+                    "type": "string",
+                    "example": "Emma"
+                },
+                "gender": {
+                    "type": "string",
+                    "enum": [
+                        "male",
+                        "female",
+                        "diverse"
+                    ],
+                    "example": "female"
+                },
+                "last_name": {
+                    "type": "string",
+                    "example": "Schmidt"
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ForecastEmployeeContractInput": {
+            "type": "object",
+            "properties": {
+                "employee_id": {
+                    "description": "EmployeeID names the existing employee a standalone contract attaches to.\nUnset for contracts nested under a new employee in add_employees.",
+                    "type": "integer",
+                    "example": 1
+                },
+                "from": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-08-01"
+                },
+                "grade": {
+                    "type": "string",
+                    "example": "S8a"
+                },
+                "payplan_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "properties": {
+                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties"
+                },
+                "section_id": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "staff_category": {
+                    "type": "string",
+                    "example": "qualified"
+                },
+                "step": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "to": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2027-07-31"
+                },
+                "weekly_hours": {
+                    "type": "number",
+                    "example": 40
+                }
+            }
+        },
+        "github_com_eenemeene_kitamanager-go_internal_models.ForecastEmployeeInput": {
+            "type": "object",
+            "properties": {
+                "birthdate": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "1990-05-15"
+                },
+                "contracts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastEmployeeContractInput"
+                    }
+                },
+                "first_name": {
+                    "type": "string",
+                    "example": "Max"
+                },
+                "gender": {
+                    "type": "string",
+                    "enum": [
+                        "male",
+                        "female",
+                        "diverse"
+                    ],
+                    "example": "male"
+                },
+                "last_name": {
+                    "type": "string",
+                    "example": "Mustermann"
+                }
+            }
+        },
         "github_com_eenemeene_kitamanager-go_internal_models.ForecastRequest": {
             "type": "object",
             "properties": {
                 "add_child_contracts": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContract"
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastChildContractInput"
                     }
                 },
                 "add_children": {
                     "description": "Child overlays",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Child"
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastChildInput"
                     }
                 },
                 "add_employee_contracts": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContract"
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastEmployeeContractInput"
                     }
                 },
                 "add_employees": {
                     "description": "Employee overlays",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Employee"
+                        "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastEmployeeInput"
                     }
                 },
                 "from": {
@@ -15866,52 +15753,6 @@ const docTemplate = `{
                 "RoleMember",
                 "RoleStaff"
             ]
-        },
-        "github_com_eenemeene_kitamanager-go_internal_models.Section": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string",
-                    "format": "date-time",
-                    "example": "2024-01-15T10:30:00Z"
-                },
-                "created_by": {
-                    "type": "string",
-                    "example": "admin@example.com"
-                },
-                "id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "is_default": {
-                    "type": "boolean",
-                    "example": false
-                },
-                "max_age_months": {
-                    "type": "integer",
-                    "example": 36
-                },
-                "min_age_months": {
-                    "type": "integer",
-                    "example": 0
-                },
-                "name": {
-                    "type": "string",
-                    "example": "Krippe"
-                },
-                "organization": {
-                    "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Organization"
-                },
-                "organization_id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "updated_at": {
-                    "type": "string",
-                    "format": "date-time",
-                    "example": "2024-01-15T10:30:00Z"
-                }
-            }
         },
         "github_com_eenemeene_kitamanager-go_internal_models.SectionCreateRequest": {
             "type": "object",
