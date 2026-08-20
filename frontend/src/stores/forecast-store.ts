@@ -138,10 +138,6 @@ export const useForecastStore = create<ForecastState>()(
         if (s.to) req.to = apiDate(s.to, 'to');
         if (s.sectionId) req.section_id = s.sectionId;
 
-        // The spec types `add_children` / `add_employees` as the full
-        // Child/Employee response shape, but the backend accepts the slim
-        // ForecastChild/ForecastEmployee inputs we build here. Cast through
-        // unknown to bridge the spec/runtime gap.
         if (s.addChildren.length > 0)
           req.add_children = s.addChildren.map((c, i) => ({
             ...c,
@@ -151,7 +147,7 @@ export const useForecastStore = create<ForecastState>()(
               from: apiDate(ct.from, `add_children[${i}].contracts[${j}].from`),
               to: apiDateOptional(ct.to),
             })),
-          })) as unknown as ForecastRequest['add_children'];
+          }));
         if (s.removeChildIds.length > 0) req.remove_child_ids = s.removeChildIds;
         if (s.addEmployees.length > 0)
           req.add_employees = s.addEmployees.map((e, i) => ({
@@ -162,7 +158,7 @@ export const useForecastStore = create<ForecastState>()(
               from: apiDate(ct.from, `add_employees[${i}].contracts[${j}].from`),
               to: apiDateOptional(ct.to),
             })),
-          })) as unknown as ForecastRequest['add_employees'];
+          }));
         if (s.removeEmployeeIds.length > 0) req.remove_employee_ids = s.removeEmployeeIds;
 
         return req;

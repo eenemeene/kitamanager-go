@@ -356,65 +356,6 @@ definitions:
         example: 3
         type: integer
     type: object
-  github_com_eenemeene_kitamanager-go_internal_models.Child:
-    properties:
-      birthdate:
-        example: "1990-05-15"
-        format: date-time
-        type: string
-      contracts:
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContract'
-        type: array
-      created_at:
-        format: date-time
-        type: string
-      first_name:
-        example: Max
-        type: string
-      gender:
-        enum:
-        - male
-        - female
-        - diverse
-        example: male
-        type: string
-      id:
-        example: 1
-        type: integer
-      last_name:
-        example: Mustermann
-        type: string
-      organization:
-        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Organization'
-      organization_id:
-        example: 1
-        type: integer
-      school_entry_date:
-        description: |-
-          SchoolEntryDate is when the child leaves for school, when that is not the
-          date their birthdate implies -- a Zurückstellung being the reason it
-          usually differs. Nil means "compute it", which is what every child gets
-          until somebody records otherwise.
-
-          A date rather than a flag or a year offset: Bayern's Einschulungskorridor
-          and Bremen's Karenzzeit leave the regular date genuinely undecided for a
-          band of birthdates, so there is no base to offset from, and a Bayern
-          deferral granted up to 31 January does not land a whole number of years
-          from anything.
-
-          On Child and not Person: employees do not go to school.
-        example: "2028-08-01"
-        format: date-time
-        type: string
-      updated_at:
-        format: date-time
-        type: string
-      vouchers:
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildVoucher'
-        type: array
-    type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildAttendanceCreateRequest:
     properties:
       check_in_time:
@@ -625,46 +566,6 @@ definitions:
         type: integer
       total_difference:
         example: 0
-        type: integer
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.ChildContract:
-    properties:
-      child_id:
-        example: 1
-        type: integer
-      created_at:
-        format: date-time
-        type: string
-      from:
-        format: date-time
-        type: string
-      id:
-        example: 1
-        type: integer
-      properties:
-        allOf:
-        - $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
-        description: |-
-          Properties stores flexible key-value data as JSON.
-          For children: {"care_type": "ganztag", "supplements": ["ndh", "mss"]}
-          For employees: {"benefits": ["christmas_bonus"], "employer_type": "normal"}
-      section:
-        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Section'
-      section_id:
-        type: integer
-      to:
-        format: date-time
-        type: string
-      updated_at:
-        format: date-time
-        type: string
-      version:
-        description: |-
-          Version is the optimistic-concurrency counter. Every write bumps it, and
-          updates are guarded with `WHERE id = ? AND version = ?` so a writer holding
-          stale data affects zero rows instead of silently overwriting a newer state.
-          Clients echo it back as an If-Match precondition; a contract's care type and
-          supplements determine its funding, so a lost update quietly changes money.
         type: integer
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildContractAmendRequest:
@@ -938,22 +839,6 @@ definitions:
         type: string
         x-nullable: true
     type: object
-  github_com_eenemeene_kitamanager-go_internal_models.ChildVoucher:
-    properties:
-      child_id:
-        type: integer
-      created_at:
-        format: date-time
-        type: string
-      first_seen:
-        format: date-time
-        type: string
-      id:
-        type: integer
-      voucher_number:
-        example: GB-12345678901-02
-        type: string
-    type: object
   github_com_eenemeene_kitamanager-go_internal_models.ChildVoucherCreateRequest:
     properties:
       voucher_number:
@@ -1121,100 +1006,6 @@ definitions:
       value:
         example: ganztag
         type: string
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.Employee:
-    properties:
-      birthdate:
-        example: "1990-05-15"
-        format: date-time
-        type: string
-      contracts:
-        items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContract'
-        type: array
-      created_at:
-        format: date-time
-        type: string
-      first_name:
-        example: Max
-        type: string
-      gender:
-        enum:
-        - male
-        - female
-        - diverse
-        example: male
-        type: string
-      id:
-        example: 1
-        type: integer
-      last_name:
-        example: Mustermann
-        type: string
-      organization:
-        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Organization'
-      organization_id:
-        example: 1
-        type: integer
-      updated_at:
-        format: date-time
-        type: string
-    type: object
-  github_com_eenemeene_kitamanager-go_internal_models.EmployeeContract:
-    properties:
-      created_at:
-        format: date-time
-        type: string
-      employee_id:
-        example: 1
-        type: integer
-      from:
-        format: date-time
-        type: string
-      grade:
-        example: S8a
-        type: string
-      id:
-        example: 1
-        type: integer
-      payplan_id:
-        example: 1
-        type: integer
-      properties:
-        allOf:
-        - $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
-        description: |-
-          Properties stores flexible key-value data as JSON.
-          For children: {"care_type": "ganztag", "supplements": ["ndh", "mss"]}
-          For employees: {"benefits": ["christmas_bonus"], "employer_type": "normal"}
-      section:
-        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Section'
-      section_id:
-        type: integer
-      staff_category:
-        description: Employee-specific typed fields
-        example: qualified
-        type: string
-      step:
-        example: 3
-        type: integer
-      to:
-        format: date-time
-        type: string
-      updated_at:
-        format: date-time
-        type: string
-      version:
-        description: |-
-          Version is the optimistic-concurrency counter. Every write bumps it, and
-          updates are guarded with `WHERE id = ? AND version = ?` so a writer holding
-          stale data affects zero rows instead of silently overwriting a newer state.
-          Clients echo it back as an If-Match precondition; a contract's care type and
-          supplements determine its funding, so a lost update quietly changes money.
-        type: integer
-      weekly_hours:
-        example: 40
-        type: number
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.EmployeeContractAmendRequest:
     properties:
@@ -1911,25 +1702,136 @@ definitions:
         example: qualified
         type: string
     type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ForecastChildContractInput:
+    properties:
+      child_id:
+        description: |-
+          ChildID names the existing child a standalone contract attaches to. It is
+          unset for contracts nested under a new child in add_children, which have
+          no id yet.
+        example: 1
+        type: integer
+      from:
+        example: "2026-08-01"
+        format: date-time
+        type: string
+      properties:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
+      section_id:
+        example: 2
+        type: integer
+      to:
+        example: "2027-07-31"
+        format: date-time
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ForecastChildInput:
+    properties:
+      birthdate:
+        description: |-
+          Birthdate drives the age bracket the funding rate is read from, so it is
+          the one person-level field the calculation actually needs.
+        example: "2023-03-10"
+        format: date-time
+        type: string
+      contracts:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastChildContractInput'
+        type: array
+      first_name:
+        example: Emma
+        type: string
+      gender:
+        enum:
+        - male
+        - female
+        - diverse
+        example: female
+        type: string
+      last_name:
+        example: Schmidt
+        type: string
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ForecastEmployeeContractInput:
+    properties:
+      employee_id:
+        description: |-
+          EmployeeID names the existing employee a standalone contract attaches to.
+          Unset for contracts nested under a new employee in add_employees.
+        example: 1
+        type: integer
+      from:
+        example: "2026-08-01"
+        format: date-time
+        type: string
+      grade:
+        example: S8a
+        type: string
+      payplan_id:
+        example: 1
+        type: integer
+      properties:
+        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ContractProperties'
+      section_id:
+        example: 2
+        type: integer
+      staff_category:
+        example: qualified
+        type: string
+      step:
+        example: 3
+        type: integer
+      to:
+        example: "2027-07-31"
+        format: date-time
+        type: string
+      weekly_hours:
+        example: 40
+        type: number
+    type: object
+  github_com_eenemeene_kitamanager-go_internal_models.ForecastEmployeeInput:
+    properties:
+      birthdate:
+        example: "1990-05-15"
+        format: date-time
+        type: string
+      contracts:
+        items:
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastEmployeeContractInput'
+        type: array
+      first_name:
+        example: Max
+        type: string
+      gender:
+        enum:
+        - male
+        - female
+        - diverse
+        example: male
+        type: string
+      last_name:
+        example: Mustermann
+        type: string
+    type: object
   github_com_eenemeene_kitamanager-go_internal_models.ForecastRequest:
     properties:
       add_child_contracts:
         items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContract'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastChildContractInput'
         type: array
       add_children:
         description: Child overlays
         items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Child'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastChildInput'
         type: array
       add_employee_contracts:
         items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.EmployeeContract'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastEmployeeContractInput'
         type: array
       add_employees:
         description: Employee overlays
         items:
-          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Employee'
+          $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ForecastEmployeeInput'
         type: array
       from:
         format: date-time
@@ -3662,40 +3564,6 @@ definitions:
     - RoleManager
     - RoleMember
     - RoleStaff
-  github_com_eenemeene_kitamanager-go_internal_models.Section:
-    properties:
-      created_at:
-        example: "2024-01-15T10:30:00Z"
-        format: date-time
-        type: string
-      created_by:
-        example: admin@example.com
-        type: string
-      id:
-        example: 1
-        type: integer
-      is_default:
-        example: false
-        type: boolean
-      max_age_months:
-        example: 36
-        type: integer
-      min_age_months:
-        example: 0
-        type: integer
-      name:
-        example: Krippe
-        type: string
-      organization:
-        $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.Organization'
-      organization_id:
-        example: 1
-        type: integer
-      updated_at:
-        example: "2024-01-15T10:30:00Z"
-        format: date-time
-        type: string
-    type: object
   github_com_eenemeene_kitamanager-go_internal_models.SectionCreateRequest:
     properties:
       max_age_months:

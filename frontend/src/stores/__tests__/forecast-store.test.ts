@@ -99,8 +99,8 @@ describe('forecast-store', () => {
     expect(req.from).toBe('2026-01-01T00:00:00Z');
     expect(req.to).toBe('2026-12-01T00:00:00Z');
     expect(req.add_children![0].birthdate).toBe('2023-06-15T00:00:00Z');
-    expect(req.add_children![0].contracts[0].from).toBe('2026-08-01T00:00:00Z');
-    expect(req.add_children![0].contracts[0].to).toBe('2027-07-31T00:00:00Z');
+    expect(req.add_children![0].contracts![0]!.from).toBe('2026-08-01T00:00:00Z');
+    expect(req.add_children![0].contracts![0]!.to).toBe('2027-07-31T00:00:00Z');
   });
 
   it('builds empty request when no modifications', () => {

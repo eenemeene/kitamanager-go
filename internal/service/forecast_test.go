@@ -170,20 +170,16 @@ func TestGetForecast_AddEmployee(t *testing.T) {
 	req := &models.ForecastRequest{
 		From: &from,
 		To:   &to,
-		AddEmployees: []models.Employee{
+		AddEmployees: []models.ForecastEmployeeInput{
 			{
-				Person: models.Person{
-					FirstName: "New",
-					LastName:  "Employee",
-					Gender:    "female",
-					Birthdate: time.Date(1985, 6, 15, 0, 0, 0, 0, time.UTC),
-				},
-				Contracts: []models.EmployeeContract{
+				FirstName: "New",
+				LastName:  "Employee",
+				Gender:    "female",
+				Birthdate: time.Date(1985, 6, 15, 0, 0, 0, 0, time.UTC),
+				Contracts: []models.ForecastEmployeeContractInput{
 					{
-						BaseContract: models.BaseContract{
-							Period:    models.Period{From: contractFrom},
-							SectionID: td.section.ID,
-						},
+						From:          contractFrom,
+						SectionID:     td.section.ID,
 						StaffCategory: "qualified",
 						Grade:         "S8a",
 						Step:          3,
@@ -248,21 +244,17 @@ func TestGetForecast_AddChild(t *testing.T) {
 	req := &models.ForecastRequest{
 		From: &from,
 		To:   &to,
-		AddChildren: []models.Child{
+		AddChildren: []models.ForecastChildInput{
 			{
-				Person: models.Person{
-					FirstName: "New",
-					LastName:  "Child",
-					Gender:    "male",
-					Birthdate: time.Date(2023, 5, 1, 0, 0, 0, 0, time.UTC),
-				},
-				Contracts: []models.ChildContract{
+				FirstName: "New",
+				LastName:  "Child",
+				Gender:    "male",
+				Birthdate: time.Date(2023, 5, 1, 0, 0, 0, 0, time.UTC),
+				Contracts: []models.ForecastChildContractInput{
 					{
-						BaseContract: models.BaseContract{
-							Period:     models.Period{From: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)},
-							SectionID:  td.section.ID,
-							Properties: models.ContractProperties{"care_type": "ganztag"},
-						},
+						From:       time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+						SectionID:  td.section.ID,
+						Properties: models.ContractProperties{"care_type": "ganztag"},
 					},
 				},
 			},
@@ -344,20 +336,16 @@ func TestGetForecast_ValidateOverlay_InvalidPayPlan(t *testing.T) {
 	req := &models.ForecastRequest{
 		From: &from,
 		To:   &to,
-		AddEmployees: []models.Employee{
+		AddEmployees: []models.ForecastEmployeeInput{
 			{
-				Person: models.Person{
-					FirstName: "Bad",
-					LastName:  "Employee",
-					Gender:    "male",
-					Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
-				},
-				Contracts: []models.EmployeeContract{
+				FirstName: "Bad",
+				LastName:  "Employee",
+				Gender:    "male",
+				Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
+				Contracts: []models.ForecastEmployeeContractInput{
 					{
-						BaseContract: models.BaseContract{
-							Period:    models.Period{From: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)},
-							SectionID: td.section.ID,
-						},
+						From:          time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+						SectionID:     td.section.ID,
 						StaffCategory: "qualified",
 						WeeklyHours:   39.0,
 						PayPlanID:     999999, // non-existent
@@ -438,13 +426,11 @@ func TestApplyOverlay_AddContractToExistingEmployee(t *testing.T) {
 	}
 
 	req := &models.ForecastRequest{
-		AddEmployeeContracts: []models.EmployeeContract{
+		AddEmployeeContracts: []models.ForecastEmployeeContractInput{
 			{
-				EmployeeID: 5,
-				BaseContract: models.BaseContract{
-					Period:    models.Period{From: time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)},
-					SectionID: 1,
-				},
+				EmployeeID:    5,
+				From:          time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC),
+				SectionID:     1,
 				StaffCategory: "supplementary",
 				WeeklyHours:   20.0,
 				PayPlanID:     1,
@@ -484,21 +470,17 @@ func TestGetForecast_RemoveAndReAddChild(t *testing.T) {
 		From:           &from,
 		To:             &to,
 		RemoveChildIDs: []uint{td.child1.ID},
-		AddChildren: []models.Child{
+		AddChildren: []models.ForecastChildInput{
 			{
-				Person: models.Person{
-					FirstName: "Virtual",
-					LastName:  "Child",
-					Gender:    "female",
-					Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), // same as test children
-				},
-				Contracts: []models.ChildContract{
+				FirstName: "Virtual",
+				LastName:  "Child",
+				Gender:    "female",
+				Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), // same as test children,
+				Contracts: []models.ForecastChildContractInput{
 					{
-						BaseContract: models.BaseContract{
-							Period:     models.Period{From: contractFrom},
-							SectionID:  td.section.ID,
-							Properties: models.ContractProperties{"care_type": "ganztag"},
-						},
+						From:       contractFrom,
+						SectionID:  td.section.ID,
+						Properties: models.ContractProperties{"care_type": "ganztag"},
 					},
 				},
 			},
@@ -552,20 +534,16 @@ func TestGetForecast_RemoveAndReAddEmployee(t *testing.T) {
 		From:              &from,
 		To:                &to,
 		RemoveEmployeeIDs: []uint{td.emp1.ID},
-		AddEmployees: []models.Employee{
+		AddEmployees: []models.ForecastEmployeeInput{
 			{
-				Person: models.Person{
-					FirstName: "Virtual",
-					LastName:  "Employee",
-					Gender:    "male",
-					Birthdate: time.Date(1985, 1, 1, 0, 0, 0, 0, time.UTC),
-				},
-				Contracts: []models.EmployeeContract{
+				FirstName: "Virtual",
+				LastName:  "Employee",
+				Gender:    "male",
+				Birthdate: time.Date(1985, 1, 1, 0, 0, 0, 0, time.UTC),
+				Contracts: []models.ForecastEmployeeContractInput{
 					{
-						BaseContract: models.BaseContract{
-							Period:    models.Period{From: contractFrom},
-							SectionID: td.section.ID,
-						},
+						From:          contractFrom,
+						SectionID:     td.section.ID,
 						StaffCategory: "qualified",
 						Grade:         "S8a",
 						Step:          3,
@@ -621,21 +599,17 @@ func TestGetForecast_FutureChildNoImpact(t *testing.T) {
 	req := &models.ForecastRequest{
 		From: &from,
 		To:   &to,
-		AddChildren: []models.Child{
+		AddChildren: []models.ForecastChildInput{
 			{
-				Person: models.Person{
-					FirstName: "Future",
-					LastName:  "Child",
-					Gender:    "female",
-					Birthdate: time.Date(2033, 1, 1, 0, 0, 0, 0, time.UTC),
-				},
-				Contracts: []models.ChildContract{
+				FirstName: "Future",
+				LastName:  "Child",
+				Gender:    "female",
+				Birthdate: time.Date(2033, 1, 1, 0, 0, 0, 0, time.UTC),
+				Contracts: []models.ForecastChildContractInput{
 					{
-						BaseContract: models.BaseContract{
-							Period:     models.Period{From: time.Date(2036, 8, 1, 0, 0, 0, 0, time.UTC)},
-							SectionID:  td.section.ID,
-							Properties: models.ContractProperties{"care_type": "ganztag"},
-						},
+						From:       time.Date(2036, 8, 1, 0, 0, 0, 0, time.UTC),
+						SectionID:  td.section.ID,
+						Properties: models.ContractProperties{"care_type": "ganztag"},
 					},
 				},
 			},
@@ -677,20 +651,16 @@ func TestGetForecast_FutureEmployeeNoImpact(t *testing.T) {
 	req := &models.ForecastRequest{
 		From: &from,
 		To:   &to,
-		AddEmployees: []models.Employee{
+		AddEmployees: []models.ForecastEmployeeInput{
 			{
-				Person: models.Person{
-					FirstName: "Future",
-					LastName:  "Employee",
-					Gender:    "male",
-					Birthdate: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
-				},
-				Contracts: []models.EmployeeContract{
+				FirstName: "Future",
+				LastName:  "Employee",
+				Gender:    "male",
+				Birthdate: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
+				Contracts: []models.ForecastEmployeeContractInput{
 					{
-						BaseContract: models.BaseContract{
-							Period:    models.Period{From: time.Date(2036, 8, 1, 0, 0, 0, 0, time.UTC)},
-							SectionID: td.section.ID,
-						},
+						From:          time.Date(2036, 8, 1, 0, 0, 0, 0, time.UTC),
+						SectionID:     td.section.ID,
 						StaffCategory: "qualified",
 						Grade:         "S8a",
 						Step:          3,
@@ -743,20 +713,16 @@ func TestGetForecast_EndEmployeeContractMidRange(t *testing.T) {
 		From:              &from,
 		To:                &to,
 		RemoveEmployeeIDs: []uint{td.emp2.ID},
-		AddEmployees: []models.Employee{
+		AddEmployees: []models.ForecastEmployeeInput{
 			{
-				Person: models.Person{
-					FirstName: "Temp",
-					LastName:  "Worker",
-					Gender:    "female",
-					Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
-				},
-				Contracts: []models.EmployeeContract{
+				FirstName: "Temp",
+				LastName:  "Worker",
+				Gender:    "female",
+				Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
+				Contracts: []models.ForecastEmployeeContractInput{
 					{
-						BaseContract: models.BaseContract{
-							Period:    models.Period{From: contractFrom, To: &contractTo},
-							SectionID: td.section.ID,
-						},
+						From: contractFrom, To: &contractTo,
+						SectionID:     td.section.ID,
 						StaffCategory: "qualified",
 						Grade:         "S8a",
 						Step:          3,
@@ -804,20 +770,16 @@ func TestGetForecast_AddEmployeeMidRange(t *testing.T) {
 	req := &models.ForecastRequest{
 		From: &from,
 		To:   &to,
-		AddEmployees: []models.Employee{
+		AddEmployees: []models.ForecastEmployeeInput{
 			{
-				Person: models.Person{
-					FirstName: "MidYear",
-					LastName:  "Hire",
-					Gender:    "male",
-					Birthdate: time.Date(1995, 3, 15, 0, 0, 0, 0, time.UTC),
-				},
-				Contracts: []models.EmployeeContract{
+				FirstName: "MidYear",
+				LastName:  "Hire",
+				Gender:    "male",
+				Birthdate: time.Date(1995, 3, 15, 0, 0, 0, 0, time.UTC),
+				Contracts: []models.ForecastEmployeeContractInput{
 					{
-						BaseContract: models.BaseContract{
-							Period:    models.Period{From: time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)},
-							SectionID: td.section.ID,
-						},
+						From:          time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC),
+						SectionID:     td.section.ID,
 						StaffCategory: "qualified",
 						Grade:         "S8a",
 						Step:          3,
@@ -871,20 +833,16 @@ func TestGetForecast_AddNonPedagogicalEmployee(t *testing.T) {
 	req := &models.ForecastRequest{
 		From: &from,
 		To:   &to,
-		AddEmployees: []models.Employee{
+		AddEmployees: []models.ForecastEmployeeInput{
 			{
-				Person: models.Person{
-					FirstName: "Cook",
-					LastName:  "Helper",
-					Gender:    "female",
-					Birthdate: time.Date(1988, 7, 20, 0, 0, 0, 0, time.UTC),
-				},
-				Contracts: []models.EmployeeContract{
+				FirstName: "Cook",
+				LastName:  "Helper",
+				Gender:    "female",
+				Birthdate: time.Date(1988, 7, 20, 0, 0, 0, 0, time.UTC),
+				Contracts: []models.ForecastEmployeeContractInput{
 					{
-						BaseContract: models.BaseContract{
-							Period:    models.Period{From: time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC)},
-							SectionID: td.section.ID,
-						},
+						From:          time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC),
+						SectionID:     td.section.ID,
 						StaffCategory: "non_pedagogical",
 						Grade:         "S8a",
 						Step:          3,
@@ -942,21 +900,17 @@ func TestGetForecast_ChildWithUnmatchedCareType(t *testing.T) {
 	req := &models.ForecastRequest{
 		From: &from,
 		To:   &to,
-		AddChildren: []models.Child{
+		AddChildren: []models.ForecastChildInput{
 			{
-				Person: models.Person{
-					FirstName: "Halbtag",
-					LastName:  "Child",
-					Gender:    "male",
-					Birthdate: time.Date(2022, 6, 1, 0, 0, 0, 0, time.UTC),
-				},
-				Contracts: []models.ChildContract{
+				FirstName: "Halbtag",
+				LastName:  "Child",
+				Gender:    "male",
+				Birthdate: time.Date(2022, 6, 1, 0, 0, 0, 0, time.UTC),
+				Contracts: []models.ForecastChildContractInput{
 					{
-						BaseContract: models.BaseContract{
-							Period:     models.Period{From: time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC)},
-							SectionID:  td.section.ID,
-							Properties: models.ContractProperties{"care_type": "halbtag"},
-						},
+						From:       time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC),
+						SectionID:  td.section.ID,
+						Properties: models.ContractProperties{"care_type": "halbtag"},
 					},
 				},
 			},
@@ -996,20 +950,16 @@ func TestGetForecast_CombinedOverlay(t *testing.T) {
 		To:                &to,
 		RemoveEmployeeIDs: []uint{td.emp2.ID},   // remove 30h employee
 		RemoveChildIDs:    []uint{td.child1.ID}, // remove 1 child
-		AddEmployees: []models.Employee{
+		AddEmployees: []models.ForecastEmployeeInput{
 			{
-				Person: models.Person{
-					FirstName: "New",
-					LastName:  "Staff",
-					Gender:    "female",
-					Birthdate: time.Date(1992, 1, 1, 0, 0, 0, 0, time.UTC),
-				},
-				Contracts: []models.EmployeeContract{
+				FirstName: "New",
+				LastName:  "Staff",
+				Gender:    "female",
+				Birthdate: time.Date(1992, 1, 1, 0, 0, 0, 0, time.UTC),
+				Contracts: []models.ForecastEmployeeContractInput{
 					{
-						BaseContract: models.BaseContract{
-							Period:    models.Period{From: contractFrom},
-							SectionID: td.section.ID,
-						},
+						From:          contractFrom,
+						SectionID:     td.section.ID,
 						StaffCategory: "qualified",
 						Grade:         "S8a",
 						Step:          3,
@@ -1019,23 +969,19 @@ func TestGetForecast_CombinedOverlay(t *testing.T) {
 				},
 			},
 		},
-		AddChildren: []models.Child{
+		AddChildren: []models.ForecastChildInput{
 			{
-				Person: models.Person{
-					FirstName: "Extra", LastName: "ChildA", Gender: "female",
-					Birthdate: time.Date(2021, 3, 1, 0, 0, 0, 0, time.UTC),
-				},
-				Contracts: []models.ChildContract{
-					{BaseContract: models.BaseContract{Period: models.Period{From: contractFrom}, SectionID: td.section.ID, Properties: models.ContractProperties{"care_type": "ganztag"}}},
+				FirstName: "Extra", LastName: "ChildA", Gender: "female",
+				Birthdate: time.Date(2021, 3, 1, 0, 0, 0, 0, time.UTC),
+				Contracts: []models.ForecastChildContractInput{
+					{From: contractFrom, SectionID: td.section.ID, Properties: models.ContractProperties{"care_type": "ganztag"}},
 				},
 			},
 			{
-				Person: models.Person{
-					FirstName: "Extra", LastName: "ChildB", Gender: "male",
-					Birthdate: time.Date(2022, 7, 1, 0, 0, 0, 0, time.UTC),
-				},
-				Contracts: []models.ChildContract{
-					{BaseContract: models.BaseContract{Period: models.Period{From: contractFrom}, SectionID: td.section.ID, Properties: models.ContractProperties{"care_type": "ganztag"}}},
+				FirstName: "Extra", LastName: "ChildB", Gender: "male",
+				Birthdate: time.Date(2022, 7, 1, 0, 0, 0, 0, time.UTC),
+				Contracts: []models.ForecastChildContractInput{
+					{From: contractFrom, SectionID: td.section.ID, Properties: models.ContractProperties{"care_type": "ganztag"}},
 				},
 			},
 		},
@@ -1086,19 +1032,15 @@ func TestGetForecast_PerChildBudgetItemWithAddedChildren(t *testing.T) {
 	req := &models.ForecastRequest{
 		From: &from,
 		To:   &to,
-		AddChildren: []models.Child{
+		AddChildren: []models.ForecastChildInput{
 			{
-				Person: models.Person{
-					FirstName: "Third", LastName: "Kid", Gender: "male",
-					Birthdate: time.Date(2021, 6, 1, 0, 0, 0, 0, time.UTC),
-				},
-				Contracts: []models.ChildContract{
+				FirstName: "Third", LastName: "Kid", Gender: "male",
+				Birthdate: time.Date(2021, 6, 1, 0, 0, 0, 0, time.UTC),
+				Contracts: []models.ForecastChildContractInput{
 					{
-						BaseContract: models.BaseContract{
-							Period:     models.Period{From: time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC)},
-							SectionID:  td.section.ID,
-							Properties: models.ContractProperties{"care_type": "ganztag"},
-						},
+						From:       time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC),
+						SectionID:  td.section.ID,
+						Properties: models.ContractProperties{"care_type": "ganztag"},
 					},
 				},
 			},
@@ -1140,19 +1082,15 @@ func TestGetForecast_EndChildContractMidRange(t *testing.T) {
 		From:           &from,
 		To:             &to,
 		RemoveChildIDs: []uint{td.child1.ID},
-		AddChildren: []models.Child{
+		AddChildren: []models.ForecastChildInput{
 			{
-				Person: models.Person{
-					FirstName: "Leaving", LastName: "Child", Gender: "female",
-					Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
-				},
-				Contracts: []models.ChildContract{
+				FirstName: "Leaving", LastName: "Child", Gender: "female",
+				Birthdate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+				Contracts: []models.ForecastChildContractInput{
 					{
-						BaseContract: models.BaseContract{
-							Period:     models.Period{From: contractFrom, To: &contractTo},
-							SectionID:  td.section.ID,
-							Properties: models.ContractProperties{"care_type": "ganztag"},
-						},
+						From: contractFrom, To: &contractTo,
+						SectionID:  td.section.ID,
+						Properties: models.ContractProperties{"care_type": "ganztag"},
 					},
 				},
 			},
@@ -1254,16 +1192,12 @@ func TestGetForecast_PayPlanStoreError_OverlayEmployee_ReturnsError(t *testing.T
 	req := &models.ForecastRequest{
 		From: &from,
 		To:   &to,
-		AddEmployees: []models.Employee{{
-			Person: models.Person{
-				FirstName: "Virtual", LastName: "Hire", Gender: "female",
-				Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
-			},
-			Contracts: []models.EmployeeContract{{
-				BaseContract: models.BaseContract{
-					Period:    models.Period{From: from},
-					SectionID: td.section.ID,
-				},
+		AddEmployees: []models.ForecastEmployeeInput{{
+			FirstName: "Virtual", LastName: "Hire", Gender: "female",
+			Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
+			Contracts: []models.ForecastEmployeeContractInput{{
+				From:          from,
+				SectionID:     td.section.ID,
 				PayPlanID:     otherPP.ID,
 				Grade:         "S8a",
 				Step:          3,
@@ -1516,9 +1450,9 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 		{
 			name: "child_missing_birthdate",
 			req: &models.ForecastRequest{
-				AddChildren: []models.Child{{
-					Person:    models.Person{FirstName: "X", LastName: "Y", Gender: "female"},
-					Contracts: []models.ChildContract{{BaseContract: models.BaseContract{Period: models.Period{From: from}, SectionID: 1}}},
+				AddChildren: []models.ForecastChildInput{{
+					FirstName: "X", LastName: "Y", Gender: "female",
+					Contracts: []models.ForecastChildContractInput{{From: from, SectionID: 1}},
 				}},
 			},
 			wantErrPath: "add_children[0].birthdate is required",
@@ -1526,8 +1460,8 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 		{
 			name: "child_no_contracts",
 			req: &models.ForecastRequest{
-				AddChildren: []models.Child{{
-					Person: models.Person{FirstName: "X", LastName: "Y", Gender: "female", Birthdate: bday},
+				AddChildren: []models.ForecastChildInput{{
+					FirstName: "X", LastName: "Y", Gender: "female", Birthdate: bday,
 				}},
 			},
 			wantErrPath: "add_children[0].contracts must contain at least one entry",
@@ -1535,9 +1469,9 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 		{
 			name: "child_contract_missing_from",
 			req: &models.ForecastRequest{
-				AddChildren: []models.Child{{
-					Person:    models.Person{FirstName: "X", LastName: "Y", Gender: "female", Birthdate: bday},
-					Contracts: []models.ChildContract{{BaseContract: models.BaseContract{SectionID: 1}}},
+				AddChildren: []models.ForecastChildInput{{
+					FirstName: "X", LastName: "Y", Gender: "female", Birthdate: bday,
+					Contracts: []models.ForecastChildContractInput{{SectionID: 1}},
 				}},
 			},
 			wantErrPath: "add_children[0].contracts[0].from is required",
@@ -1545,9 +1479,9 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 		{
 			name: "child_contract_missing_section",
 			req: &models.ForecastRequest{
-				AddChildren: []models.Child{{
-					Person:    models.Person{FirstName: "X", LastName: "Y", Gender: "female", Birthdate: bday},
-					Contracts: []models.ChildContract{{BaseContract: models.BaseContract{Period: models.Period{From: from}}}},
+				AddChildren: []models.ForecastChildInput{{
+					FirstName: "X", LastName: "Y", Gender: "female", Birthdate: bday,
+					Contracts: []models.ForecastChildContractInput{{From: from}},
 				}},
 			},
 			wantErrPath: "add_children[0].contracts[0].section_id is required",
@@ -1556,15 +1490,15 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 		// AddChildContracts (standalone)
 		{
 			name:        "child_contract_standalone_missing_child_id",
-			req:         &models.ForecastRequest{AddChildContracts: []models.ChildContract{{BaseContract: models.BaseContract{Period: models.Period{From: from}, SectionID: 1}}}},
+			req:         &models.ForecastRequest{AddChildContracts: []models.ForecastChildContractInput{{From: from, SectionID: 1}}},
 			wantErrPath: "add_child_contracts[0].child_id is required",
 		},
 		{
 			name: "child_contract_standalone_missing_from",
 			req: &models.ForecastRequest{
-				AddChildContracts: []models.ChildContract{{
-					BaseContract: models.BaseContract{SectionID: 1},
-					ChildID:      1,
+				AddChildContracts: []models.ForecastChildContractInput{{
+					SectionID: 1,
+					ChildID:   1,
 				}},
 			},
 			wantErrPath: "add_child_contracts[0].from is required",
@@ -1574,8 +1508,8 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 		{
 			name: "employee_no_contracts",
 			req: &models.ForecastRequest{
-				AddEmployees: []models.Employee{{
-					Person: models.Person{FirstName: "X", LastName: "Y", Birthdate: bday},
+				AddEmployees: []models.ForecastEmployeeInput{{
+					FirstName: "X", LastName: "Y", Birthdate: bday,
 				}},
 			},
 			wantErrPath: "add_employees[0].contracts must contain at least one entry",
@@ -1583,11 +1517,11 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 		{
 			name: "employee_contract_missing_payplan",
 			req: &models.ForecastRequest{
-				AddEmployees: []models.Employee{{
-					Person: models.Person{FirstName: "X", LastName: "Y", Birthdate: bday},
-					Contracts: []models.EmployeeContract{{
-						BaseContract: models.BaseContract{Period: models.Period{From: from}, SectionID: 1},
-						Grade:        "S8a", Step: 3, WeeklyHours: 30, StaffCategory: "qualified",
+				AddEmployees: []models.ForecastEmployeeInput{{
+					FirstName: "X", LastName: "Y", Birthdate: bday,
+					Contracts: []models.ForecastEmployeeContractInput{{
+						From: from, SectionID: 1,
+						Grade: "S8a", Step: 3, WeeklyHours: 30, StaffCategory: "qualified",
 					}},
 				}},
 			},
@@ -1596,12 +1530,12 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 		{
 			name: "employee_contract_missing_grade",
 			req: &models.ForecastRequest{
-				AddEmployees: []models.Employee{{
-					Person: models.Person{FirstName: "X", LastName: "Y", Birthdate: bday},
-					Contracts: []models.EmployeeContract{{
-						BaseContract: models.BaseContract{Period: models.Period{From: from}, SectionID: 1},
-						PayPlanID:    1,
-						Step:         3, WeeklyHours: 30, StaffCategory: "qualified",
+				AddEmployees: []models.ForecastEmployeeInput{{
+					FirstName: "X", LastName: "Y", Birthdate: bday,
+					Contracts: []models.ForecastEmployeeContractInput{{
+						From: from, SectionID: 1,
+						PayPlanID: 1,
+						Step:      3, WeeklyHours: 30, StaffCategory: "qualified",
 					}},
 				}},
 			},
@@ -1610,11 +1544,11 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 		{
 			name: "employee_contract_step_zero",
 			req: &models.ForecastRequest{
-				AddEmployees: []models.Employee{{
-					Person: models.Person{FirstName: "X", LastName: "Y", Birthdate: bday},
-					Contracts: []models.EmployeeContract{{
-						BaseContract: models.BaseContract{Period: models.Period{From: from}, SectionID: 1},
-						PayPlanID:    1, Grade: "S8a",
+				AddEmployees: []models.ForecastEmployeeInput{{
+					FirstName: "X", LastName: "Y", Birthdate: bday,
+					Contracts: []models.ForecastEmployeeContractInput{{
+						From: from, SectionID: 1,
+						PayPlanID: 1, Grade: "S8a",
 						WeeklyHours: 30, StaffCategory: "qualified",
 					}},
 				}},
@@ -1624,11 +1558,11 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 		{
 			name: "employee_contract_zero_hours",
 			req: &models.ForecastRequest{
-				AddEmployees: []models.Employee{{
-					Person: models.Person{FirstName: "X", LastName: "Y", Birthdate: bday},
-					Contracts: []models.EmployeeContract{{
-						BaseContract: models.BaseContract{Period: models.Period{From: from}, SectionID: 1},
-						PayPlanID:    1, Grade: "S8a", Step: 3, StaffCategory: "qualified",
+				AddEmployees: []models.ForecastEmployeeInput{{
+					FirstName: "X", LastName: "Y", Birthdate: bday,
+					Contracts: []models.ForecastEmployeeContractInput{{
+						From: from, SectionID: 1,
+						PayPlanID: 1, Grade: "S8a", Step: 3, StaffCategory: "qualified",
 					}},
 				}},
 			},
@@ -1637,11 +1571,11 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 		{
 			name: "employee_contract_missing_staff_category",
 			req: &models.ForecastRequest{
-				AddEmployees: []models.Employee{{
-					Person: models.Person{FirstName: "X", LastName: "Y", Birthdate: bday},
-					Contracts: []models.EmployeeContract{{
-						BaseContract: models.BaseContract{Period: models.Period{From: from}, SectionID: 1},
-						PayPlanID:    1, Grade: "S8a", Step: 3, WeeklyHours: 30,
+				AddEmployees: []models.ForecastEmployeeInput{{
+					FirstName: "X", LastName: "Y", Birthdate: bday,
+					Contracts: []models.ForecastEmployeeContractInput{{
+						From: from, SectionID: 1,
+						PayPlanID: 1, Grade: "S8a", Step: 3, WeeklyHours: 30,
 					}},
 				}},
 			},
@@ -1651,7 +1585,7 @@ func TestValidateOverlay_FieldValidators(t *testing.T) {
 		// AddEmployeeContracts (standalone)
 		{
 			name:        "employee_contract_standalone_missing_employee_id",
-			req:         &models.ForecastRequest{AddEmployeeContracts: []models.EmployeeContract{{BaseContract: models.BaseContract{Period: models.Period{From: from}, SectionID: 1}, PayPlanID: 1, Grade: "S8a", Step: 3, WeeklyHours: 30, StaffCategory: "qualified"}}},
+			req:         &models.ForecastRequest{AddEmployeeContracts: []models.ForecastEmployeeContractInput{{From: from, SectionID: 1, PayPlanID: 1, Grade: "S8a", Step: 3, WeeklyHours: 30, StaffCategory: "qualified"}}},
 			wantErrPath: "add_employee_contracts[0].employee_id is required",
 		},
 	}
@@ -1776,13 +1710,11 @@ func TestGetForecast_ChildContractStartsBeforeBirthdate_DocumentsCurrentBehavior
 
 	_, err := svc.GetForecast(ctx, td.org.ID, &models.ForecastRequest{
 		From: &from, To: &to,
-		AddChildren: []models.Child{{
-			Person: models.Person{FirstName: "Time", LastName: "Traveler", Gender: "female", Birthdate: birthdate},
-			Contracts: []models.ChildContract{{BaseContract: models.BaseContract{
-				Period:     models.Period{From: contractFrom},
+		AddChildren: []models.ForecastChildInput{{
+			FirstName: "Time", LastName: "Traveler", Gender: "female", Birthdate: birthdate,
+			Contracts: []models.ForecastChildContractInput{{From: contractFrom,
 				SectionID:  td.section.ID,
-				Properties: models.ContractProperties{"care_type": "ganztag"},
-			}}},
+				Properties: models.ContractProperties{"care_type": "ganztag"}}},
 		}},
 	})
 	if err != nil {
@@ -1885,16 +1817,12 @@ func TestGetForecast_ValidateOverlay_PayPlanWrongOrg_Rejected(t *testing.T) {
 	to := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
 	req := &models.ForecastRequest{
 		From: &from, To: &to,
-		AddEmployees: []models.Employee{{
-			Person: models.Person{
-				FirstName: "Cross", LastName: "Org", Gender: "female",
-				Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
-			},
-			Contracts: []models.EmployeeContract{{
-				BaseContract: models.BaseContract{
-					Period:    models.Period{From: from},
-					SectionID: td.section.ID,
-				},
+		AddEmployees: []models.ForecastEmployeeInput{{
+			FirstName: "Cross", LastName: "Org", Gender: "female",
+			Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
+			Contracts: []models.ForecastEmployeeContractInput{{
+				From:      from,
+				SectionID: td.section.ID,
 				PayPlanID: otherPP.ID,
 				Grade:     "S8a", Step: 3,
 				WeeklyHours: 30, StaffCategory: "qualified",
@@ -1953,16 +1881,12 @@ func TestGetForecast_SectionScoped_RejectsMismatchedAddEmployee(t *testing.T) {
 	scopeTo := td.section.ID
 	req := &models.ForecastRequest{
 		From: &from, To: &to, SectionID: &scopeTo,
-		AddEmployees: []models.Employee{{
-			Person: models.Person{
-				FirstName: "Wrong", LastName: "Section", Gender: "female",
-				Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
-			},
-			Contracts: []models.EmployeeContract{{
-				BaseContract: models.BaseContract{
-					Period:    models.Period{From: from},
-					SectionID: otherSection.ID,
-				},
+		AddEmployees: []models.ForecastEmployeeInput{{
+			FirstName: "Wrong", LastName: "Section", Gender: "female",
+			Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
+			Contracts: []models.ForecastEmployeeContractInput{{
+				From:      from,
+				SectionID: otherSection.ID,
 				PayPlanID: td.payplan.ID, Grade: "S8a", Step: 3,
 				WeeklyHours: 30, StaffCategory: "qualified",
 			}},
@@ -1988,11 +1912,9 @@ func TestGetForecast_SectionScoped_RejectsMismatchedAddEmployeeContract(t *testi
 	scopeTo := td.section.ID
 	req := &models.ForecastRequest{
 		From: &from, To: &to, SectionID: &scopeTo,
-		AddEmployeeContracts: []models.EmployeeContract{{
-			BaseContract: models.BaseContract{
-				Period:    models.Period{From: from},
-				SectionID: otherSection.ID,
-			},
+		AddEmployeeContracts: []models.ForecastEmployeeContractInput{{
+			From:       from,
+			SectionID:  otherSection.ID,
 			EmployeeID: td.emp1.ID,
 			PayPlanID:  td.payplan.ID,
 			Grade:      "S8a", Step: 3, WeeklyHours: 20, StaffCategory: "qualified",
@@ -2018,17 +1940,13 @@ func TestGetForecast_SectionScoped_RejectsMismatchedAddChild(t *testing.T) {
 	scopeTo := td.section.ID
 	req := &models.ForecastRequest{
 		From: &from, To: &to, SectionID: &scopeTo,
-		AddChildren: []models.Child{{
-			Person: models.Person{
-				FirstName: "Wrong", LastName: "Section", Gender: "female",
-				Birthdate: time.Date(2022, 5, 15, 0, 0, 0, 0, time.UTC),
-			},
-			Contracts: []models.ChildContract{{
-				BaseContract: models.BaseContract{
-					Period:     models.Period{From: from},
-					SectionID:  otherSection.ID,
-					Properties: models.ContractProperties{"care_type": "ganztag"},
-				},
+		AddChildren: []models.ForecastChildInput{{
+			FirstName: "Wrong", LastName: "Section", Gender: "female",
+			Birthdate: time.Date(2022, 5, 15, 0, 0, 0, 0, time.UTC),
+			Contracts: []models.ForecastChildContractInput{{
+				From:       from,
+				SectionID:  otherSection.ID,
+				Properties: models.ContractProperties{"care_type": "ganztag"},
 			}},
 		}},
 	}
@@ -2052,13 +1970,11 @@ func TestGetForecast_SectionScoped_RejectsMismatchedAddChildContract(t *testing.
 	scopeTo := td.section.ID
 	req := &models.ForecastRequest{
 		From: &from, To: &to, SectionID: &scopeTo,
-		AddChildContracts: []models.ChildContract{{
-			BaseContract: models.BaseContract{
-				Period:     models.Period{From: from},
-				SectionID:  otherSection.ID,
-				Properties: models.ContractProperties{"care_type": "ganztag"},
-			},
-			ChildID: td.child1.ID,
+		AddChildContracts: []models.ForecastChildContractInput{{
+			From:       from,
+			SectionID:  otherSection.ID,
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+			ChildID:    td.child1.ID,
 		}},
 	}
 
@@ -2082,16 +1998,12 @@ func TestGetForecast_SectionScoped_AllMatching_Accepted(t *testing.T) {
 	scopeTo := td.section.ID
 	req := &models.ForecastRequest{
 		From: &from, To: &to, SectionID: &scopeTo,
-		AddEmployees: []models.Employee{{
-			Person: models.Person{
-				FirstName: "Match", LastName: "Section", Gender: "female",
-				Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
-			},
-			Contracts: []models.EmployeeContract{{
-				BaseContract: models.BaseContract{
-					Period:    models.Period{From: from},
-					SectionID: td.section.ID,
-				},
+		AddEmployees: []models.ForecastEmployeeInput{{
+			FirstName: "Match", LastName: "Section", Gender: "female",
+			Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
+			Contracts: []models.ForecastEmployeeContractInput{{
+				From:      from,
+				SectionID: td.section.ID,
 				PayPlanID: td.payplan.ID, Grade: "S8a", Step: 3,
 				WeeklyHours: 30, StaffCategory: "qualified",
 			}},
@@ -2115,16 +2027,12 @@ func TestGetForecast_NoSectionScope_AllowsMixedOverlaySections(t *testing.T) {
 	to := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
 	req := &models.ForecastRequest{
 		From: &from, To: &to,
-		AddEmployees: []models.Employee{{
-			Person: models.Person{
-				FirstName: "Cross", LastName: "Section", Gender: "female",
-				Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
-			},
-			Contracts: []models.EmployeeContract{{
-				BaseContract: models.BaseContract{
-					Period:    models.Period{From: from},
-					SectionID: otherSection.ID,
-				},
+		AddEmployees: []models.ForecastEmployeeInput{{
+			FirstName: "Cross", LastName: "Section", Gender: "female",
+			Birthdate: time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC),
+			Contracts: []models.ForecastEmployeeContractInput{{
+				From:      from,
+				SectionID: otherSection.ID,
 				PayPlanID: td.payplan.ID, Grade: "S8a", Step: 3,
 				WeeklyHours: 30, StaffCategory: "qualified",
 			}},
@@ -2208,24 +2116,21 @@ func TestApplyOverlay_TwoEmployeesEachWithMultipleContracts_AllUnique(t *testing
 		PayPlans: map[uint]*models.PayPlan{},
 	}
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	mkContract := func(section uint) models.EmployeeContract {
-		return models.EmployeeContract{
-			BaseContract: models.BaseContract{
-				Period:    models.Period{From: from},
-				SectionID: section,
-			},
+	mkContract := func(section uint) models.ForecastEmployeeContractInput {
+		return models.ForecastEmployeeContractInput{
+			From: from, SectionID: section,
 			PayPlanID: 1, Grade: "S8a", Step: 3, WeeklyHours: 30, StaffCategory: "qualified",
 		}
 	}
 	req := &models.ForecastRequest{
-		AddEmployees: []models.Employee{
+		AddEmployees: []models.ForecastEmployeeInput{
 			{
-				Person:    models.Person{Birthdate: from},
-				Contracts: []models.EmployeeContract{mkContract(1), mkContract(1)},
+				Birthdate: from,
+				Contracts: []models.ForecastEmployeeContractInput{mkContract(1), mkContract(1)},
 			},
 			{
-				Person:    models.Person{Birthdate: from},
-				Contracts: []models.EmployeeContract{mkContract(1), mkContract(1)},
+				Birthdate: from,
+				Contracts: []models.ForecastEmployeeContractInput{mkContract(1), mkContract(1)},
 			},
 		},
 	}
@@ -2272,13 +2177,11 @@ func TestApplyOverlay_VirtualVsRealCollision_NoOverlap(t *testing.T) {
 		PayPlans: map[uint]*models.PayPlan{},
 	}
 	req := &models.ForecastRequest{
-		AddEmployees: []models.Employee{{
-			Person: models.Person{Birthdate: from},
-			Contracts: []models.EmployeeContract{{
-				BaseContract: models.BaseContract{
-					Period:    models.Period{From: from},
-					SectionID: 1,
-				},
+		AddEmployees: []models.ForecastEmployeeInput{{
+			Birthdate: from,
+			Contracts: []models.ForecastEmployeeContractInput{{
+				From:      from,
+				SectionID: 1,
 				PayPlanID: 1, Grade: "S8a", Step: 3, WeeklyHours: 30, StaffCategory: "qualified",
 			}},
 		}},

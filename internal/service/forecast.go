@@ -323,7 +323,7 @@ func validateOverlaySectionMatches(req *models.ForecastRequest, want uint) error
 }
 
 // validateOverlayChildren validates the calculation-critical fields on overlay children.
-func validateOverlayChildren(children []models.Child) error {
+func validateOverlayChildren(children []models.ForecastChildInput) error {
 	for i, c := range children {
 		if c.Birthdate.IsZero() {
 			return apperror.RequiredField("add_children[%d].birthdate", i)
@@ -344,7 +344,7 @@ func validateOverlayChildren(children []models.Child) error {
 }
 
 // validateOverlayChildContracts validates standalone child contract additions.
-func validateOverlayChildContracts(contracts []models.ChildContract) error {
+func validateOverlayChildContracts(contracts []models.ForecastChildContractInput) error {
 	for i, ct := range contracts {
 		if ct.ChildID == 0 {
 			return apperror.RequiredField("add_child_contracts[%d].child_id", i)
@@ -360,7 +360,7 @@ func validateOverlayChildContracts(contracts []models.ChildContract) error {
 }
 
 // validateOverlayEmployees validates the calculation-critical fields on overlay employees.
-func validateOverlayEmployees(employees []models.Employee) error {
+func validateOverlayEmployees(employees []models.ForecastEmployeeInput) error {
 	for i, e := range employees {
 		if len(e.Contracts) == 0 {
 			return apperror.InvalidFields(apperror.Field("non_empty", "", "add_employees[%d].contracts", i))
@@ -393,7 +393,7 @@ func validateOverlayEmployees(employees []models.Employee) error {
 }
 
 // validateOverlayEmployeeContracts validates standalone employee contract additions.
-func validateOverlayEmployeeContracts(contracts []models.EmployeeContract) error {
+func validateOverlayEmployeeContracts(contracts []models.ForecastEmployeeContractInput) error {
 	for i, ct := range contracts {
 		if ct.EmployeeID == 0 {
 			return apperror.RequiredField("add_employee_contracts[%d].employee_id", i)
@@ -538,7 +538,7 @@ func applyOverlay(ds *DataSet, req *models.ForecastRequest) {
 	for _, ac := range req.AddEmployeeContracts {
 		for i := range ds.Employees {
 			if ds.Employees[i].ID == ac.EmployeeID {
-				ds.Employees[i].Contracts = append(ds.Employees[i].Contracts, ac)
+				ds.Employees[i].Contracts = append(ds.Employees[i].Contracts, ac.ToModel())
 				break
 			}
 		}
@@ -548,7 +548,7 @@ func applyOverlay(ds *DataSet, req *models.ForecastRequest) {
 	for _, ac := range req.AddChildContracts {
 		for i := range ds.Children {
 			if ds.Children[i].ID == ac.ChildID {
-				ds.Children[i].Contracts = append(ds.Children[i].Contracts, ac)
+				ds.Children[i].Contracts = append(ds.Children[i].Contracts, ac.ToModel())
 				break
 			}
 		}
@@ -563,7 +563,7 @@ func applyOverlay(ds *DataSet, req *models.ForecastRequest) {
 
 	// 5. Add new virtual employees
 	for i := range req.AddEmployees {
-		emp := req.AddEmployees[i]
+		emp := req.AddEmployees[i].ToModel()
 		emp.ID = alloc.nextID()
 		for j := range emp.Contracts {
 			emp.Contracts[j].ID = alloc.nextID()
@@ -576,7 +576,7 @@ func applyOverlay(ds *DataSet, req *models.ForecastRequest) {
 
 	// 6. Add new virtual children
 	for i := range req.AddChildren {
-		child := req.AddChildren[i]
+		child := req.AddChildren[i].ToModel()
 		child.ID = alloc.nextID()
 		for j := range child.Contracts {
 			child.Contracts[j].ID = alloc.nextID()
