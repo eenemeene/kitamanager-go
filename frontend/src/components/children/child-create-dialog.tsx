@@ -162,13 +162,13 @@ export function ChildCreateDialog({
                 first_name: t('children.firstName'),
                 last_name: t('children.lastName'),
                 birthdate: t('children.birthDate'),
-                gender: t('common.gender'),
+                gender: t('gender.label'),
                 // Start/End Date, not From/To: the summary tells the user which
                 // field to fix, so it has to use the words printed above that
                 // field. There is no control on this form labelled "To".
                 contract_from: t('contracts.startDate'),
                 contract_to: t('contracts.endDate'),
-                section_id: t('common.section'),
+                section_id: t('sections.title'),
               }}
             />
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

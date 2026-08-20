@@ -166,7 +166,7 @@
     "other": "Der Bereich kann nicht gelöscht werden, da ihm noch {{.Count}} Kinder zugeordnet sind; bitte zuerst umbuchen"
   },
   "section.delete.has_employees": {
-    "one": "Der Bereich kann nicht gelöscht werden, da ihm noch {{.Count}} Mitarbeitende zugeordnet ist; bitte zuerst umbuchen",
+    "one": "Der Bereich kann nicht gelöscht werden, da ihm noch {{.Count}} Mitarbeitende/r zugeordnet ist; bitte zuerst umbuchen",
     "other": "Der Bereich kann nicht gelöscht werden, da ihm noch {{.Count}} Mitarbeitende zugeordnet sind; bitte zuerst umbuchen"
   },
   "section.id_not_null": "section_id darf nicht null sein: jeder Vertrag gehört zu einem Bereich",

@@ -217,10 +217,10 @@
     "contractProperties": "Kinder-Vertragseigenschaften (Heute)",
     "contractPropertiesDescription": "Verteilung der heute aktiven Kinder nach Vertragseigenschaften (z. B. Betreuungsumfang, Altersgruppe, Zuschläge). Die Eigenschaften bestimmen den Fördersatz pro Kind und den Personalbedarf.",
     "financialOverview": "Finanzübersicht (Berechnet)",
-    "financialOverviewDescription": "Monatliche Einnahmen (positiv, oben) und Ausgaben (negativ, unten) basierend auf Verträgen, Fördersätzen und Haushaltsposten. Die blaue Linie zeigt den Monats-Saldo (Einnahmen minus Ausgaben). Für die laufende Summe über das Kitajahr siehe „Kumuliertes Saldo“ weiter unten.",
-    "financialSummary": "Kumuliertes Saldo",
+    "financialOverviewDescription": "Monatliche Einnahmen (positiv, oben) und Ausgaben (negativ, unten) basierend auf Verträgen, Fördersätzen und Haushaltsposten. Die blaue Linie zeigt den Monats-Saldo (Einnahmen minus Ausgaben). Für die laufende Summe über das Kitajahr siehe „Kumulierter Saldo“ weiter unten.",
+    "financialSummary": "Kumulierter Saldo",
     "financialSummaryDescription": "Laufende Summe des monatlichen Saldos, wird zu Beginn jedes Kitajahres (August) auf Null zurückgesetzt",
-    "cumulativeBalance": "Kumuliertes Saldo",
+    "cumulativeBalance": "Kumulierter Saldo",
     "monthlyChange": "(monatlich)",
     "deficitSince": "Defizit ab hier",
     "deficitConsecutive": "Aktuell {count} {count, plural, one {Monat} other {Monate}} in Folge im Defizit",
@@ -230,9 +230,9 @@
     "totalExpenses": "Gesamtausgaben",
     "totalExpensesTooltip": "Summe aus Bruttogehältern, Arbeitgeberanteilen und Budgetausgaben für den aktuellen Monat.",
     "balance": "Bilanz",
-    "balanceTooltip": "Einnahmen minus Ausgaben für den aktuellen Monat. Das kumulierte Saldo über das Kitajahr (August–Juli) findest du im Diagramm \"Kumuliertes Saldo\".",
+    "balanceTooltip": "Einnahmen minus Ausgaben für den aktuellen Monat. Den kumulierten Saldo über das Kitajahr (August–Juli) finden Sie im Diagramm „Kumulierter Saldo“.",
     "fundingIncome": "Fördereinnahmen",
-    "fundingIncomeTooltip": "Erwartete staatliche Förderung (z. B. nach JArbG/KitaFöG) basierend auf Kinderverträgen und Fördersätzen.",
+    "fundingIncomeTooltip": "Erwartete staatliche Förderung basierend auf Kinderverträgen und Fördersätzen.",
     "grossSalary": "Bruttogehälter",
     "grossSalaryTooltip": "Summe der monatlichen Bruttogehälter aller aktiven Mitarbeiter-Verträge.",
     "employerCosts": "Arbeitgeberanteile",
@@ -333,21 +333,21 @@
     "forecastScenario": "Prognose (Szenario)",
     "forecastTabOptimize": "Optimieren",
     "forecastOptimize": "Optimale Kinderzahl ermitteln",
-    "forecastOptimizeDescription": "Automatisch die minimale Anzahl an Kindern ermitteln, um das Ziel-Saldo über das Kita-Jahr zu erreichen.",
+    "forecastOptimizeDescription": "Automatisch die minimale Anzahl an Kindern ermitteln, um den Ziel-Saldo über das Kita-Jahr zu erreichen.",
     "forecastOptimizeTarget": "Ziel-Saldo (EUR)",
     "forecastOptimizeMaxPerSection": "Max. Kinder pro Bereich pro Monat",
     "forecastOptimizeSections": "Bereiche zum Belegen",
     "forecastOptimizeRunning": "Optimierung läuft...",
-    "forecastOptimizeResult": "Ergebnis: {count} Kinder benötigt für ein kumuliertes Saldo von {balance}.",
+    "forecastOptimizeResult": "Ergebnis: {count} Kinder benötigt für einen kumulierten Saldo von {balance}.",
     "forecastOptimizeNotReached": "Zielsaldo mit den aktuellen Einschränkungen nicht erreichbar (max. {max} Kinder möglich).",
     "forecastOptimizeAddedToStore": "Die Kinder wurden im Kinder-Tab hinzugefügt. Sie können sie vor der Berechnung überprüfen und anpassen.",
-    "forecastOptimizeNoImpact": "Das Hinzufügen von Kindern verbessert das Saldo nicht. Prüfen Sie die Förderungskonfiguration und Vertragseigenschaften.",
+    "forecastOptimizeNoImpact": "Das Hinzufügen von Kindern verbessert den Saldo nicht. Prüfen Sie die Förderungskonfiguration und Vertragseigenschaften.",
     "forecastBaselineBalance": "Aktuelle Basislinie: {amount}",
     "warnings": {
       "title": "{count, plural, one {# Datenqualitätswarnung} other {# Datenqualitätswarnungen}}",
       "missingPayPlan": "Gehalt ausgeschlossen: Vertrag verweist auf unbekannten Tarifvertrag {payPlan}",
       "noPayPlanPeriod": "Gehalt ausgeschlossen: Tarifvertrag {payPlan} hat keine Periode, die dieses Datum abdeckt",
-      "noPayPlanEntry": "Gehalt ausgeschlossen: Tarifvertrag hat keinen Eintrag für Stufe {grade}, Step {step}"
+      "noPayPlanEntry": "Gehalt ausgeschlossen: Tarifvertrag hat keinen Eintrag für Entgeltgruppe {grade}, Stufe {step}"
     }
   },
   "months": {
@@ -1032,8 +1032,8 @@
     "clickToAdjust": "Klicken, um das Grenzdatum anzupassen",
     "boundaryUpdated": "Vertragsgrenze aktualisiert",
     "boundaryUpdateFailed": "Vertragsgrenze konnte nicht aktualisiert werden",
-    "gap": "Lucke ({days} Tage)",
-    "noContracts": "Keine Vertrage vorhanden"
+    "gap": "Lücke ({days} Tage)",
+    "noContracts": "Keine Verträge vorhanden"
   },
   "fundingLabels": {
     "care_type--ganztag erweitert": "Ganztag Erweitert (>9h)",
