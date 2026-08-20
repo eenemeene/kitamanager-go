@@ -320,38 +320,10 @@ export type ChildrenBillingSummaryResponse = S['ChildrenBillingSummaryResponse']
 
 export type ForecastRequest = S['ForecastRequest'];
 export type ForecastResponse = S['ForecastResponse'];
-// The fields below are re-narrowed to required. The spec leaves them optional
-// because swaggo derives `required` from `binding:"required"` tags, and these
-// DTOs deliberately carry none: the forecast service validates them itself so
-// it can report `add_children[0].contracts[1].from`, a JSON path the frontend
-// maps straight onto a form field. gin's validator reports Go field names
-// instead, so moving the check to a binding tag would cost that. The
-// requirement is real either way, and a scenario builder should not have to
-// re-check what it just set.
-export type ForecastChildContract = Override<
-  Override<S['ForecastChildContractInput'], 'from', string>,
-  'section_id',
-  number
->;
-export type ForecastChild = Override<
-  Override<S['ForecastChildInput'], 'birthdate', string>,
-  'contracts',
-  ForecastChildContract[]
->;
-export type ForecastEmployeeContract = Override<
-  Override<
-    Override<Override<S['ForecastEmployeeContractInput'], 'from', string>, 'section_id', number>,
-    'staff_category',
-    string
-  >,
-  'weekly_hours',
-  number
->;
-export type ForecastEmployee = Override<
-  Override<S['ForecastEmployeeInput'], 'birthdate', string>,
-  'contracts',
-  ForecastEmployeeContract[]
->;
+export type ForecastChild = S['ForecastChildInput'];
+export type ForecastChildContract = S['ForecastChildContractInput'];
+export type ForecastEmployee = S['ForecastEmployeeInput'];
+export type ForecastEmployeeContract = S['ForecastEmployeeContractInput'];
 
 // ============================================================
 // Audit log

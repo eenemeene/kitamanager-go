@@ -245,6 +245,7 @@ var ruleIDs = map[string]string{
 	"max":       "validation.rule.max",
 	"voucher":   "validation.rule.voucher",
 	"min_value": "validation.rule.min_value",
+	"max_value": "validation.rule.max_value",
 	"non_empty": "validation.rule.non_empty",
 	"positive":  "validation.rule.positive",
 	"mismatch":  "validation.rule.mismatch",

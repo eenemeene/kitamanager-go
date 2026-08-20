@@ -13223,6 +13223,10 @@ const docTemplate = `{
         },
         "github_com_eenemeene_kitamanager-go_internal_models.ForecastChildContractInput": {
             "type": "object",
+            "required": [
+                "from",
+                "section_id"
+            ],
             "properties": {
                 "child_id": {
                     "description": "ChildID names the existing child a standalone contract attaches to. It is\nunset for contracts nested under a new child in add_children, which have\nno id yet.",
@@ -13250,6 +13254,10 @@ const docTemplate = `{
         },
         "github_com_eenemeene_kitamanager-go_internal_models.ForecastChildInput": {
             "type": "object",
+            "required": [
+                "birthdate",
+                "contracts"
+            ],
             "properties": {
                 "birthdate": {
                     "description": "Birthdate drives the age bracket the funding rate is read from, so it is\nthe one person-level field the calculation actually needs.",
@@ -13284,6 +13292,13 @@ const docTemplate = `{
         },
         "github_com_eenemeene_kitamanager-go_internal_models.ForecastEmployeeContractInput": {
             "type": "object",
+            "required": [
+                "from",
+                "grade",
+                "payplan_id",
+                "section_id",
+                "staff_category"
+            ],
             "properties": {
                 "employee_id": {
                     "description": "EmployeeID names the existing employee a standalone contract attaches to.\nUnset for contracts nested under a new employee in add_employees.",
@@ -13316,6 +13331,7 @@ const docTemplate = `{
                 },
                 "step": {
                     "type": "integer",
+                    "minimum": 1,
                     "example": 3
                 },
                 "to": {
@@ -13331,6 +13347,9 @@ const docTemplate = `{
         },
         "github_com_eenemeene_kitamanager-go_internal_models.ForecastEmployeeInput": {
             "type": "object",
+            "required": [
+                "contracts"
+            ],
             "properties": {
                 "birthdate": {
                     "type": "string",

@@ -194,6 +194,7 @@
   "validation.rule.email": "muss eine gültige E-Mail-Adresse sein",
   "validation.rule.invalid": "ist ungültig",
   "validation.rule.max": "darf höchstens {{.Param}} Zeichen lang sein",
+  "validation.rule.max_value": "darf höchstens {{.Param}} sein",
   "validation.rule.min": "muss mindestens {{.Param}} Zeichen lang sein",
   "validation.rule.min_value": "muss mindestens {{.Param}} sein",
   "validation.rule.mismatch": "muss {{.Param}} entsprechen",

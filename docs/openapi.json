@@ -2633,6 +2633,10 @@
                         "type": "string"
                     }
                 },
+                "required": [
+                    "from",
+                    "section_id"
+                ],
                 "type": "object"
             },
             "ForecastChildInput": {
@@ -2667,6 +2671,10 @@
                         "type": "string"
                     }
                 },
+                "required": [
+                    "birthdate",
+                    "contracts"
+                ],
                 "type": "object"
             },
             "ForecastEmployeeContractInput": {
@@ -2702,6 +2710,7 @@
                     },
                     "step": {
                         "example": 3,
+                        "minimum": 1,
                         "type": "integer"
                     },
                     "to": {
@@ -2714,6 +2723,13 @@
                         "type": "number"
                     }
                 },
+                "required": [
+                    "from",
+                    "grade",
+                    "payplan_id",
+                    "section_id",
+                    "staff_category"
+                ],
                 "type": "object"
             },
             "ForecastEmployeeInput": {
@@ -2747,6 +2763,9 @@
                         "type": "string"
                     }
                 },
+                "required": [
+                    "contracts"
+                ],
                 "type": "object"
             },
             "ForecastRequest": {
