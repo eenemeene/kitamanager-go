@@ -86,7 +86,7 @@ export function EmployeeContractDialog({
               to: t('contracts.endDateOptional'),
               section_id: t('sections.title'),
               payplan_id: t('payPlans.title'),
-              staff_category: t('employees.staffCategory'),
+              staff_category: t('employees.staffCategory.label'),
               grade: t('payPlans.gradeLabel'),
               step: t('payPlans.stepLabel'),
               weekly_hours: t('payPlans.weeklyHoursLabel'),
