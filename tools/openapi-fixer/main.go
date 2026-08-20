@@ -33,6 +33,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -81,6 +82,7 @@ func run(inPath, outPath string) error {
 	allowFreeFormObjectProperties(v3)
 	assignOperationIDs(v3)
 	declareContractETag(v3)
+	declareEnrollmentPayloadUnion(v3)
 	declareProblemContentType(v3)
 	declareServer(v3)
 	upgradeTo31(v3)
@@ -269,6 +271,61 @@ func declareContractETag(doc *openapi3.T) {
 			Schema:      openapi3.NewStringSchema().NewRef(),
 		}}}
 	}
+}
+
+// declareEnrollmentPayloadUnion types FactorResponse.enrollment as the union it
+// actually is.
+//
+// The field is `any` in Go — the handler stays generic and each verifier produces
+// its own shape — so swaggo emits it as an untyped blob. That left the three
+// payload schemas referenced by nothing, and the previous workaround was to list
+// them as extra `@Success 200` lines on the enroll endpoint. swaggo keeps only
+// the last annotation per status code, so the published contract claimed the
+// endpoint returned a bare WebAuthnEnrollmentPayload when it returns a
+// FactorResponse. The frontend hand-wrote the correct type and was unaffected;
+// the docs and the generated types were simply wrong.
+//
+// Swagger 2.0 has no oneOf, which is why this could not be said at the
+// annotation level. OpenAPI 3.1 does, so it is said here: the payload schemas
+// stay reachable because the union references them, and the contract gains a
+// discriminated union in place of the blob.
+func declareEnrollmentPayloadUnion(doc *openapi3.T) {
+	if doc.Components == nil || doc.Components.Schemas == nil {
+		return
+	}
+	factor := doc.Components.Schemas[schemaPrefix+"FactorResponse"]
+	if factor == nil || factor.Value == nil {
+		return
+	}
+	enrollment := factor.Value.Properties["enrollment"]
+	if enrollment == nil || enrollment.Value == nil {
+		return
+	}
+
+	// Ordered by factor type as the enum on FactorResponse.type lists them, so
+	// the generated union reads in the same order as the discriminator.
+	branches := []string{"TOTPEnrollmentPayload", "BackupCodesPayload", "WebAuthnEnrollmentPayload"}
+	oneOf := make(openapi3.SchemaRefs, 0, len(branches))
+	for _, name := range branches {
+		if doc.Components.Schemas[schemaPrefix+name] == nil {
+			// The schema was renamed or removed; leave the blob rather than
+			// emit a dangling $ref.
+			return
+		}
+		oneOf = append(oneOf, openapi3.NewSchemaRef("#/components/schemas/"+schemaPrefix+name, nil))
+	}
+
+	enrollment.Value.OneOf = oneOf
+	enrollment.Value.Description = "Populated only on the enrollment response. Which member " +
+		"appears follows the factor's type: totp, backup_codes, or webauthn."
+
+	// markResponsePropertiesRequired has already marked it required, on the rule
+	// that response fields are always present. This one is the exception the rule
+	// admits: it is `omitempty` in Go and every GET omits it, so requiring it
+	// would force each caller to override the type back to optional.
+	factor.Value.Required = slices.DeleteFunc(factor.Value.Required, func(name string) bool {
+		return name == "enrollment"
+	})
 }
 
 // assignOperationIDs gives every operation a stable, readable id derived from its

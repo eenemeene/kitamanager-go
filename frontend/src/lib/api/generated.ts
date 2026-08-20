@@ -3642,11 +3642,11 @@ export interface components {
       created_at: string;
       /** Format: date-time */
       enabled_at: string;
-      /**
-       * @description Enrollment is populated only on the `POST` response during
-       *     initial enrollment; subsequent GETs omit it.
-       */
-      enrollment: unknown;
+      /** @description Populated only on the enrollment response. Which member appears follows the factor's type: totp, backup_codes, or webauthn. */
+      enrollment?:
+        | components['schemas']['TOTPEnrollmentPayload']
+        | components['schemas']['BackupCodesPayload']
+        | components['schemas']['WebAuthnEnrollmentPayload'];
       /** @example 42 */
       id: number;
       /** @example Authenticator app */
@@ -14167,13 +14167,13 @@ export interface operations {
       };
     };
     responses: {
-      /** @description WebAuthn enrollment branch (referenced via FactorResponse.enrollment) */
+      /** @description Factor row; the enrollment field carries the type-specific payload */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['WebAuthnEnrollmentPayload'];
+          'application/json': components['schemas']['FactorResponse'];
         };
       };
       /** @description Bad Request */

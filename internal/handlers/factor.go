@@ -145,9 +145,17 @@ func (h *FactorHandler) Get(c *gin.Context) {
 // @Security BearerAuth
 // @Param userId path string true "User id or 'me'"
 // @Param request body models.FactorEnrollRequest true "Factor type + step-up password"
-// @Success 200 {object} models.FactorResponse "Factor row; enrollment field carries TOTPEnrollmentPayload, WebAuthnEnrollmentPayload, or BackupCodesPayload depending on factor type"
-// @Success 200 {object} models.TOTPEnrollmentPayload "TOTP enrollment branch (referenced via FactorResponse.enrollment)"
-// @Success 200 {object} models.WebAuthnEnrollmentPayload "WebAuthn enrollment branch (referenced via FactorResponse.enrollment)"
+// The two payload lines below exist so swaggo emits their schemas: nothing else
+// references them, because FactorResponse.enrollment is `any` in Go, and swaggo
+// only emits schemas for annotated types. swaggo keeps the LAST @Success for a
+// given status code, so the real response must stay last — with the order
+// reversed, the published contract claimed this endpoint returned a bare
+// WebAuthnEnrollmentPayload. openapi-fixer's declareEnrollmentPayloadUnion then
+// wires these three into a oneOf on `enrollment`, which is what actually
+// documents them; Swagger 2.0 has no oneOf, so it cannot be said here.
+// @Success 200 {object} models.TOTPEnrollmentPayload "Enrollment branch, surfaced via FactorResponse.enrollment"
+// @Success 200 {object} models.WebAuthnEnrollmentPayload "Enrollment branch, surfaced via FactorResponse.enrollment"
+// @Success 200 {object} models.FactorResponse "Factor row; the enrollment field carries the type-specific payload"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Router /api/v1/users/{userId}/factors [post]

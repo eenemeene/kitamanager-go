@@ -2664,7 +2664,18 @@
                         "type": "string"
                     },
                     "enrollment": {
-                        "description": "Enrollment is populated only on the `POST` response during\ninitial enrollment; subsequent GETs omit it."
+                        "description": "Populated only on the enrollment response. Which member appears follows the factor's type: totp, backup_codes, or webauthn.",
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/TOTPEnrollmentPayload"
+                            },
+                            {
+                                "$ref": "#/components/schemas/BackupCodesPayload"
+                            },
+                            {
+                                "$ref": "#/components/schemas/WebAuthnEnrollmentPayload"
+                            }
+                        ]
                     },
                     "id": {
                         "example": 42,
@@ -2693,7 +2704,6 @@
                     "backup_codes_remaining",
                     "created_at",
                     "enabled_at",
-                    "enrollment",
                     "id",
                     "label",
                     "last_used_at",
@@ -19733,11 +19743,11 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/WebAuthnEnrollmentPayload"
+                                    "$ref": "#/components/schemas/FactorResponse"
                                 }
                             }
                         },
-                        "description": "WebAuthn enrollment branch (referenced via FactorResponse.enrollment)"
+                        "description": "Factor row; the enrollment field carries the type-specific payload"
                     },
                     "400": {
                         "content": {
