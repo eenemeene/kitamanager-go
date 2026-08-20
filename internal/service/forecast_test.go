@@ -1432,157 +1432,32 @@ func TestSnapAndValidateRange_ExactlyAtCap_Allowed(t *testing.T) {
 // F7: remaining edge cases + per-field validator coverage
 // ============================================================
 
-// TestValidateOverlay_FieldValidators is a table-driven sweep over every
-// field-presence check in the validateOverlay* helpers. The previous
-// test suite verified org/existence checks but none of the cheap "field
-// must be present" checks; without these, accidentally weakening the
-// validators (e.g. dropping a `if x == 0` branch) would land silently.
-func TestValidateOverlay_FieldValidators(t *testing.T) {
+// TestValidateOverlay_ParentIDs covers the two field checks the service still
+// owns.
+//
+// The rest of the overlay's field presence — birthdate, contracts, from,
+// section_id, payplan_id, grade, step, weekly_hours, staff_category — is
+// declared on the DTOs as binding tags and exercised in the handlers package by
+// TestForecastOverlayBindingRejectsIncompleteOverlays, which asserts the same
+// field paths this used to. Checking it in both places would have been two
+// statements of one rule.
+//
+// These two stay because a struct tag cannot express them: the same contract
+// struct is used standalone, where the parent id names the row to attach to,
+// and nested under a new entity, where there is no id yet.
+func TestValidateOverlay_ParentIDs(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	bday := time.Date(2022, 5, 15, 0, 0, 0, 0, time.UTC)
 
 	cases := []struct {
 		name        string
 		req         *models.ForecastRequest
 		wantErrPath string
 	}{
-		// AddChildren
-		{
-			name: "child_missing_birthdate",
-			req: &models.ForecastRequest{
-				AddChildren: []models.ForecastChildInput{{
-					FirstName: "X", LastName: "Y", Gender: "female",
-					Contracts: []models.ForecastChildContractInput{{From: from, SectionID: 1}},
-				}},
-			},
-			wantErrPath: "add_children[0].birthdate is required",
-		},
-		{
-			name: "child_no_contracts",
-			req: &models.ForecastRequest{
-				AddChildren: []models.ForecastChildInput{{
-					FirstName: "X", LastName: "Y", Gender: "female", Birthdate: bday,
-				}},
-			},
-			wantErrPath: "add_children[0].contracts must contain at least one entry",
-		},
-		{
-			name: "child_contract_missing_from",
-			req: &models.ForecastRequest{
-				AddChildren: []models.ForecastChildInput{{
-					FirstName: "X", LastName: "Y", Gender: "female", Birthdate: bday,
-					Contracts: []models.ForecastChildContractInput{{SectionID: 1}},
-				}},
-			},
-			wantErrPath: "add_children[0].contracts[0].from is required",
-		},
-		{
-			name: "child_contract_missing_section",
-			req: &models.ForecastRequest{
-				AddChildren: []models.ForecastChildInput{{
-					FirstName: "X", LastName: "Y", Gender: "female", Birthdate: bday,
-					Contracts: []models.ForecastChildContractInput{{From: from}},
-				}},
-			},
-			wantErrPath: "add_children[0].contracts[0].section_id is required",
-		},
-
-		// AddChildContracts (standalone)
 		{
 			name:        "child_contract_standalone_missing_child_id",
 			req:         &models.ForecastRequest{AddChildContracts: []models.ForecastChildContractInput{{From: from, SectionID: 1}}},
 			wantErrPath: "add_child_contracts[0].child_id is required",
 		},
-		{
-			name: "child_contract_standalone_missing_from",
-			req: &models.ForecastRequest{
-				AddChildContracts: []models.ForecastChildContractInput{{
-					SectionID: 1,
-					ChildID:   1,
-				}},
-			},
-			wantErrPath: "add_child_contracts[0].from is required",
-		},
-
-		// AddEmployees
-		{
-			name: "employee_no_contracts",
-			req: &models.ForecastRequest{
-				AddEmployees: []models.ForecastEmployeeInput{{
-					FirstName: "X", LastName: "Y", Birthdate: bday,
-				}},
-			},
-			wantErrPath: "add_employees[0].contracts must contain at least one entry",
-		},
-		{
-			name: "employee_contract_missing_payplan",
-			req: &models.ForecastRequest{
-				AddEmployees: []models.ForecastEmployeeInput{{
-					FirstName: "X", LastName: "Y", Birthdate: bday,
-					Contracts: []models.ForecastEmployeeContractInput{{
-						From: from, SectionID: 1,
-						Grade: "S8a", Step: 3, WeeklyHours: 30, StaffCategory: "qualified",
-					}},
-				}},
-			},
-			wantErrPath: "add_employees[0].contracts[0].payplan_id is required",
-		},
-		{
-			name: "employee_contract_missing_grade",
-			req: &models.ForecastRequest{
-				AddEmployees: []models.ForecastEmployeeInput{{
-					FirstName: "X", LastName: "Y", Birthdate: bday,
-					Contracts: []models.ForecastEmployeeContractInput{{
-						From: from, SectionID: 1,
-						PayPlanID: 1,
-						Step:      3, WeeklyHours: 30, StaffCategory: "qualified",
-					}},
-				}},
-			},
-			wantErrPath: "add_employees[0].contracts[0].grade is required",
-		},
-		{
-			name: "employee_contract_step_zero",
-			req: &models.ForecastRequest{
-				AddEmployees: []models.ForecastEmployeeInput{{
-					FirstName: "X", LastName: "Y", Birthdate: bday,
-					Contracts: []models.ForecastEmployeeContractInput{{
-						From: from, SectionID: 1,
-						PayPlanID: 1, Grade: "S8a",
-						WeeklyHours: 30, StaffCategory: "qualified",
-					}},
-				}},
-			},
-			wantErrPath: "add_employees[0].contracts[0].step must be at least 1",
-		},
-		{
-			name: "employee_contract_zero_hours",
-			req: &models.ForecastRequest{
-				AddEmployees: []models.ForecastEmployeeInput{{
-					FirstName: "X", LastName: "Y", Birthdate: bday,
-					Contracts: []models.ForecastEmployeeContractInput{{
-						From: from, SectionID: 1,
-						PayPlanID: 1, Grade: "S8a", Step: 3, StaffCategory: "qualified",
-					}},
-				}},
-			},
-			wantErrPath: "add_employees[0].contracts[0].weekly_hours must be greater than 0",
-		},
-		{
-			name: "employee_contract_missing_staff_category",
-			req: &models.ForecastRequest{
-				AddEmployees: []models.ForecastEmployeeInput{{
-					FirstName: "X", LastName: "Y", Birthdate: bday,
-					Contracts: []models.ForecastEmployeeContractInput{{
-						From: from, SectionID: 1,
-						PayPlanID: 1, Grade: "S8a", Step: 3, WeeklyHours: 30,
-					}},
-				}},
-			},
-			wantErrPath: "add_employees[0].contracts[0].staff_category is required",
-		},
-
-		// AddEmployeeContracts (standalone)
 		{
 			name:        "employee_contract_standalone_missing_employee_id",
 			req:         &models.ForecastRequest{AddEmployeeContracts: []models.ForecastEmployeeContractInput{{From: from, SectionID: 1, PayPlanID: 1, Grade: "S8a", Step: 3, WeeklyHours: 30, StaffCategory: "qualified"}}},

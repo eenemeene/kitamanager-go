@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -173,5 +174,172 @@ func TestForecastOverlayBindingReportsJSONPaths(t *testing.T) {
 		if _, ok := want[field]; !ok {
 			t.Errorf("unexpected violation for %s", field)
 		}
+	}
+}
+
+// TestForecastOverlayBindingRejectsIncompleteOverlays is the field-presence
+// sweep that used to live in internal/service as
+// TestValidateOverlay_FieldValidators.
+//
+// It moved when the checks did. Field presence is declared once, on the overlay
+// DTOs, so this exercises the declaration rather than a hand-written copy of it
+// — and it asserts the same field paths the service used to produce, which is
+// what a client actually depends on.
+//
+// Each case leaves exactly one field out of an otherwise valid overlay, so a
+// weakened tag surfaces as a missing violation rather than as a request that
+// quietly succeeds.
+func TestForecastOverlayBindingRejectsIncompleteOverlays(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	bday := time.Date(2022, 5, 15, 0, 0, 0, 0, time.UTC)
+
+	// A complete contract, so each case can drop a single field from it.
+	employeeContract := func(mut func(*models.ForecastEmployeeContractInput)) models.ForecastEmployeeContractInput {
+		ct := models.ForecastEmployeeContractInput{
+			From: from, SectionID: 1, PayPlanID: 1,
+			Grade: "S8a", Step: 3, WeeklyHours: 30, StaffCategory: "qualified",
+		}
+		mut(&ct)
+		return ct
+	}
+
+	cases := []struct {
+		name      string
+		req       models.ForecastRequest
+		wantField string
+		wantRule  string
+	}{
+		{
+			name: "child_missing_birthdate",
+			req: models.ForecastRequest{AddChildren: []models.ForecastChildInput{{
+				FirstName: "X", LastName: "Y", Gender: "female",
+				Contracts: []models.ForecastChildContractInput{{From: from, SectionID: 1}},
+			}}},
+			wantField: "add_children[0].birthdate",
+			wantRule:  "required",
+		},
+		{
+			name: "child_no_contracts",
+			req: models.ForecastRequest{AddChildren: []models.ForecastChildInput{{
+				FirstName: "X", LastName: "Y", Gender: "female", Birthdate: bday,
+			}}},
+			wantField: "add_children[0].contracts",
+			wantRule:  "required",
+		},
+		{
+			name: "child_contract_missing_from",
+			req: models.ForecastRequest{AddChildren: []models.ForecastChildInput{{
+				FirstName: "X", LastName: "Y", Gender: "female", Birthdate: bday,
+				Contracts: []models.ForecastChildContractInput{{SectionID: 1}},
+			}}},
+			wantField: "add_children[0].contracts[0].from",
+			wantRule:  "required",
+		},
+		{
+			name: "child_contract_missing_section",
+			req: models.ForecastRequest{AddChildren: []models.ForecastChildInput{{
+				FirstName: "X", LastName: "Y", Gender: "female", Birthdate: bday,
+				Contracts: []models.ForecastChildContractInput{{From: from}},
+			}}},
+			wantField: "add_children[0].contracts[0].section_id",
+			wantRule:  "required",
+		},
+		{
+			name: "child_contract_standalone_missing_from",
+			req: models.ForecastRequest{AddChildContracts: []models.ForecastChildContractInput{{
+				ChildID: 1, SectionID: 1,
+			}}},
+			wantField: "add_child_contracts[0].from",
+			wantRule:  "required",
+		},
+		{
+			name: "employee_no_contracts",
+			req: models.ForecastRequest{AddEmployees: []models.ForecastEmployeeInput{{
+				FirstName: "X", LastName: "Y", Birthdate: bday,
+			}}},
+			wantField: "add_employees[0].contracts",
+			wantRule:  "required",
+		},
+		{
+			name: "employee_contract_missing_payplan",
+			req: models.ForecastRequest{AddEmployees: []models.ForecastEmployeeInput{{
+				FirstName: "X", LastName: "Y", Birthdate: bday,
+				Contracts: []models.ForecastEmployeeContractInput{
+					employeeContract(func(ct *models.ForecastEmployeeContractInput) { ct.PayPlanID = 0 }),
+				},
+			}}},
+			wantField: "add_employees[0].contracts[0].payplan_id",
+			wantRule:  "required",
+		},
+		{
+			name: "employee_contract_missing_grade",
+			req: models.ForecastRequest{AddEmployees: []models.ForecastEmployeeInput{{
+				FirstName: "X", LastName: "Y", Birthdate: bday,
+				Contracts: []models.ForecastEmployeeContractInput{
+					employeeContract(func(ct *models.ForecastEmployeeContractInput) { ct.Grade = "" }),
+				},
+			}}},
+			wantField: "add_employees[0].contracts[0].grade",
+			wantRule:  "required",
+		},
+		{
+			name: "employee_contract_step_zero",
+			req: models.ForecastRequest{AddEmployees: []models.ForecastEmployeeInput{{
+				FirstName: "X", LastName: "Y", Birthdate: bday,
+				Contracts: []models.ForecastEmployeeContractInput{
+					employeeContract(func(ct *models.ForecastEmployeeContractInput) { ct.Step = 0 }),
+				},
+			}}},
+			wantField: "add_employees[0].contracts[0].step",
+			// min_value, not min: a step is a magnitude, and reporting it as
+			// "at least 1 characters" is what the kind check in ruleAndReason
+			// exists to prevent.
+			wantRule: "min_value",
+		},
+		{
+			name: "employee_contract_zero_hours",
+			req: models.ForecastRequest{AddEmployees: []models.ForecastEmployeeInput{{
+				FirstName: "X", LastName: "Y", Birthdate: bday,
+				Contracts: []models.ForecastEmployeeContractInput{
+					employeeContract(func(ct *models.ForecastEmployeeContractInput) { ct.WeeklyHours = 0 }),
+				},
+			}}},
+			wantField: "add_employees[0].contracts[0].weekly_hours",
+			wantRule:  "positive",
+		},
+		{
+			name: "employee_contract_missing_staff_category",
+			req: models.ForecastRequest{AddEmployees: []models.ForecastEmployeeInput{{
+				FirstName: "X", LastName: "Y", Birthdate: bday,
+				Contracts: []models.ForecastEmployeeContractInput{
+					employeeContract(func(ct *models.ForecastEmployeeContractInput) { ct.StaffCategory = "" }),
+				},
+			}}},
+			wantField: "add_employees[0].contracts[0].staff_category",
+			wantRule:  "required",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := binding.Validator.ValidateStruct(&tc.req)
+			if err == nil {
+				t.Fatalf("expected %s to be rejected", tc.wantField)
+			}
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			for _, p := range invalidParams(c, err) {
+				if p.Field == tc.wantField {
+					if p.Rule != tc.wantRule {
+						t.Errorf("%s: got rule %q, want %q", tc.wantField, p.Rule, tc.wantRule)
+					}
+					return
+				}
+			}
+			t.Errorf("no violation reported for %s: %+v", tc.wantField, invalidParams(c, err))
+		})
 	}
 }
