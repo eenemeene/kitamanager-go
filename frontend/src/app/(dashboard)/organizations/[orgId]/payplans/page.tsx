@@ -112,6 +112,7 @@ export default function PayPlansPage() {
             ref={fileInputRef}
             type="file"
             accept=".yaml,.yml"
+            aria-label={t('payPlans.importYaml')}
             className="hidden"
             onChange={handleImportFile}
           />

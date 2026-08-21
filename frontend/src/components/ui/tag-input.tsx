@@ -103,7 +103,14 @@ export function PropertyTagInput({
 
   return (
     <div className="space-y-2">
+      {/* `id` used to be destructured and then never rendered, so the
+          `<Label htmlFor>` beside this input resolved to nothing. There is no
+          single focusable control here — it is a set of badges plus suggestion
+          buttons — so the group carries the id and names itself with the label. */}
       <div
+        id={id}
+        role="group"
+        aria-labelledby={id ? `${id}-label` : undefined}
         className={cn(
           'border-input bg-background ring-offset-background focus-within:ring-ring flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-md border px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-offset-2',
           disabled && 'cursor-not-allowed opacity-50',
@@ -264,6 +271,7 @@ export function TagInput({
           ref={inputRef}
           id={id}
           type="text"
+          aria-label={placeholder}
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}

@@ -275,7 +275,7 @@ export function ChildContractCreateDialog({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="properties">{t('contracts.propertiesLabel')}</Label>
+            <Label id="properties-label">{t('contracts.propertiesLabel')}</Label>
             <Controller
               name="properties"
               control={control}

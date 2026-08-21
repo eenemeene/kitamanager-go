@@ -174,7 +174,9 @@ export function ForecastChildrenTab() {
                   <th className="px-2 py-1 font-medium">{t('contracts.from')}</th>
                   <th className="px-2 py-1 font-medium">{t('sections.title')}</th>
                   <th className="px-2 py-1 font-medium">{t('contracts.propertiesLabel')}</th>
-                  <th className="px-2 py-1"></th>
+                  <th className="px-2 py-1">
+                    <span className="sr-only">{t('common.actions')}</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>

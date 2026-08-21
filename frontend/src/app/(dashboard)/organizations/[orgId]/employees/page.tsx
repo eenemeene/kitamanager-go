@@ -398,6 +398,7 @@ export default function EmployeesPage() {
             ref={fileInputRef}
             type="file"
             accept=".yaml,.yml"
+            aria-label={t('employees.importYaml')}
             className="hidden"
             onChange={handleFileChange}
           />
