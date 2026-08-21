@@ -1,0 +1,2 @@
+ALTER TABLE pay_plan_periods DROP CONSTRAINT IF EXISTS pay_plan_periods_employer_contribution_rate_valid;
+ALTER TABLE pay_plan_periods DROP CONSTRAINT IF EXISTS pay_plan_periods_weekly_hours_valid;
