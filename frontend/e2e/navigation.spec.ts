@@ -40,11 +40,11 @@ test.describe('Navigation', () => {
     });
   });
 
-  test('should navigate to government fundings page', async ({ page }) => {
+  test('should navigate to the funding rates page', async ({ page }) => {
     await page.waitForLoadState('load');
     await ensureSidebarVisible(page);
 
-    const link = page.getByRole('link', { name: /government funding/i }).first();
+    const link = page.getByRole('link', { name: /funding rates/i }).first();
     await expect(link).toBeVisible({ timeout: 10000 });
     await link.click();
 
@@ -54,7 +54,7 @@ test.describe('Navigation', () => {
   test('should show sidebar navigation items', async ({ page }) => {
     await ensureSidebarVisible(page);
     await expect(page.getByRole('link', { name: /organization/i }).first()).toBeVisible();
-    await expect(page.getByRole('link', { name: /government funding/i }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: /funding rates/i }).first()).toBeVisible();
   });
 
   test('should show organization selector', async ({ page }) => {
