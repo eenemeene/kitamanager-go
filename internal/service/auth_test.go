@@ -198,7 +198,9 @@ func TestAuthService_Logout_DeletesSession(t *testing.T) {
 		t.Fatalf("login failed: %v", err)
 	}
 
-	svc.Logout(ctx, loginResult.Authenticated.SessionToken, 1, "test@example.com", "127.0.0.1")
+	if err := svc.Logout(ctx, store.HashSessionToken(loginResult.Authenticated.SessionToken), 1, "test@example.com", "127.0.0.1"); err != nil {
+		t.Fatalf("logout: %v", err)
+	}
 
 	if _, err := sess.Lookup(ctx, store.HashSessionToken(loginResult.Authenticated.SessionToken)); err != store.ErrNotFound {
 		t.Errorf("expected session to be deleted after logout, got %v", err)
@@ -211,7 +213,9 @@ func TestAuthService_Logout_EmptyTokenIsNoOp(t *testing.T) {
 	ctx := context.Background()
 
 	// Should not panic or error.
-	svc.Logout(ctx, "", 0, "", "127.0.0.1")
+	if err := svc.Logout(ctx, "", 0, "", "127.0.0.1"); err != nil {
+		t.Errorf("empty session hash must be a no-op, got %v", err)
+	}
 }
 
 func TestAuthService_Logout_UnknownTokenIsNoOp(t *testing.T) {
@@ -219,8 +223,11 @@ func TestAuthService_Logout_UnknownTokenIsNoOp(t *testing.T) {
 	svc := createAuthService(db)
 	ctx := context.Background()
 
-	// Should not panic or error.
-	svc.Logout(ctx, "never-issued-this", 0, "", "127.0.0.1")
+	// Should not panic or error: deleting a row that is not there is how a
+	// double-click on "logout" behaves, and it is not a failure.
+	if err := svc.Logout(ctx, "never-issued-this", 0, "", "127.0.0.1"); err != nil {
+		t.Errorf("unknown session hash must be a no-op, got %v", err)
+	}
 }
 
 func TestAuthService_Logout_EmitsAuditRow(t *testing.T) {
@@ -234,7 +241,9 @@ func TestAuthService_Logout_EmitsAuditRow(t *testing.T) {
 		t.Fatalf("login: %v", err)
 	}
 
-	svc.Logout(ctx, result.Authenticated.SessionToken, user.ID, user.Email, "10.0.0.1")
+	if err := svc.Logout(ctx, store.HashSessionToken(result.Authenticated.SessionToken), user.ID, user.Email, "10.0.0.1"); err != nil {
+		t.Fatalf("logout: %v", err)
+	}
 	svc.auditService.Shutdown()
 
 	var rows []models.AuditLog
@@ -258,7 +267,7 @@ func TestAuthService_Logout_UnknownTokenDoesNotEmitAudit(t *testing.T) {
 	svc := createAuthService(db)
 	ctx := context.Background()
 
-	svc.Logout(ctx, "never-issued-this", 0, "", "10.0.0.1")
+	_ = svc.Logout(ctx, "never-issued-this", 0, "", "10.0.0.1")
 	svc.auditService.Shutdown()
 
 	var count int64
