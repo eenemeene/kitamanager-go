@@ -122,8 +122,20 @@ definitions:
         example: 1
         type: integer
       ip_address:
+        description: |-
+          IPAddress is the actor's address. Viewers without superadmin rights
+          receive only the network prefix (IPv4 /24, IPv6 /48) — see
+          IPAnonymized.
         example: 192.168.1.1
         type: string
+      ip_anonymized:
+        description: |-
+          IPAnonymized reports that IPAddress carries only a network prefix
+          rather than the address that was recorded. Absent when the viewer sees
+          the full value, so a client can tell a truncated address from one that
+          genuinely ends in .0 instead of guessing.
+        example: true
+        type: boolean
       organization_id:
         example: 1
         type: integer

@@ -2474,8 +2474,21 @@ export interface components {
       details: string;
       /** @example 1 */
       id: number;
-      /** @example 192.168.1.1 */
+      /**
+       * @description IPAddress is the actor's address. Viewers without superadmin rights
+       *     receive only the network prefix (IPv4 /24, IPv6 /48) — see
+       *     IPAnonymized.
+       * @example 192.168.1.1
+       */
       ip_address: string;
+      /**
+       * @description IPAnonymized reports that IPAddress carries only a network prefix
+       *     rather than the address that was recorded. Absent when the viewer sees
+       *     the full value, so a client can tell a truncated address from one that
+       *     genuinely ends in .0 instead of guessing.
+       * @example true
+       */
+      ip_anonymized: boolean;
       /** @example 1 */
       organization_id: number;
       /** @example 4b89e4e0-6c37-4e1c-9a78-5d34b2a5f9a1 */
