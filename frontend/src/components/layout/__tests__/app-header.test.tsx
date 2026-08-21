@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AppHeader } from '../app-header';
 
@@ -60,6 +60,32 @@ describe('AppHeader', () => {
     render(<AppHeader />);
 
     expect(screen.getByText('JD')).toBeInTheDocument();
+  });
+
+  it('waits for the logout request before navigating away', async () => {
+    // The navigation used to race the request. `logout()` is what makes the
+    // server clear the session cookie, and the proxy gates /login on
+    // `csrf_token` -- so leaving first could have the proxy still see a signed-in
+    // user and bounce the request back to the dashboard. It is also what drops
+    // the cached data, which must be gone before the next account can appear.
+    let releaseLogout: () => void = () => {};
+    mockLogout.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseLogout = resolve;
+        })
+    );
+    const user = userEvent.setup();
+    render(<AppHeader />);
+
+    await user.click(screen.getByRole('button', { name: /John Doe|user/i }));
+    await user.click(await screen.findByText('auth.logout'));
+
+    expect(mockLogout).toHaveBeenCalled();
+    expect(pushMock).not.toHaveBeenCalledWith('/login');
+
+    releaseLogout();
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/login'));
   });
 
   it('renders logout menu item', async () => {

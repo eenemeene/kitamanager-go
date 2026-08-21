@@ -75,6 +75,47 @@ describe('useContractMutation', () => {
 
     expect(createFn).toHaveBeenCalledWith(5, { from: '2026-01-01', section_id: 1 });
     expect(amendFn).not.toHaveBeenCalled();
+    // ...and it must not claim to have ended a contract it never touched. The
+    // toast used to read off the checkbox rather than off what happened, so a
+    // plain create announced "previous contract ended" on a screen whose whole
+    // subject is contract history.
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'contracts.createSuccess' })
+    );
+  });
+
+  it('reports an amendment when one actually happened', async () => {
+    const createFn = jest.fn();
+    const amendFn = jest.fn().mockResolvedValue({ closed: {}, successor: {} });
+
+    const { result } = renderHook(
+      () =>
+        useContractMutation<TestCreateData, TestUpdateData, TestContract, unknown>({
+          createFn,
+          amendFn,
+          toAmendData: ({ from, ...rest }) => ({ effective_from: from, ...rest }),
+          invalidateQueryKeys: [['children', 1]],
+        }),
+      { wrapper }
+    );
+
+    act(() => {
+      result.current.mutate({
+        entityId: 5,
+        data: { from: '2026-01-01', section_id: 1 },
+        entity: {
+          contracts: [{ id: 50, version: 3, from: '2020-01-01', to: null }],
+        },
+        endCurrentContract: true,
+      });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(amendFn).toHaveBeenCalled();
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'contracts.previousContractEnded' })
+    );
   });
 
   it('amends the active contract, passing its version and the chosen effective date', async () => {

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useState } from 'react';
+import { todayBerlinDate } from '@/lib/utils/contracts';
 
 const dateFnsLocales: Record<string, typeof de> = {
   de: de,
@@ -87,7 +88,7 @@ export function DayStepper({ value, onChange }: DayStepperProps) {
         <ChevronRight className="h-4 w-4" />
       </Button>
 
-      <Button variant="ghost" className="text-sm" onClick={() => onChange(new Date())}>
+      <Button variant="ghost" className="text-sm" onClick={() => onChange(todayBerlinDate())}>
         {t('today')}
       </Button>
     </div>

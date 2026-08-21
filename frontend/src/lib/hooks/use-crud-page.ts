@@ -23,6 +23,7 @@ import { useResourceListFilters } from './use-resource-list-filters';
 import { validationTiming } from '@/lib/forms/validation-timing';
 import type { InvalidParam } from '@/lib/api/problem';
 import { useProblemFormErrors, suppressesToast } from '@/lib/forms/use-problem-form-errors';
+import { useResetOnReopen } from '@/lib/forms/use-reset-on-reopen';
 
 interface UseCrudPageConfig<
   TItem extends { id: number },
@@ -187,6 +188,11 @@ export function useCrudPage<
     onDeleteSuccess: dialogs.closeDeleteDialog,
     onMutationError: suppressesToast,
   });
+
+  // A dialog that just opened has nothing pending: without this, reopening it
+  // re-showed the previous submit's summary, which react-query keeps on the
+  // mutation until the next attempt.
+  useResetOnReopen(dialogs.isDialogOpen, mutations.createMutation, mutations.updateMutation);
 
   // The one way field violations reach a form: watch what the mutation rejected.
   // Both mutations feed this form -- it is the same dialog for create and edit.

@@ -49,6 +49,7 @@ import { useToast } from '@/lib/hooks/use-toast';
 import { useUiStore } from '@/stores/ui-store';
 import { validationTiming } from '@/lib/forms/validation-timing';
 import { useProblemFormErrors, suppressesToast } from '@/lib/forms/use-problem-form-errors';
+import { useResetOnReopen } from '@/lib/forms/use-reset-on-reopen';
 import {
   childSchema,
   type ChildFormData,
@@ -82,6 +83,9 @@ export default function ChildrenPage() {
   const { page, setPage, searchInput, setSearchInput, search, activeOn, setActiveOn } =
     useResourceListFilters();
   const [sectionFilter, setSectionFilter] = useState<number | undefined>(undefined);
+  // One date for the whole page: the roster, the funding figures beside it and
+  // the export all have to be as of the same day.
+  const activeOnDate = toLocalDateString(activeOn);
 
   const {
     data: paginatedData,
@@ -89,19 +93,13 @@ export default function ChildrenPage() {
     error: queryError,
     refetch,
   } = useQuery({
-    queryKey: queryKeys.children.list(
-      orgId,
-      page,
-      search,
-      sectionFilter,
-      toLocalDateString(activeOn)
-    ),
+    queryKey: queryKeys.children.list(orgId, page, search, sectionFilter, activeOnDate),
     queryFn: () =>
       apiClient.getChildren(orgId, {
         page,
         search: search || undefined,
         section_id: sectionFilter,
-        active_on: toLocalDateString(activeOn),
+        active_on: activeOnDate,
       }),
     enabled: !!orgId,
   });
@@ -110,8 +108,8 @@ export default function ChildrenPage() {
 
   // Fetch funding data for all children
   const { data: fundingData, error: fundingError } = useQuery({
-    queryKey: queryKeys.children.funding(orgId),
-    queryFn: () => apiClient.getChildrenFunding(orgId),
+    queryKey: queryKeys.children.funding(orgId, activeOnDate),
+    queryFn: () => apiClient.getChildrenFunding(orgId, activeOnDate),
     enabled: !!orgId,
     staleTime: 5 * 60 * 1000, // 5 minutes - funding data changes infrequently
   });
@@ -272,6 +270,11 @@ export default function ChildrenPage() {
     },
   });
 
+  // A dialog that just opened has nothing pending -- react-query keeps a
+  // mutation's rejection until the next attempt, so without this the edit form
+  // reopened showing the previous submit's summary.
+  useResetOnReopen(dialogs.isDialogOpen, mutations.updateMutation);
+
   const handleAddContract = useCallback((child: Child) => {
     setContractChild(child);
     setIsContractDialogOpen(true);
@@ -394,7 +397,7 @@ export default function ChildrenPage() {
                 apiClient.getChildrenExportUrl(orgId, {
                   search: search || undefined,
                   section_id: sectionFilter ? String(sectionFilter) : undefined,
-                  active_on: toLocalDateString(activeOn),
+                  active_on: activeOnDate,
                 })
               );
             }}

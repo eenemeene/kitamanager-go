@@ -32,7 +32,11 @@ export const queryKeys = {
     billingSummary: (orgId: number) => ['children', orgId, 'billingSummary'] as const,
     withoutVouchers: (orgId: number) => ['children', orgId, 'withoutVouchers'] as const,
     vouchers: (orgId: number, childId: number) => ['children', orgId, 'vouchers', childId] as const,
-    funding: (orgId: number) => ['children', orgId, 'funding'] as const,
+    // Dated: the funding figures are calculated as of a day, and the list they
+    // sit beside is filtered by one. Keying without the date meant the page
+    // showed today's funding beside a historical roster -- and a dash for every
+    // child not enrolled today.
+    funding: (orgId: number, date?: string) => ['children', orgId, 'funding', date] as const,
     upcoming: (orgId: number) => ['children', orgId, 'upcoming'] as const,
   },
   payPlans: {
@@ -100,8 +104,21 @@ export const queryKeys = {
       ['attendance', orgId, 'byWeek', weekStart] as const,
   },
   stepPromotions: (orgId: number) => ['stepPromotions', orgId] as const,
+  // Keyed by user, not by the literal string "me". These are the two caches
+  // that are about a *person* rather than an organization -- enrolled MFA
+  // factors, and active sessions with their IP addresses and user agents -- and
+  // a key with no identity in it served the previous user's to the next one
+  // after a same-tab account switch. The cache is also cleared on logout; this
+  // is the half that does not depend on remembering to do that.
   factors: {
-    all: () => ['factors', 'me'] as const,
+    // Prefix, for invalidating after an enrol/activate/delete without having to
+    // thread the user id into every mutation.
+    root: () => ['factors'] as const,
+    all: (userId: number | undefined) => ['factors', userId] as const,
+  },
+  sessions: {
+    root: () => ['sessions'] as const,
+    all: (userId: number | undefined) => ['sessions', userId] as const,
   },
   auditLogs: {
     all: (orgId: number) => ['auditLogs', orgId] as const,

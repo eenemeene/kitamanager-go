@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useState } from 'react';
+import { todayBerlinDate } from '@/lib/utils/contracts';
 
 const dateFnsLocales: Record<string, typeof de> = {
   de: de,
@@ -92,7 +93,7 @@ export function WeekStepper({ value, onChange }: WeekStepperProps) {
       <Button
         variant="ghost"
         className="text-sm"
-        onClick={() => onChange(startOfWeek(new Date(), { weekStartsOn: 1 }))}
+        onClick={() => onChange(startOfWeek(todayBerlinDate(), { weekStartsOn: 1 }))}
       >
         {t('thisWeek')}
       </Button>

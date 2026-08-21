@@ -1009,6 +1009,8 @@
     "create": "Record Attendance",
     "deleteConfirm": "Are you sure you want to delete this attendance record?",
     "noChildren": "No children with active contracts for this date.",
+    "notEnrolled": "Not enrolled",
+    "notEnrolledTooltip": "No active contract on this day",
     "quickMark": "Quick mark status",
     "previousDay": "Previous day",
     "nextDay": "Next day",

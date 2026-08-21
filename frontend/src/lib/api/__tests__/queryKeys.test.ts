@@ -67,7 +67,22 @@ describe('queryKeys', () => {
     });
 
     it('funding shares children prefix', () => {
-      expect(queryKeys.children.funding(1)).toEqual(['children', 1, 'funding']);
+      expect(queryKeys.children.funding(1)).toEqual(['children', 1, 'funding', undefined]);
+    });
+
+    it('funding separates entries by date', () => {
+      // The figures are calculated as of a day and sit beside a list filtered by
+      // one. A date-free key meant changing the filter kept serving today's
+      // funding next to a historical roster.
+      expect(queryKeys.children.funding(1, '2026-03-01')).not.toEqual(
+        queryKeys.children.funding(1, '2025-03-01')
+      );
+      expect(queryKeys.children.funding(1, '2026-03-01')).toEqual([
+        'children',
+        1,
+        'funding',
+        '2026-03-01',
+      ]);
     });
 
     it('billingSummary shares children prefix', () => {
@@ -435,6 +450,34 @@ describe('queryKeys', () => {
       expect(isPrefix(prefix, queryKeys.payPlans.list(1, 2))).toBe(true);
       expect(isPrefix(prefix, queryKeys.payPlans.detail(1, 5))).toBe(true);
       expect(isPrefix(prefix, queryKeys.payPlans.details(1, [5, 6]))).toBe(true);
+    });
+  });
+
+  /**
+   * The two caches that are about a person rather than an organization. Logout
+   * and login are both soft navigations, so an identity-free key handed the
+   * previous user's MFA factors and active sessions to the next one.
+   */
+  describe('per-user keys', () => {
+    /** react-query matches by key prefix; this is the same test the section above uses. */
+    const startsWith = (prefix: readonly unknown[], key: readonly unknown[]) =>
+      prefix.every((part, i) => Object.is(part, key[i]));
+
+    it('separates factors by user', () => {
+      expect(queryKeys.factors.all(1)).not.toEqual(queryKeys.factors.all(2));
+    });
+
+    it('separates sessions by user', () => {
+      expect(queryKeys.sessions.all(1)).not.toEqual(queryKeys.sessions.all(2));
+    });
+
+    it('exposes a root prefix that matches every user, for invalidation', () => {
+      expect(startsWith(queryKeys.factors.root(), queryKeys.factors.all(7))).toBe(true);
+      expect(startsWith(queryKeys.sessions.root(), queryKeys.sessions.all(7))).toBe(true);
+    });
+
+    it('still keys an unknown user distinctly from a known one', () => {
+      expect(queryKeys.factors.all(undefined)).not.toEqual(queryKeys.factors.all(1));
     });
   });
 });

@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { format, parseISO, subDays } from 'date-fns';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Trash2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -36,13 +35,14 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { formatDateForInput, formatDateForApi } from '@/lib/utils/formatting';
-import { getContractStatus, compareDates } from '@/lib/utils/contracts';
+import { getContractStatus, compareDates, getDayBefore } from '@/lib/utils/contracts';
 import { EmployeeContractDialog } from '@/components/employees/employee-contract-dialog';
 import { employeeContractSchema, type EmployeeContractFormData } from '@/lib/schemas';
 import { useToast } from '@/lib/hooks/use-toast';
 import { showErrorToast } from '@/lib/utils/show-error-toast';
 import { validationTiming } from '@/lib/forms/validation-timing';
 import { useProblemFormErrors, suppressesToast } from '@/lib/forms/use-problem-form-errors';
+import { useResetOnReopen } from '@/lib/forms/use-reset-on-reopen';
 import { useFormatters } from '@/hooks/use-formatters';
 
 export default function EmployeeContractsPage() {
@@ -161,8 +161,12 @@ export default function EmployeeContractsPage() {
       // Mirror what the server will do: the later contract starts at the seam,
       // the earlier one ends the day before. Only these two dates change, which
       // is the point of sending one date instead of four.
-      const dayBefore =
-        formatDateForApi(format(subDays(parseISO(move.at), 1), 'yyyy-MM-dd')) ?? undefined;
+      //
+      // Calendar arithmetic, not `parseISO` + local `format`: `move.at` is a
+      // UTC-midnight timestamp, and rendering it in a zone behind UTC lands on
+      // the previous day before the subtraction has even happened, so the seam
+      // jumped two days on the way past.
+      const dayBefore = formatDateForApi(getDayBefore(move.at)) ?? undefined;
       queryClient.setQueryData<EmployeeContract[]>(contractsQueryKey, (old) =>
         old?.map((c) =>
           c.id === move.later_id
@@ -216,6 +220,11 @@ export default function EmployeeContractsPage() {
   });
 
   // Create and correct both submit this one dialog.
+  // A dialog that just opened has nothing pending -- react-query keeps a
+  // mutation's rejection until the next attempt, so without this the form
+  // reopened showing the previous submit's summary.
+  useResetOnReopen(isContractDialogOpen, createMutation, correctMutation);
+
   const unmappedViolations = useProblemFormErrors([createMutation.error, correctMutation.error], {
     setError,
     clearErrors,

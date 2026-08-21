@@ -1,10 +1,20 @@
+import { todayBerlin } from './contracts';
+
 /**
  * Calculate years of service from contract history.
  * Uses the earliest contract start date.
  */
 export function calculateYearsOfService(
   contracts: { from: string }[],
-  asOf: Date = new Date()
+  // Berlin's today by default: the eligible step this feeds is compared against
+  // what the server computed, and an off-by-one day at a step boundary is a
+  // disagreement about somebody's pay grade.
+  //
+  // The UTC-midnight form, not `todayBerlinDate()`. The contract dates below go
+  // through `new Date(c.from)`, which reads a bare "YYYY-MM-DD" as UTC midnight,
+  // so an `asOf` at *local* midnight would compare two different frames and put
+  // a few hours of service on a contract that starts today.
+  asOf: Date = new Date(todayBerlin())
 ): number {
   if (contracts.length === 0) return 0;
 

@@ -51,6 +51,7 @@ import { formatDateForApi, eurosToCents, centsToEuros } from '@/lib/utils/format
 import { budgetItemEntrySchema, type BudgetItemEntryFormData } from '@/lib/schemas';
 import { validationTiming } from '@/lib/forms/validation-timing';
 import { useProblemFormErrors, suppressesToast } from '@/lib/forms/use-problem-form-errors';
+import { useResetOnReopen } from '@/lib/forms/use-reset-on-reopen';
 import { FormErrorSummary } from '@/components/forms/form-error-summary';
 import { useFormatters } from '@/hooks/use-formatters';
 
@@ -125,6 +126,11 @@ export default function BudgetItemDetailPage() {
 
   // Both mutations feed the one entry form -- it is the same dialog for adding
   // and editing an entry.
+  // A dialog that just opened has nothing pending -- react-query keeps a
+  // mutation's rejection until the next attempt, so without this the form
+  // reopened showing the previous submit's summary.
+  useResetOnReopen(isEntryDialogOpen, createEntryMutation, updateEntryMutation);
+
   const unmappedViolations = useProblemFormErrors(
     [createEntryMutation.error, updateEntryMutation.error],
     { setError, clearErrors, getValues }

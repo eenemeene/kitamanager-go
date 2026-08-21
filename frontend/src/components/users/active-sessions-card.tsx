@@ -21,9 +21,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/lib/hooks/use-toast';
 import { apiClient } from '@/lib/api/client';
+import { queryKeys } from '@/lib/api/queryKeys';
+import { useAuthStore } from '@/stores/auth-store';
 import type { UserSession } from '@/lib/api/types';
-
-const SESSIONS_QUERY_KEY = ['me', 'sessions'] as const;
 
 export function ActiveSessionsCard() {
   const t = useTranslations('settings.sessions');
@@ -38,9 +38,14 @@ export function ActiveSessionsCard() {
   // `Button` that triggered it — keeps the table layout clean.
   const [pendingRevoke, setPendingRevoke] = useState<UserSession | null>(null);
 
+  // Keyed by who is asking: this list carries IP addresses, user agents and
+  // last-seen times, and an identity-free key handed the previous user's to the
+  // next one after a same-tab account switch.
+  const userId = useAuthStore((s) => s.user?.id);
   const query = useQuery({
-    queryKey: SESSIONS_QUERY_KEY,
+    queryKey: queryKeys.sessions.all(userId),
     queryFn: () => apiClient.getSessions(),
+    // Not gated on `userId` -- see useFactors for why.
   });
 
   const revokeMutation = useMutation({
@@ -48,7 +53,7 @@ export function ActiveSessionsCard() {
     onSuccess: () => {
       toast({ title: t('revokeSuccessToast') });
       setPendingRevoke(null);
-      queryClient.invalidateQueries({ queryKey: SESSIONS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: queryKeys.sessions.root() });
     },
     onError: () => {
       // Generic message — backend already returns a generic error, but

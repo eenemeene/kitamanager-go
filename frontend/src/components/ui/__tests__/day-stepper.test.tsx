@@ -47,16 +47,28 @@ describe('DayStepper', () => {
     expect(calledDate.getMonth()).toBe(0);
   });
 
-  it('calls onChange with today when today button clicked', async () => {
-    const user = userEvent.setup();
-    const now = new Date();
-    renderWithProviders(<DayStepper value={new Date(2020, 0, 1)} onChange={onChange} />);
+  it('calls onChange with Berlin today when today button clicked', async () => {
+    // Berlin's today, not the browser's: the date this produces becomes an
+    // `active_on` query parameter, and the server decides what is active with
+    // `models.Today()`. Pinned to a moment where the two disagree -- 00:30 on 1
+    // August in Berlin is still 31 July in UTC -- so a browser-clock regression
+    // fails here rather than only for users in the wrong timezone.
+    jest.useFakeTimers({ advanceTimers: true });
+    jest.setSystemTime(new Date('2026-07-31T22:30:00Z'));
+    try {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      renderWithProviders(<DayStepper value={new Date(2020, 0, 1)} onChange={onChange} />);
 
-    await user.click(screen.getByText('today'));
+      await user.click(screen.getByText('today'));
 
-    expect(onChange).toHaveBeenCalledTimes(1);
-    const calledDate = onChange.mock.calls[0][0] as Date;
-    expect(calledDate.toDateString()).toBe(now.toDateString());
+      expect(onChange).toHaveBeenCalledTimes(1);
+      const calledDate = onChange.mock.calls[0][0] as Date;
+      expect(calledDate.getFullYear()).toBe(2026);
+      expect(calledDate.getMonth()).toBe(7);
+      expect(calledDate.getDate()).toBe(1);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('crosses month boundary going backward', async () => {

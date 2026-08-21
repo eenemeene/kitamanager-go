@@ -87,6 +87,106 @@ describe('useProblemFormErrors', () => {
     await waitFor(() => expect(f.setError).toHaveBeenCalled());
     expect(f.setError.mock.calls[0][0]).toBe('name');
   });
+
+  /**
+   * The sequence this hook exists to survive.
+   *
+   * Nothing resets a react-query mutation here, so a rejected create keeps its
+   * error for the rest of the page's life. Reading "the first truthy one" as the
+   * active rejection therefore pinned the form to that first failure forever:
+   * the later update's violations were dropped, and because the update's problem
+   * document *did* carry `invalid_params`, `suppressesToast` swallowed the toast
+   * too. The user got a rejected submit and an entirely silent screen.
+   */
+  describe('two mutations feeding one dialog', () => {
+    const createRejected = rejection([{ field: 'name', reason: 'create: name is required' }]);
+    const updateRejected = rejection([{ field: 'email', reason: 'update: email is invalid' }]);
+
+    it('applies a later rejection from a second mutation, not the stale first one', async () => {
+      const f = form({ name: '', email: '' });
+      const { rerender } = renderHook(
+        ({ errs }: { errs: unknown[] }) => useProblemFormErrors(errs, f as never),
+        { initialProps: { errs: [createRejected, undefined] as unknown[] } }
+      );
+      await waitFor(() => expect(f.setError).toHaveBeenCalled());
+      expect(f.setError.mock.calls[0][0]).toBe('name');
+      f.setError.mockClear();
+
+      // The create error is still sitting on its mutation, unreset.
+      rerender({ errs: [createRejected, updateRejected] });
+
+      await waitFor(() => expect(f.setError).toHaveBeenCalled());
+      expect(f.setError.mock.calls.map((c: unknown[]) => c[0])).toContain('email');
+    });
+
+    it('goes back to the first mutation when that is the one that just failed', async () => {
+      const f = form({ name: '', email: '' });
+      const retriedCreate = rejection([{ field: 'name', reason: 'create: still required' }]);
+      const { rerender } = renderHook(
+        ({ errs }: { errs: unknown[] }) => useProblemFormErrors(errs, f as never),
+        { initialProps: { errs: [createRejected, updateRejected] as unknown[] } }
+      );
+      await waitFor(() => expect(f.setError).toHaveBeenCalled());
+      f.setError.mockClear();
+
+      rerender({ errs: [retriedCreate, updateRejected] });
+
+      await waitFor(() => expect(f.setError).toHaveBeenCalled());
+      expect(f.setError.mock.calls.map((c: unknown[]) => c[0])).toContain('name');
+    });
+
+    it('re-applies when the same form is submitted badly twice', async () => {
+      // react-query builds a fresh error object per attempt, so the second
+      // rejection is a new value even though it says the same thing. Re-applying
+      // is what re-focuses the offending input.
+      const f = form({ name: '', email: '' });
+      const secondAttempt = rejection([{ field: 'name', reason: 'create: name is required' }]);
+      const { rerender } = renderHook(
+        ({ errs }: { errs: unknown[] }) => useProblemFormErrors(errs, f as never),
+        { initialProps: { errs: [createRejected, undefined] as unknown[] } }
+      );
+      await waitFor(() => expect(f.setError).toHaveBeenCalled());
+      f.setError.mockClear();
+
+      rerender({ errs: [secondAttempt, undefined] });
+
+      await waitFor(() => expect(f.setError).toHaveBeenCalled());
+      expect(f.setError.mock.calls[0][0]).toBe('name');
+    });
+
+    it('does not re-apply on an unrelated re-render', async () => {
+      // The effect has no dependency array, so it runs after every render. It
+      // must still act only when something actually changed, or a form would
+      // steal focus on every keystroke.
+      const f = form({ name: '', email: '' });
+      const errs = [createRejected, undefined] as unknown[];
+      const { rerender } = renderHook(() => useProblemFormErrors(errs, f as never));
+      await waitFor(() => expect(f.setError).toHaveBeenCalledTimes(1));
+
+      rerender();
+      rerender();
+
+      expect(f.setError).toHaveBeenCalledTimes(1);
+    });
+
+    it('clears the summary only once every mutation has reset', async () => {
+      const f = form({ name: '', email: '' });
+      const unplaceable = rejection([{ field: 'not_on_this_form', reason: 'is invalid' }]);
+      const { result, rerender } = renderHook(
+        ({ errs }: { errs: unknown[] }) => useProblemFormErrors(errs, f as never),
+        { initialProps: { errs: [unplaceable, undefined] as unknown[] } }
+      );
+      await waitFor(() => expect(result.current).toHaveLength(1));
+
+      // One of two resets: the other rejection is gone, but nothing new
+      // happened, so the summary stays as it is.
+      rerender({ errs: [unplaceable, undefined] });
+      expect(result.current).toHaveLength(1);
+
+      rerender({ errs: [undefined, undefined] });
+      await waitFor(() => expect(result.current).toHaveLength(0));
+    });
+  });
 });
 
 describe('suppressesToast', () => {

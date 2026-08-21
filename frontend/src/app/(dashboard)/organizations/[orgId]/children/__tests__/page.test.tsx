@@ -234,4 +234,37 @@ describe('ChildrenPage', () => {
     expect(callArgs[1]).toHaveProperty('active_on');
     expect(callArgs[1].active_on).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
+
+  /**
+   * The funding column is calculated as of a day; the rows are filtered by one.
+   * They were not the same day: the funding query took no date and no date in
+   * its key, so it always answered for today. Changing the filter to a past Kita
+   * year showed that roster with today's funding rates beside it -- and a dash
+   * for every child no longer enrolled.
+   */
+  describe('funding follows the date filter', () => {
+    it('asks for funding as of the same day as the roster', async () => {
+      (apiClient.getChildren as jest.Mock).mockResolvedValue(mockPaginatedResponse);
+
+      renderWithProviders(<ChildrenPage />);
+
+      await waitFor(() => expect(apiClient.getChildrenFunding).toHaveBeenCalled());
+
+      const rosterDate = (apiClient.getChildren as jest.Mock).mock.calls[0][1].active_on;
+      const fundingDate = (apiClient.getChildrenFunding as jest.Mock).mock.calls[0][1];
+      expect(fundingDate).toBe(rosterDate);
+    });
+
+    it('passes a date at all, rather than letting the server default to today', async () => {
+      (apiClient.getChildren as jest.Mock).mockResolvedValue(mockPaginatedResponse);
+
+      renderWithProviders(<ChildrenPage />);
+
+      await waitFor(() => expect(apiClient.getChildrenFunding).toHaveBeenCalled());
+
+      const [orgId, date] = (apiClient.getChildrenFunding as jest.Mock).mock.calls[0];
+      expect(orgId).toBe(1);
+      expect(date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+  });
 });

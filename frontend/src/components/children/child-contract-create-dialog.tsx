@@ -29,7 +29,7 @@ import { useFundingAttributes } from '@/lib/hooks/use-funding-attributes';
 import { childContractSchema, type ChildContractFormData } from '@/lib/schemas';
 import { formatDateForInput, toLocalDateString } from '@/lib/utils/formatting';
 import { propertiesToLabelKeys } from '@/lib/utils/contract-properties';
-import { getActiveContract, isDateBefore } from '@/lib/utils/contracts';
+import { getActiveContract, isDateBefore, todayBerlinDate } from '@/lib/utils/contracts';
 import { suggestContractEnd } from '@/lib/utils/school-enrollment';
 import type { Child, Section, ContractProperties } from '@/lib/api/types';
 import { validationTiming } from '@/lib/forms/validation-timing';
@@ -127,7 +127,7 @@ export function ChildContractCreateDialog({
 
       const active = getActiveContract(child.contracts);
       if (active) {
-        const tomorrow = new Date();
+        const tomorrow = todayBerlinDate();
         tomorrow.setDate(tomorrow.getDate() + 1);
         const tomorrowStr = toLocalDateString(tomorrow);
 

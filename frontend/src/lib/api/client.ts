@@ -112,7 +112,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
   : '/api/v1';
 
 import { getCookie } from '@/lib/utils';
-import { toLocalDateString } from '@/lib/utils/formatting';
+import { todayBerlinString } from '@/lib/utils/contracts';
 
 // Helper to get CSRF token from cookie
 function getCSRFToken(): string | null {
@@ -207,11 +207,19 @@ class ApiClient {
 
   private topLevelCrud<T, TCreate, TUpdate>(resource: string) {
     return {
+      // Forwards filters, like orgScopedCrud below. It used to destructure only
+      // page and limit and hand-build the query string, which silently dropped
+      // everything else: the Fördersätze page passed `search`, the query key
+      // included it so typing triggered a refetch, and the server -- which does
+      // support the parameter -- answered with the unfiltered list. The search
+      // box looked like it worked and returned everything.
       list: (params: PaginationParams = {}) => {
-        const { page = 1, limit = DEFAULT_PAGE_SIZE } = params;
-        return this.client
-          .get<PaginatedResponse<T>>(`/${resource}?page=${page}&limit=${limit}`)
-          .then((r) => r.data);
+        const { page = 1, limit = DEFAULT_PAGE_SIZE, ...filters } = params;
+        const qp = new URLSearchParams({ page: String(page), limit: String(limit) });
+        for (const [key, value] of Object.entries(filters)) {
+          if (value !== undefined && value !== null) qp.set(key, String(value));
+        }
+        return this.client.get<PaginatedResponse<T>>(`/${resource}?${qp}`).then((r) => r.data);
       },
       get: (id: number) => this.client.get<T>(`/${resource}/${id}`).then((r) => r.data),
       create: (data: TCreate) => this.client.post<T>(`/${resource}`, data).then((r) => r.data),
@@ -1133,7 +1141,7 @@ class ApiClient {
 
   // Employees - fetch all with active contracts (for kanban board view)
   async getEmployeesAll(orgId: number): Promise<Employee[]> {
-    const today = toLocalDateString(new Date());
+    const today = todayBerlinString();
     return this.fetchAllPages<Employee>(`/organizations/${orgId}/employees?active_on=${today}`);
   }
 
@@ -1368,13 +1376,13 @@ class ApiClient {
 
   // Children - fetch upcoming (contracts starting after today)
   async getUpcomingChildren(orgId: number): Promise<Child[]> {
-    const today = toLocalDateString(new Date());
+    const today = todayBerlinString();
     return this.fetchAllPages<Child>(`/organizations/${orgId}/children?contract_after=${today}`);
   }
 
   // Children - fetch all with active contracts (for kanban board view)
   async getChildrenAll(orgId: number): Promise<Child[]> {
-    const today = toLocalDateString(new Date());
+    const today = todayBerlinString();
     return this.fetchAllPages<Child>(`/organizations/${orgId}/children?active_on=${today}`);
   }
 

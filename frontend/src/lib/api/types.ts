@@ -101,16 +101,15 @@ export type EmployeeCreateRequest = Override<S['EmployeeCreateRequest'], 'gender
 export type EmployeeUpdateRequest = S['EmployeeUpdateRequest'];
 export type EmployeeContractCreateRequest = S['EmployeeContractCreateRequest'];
 
-// school_entry_date is optional here because it genuinely is: the API omits it
-// for every child whose school entry follows from their birthdate, which is
-// nearly all of them. The generator marks all response fields required, so
-// without this correction every Child literal in the codebase would have to
-// carry a field the server usually does not send.
-export type Child = OverrideOptional<
-  Override<S['ChildResponse'], 'gender', Gender>,
-  'school_entry_date',
-  string
->;
+// `school_entry_date`, `contracts` and `vouchers` are optional, and the spec now
+// says so itself: openapi-fixer reads `omitempty` out of the Go source instead
+// of asserting that every response field is always present. This used to need a
+// hand-written correction here, and only `school_entry_date` ever got one --
+// `contracts` and `vouchers` are omitted just as readily, and the types claimed
+// otherwise for both.
+export type Child = Override<S['ChildResponse'], 'gender', Gender>;
+// The optionality of `properties` comes from the spec; what is still hand-made
+// is the value type, which swaggo can only describe as `map[string]any`.
 export type ChildContract = OverrideOptional<
   S['ChildContractResponse'],
   'properties',

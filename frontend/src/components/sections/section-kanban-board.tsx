@@ -19,11 +19,10 @@ import { queryKeys } from '@/lib/api/queryKeys';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useMoveContractMutation } from '@/lib/hooks/use-move-contract-mutation';
 import { type Child, type Employee, LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
-import { getActiveContract } from '@/lib/utils/contracts';
+import { getActiveContract, todayBerlinString } from '@/lib/utils/contracts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { toLocalDateString } from '@/lib/utils/formatting';
 import { SectionColumn } from './section-column';
 import { ChildCard } from './child-card';
 import { EmployeeCard } from './employee-card';
@@ -52,7 +51,7 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
   // date or forward to plan a reorganisation. The query keys
   // include the date so changing it triggers a refetch through the
   // backend's active_on filter.
-  const [asOfDate, setAsOfDate] = useState(() => toLocalDateString(new Date()));
+  const [asOfDate, setAsOfDate] = useState(() => todayBerlinString());
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -258,7 +257,7 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
             id="kanban-as-of-date"
             type="date"
             value={asOfDate}
-            onChange={(e) => setAsOfDate(e.target.value || toLocalDateString(new Date()))}
+            onChange={(e) => setAsOfDate(e.target.value || todayBerlinString())}
             className="w-auto"
           />
         </div>

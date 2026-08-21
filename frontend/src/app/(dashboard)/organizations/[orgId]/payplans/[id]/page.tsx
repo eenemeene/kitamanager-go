@@ -56,6 +56,7 @@ import { PayPlanGrid } from '@/components/payplans/payplan-grid';
 import { PayPlanSalaryChart } from '@/components/charts/payplan-salary-chart';
 import { validationTiming } from '@/lib/forms/validation-timing';
 import { useProblemFormErrors, suppressesToast } from '@/lib/forms/use-problem-form-errors';
+import { useResetOnReopen } from '@/lib/forms/use-reset-on-reopen';
 import { FormErrorSummary } from '@/components/forms/form-error-summary';
 import {
   payPlanPeriodSchema,
@@ -210,6 +211,12 @@ export default function PayPlanDetailPage() {
 
   // Each form watches only the mutations that submit it: a rejected period must
   // not mark fields on the entry form, which is a different dialog entirely.
+  // A dialog that just opened has nothing pending -- react-query keeps a
+  // mutation's rejection until the next attempt, so without this the form
+  // reopened showing the previous submit's summary.
+  useResetOnReopen(isPeriodDialogOpen, createPeriodMutation, updatePeriodMutation);
+  useResetOnReopen(isEntryDialogOpen, createEntryMutation, updateEntryMutation);
+
   const unmappedPeriod = useProblemFormErrors(
     [createPeriodMutation.error, updatePeriodMutation.error],
     { setError: setErrorPeriod, clearErrors: clearErrorsPeriod, getValues: getValuesPeriod }

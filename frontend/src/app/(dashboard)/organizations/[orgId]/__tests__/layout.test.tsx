@@ -1,6 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import OrganizationScopedLayout from '../layout';
 import { apiClient } from '@/lib/api/client';
+import { useUiStore } from '@/stores/ui-store';
 import { renderWithProviders } from '@/test-utils';
 
 // Records the call rather than throwing. The real notFound() throws a sentinel
@@ -82,5 +83,64 @@ describe('OrganizationScopedLayout', () => {
     expect(await screen.findByText('org content')).toBeInTheDocument();
     await waitFor(() => expect(getOrganization).toHaveBeenCalled());
     expect(notFound).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The store has to follow the URL, or the sidebar, the organization selector
+   * and -- worst -- the role that gates the whole UI all describe a different
+   * organization from the one on screen.
+   */
+  describe('keeping the store on the URL organization', () => {
+    beforeEach(() => {
+      useUiStore.setState({ selectedOrganizationId: null, organizations: [] });
+    });
+
+    it('adopts the organization from the route', async () => {
+      // The deep-link case: a bookmark or shared URL for an organization other
+      // than the one left selected in localStorage.
+      useUiStore.setState({ selectedOrganizationId: 3 });
+      params = { orgId: '7' };
+      getOrganization.mockResolvedValue({ id: 7, name: 'Kita Sonnenschein' });
+
+      renderLayout();
+
+      await waitFor(() => expect(useUiStore.getState().selectedOrganizationId).toBe(7));
+    });
+
+    it('leaves a matching selection alone', async () => {
+      useUiStore.setState({ selectedOrganizationId: 1 });
+      params = { orgId: '1' };
+      getOrganization.mockResolvedValue({ id: 1, name: 'Kita Sonnenschein' });
+
+      renderLayout();
+
+      await waitFor(() => expect(screen.getByText('org content')).toBeInTheDocument());
+      expect(useUiStore.getState().selectedOrganizationId).toBe(1);
+    });
+
+    it('does not clear a good selection for an unaddressable segment', async () => {
+      // /organizations/abc/... is on its way to a 404. Wiping the stored
+      // organization on the way would leave the user with no selection at all
+      // once they navigated back.
+      useUiStore.setState({ selectedOrganizationId: 3 });
+      params = { orgId: 'abc' };
+
+      renderLayout();
+
+      await waitFor(() => expect(notFound).toHaveBeenCalled());
+      expect(useUiStore.getState().selectedOrganizationId).toBe(3);
+    });
+
+    it('adopts the route organization before the existence check resolves', async () => {
+      // The sidebar renders alongside these children, so waiting for the check
+      // would leave it pointing at the wrong organization in the meantime.
+      useUiStore.setState({ selectedOrganizationId: 3 });
+      params = { orgId: '9' };
+      getOrganization.mockReturnValue(new Promise(() => {}));
+
+      renderLayout();
+
+      await waitFor(() => expect(useUiStore.getState().selectedOrganizationId).toBe(9));
+    });
   });
 });
