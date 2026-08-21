@@ -21,7 +21,7 @@ Sie wollen ein:e neue:n Mitarbeiter:in erfassen und die Arbeitsbedingungen festl
 3. Füllen Sie aus:
    - **Von** — Vertragsbeginn.
    - **Bis** — Vertragsende (leer lassen für unbefristet).
-   - **Personalkategorie** — Fachkraft, Hilfskraft, Leitung etc.
+   - **Personalkategorie** — Fachkraft, Ergänzungskraft oder Nicht-pädagogisch.
    - **Entgeltgruppe** — z. B. `S 8a`.
    - **Stufe** — aktuelle Erfahrungsstufe (1–6 für TVöD-SuE).
    - **Wochenstunden** — Stunden pro Woche.

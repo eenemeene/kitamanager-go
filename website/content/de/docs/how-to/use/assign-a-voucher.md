@@ -20,7 +20,7 @@ Gutscheine sind eine Liste pro Kind — ein neuer Gutschein ersetzt nicht den al
 ### Aus der Kinderliste (empfohlen)
 
 1. **Kinder** in der Seitenleiste öffnen.
-2. Das Kind suchen und in der Zeile auf die **Voucher-Nummern**-Aktion (Ticket-Symbol) klicken.
+2. Das Kind suchen und in der Zeile auf die **Gutscheinnummern**-Aktion (Ticket-Symbol) klicken.
 3. Der Voucher-Dialog öffnet sich mit allen aktuell hinterlegten Nummern. Neue Kita-Gutschein-Nummer im Format `GB-DDDDDDDDDDD-NN` (11 Ziffern, Bindestrich, 2 Ziffern) eingeben und auf **Hinzufügen** klicken.
 4. Um eine falsche Nummer zu entfernen (z. B. Tippfehler-Korrektur), auf das Papierkorb-Symbol neben dem Eintrag klicken und bestätigen. Der eindeutige Slot wird freigegeben, sodass dieselbe Nummer danach einem anderen Kind zugewiesen werden kann.
 

@@ -7,7 +7,7 @@ You want to bulk-load or export children, employees, or pay plans without clicki
 
 ## Import
 
-1. Navigate to the relevant page — **Children**, **Employees**, **Pay Plans**, or **Government Funding Rates**.
+1. Navigate to the relevant page — **Children**, **Employees**, **Pay Plans**, or **Funding rates**.
 2. Click **Import**.
 3. Select the YAML file. KitaManager reads it and shows a preview.
 4. Review the preview, then confirm. Records are created.

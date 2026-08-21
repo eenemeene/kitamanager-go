@@ -30,7 +30,7 @@ layout: hextra-home
   >}}
   {{< hextra/feature-card
     title="Personalverwaltung"
-    subtitle="Komplette Mitarbeiterdatenbank mit flexibler Vertragsverwaltung, Vergütungsplänen und Audit-Protokollierung aller Personaländerungen."
+    subtitle="Komplette Mitarbeiterdatenbank mit flexibler Vertragsverwaltung, Entgelttabellen und Audit-Protokollierung aller Personaländerungen."
     class="hx-aspect-auto md:hx-aspect-[1.1/1] max-lg:hx-min-h-[340px]"
     style="background: radial-gradient(ellipse at 50% 80%,rgba(142,53,74,0.15),hsla(0,0%,100%,0));"
   >}}
