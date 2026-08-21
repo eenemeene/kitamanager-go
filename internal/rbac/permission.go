@@ -25,6 +25,15 @@ func (s *PermissionService) IsSuperAdmin(ctx context.Context, userID uint) (bool
 	return s.userOrgStore.IsSuperAdmin(ctx, userID)
 }
 
+// OrganizationIsLive reports whether an organization exists and is not
+// tombstoned. Authorization has to ask this before it grants anything scoped to
+// an organization: soft-deleting an org leaves its user_organizations rows in
+// place, so every role in it keeps resolving and every org-scoped route keeps
+// serving the org's data.
+func (s *PermissionService) OrganizationIsLive(ctx context.Context, orgID uint) (bool, error) {
+	return s.userOrgStore.OrganizationIsLive(ctx, orgID)
+}
+
 // CheckPermission checks if a user has permission to perform an action on a resource in an organization
 // Permission flow:
 // 1. Check if user is superadmin -> full access

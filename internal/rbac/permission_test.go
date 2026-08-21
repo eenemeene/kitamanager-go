@@ -75,6 +75,9 @@ func (m *mockUserOrgStore) SetSuperAdmin(context.Context, uint, bool) error {
 func (m *mockUserOrgStore) CountUsableSuperAdminsExcluding(context.Context, uint) (int64, error) {
 	panic("CountUsableSuperAdminsExcluding not expected")
 }
+func (m *mockUserOrgStore) OrganizationIsLive(context.Context, uint) (bool, error) {
+	panic("OrganizationIsLive not expected")
+}
 func (m *mockUserOrgStore) Exists(context.Context, uint, uint) (bool, error) {
 	panic("Exists not expected")
 }

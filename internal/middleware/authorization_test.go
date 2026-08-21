@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -86,6 +87,27 @@ func setupTestPermissionService(t *testing.T, db *gorm.DB, enforcer *rbac.Enforc
 }
 
 // assignRole adds a user to an organization with a role in the database
+// createOrg makes the organization at `orgID` exist. RequirePermission refuses
+// an org-scoped route whose organization is missing or tombstoned, so tests
+// that exercise the superadmin path need a live org for the same reason tests
+// that exercise the role path do — assignRole creates one as a side effect,
+// this is that half on its own.
+func createOrg(t *testing.T, db *gorm.DB, orgID uint) {
+	t.Helper()
+
+	var org models.Organization
+	if err := db.First(&org, orgID).Error; err != nil {
+		// Name is derived from the id: organizations(name) is unique among
+		// live rows, so a fixed literal collides with the org assignRole
+		// creates whenever a test needs both.
+		org = models.Organization{Name: fmt.Sprintf("Test Org %d", orgID), Active: true}
+		org.ID = orgID
+		if err := db.Create(&org).Error; err != nil {
+			t.Fatalf("failed to create organization: %v", err)
+		}
+	}
+}
+
 func assignRole(t *testing.T, db *gorm.DB, userID uint, role models.Role, orgID uint) {
 	t.Helper()
 
@@ -253,6 +275,7 @@ func TestAuthorizationMiddleware_RequirePermission_SuperAdminBypass(t *testing.T
 	db := setupTestDB(t)
 	enforcer := setupTestEnforcer(t)
 	assignSuperAdmin(t, db, 1)
+	createOrg(t, db, 999)
 	permissionService := setupTestPermissionService(t, db, enforcer)
 
 	middleware := NewAuthorizationMiddleware(permissionService)
@@ -286,6 +309,7 @@ func TestAuthorizationMiddleware_RequirePermission_PopulatesIsSuperAdmin_True(t 
 	db := setupTestDB(t)
 	enforcer := setupTestEnforcer(t)
 	assignSuperAdmin(t, db, 1)
+	createOrg(t, db, 1)
 	permissionService := setupTestPermissionService(t, db, enforcer)
 	middleware := NewAuthorizationMiddleware(permissionService)
 
