@@ -1133,7 +1133,7 @@ export async function createEmployeeWithContractViaApi(
 export async function navigateViaMobileSidebar(page: Page, name: RegExp, url: RegExp) {
   const hamburger = page.getByRole('button', { name: /menu/i });
   await expect(hamburger).toBeVisible({ timeout: 10000 });
-  const overlay = page.locator('div.fixed.inset-0.z-50');
+  const overlay = page.getByRole('dialog');
 
   await expect(async () => {
     if (!(await overlay.isVisible())) {

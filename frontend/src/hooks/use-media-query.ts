@@ -26,3 +26,11 @@ export function useMediaQuery(query: string): boolean {
 export function useIsLgUp(): boolean {
   return useMediaQuery('(min-width: 1024px)');
 }
+
+/**
+ * Matches Tailwind's `md:` breakpoint (≥768px) — the width at which the mobile
+ * navigation drawer stops existing and the docked rail takes over.
+ */
+export function useIsMdUp(): boolean {
+  return useMediaQuery('(min-width: 768px)');
+}

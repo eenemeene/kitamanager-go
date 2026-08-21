@@ -67,7 +67,9 @@
     "nextYear": "Nächstes Jahr",
     "notFound": "Nicht gefunden",
     "print": "Drucken",
-    "total": "Gesamt"
+    "total": "Gesamt",
+    "openMenu": "Menü öffnen",
+    "mainNavigation": "Hauptnavigation"
   },
   "pagination": {
     "navigation": "Seitennavigation",

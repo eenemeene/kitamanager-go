@@ -106,7 +106,7 @@ async function ensureSidebarVisible(page: Page) {
   if (await hamburger.isVisible().catch(() => false)) {
     await page.waitForTimeout(300);
     await hamburger.click();
-    await page.locator('div.fixed.inset-0.z-50').waitFor({ state: 'visible', timeout: 5000 });
+    await page.getByRole('dialog').waitFor({ state: 'visible', timeout: 5000 });
   }
 }
 

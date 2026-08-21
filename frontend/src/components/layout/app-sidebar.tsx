@@ -23,14 +23,18 @@ import {
   ChevronDown,
   type LucideIcon,
 } from 'lucide-react';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useUiStore } from '@/stores/ui-store';
 import { useCurrentRole, hasMinimumRole, type EffectiveRole } from '@/hooks/use-current-role';
 import { useFrontendVersion } from '@/hooks/use-frontend-version';
-import { useIsLgUp } from '@/hooks/use-media-query';
+import { useIsLgUp, useIsMdUp } from '@/hooks/use-media-query';
 import { apiClient } from '@/lib/api/client';
 import { OrgSelector } from './org-selector';
+
+/** DOM id of the mobile drawer, so the header's trigger can `aria-controls` it. */
+export const MOBILE_SIDEBAR_ID = 'mobile-sidebar';
 
 interface NavChild {
   name: string;
@@ -144,10 +148,10 @@ export function AppSidebar() {
   } = useUiStore();
   const currentRole = useCurrentRole();
   const isLgUp = useIsLgUp();
-  // At md (tablet portrait) the sidebar is always visually collapsed — the user
-  // preference only applies at lg+ where there's room for the expanded rail.
-  // On mobile the sidebar is an overlay (sidebarMobileOpen) and is fully shown.
-  const effectiveCollapsed = sidebarMobileOpen ? false : sidebarCollapsed || !isLgUp;
+  const isMdUp = useIsMdUp();
+  // At md (tablet portrait) the rail is always visually collapsed — the user
+  // preference only applies at lg+ where there's room for the expanded version.
+  const desktopCollapsed = sidebarCollapsed || !isLgUp;
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   const { data: health } = useQuery({
@@ -232,11 +236,11 @@ export function AppSidebar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, selectedOrganizationId]);
 
-  const sidebarContent = (
+  const renderSidebar = (collapsed: boolean) => (
     <>
       {/* Header */}
       <div className="flex h-16 items-center justify-between border-b px-4">
-        {!effectiveCollapsed && (
+        {!collapsed && (
           <Link href="/" className="text-xl font-bold">
             {t('common.appName')}
           </Link>
@@ -269,7 +273,7 @@ export function AppSidebar() {
                   <Link
                     href={item.href}
                     aria-label={t(item.name)}
-                    title={effectiveCollapsed ? t(item.name) : undefined}
+                    title={collapsed ? t(item.name) : undefined}
                     className={cn(
                       'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                       active
@@ -278,7 +282,7 @@ export function AppSidebar() {
                     )}
                   >
                     <Icon className="h-5 w-5 shrink-0" />
-                    {!effectiveCollapsed && <span>{t(item.name)}</span>}
+                    {!collapsed && <span>{t(item.name)}</span>}
                   </Link>
                 </li>
               );
@@ -287,7 +291,7 @@ export function AppSidebar() {
         )}
 
         {/* Organization Selector */}
-        {!effectiveCollapsed && (
+        {!collapsed && (
           <div className="mt-6 px-3">
             <OrgSelector />
           </div>
@@ -297,7 +301,7 @@ export function AppSidebar() {
         {selectedOrganizationId &&
           filteredOrgGroups.map((group) => (
             <div key={group.label} className="mt-4">
-              {!effectiveCollapsed && (
+              {!collapsed && (
                 <div className="text-sidebar-foreground/50 px-3 pb-1 text-[11px] font-semibold tracking-wider uppercase">
                   {t(group.label)}
                 </div>
@@ -313,7 +317,7 @@ export function AppSidebar() {
                     `/organizations/${selectedOrganizationId}${item.href}`
                   );
 
-                  if (hasChildren && !effectiveCollapsed) {
+                  if (hasChildren && !collapsed) {
                     return (
                       <li key={item.name}>
                         <div className="flex items-center">
@@ -373,7 +377,7 @@ export function AppSidebar() {
                       <Link
                         href={href}
                         aria-label={t(item.name)}
-                        title={effectiveCollapsed ? t(item.name) : undefined}
+                        title={collapsed ? t(item.name) : undefined}
                         className={cn(
                           'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                           parentActive
@@ -382,7 +386,7 @@ export function AppSidebar() {
                         )}
                       >
                         <Icon className="h-5 w-5 shrink-0" />
-                        {!effectiveCollapsed && <span>{t(item.name)}</span>}
+                        {!collapsed && <span>{t(item.name)}</span>}
                       </Link>
                     </li>
                   );
@@ -396,7 +400,7 @@ export function AppSidebar() {
           independent images and can drift between releases. Each row is
           conditionally rendered: if either side fails to populate, the
           other still appears. */}
-      {!effectiveCollapsed && (health?.version || webVersion) && (
+      {!collapsed && (health?.version || webVersion) && (
         <div
           data-visual-mask="version"
           className="text-sidebar-foreground/60 border-sidebar-border space-y-0.5 border-t px-4 py-2 text-[10px]"
@@ -408,31 +412,45 @@ export function AppSidebar() {
     </>
   );
 
+  // Radix owns the drawer's open state, which is what makes it a real dialog:
+  // focus trap, Escape, scroll lock, `aria-modal`, and focus returned to the
+  // hamburger on close. The hand-rolled version was a plain div — a keyboard
+  // user tabbed straight through it into the page behind, and a screen reader
+  // was never told a menu had opened. Since below md this drawer is the only
+  // route to every other page, that was not a corner case.
+  //
+  // It has to close when the viewport reaches md: Radix keeps the trap and the
+  // body's `pointer-events: none` alive for as long as it is open, so hiding it
+  // with `md:hidden` alone would leave the whole app inert after a rotation.
+  useEffect(() => {
+    if (isMdUp && sidebarMobileOpen) {
+      setMobileSidebarOpen(false);
+    }
+  }, [isMdUp, sidebarMobileOpen, setMobileSidebarOpen]);
+
   return (
     <>
-      {/* Desktop sidebar — always collapsed width at md (tablet portrait),
-          expanded only at lg+ when user preference is not-collapsed */}
+      {/* Docked sidebar — icon rail at md (tablet portrait), expanded only at
+          lg+ when the user preference says so. */}
       <aside
         className={cn(
           'bg-sidebar border-sidebar-border fixed top-0 left-0 z-40 hidden h-screen flex-col border-r transition-all duration-300 md:flex md:w-16',
           sidebarCollapsed ? 'lg:w-16' : 'lg:w-64'
         )}
       >
-        {sidebarContent}
+        {renderSidebar(desktopCollapsed)}
       </aside>
 
-      {/* Mobile sidebar overlay */}
-      {sidebarMobileOpen && (
-        <div className="fixed inset-0 z-50 flex md:hidden">
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/50"
-            onClick={() => setMobileSidebarOpen(false)}
-            aria-hidden="true"
-          />
-          {/* Sidebar panel */}
-          <aside
-            className="bg-sidebar border-sidebar-border relative flex h-screen w-64 flex-col border-r"
+      {/* Mobile drawer */}
+      <DialogPrimitive.Root open={sidebarMobileOpen} onOpenChange={setMobileSidebarOpen}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50 md:hidden" />
+          <DialogPrimitive.Content
+            id={MOBILE_SIDEBAR_ID}
+            // No description: the panel is a list of links and needs no prose.
+            // Passing undefined explicitly stops Radix warning about it.
+            aria-describedby={undefined}
+            className="bg-sidebar border-sidebar-border fixed top-0 left-0 z-50 flex h-[100dvh] w-64 flex-col border-r focus:outline-none md:hidden"
             // Close on the tap that navigates, rather than reacting to the path
             // afterwards. The old effect keyed on `pathname` shut the drawer for
             // any navigation, including ones the user did not ask for: landing on
@@ -448,10 +466,16 @@ export function AppSidebar() {
               }
             }}
           >
-            {sidebarContent}
-          </aside>
-        </div>
-      )}
+            {/* Radix requires a title for the dialog's accessible name. It is
+                visually redundant beside the app name in the panel header, so
+                it is exposed to assistive tech only. */}
+            <DialogPrimitive.Title className="sr-only">
+              {t('common.mainNavigation')}
+            </DialogPrimitive.Title>
+            {renderSidebar(false)}
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
     </>
   );
 }
