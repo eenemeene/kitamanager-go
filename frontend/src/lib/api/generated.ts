@@ -344,6 +344,11 @@ export interface paths {
     /**
      * Logout user
      * @description Delete the current session and clear authentication cookies.
+     *     Works for both transports: the `session` cookie and
+     *     `Authorization: Bearer`. Idempotent — logging out an already
+     *     expired session succeeds. Returns 500 if the session could not
+     *     be revoked, so a client is never told it is logged out while
+     *     its credential is still valid.
      */
     post: operations['postLogout'];
     delete?: never;

@@ -154,22 +154,40 @@ func (h *AuthHandler) MFAChallenge(c *gin.Context) {
 // Logout godoc
 // @Summary Logout user
 // @Description Delete the current session and clear authentication cookies.
+// @Description Works for both transports: the `session` cookie and
+// @Description `Authorization: Bearer`. Idempotent — logging out an already
+// @Description expired session succeeds. Returns 500 if the session could not
+// @Description be revoked, so a client is never told it is logged out while
+// @Description its credential is still valid.
+// @Failure 500 {object} models.ErrorResponse
 // @Tags auth
 // @Produce json
 // @Success 200 {object} models.MessageResponse
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
-	sessionToken, _ := c.Cookie(sessionCookie)
+	// The session comes from what RequireAuth resolved, not from the cookie.
+	// The middleware accepts a cookie OR `Authorization: Bearer`, so reading
+	// the cookie here meant a CLI or server-to-server caller logged out
+	// against an empty string: nothing revoked, no audit row, and a cheerful
+	// 200 telling it otherwise.
+	sessionIDHash, _ := c.Get(ctxkeys.SessionIDHash)
+	hash, _ := sessionIDHash.(string)
 
-	// If the auth middleware already resolved the caller we know who
-	// to attribute the logout to. If not (expired / absent session)
-	// the service skips the audit.
 	userID := getUserID(c)
 	email, _ := c.Get(ctxkeys.UserEmail)
 	emailStr, _ := email.(string)
-	h.authService.Logout(c.Request.Context(), sessionToken, userID, emailStr, c.ClientIP())
 
+	if err := h.authService.Logout(c.Request.Context(), hash, userID, emailStr, c.ClientIP()); err != nil {
+		// The session outlived the request that tried to end it. Saying so is
+		// the whole point: a client told "logged out successfully" stops
+		// treating its credential as live.
+		respondError(c, err)
+		return
+	}
+
+	// Cookies are cleared regardless of transport. A bearer client has none
+	// and the Set-Cookie headers are inert for it.
 	h.clearAuthCookies(c)
 
 	c.JSON(http.StatusOK, models.MessageResponse{

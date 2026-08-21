@@ -8402,7 +8402,7 @@
         },
         "/api/v1/logout": {
             "post": {
-                "description": "Delete the current session and clear authentication cookies.",
+                "description": "Delete the current session and clear authentication cookies.\nWorks for both transports: the `session` cookie and\n`Authorization: Bearer`. Idempotent — logging out an already\nexpired session succeeds. Returns 500 if the session could not\nbe revoked, so a client is never told it is logged out while\nits credential is still valid.",
                 "operationId": "postLogout",
                 "responses": {
                     "200": {

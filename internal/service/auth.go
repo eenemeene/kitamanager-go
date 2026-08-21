@@ -327,25 +327,44 @@ func (s *AuthService) VerifyMFALogin(ctx context.Context, pendingToken string, f
 // Logout deletes the caller's session. Idempotent — a missing row is not an
 // error, so logging out an already-expired session is a no-op.
 //
-// userID + email + ipAddress are optional context for the audit log;
-// the handler passes them in when the request arrived with a
-// valid-at-middleware-time session. When the session has already
-// expired (empty token, zero userID) we skip the audit to avoid
-// spamming the log with no-op double-clicks.
-func (s *AuthService) Logout(ctx context.Context, sessionToken string, userID uint, email, ipAddress string) {
-	if sessionToken == "" {
-		return
+// Takes the session's id hash rather than its raw value, which is what
+// RequireAuth already computed and stashed in ctxkeys.SessionIDHash. The
+// previous signature took the raw token and the handler read it from the
+// cookie, so a caller authenticating with `Authorization: Bearer` — a
+// transport RequireAuth explicitly supports — passed an empty string, its
+// session was never revoked, and it was told the logout succeeded. Reading
+// the hash the middleware resolved makes the transport irrelevant here and
+// removes the second, weaker copy of the extraction logic.
+//
+// Returns an error when the revocation itself fails so the handler can say so
+// rather than reporting success over a session that is still live — the same
+// invariant ResetPassword enforces when it revokes sessions.
+//
+// userID + email + ipAddress are context for the audit log; a zero userID
+// skips the audit rather than writing an unattributable row.
+func (s *AuthService) Logout(ctx context.Context, sessionIDHash string, userID uint, email, ipAddress string) error {
+	if sessionIDHash == "" {
+		// RequireAuth populates ctxkeys.SessionIDHash for every transport it
+		// accepts, so an empty value here means the route was reached without
+		// it. Nothing to revoke, but worth saying out loud: the previous
+		// version treated "no session to delete" as ordinary and answered
+		// success, which is how bearer-token logout went unnoticed.
+		slog.Warn("Logout called without a resolved session", "ip", ipAddress)
+		return nil
 	}
-	idHash := store.HashSessionToken(sessionToken)
-	if err := s.sessionStore.Delete(ctx, idHash); err != nil {
-		slog.Error("Failed to delete session during logout", "error", err)
-		return
+
+	// Deleting a row that is already gone is not an error — GORM reports no
+	// error for zero rows affected — so logging out twice stays idempotent.
+	if err := s.sessionStore.Delete(ctx, sessionIDHash); err != nil {
+		return apperror.InternalWrap(err, "failed to revoke the session")
 	}
+
 	if userID == 0 {
-		return
+		return nil
 	}
 	uid := userID
 	s.auditService.LogLogout(ctx, &uid, email, ipAddress)
+	return nil
 }
 
 // ChangePassword verifies the current password, sets a new one, logs every
