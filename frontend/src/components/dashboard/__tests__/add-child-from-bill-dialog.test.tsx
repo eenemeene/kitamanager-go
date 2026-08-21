@@ -41,6 +41,46 @@ jest.mock('next-intl', () => ({
   },
 }));
 
+/**
+ * Radix's Select is not drivable in jsdom, so the submit path here was never
+ * exercised -- and that is exactly where a wire-format bug shipped. Standing it
+ * up as a native <select> makes the whole chain testable without a workaround
+ * that would obscure the test's intent.
+ */
+jest.mock('@/components/ui/select', () => {
+  const React: typeof import('react') = require('react');
+  const Ctx = React.createContext<((v: string) => void) | undefined>(undefined);
+  return {
+    Select: ({
+      children,
+      onValueChange,
+      value,
+    }: {
+      children: React.ReactNode;
+      onValueChange?: (v: string) => void;
+      value?: string;
+    }) =>
+      React.createElement(
+        Ctx.Provider,
+        { value: onValueChange },
+        React.createElement('div', { 'data-testid': 'select', 'data-value': value }, children)
+      ),
+    SelectTrigger: ({ children }: { children: React.ReactNode }) =>
+      React.createElement('div', null, children),
+    SelectValue: () => null,
+    SelectContent: ({ children }: { children: React.ReactNode }) =>
+      React.createElement('div', null, children),
+    SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => {
+      const onValueChange = React.useContext(Ctx);
+      return React.createElement(
+        'button',
+        { type: 'button', onClick: () => onValueChange?.(value) },
+        children
+      );
+    },
+  };
+});
+
 const billChild = {
   voucher_number: 'GB-12345678901-02',
   child_name: 'Beispiel,Anna',
@@ -132,3 +172,51 @@ describe('AddChildFromBillDialog — submit gate', () => {
 // the Radix Select dropdown here. waitFor + fireEvent doesn't reliably drive
 // Radix Select in jsdom, and adding a manual workaround for one widget
 // component would obscure the test intent.
+
+/**
+ * The wire format for the contract's start date.
+ *
+ * `ChildContractCreateRequest.From` is a Go `time.Time`, which only unmarshals
+ * RFC3339 -- and `<input type="date">` yields a bare "YYYY-MM-DD". Sending it
+ * raw meant the child was created and the contract was then refused with a 400,
+ * leaving a child with no contract and no voucher behind an error toast.
+ */
+describe('contract start date on the wire', () => {
+  async function fillAndSubmit() {
+    renderWithProviders(
+      <AddChildFromBillDialog open={true} onOpenChange={() => {}} orgId={1} billChild={billChild} />
+    );
+    // Pick a section, which is the one field the bill cannot pre-fill.
+    fireEvent.click(await screen.findByText('Sonnengruppe'));
+    fireEvent.click(screen.getByRole('button', { name: 'addChildFromBill.createAction' }));
+  }
+
+  it('sends RFC3339, not the bare date the input holds', async () => {
+    (apiClient.createChild as jest.Mock).mockResolvedValue({ id: 99 });
+    (apiClient.createChildContract as jest.Mock).mockResolvedValue({ id: 5 });
+    (apiClient.assignChildVoucher as jest.Mock).mockResolvedValue(undefined);
+
+    await fillAndSubmit();
+
+    await waitFor(() => expect(apiClient.createChildContract).toHaveBeenCalled());
+    const [, , payload] = (apiClient.createChildContract as jest.Mock).mock.calls[0];
+    expect(payload.from).toBe('2025-02-01T00:00:00Z');
+    expect(payload.section_id).toBe(7);
+  });
+
+  it('completes the whole chain and reports success', async () => {
+    (apiClient.createChild as jest.Mock).mockResolvedValue({ id: 99 });
+    (apiClient.createChildContract as jest.Mock).mockResolvedValue({ id: 5 });
+    (apiClient.assignChildVoucher as jest.Mock).mockResolvedValue(undefined);
+
+    await fillAndSubmit();
+
+    await waitFor(() => expect(apiClient.assignChildVoucher).toHaveBeenCalled());
+    expect(apiClient.assignChildVoucher).toHaveBeenCalledWith(1, 99, billChild.voucher_number);
+    await waitFor(() =>
+      expect(toastMock).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'addChildFromBill.success' })
+      )
+    );
+  });
+});
