@@ -277,6 +277,7 @@ function StatusNotePopover({
             <textarea
               className="border-input placeholder:text-muted-foreground w-full rounded-md border px-2 py-1.5 text-sm"
               rows={2}
+              aria-label={t('note')}
               placeholder={t('note')}
               value={note}
               onChange={(e) => setNote(e.target.value)}

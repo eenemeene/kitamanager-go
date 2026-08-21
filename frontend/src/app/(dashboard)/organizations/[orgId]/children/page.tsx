@@ -417,6 +417,7 @@ export default function ChildrenPage() {
             ref={fileInputRef}
             type="file"
             accept=".yaml,.yml"
+            aria-label={t('children.importYaml')}
             className="hidden"
             onChange={handleFileChange}
           />

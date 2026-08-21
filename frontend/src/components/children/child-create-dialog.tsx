@@ -205,11 +205,16 @@ export function ChildCreateDialog({
             <div className="space-y-2">
               <Label htmlFor="create_gender">{t('gender.label')}</Label>
               <GenderSelect
+                id="create_gender"
                 value={watch('gender')}
                 onValueChange={(value: Gender) => setValue('gender', value)}
+                aria-invalid={!!errors.gender}
+                aria-describedby={errors.gender ? 'create_gender-error' : undefined}
               />
               {errors.gender && (
-                <p className="text-destructive text-sm">{t('validation.genderRequired')}</p>
+                <p id="create_gender-error" className="text-destructive text-sm">
+                  {t('validation.genderRequired')}
+                </p>
               )}
             </div>
 
@@ -230,7 +235,7 @@ export function ChildCreateDialog({
             </div>
 
             <div className="border-t pt-4">
-              <h4 className="mb-3 text-sm font-medium">{t('children.initialContract')}</h4>
+              <h3 className="mb-3 text-sm font-medium">{t('children.initialContract')}</h3>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
@@ -297,7 +302,7 @@ export function ChildCreateDialog({
               )}
 
               <div className="mt-4 space-y-2">
-                <Label htmlFor="create_properties">{t('contracts.propertiesLabel')}</Label>
+                <Label id="create_properties-label">{t('contracts.propertiesLabel')}</Label>
                 <Controller
                   name="properties"
                   control={control}

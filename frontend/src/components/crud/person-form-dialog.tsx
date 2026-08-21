@@ -123,6 +123,7 @@ export function PersonFormDialog({
             <div className="space-y-2">
               <Label htmlFor="gender">{t('gender.label')}</Label>
               <GenderSelect
+                id="gender"
                 value={watch('gender')}
                 onValueChange={(value: Gender) => setValue('gender', value)}
                 aria-invalid={!!errors.gender}
