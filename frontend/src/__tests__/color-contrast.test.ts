@@ -134,6 +134,23 @@ describe.each([
     expect(contrast(rgb(fill), rgb(fg))).toBeGreaterThanOrEqual(AA_TEXT);
   });
 
+  // Secondary text on a faint status wash — `bg-info/10` on the sections
+  // kanban card, `bg-destructive/15` pills. The browser paints the composite,
+  // so this pair is real even though neither token names the other. It is also
+  // what caught --muted-foreground at 46%: fine on white, 3.95:1 on the wash.
+  describe.each(['destructive', 'success', 'warning', 'info', 'muted'])(
+    'text-muted-foreground on a %s wash',
+    (tint) => {
+      it.each([0.1, 0.15])(`meets ${AA_TEXT}:1 at /%s opacity`, (alpha) => {
+        for (const surface of ['background', 'card'] as const) {
+          expect(
+            contrast(rgb('muted-foreground'), blend(rgb(tint), alpha, rgb(surface)))
+          ).toBeGreaterThanOrEqual(AA_TEXT);
+        }
+      });
+    }
+  );
+
   it(`--input draws a boundary at ${AA_NON_TEXT}:1`, () => {
     for (const surface of ['background', 'card'] as const) {
       expect(contrast(rgb('input'), rgb(surface))).toBeGreaterThanOrEqual(AA_NON_TEXT);

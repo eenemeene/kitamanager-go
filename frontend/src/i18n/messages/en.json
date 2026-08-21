@@ -69,7 +69,8 @@
     "print": "Print",
     "total": "Total",
     "openMenu": "Open menu",
-    "mainNavigation": "Main navigation"
+    "mainNavigation": "Main navigation",
+    "toggleSubmenu": "Toggle {name} submenu"
   },
   "pagination": {
     "navigation": "Pagination",

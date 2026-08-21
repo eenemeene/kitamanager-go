@@ -36,6 +36,9 @@ import { OrgSelector } from './org-selector';
 /** DOM id of the mobile drawer, so the header's trigger can `aria-controls` it. */
 export const MOBILE_SIDEBAR_ID = 'mobile-sidebar';
 
+/** Ties a submenu's `<ul>` to the chevron that expands it. */
+const submenuId = (name: string) => `submenu-${name.replace(/[^a-zA-Z0-9]+/g, '-')}`;
+
 interface NavChild {
   name: string;
   href: string;
@@ -302,7 +305,7 @@ export function AppSidebar() {
           filteredOrgGroups.map((group) => (
             <div key={group.label} className="mt-4">
               {!collapsed && (
-                <div className="text-sidebar-foreground/50 px-3 pb-1 text-[11px] font-semibold tracking-wider uppercase">
+                <div className="text-sidebar-foreground/70 px-3 pb-1 text-[11px] font-semibold tracking-wider uppercase">
                   {t(group.label)}
                 </div>
               )}
@@ -333,9 +336,17 @@ export function AppSidebar() {
                             <Icon className="h-5 w-5 shrink-0" />
                             <span className="flex-1">{t(item.name)}</span>
                           </Link>
+                          {/* Was a bare, unnamed button: screen readers announced
+                              "button" and nothing more, with no indication of
+                              whether the submenu was open, on a ~24px target.
+                              Compact only at lg+, where there is a mouse. */}
                           <button
+                            type="button"
                             onClick={() => toggleExpanded(item.name)}
-                            className="text-sidebar-foreground hover:bg-accent hover:text-accent-foreground mr-1 rounded-md p-1"
+                            aria-label={t('common.toggleSubmenu', { name: t(item.name) })}
+                            aria-expanded={isExpanded}
+                            aria-controls={submenuId(item.name)}
+                            className="text-sidebar-foreground hover:bg-accent hover:text-accent-foreground mr-1 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md lg:h-9 lg:w-9"
                           >
                             <ChevronDown
                               className={cn(
@@ -346,7 +357,7 @@ export function AppSidebar() {
                           </button>
                         </div>
                         {isExpanded && (
-                          <ul className="mt-1 ml-6 space-y-1">
+                          <ul id={submenuId(item.name)} className="mt-1 ml-6 space-y-1">
                             {item.children!.map((child) => {
                               const childHref = getOrgHref(child.href);
                               const childActive = isChildActive(child);
@@ -403,7 +414,7 @@ export function AppSidebar() {
       {!collapsed && (health?.version || webVersion) && (
         <div
           data-visual-mask="version"
-          className="text-sidebar-foreground/60 border-sidebar-border space-y-0.5 border-t px-4 py-2 text-[10px]"
+          className="text-sidebar-foreground/70 border-sidebar-border space-y-0.5 border-t px-4 py-2 text-[10px]"
         >
           {health?.version && <div>API: {health.version}</div>}
           {webVersion && <div>Web: {webVersion}</div>}

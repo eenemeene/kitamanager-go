@@ -106,7 +106,7 @@ test.describe('Responsive Layout - Desktop', () => {
     await expect(sidebar).toBeVisible({ timeout: 10000 });
 
     // Hamburger should not be visible on desktop
-    const hamburger = page.getByRole('button', { name: /menu/i });
+    const hamburger = page.getByRole('button', { name: /open menu/i });
     await expect(hamburger).not.toBeVisible();
   });
 });

@@ -422,7 +422,10 @@ export default function EmployeesPage() {
             setPage(1);
           }}
         >
-          <SelectTrigger className="w-full md:w-[200px]">
+          <SelectTrigger
+            aria-label={t('employees.filterByCategory')}
+            className="w-full md:w-[200px]"
+          >
             <SelectValue placeholder={t('employees.filterByCategory')} />
           </SelectTrigger>
           <SelectContent>

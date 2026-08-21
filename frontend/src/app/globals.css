@@ -19,7 +19,11 @@
     --secondary-foreground: 262 50% 20%;
 
     --muted: 260 20% 96%;
-    --muted-foreground: 260 10% 46%;
+    /* Secondary text lands on faint status washes as often as on plain card
+       (`bg-info/10` on the sections kanban, `bg-destructive/15` pills), and the
+       wash is what bounds it: 46% cleared 5.16:1 on white but only 3.95:1 on
+       the tint the browser actually paints. */
+    --muted-foreground: 260 10% 41%;
 
     --accent: 262 30% 95%;
     --accent-foreground: 262 50% 20%;
