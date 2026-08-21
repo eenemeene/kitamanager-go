@@ -430,9 +430,11 @@ test.describe('Attendance Editable Times', () => {
     // before the check-in. The backend correctly refused, and the success toast
     // this waits for never came.
     //
-    // A column in the future removes the whole class of problem. Any time on a
-    // later date is after a check-in recorded now, whatever the runner's clock
-    // says and whichever side of midnight it is.
+    // A column in the future keeps the test off "today" entirely, so it cannot
+    // straddle midnight on a UTC runner rendering a Berlin calendar. The
+    // underlying defect is fixed -- check-in and check-out now stamp the day
+    // being recorded rather than the wall clock -- but staying off the boundary
+    // is still the cheaper way to keep this test honest.
     await page.getByRole('button', { name: 'Next week' }).click();
     await expect(page.getByText(childFirstName)).toBeVisible({ timeout: 10000 });
 
@@ -485,8 +487,18 @@ test.describe('Attendance Editable Times', () => {
       });
     };
 
-    await editTime('Check-out', '16:45');
+    // Check-in first, then check-out. The server validates the pair on every
+    // partial update, so an edit that would transiently invert them is refused --
+    // and moving a stay earlier inverts it if the check-out goes first.
+    //
+    // This used to pass in the other order only because the check-in was
+    // recorded on the wrong day: it was stamped `new Date()` regardless of which
+    // column was clicked, so a check-out at 16:45 on a *future* Monday beat it
+    // trivially. The timestamp now lands on the day being recorded, which is
+    // what the grid has always claimed on screen, so the order matters here in
+    // exactly the way it matters for a user correcting a stay.
     await editTime('Check-in', '08:00');
+    await editTime('Check-out', '16:45');
 
     const timeInput = row.locator('input[type="time"][aria-label="Check-out"]');
 
