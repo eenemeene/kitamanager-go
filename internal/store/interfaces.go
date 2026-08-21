@@ -19,6 +19,7 @@ type UserOrganizationStorer interface {
 	SetSuperAdmin(ctx context.Context, userID uint, isSuperAdmin bool) error
 	IsSuperAdmin(ctx context.Context, userID uint) (bool, error)
 	CountUsableSuperAdminsExcluding(ctx context.Context, excludeUserID uint) (int64, error)
+	OrganizationIsLive(ctx context.Context, orgID uint) (bool, error)
 	Exists(ctx context.Context, userID, orgID uint) (bool, error)
 }
 

@@ -127,6 +127,24 @@ func (s *UserOrganizationStore) SetSuperAdmin(ctx context.Context, userID uint, 
 	return nil
 }
 
+// OrganizationIsLive reports whether the organization exists and has not been
+// tombstoned. Starting the query from the Organization model means GORM's
+// soft-delete scope supplies the `deleted_at IS NULL` predicate.
+//
+// This lives on the membership store because every question this store answers
+// — what role does this user hold here, are they a member — is meaningless once
+// the organization is gone, and user_organizations rows outlive the tombstone.
+// Keeping it here also leaves NewPermissionService's signature alone, which is
+// what stops an org-liveness check from rippling into ~60 middleware test call
+// sites that construct the authorization middleware directly.
+func (s *UserOrganizationStore) OrganizationIsLive(ctx context.Context, orgID uint) (bool, error) {
+	var count int64
+	err := DBFromContext(ctx, s.db).Model(&models.Organization{}).
+		Where("id = ?", orgID).
+		Count(&count).Error
+	return count > 0, err
+}
+
 // CountUsableSuperAdminsExcluding returns how many superadmins would still be
 // able to sign in if `excludeUserID` were removed.
 //
