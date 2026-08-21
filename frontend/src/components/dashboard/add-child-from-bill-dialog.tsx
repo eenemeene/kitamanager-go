@@ -30,6 +30,7 @@ import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { useToast } from '@/lib/hooks/use-toast';
 import { showErrorToast } from '@/lib/utils/show-error-toast';
+import { formatDateForApi } from '@/lib/utils/formatting';
 import type { Gender, UnmatchedBillChild } from '@/lib/api/types';
 
 export interface AddChildFromBillDialogProps {
@@ -99,8 +100,16 @@ export function AddChildFromBillDialog({
         gender,
         birthdate,
       });
+      // `from` is a Go `time.Time`, which only unmarshals RFC3339 -- and a
+      // `<input type="date">` yields a bare "YYYY-MM-DD". Sending it raw 400'd
+      // every time: the child above was created, the contract was refused, and
+      // the user was left with an error toast and a child with no contract and
+      // no voucher. `formatDateForApi` is the conversion every other contract
+      // call site already uses.
+      const from = formatDateForApi(contractFrom);
+      if (!from) throw new Error('invalid contract start date');
       await apiClient.createChildContract(orgId, newChild.id, {
-        from: contractFrom,
+        from,
         section_id: sectionId,
         properties: {},
       });
