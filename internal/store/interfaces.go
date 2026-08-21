@@ -18,7 +18,7 @@ type UserOrganizationStorer interface {
 	GetUserOrganizationsWithRoles(ctx context.Context, userID uint) (map[uint]models.Role, error)
 	SetSuperAdmin(ctx context.Context, userID uint, isSuperAdmin bool) error
 	IsSuperAdmin(ctx context.Context, userID uint) (bool, error)
-	CountSuperAdmins(ctx context.Context) (int64, error)
+	CountUsableSuperAdminsExcluding(ctx context.Context, excludeUserID uint) (int64, error)
 	Exists(ctx context.Context, userID, orgID uint) (bool, error)
 }
 
