@@ -301,7 +301,7 @@ After logging in, users see a dashboard that provides a quick overview of their 
 | Upcoming children | Children with enrollment start dates in the near future |
 | Section age alerts | Warnings when children in a section approach age thresholds |
 
-The sidebar provides direct access to all management areas: organizations, employees, children, attendance, government funding, statistics, budgets, pay plans, sections, and user management.
+The sidebar provides direct access to all management areas: organizations, employees, children, attendance, funding rates, statistics, budgets, pay plans, sections, and user management.
 
 ---
 

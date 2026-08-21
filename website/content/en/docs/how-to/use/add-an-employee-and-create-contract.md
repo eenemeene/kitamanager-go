@@ -21,7 +21,7 @@ You want to record a new staff member and define their working conditions.
 3. Fill in:
    - **From** — contract start date.
    - **To** — end date (leave empty for permanent contracts).
-   - **Staff category (Personalkategorie)** — Fachkraft, Hilfskraft, Leitung, etc.
+   - **Staff category (Personalkategorie)** — Fachkraft, Ergänzungskraft, or Nicht-pädagogisch.
    - **Grade (Entgeltgruppe)** — e.g. `S 8a`.
    - **Step (Stufe)** — current experience step (1–6 for TVöD-SuE).
    - **Weekly hours (Wochenstunden)** — hours per week.

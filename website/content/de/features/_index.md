@@ -150,10 +150,10 @@ Eine der Kernfunktionen von KitaManager ist die automatische Berechnung der staa
 
 ```mermaid
 flowchart TD
-    A["Betreuungsvertrag"] --> B["Vertragseigenschaften<br/>(z.B. ganztag + ndh)"]
+    A["Betreuungsvertrag"] --> B["Vertragseigenschaften<br/>(z. B. ganztag + ndh)"]
     B --> C["Abgleich mit<br/>Förderregeln"]
-    D["Landesförderungs-Konfiguration<br/>(z.B. Berlin 2024)"] --> C
-    C --> E["Monatlicher Förderbetrag<br/>(z.B. 1.633,64 EUR)"]
+    D["Landesförderungs-Konfiguration<br/>(z. B. Berlin 2024)"] --> C
+    C --> E["Monatlicher Förderbetrag<br/>(z. B. 1.633,64 EUR)"]
     style E fill:#22c55e,color:#fff
 ```
 
@@ -203,7 +203,7 @@ Das Budgetmodul ermöglicht die Planung und Nachverfolgung von Einnahmen und Aus
 
 | Funktion | Beschreibung |
 |---|---|
-| Budgetposten | Kategorien für Einnahmen und Ausgaben anlegen (z.B. „Personalkosten“, „Sachmittel“, „Elternbeiträge“) |
+| Budgetposten | Kategorien für Einnahmen und Ausgaben anlegen (z. B. „Personalkosten“, „Sachmittel“, „Elternbeiträge“) |
 | Zeitgebundene Einträge | Einträge mit Beträgen und Gültigkeitszeiträumen zu jedem Budgetposten hinzufügen |
 | Ausgabenverfolgung | Tatsächliche Ausgaben im Vergleich zu geplanten Budgets überwachen |
 | Organisationsbezogen | Jede Organisation verwaltet ein eigenes unabhängiges Budget |
@@ -217,7 +217,7 @@ KitaManager bietet sieben Arten von Statistiken zur Unterstützung operativer En
 | Statistik | Inhalt |
 |---|---|
 | **Personalstunden** | Gesamte Wochenstunden über alle Arbeitsverträge |
-| **Finanzen** | Einnahmen- und Kostenübersichten basierend auf Förderungs- und Vergütungsplandaten |
+| **Finanzen** | Einnahmen- und Kostenübersichten basierend auf Förder- und Entgelttabellendaten |
 | **Auslastung** | Anzahl der angemeldeten Kinder im Verhältnis zur Kapazität |
 | **Personaldetails** | Aufschlüsselung pro Mitarbeiter nach Stunden, Entgeltgruppe und Stufe |
 | **Altersverteilung** | Kinder gruppiert nach Altersgruppen |
@@ -226,19 +226,19 @@ KitaManager bietet sieben Arten von Statistiken zur Unterstützung operativer En
 
 ---
 
-## Vergütungspläne
+## Entgelttabellen
 
-Vergütungspläne definieren die in Ihrer Einrichtung verwendeten Entgeltgruppen und Stufen — in der Regel basierend auf dem **TVöD-SuE**-Tarifvertrag für den deutschen öffentlichen Kita-Bereich.
+Entgelttabellen definieren die in Ihrer Einrichtung verwendeten Entgeltgruppen und Stufen — in der Regel basierend auf dem **TVöD-SuE**-Tarifvertrag für den deutschen öffentlichen Kita-Bereich.
 
 | Funktion | Beschreibung |
 |---|---|
-| Entgeltgruppen und Stufen | Definieren Sie Gehaltstabellen mit Gruppen (z.B. S3, S8a, S8b) und Stufen (1–6) |
+| Entgeltgruppen und Stufen | Definieren Sie Gehaltstabellen mit Gruppen (z. B. S3, S8a, S8b) und Stufen (1–6) |
 | Monatsbeträge | Legen Sie das monatliche Bruttogehalt für jede Gruppen-/Stufenkombination fest |
-| Mehrere Zeiträume | Erstellen Sie separate Vergütungsplanzeiträume bei Tarifänderungen (z.B. jährliche Anpassungen) |
+| Mehrere Zeiträume | Erstellen Sie separate Zeiträume der Entgelttabelle bei Tarifänderungen (z. B. jährliche Anpassungen) |
 | Arbeitgeberanteile | Konfigurieren Sie die Prozentsätze für Arbeitgeber-Sozialabgaben |
-| Import/Export | Import und Export von Vergütungsplandefinitionen per YAML |
+| Import/Export | Import und Export von Entgelttabellen per YAML |
 
-Wenn Sie einem Arbeitsvertrag eine Entgeltgruppe und Stufe zuweisen, verwendet das System den aktiven Vergütungsplan zur Kostenberechnung und Verfolgung des Stufenaufstiegs.
+Wenn Sie einem Arbeitsvertrag eine Entgeltgruppe und Stufe zuweisen, verwendet das System die aktive Entgelttabelle zur Kostenberechnung und Verfolgung des Stufenaufstiegs.
 
 ---
 
@@ -269,7 +269,7 @@ KitaManager verwendet ein rollenbasiertes Zugriffskontrollsystem (RBAC), das sic
 | Bereiche | Vollständiger CRUD | Vollständiger CRUD | Lesen | Lesen | Lesen |
 | Benutzer | Vollständiger CRUD | Vollständiger CRUD | Lesen | - | - |
 | Gruppen | Vollständiger CRUD | Vollständiger CRUD | Lesen | - | - |
-| Vergütungspläne | Vollständiger CRUD | Vollständiger CRUD | Lesen | Lesen | - |
+| Entgelttabellen | Vollständiger CRUD | Vollständiger CRUD | Lesen | Lesen | - |
 | Förderungen | Vollständiger CRUD | Vollständiger CRUD | - | - | - |
 
 ### Audit-Protokollierung
@@ -301,7 +301,7 @@ Nach der Anmeldung sehen Benutzer ein Dashboard, das einen schnellen Überblick 
 | Bevorstehende Kinder | Kinder mit Betreuungsbeginn in naher Zukunft |
 | Bereichs-Altershinweise | Warnungen, wenn Kinder in einem Bereich Altersgrenzen erreichen |
 
-Die Seitenleiste bietet direkten Zugriff auf alle Verwaltungsbereiche: Organisationen, Mitarbeiter, Kinder, Anwesenheit, Landesförderung, Statistiken, Budgets, Vergütungspläne, Bereiche und Benutzerverwaltung.
+Die Seitenleiste bietet direkten Zugriff auf alle Verwaltungsbereiche: Organisationen, Mitarbeiter, Kinder, Anwesenheit, Fördersätze, Statistiken, Budgets, Entgelttabellen, Bereiche und Benutzerverwaltung.
 
 ---
 
@@ -313,7 +313,7 @@ KitaManager unterstützt Massendatenoperationen durch YAML-Import und Excel-/YAM
 |---|---|---|---|
 | Kinder | Ja | Ja | Ja |
 | Mitarbeiter | Ja | Ja | Ja |
-| Vergütungspläne | Ja | - | Ja |
+| Entgelttabellen | Ja | - | Ja |
 | Landesförderungssätze | Ja | - | - |
 
 Importe validieren die Daten vor dem Speichern, und Exporte erzeugen Dateien, die für die Offline-Analyse oder Archivierung bereitstehen.

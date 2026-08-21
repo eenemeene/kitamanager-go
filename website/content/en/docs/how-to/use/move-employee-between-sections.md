@@ -28,7 +28,7 @@ When you need to set a specific change date (not "today") — for advance planni
 
 ## Notes
 
-- The Sections board only shows **pedagogical** employees (Fachkraft, Hilfskraft, Leitung). Non-pedagogical staff (Hauswirtschaft, etc.) don't appear there — use the manual way for them.
+- The Sections board only shows **pedagogical** employees (Fachkraft, Ergänzungskraft). Non-pedagogical staff (Hauswirtschaft, etc.) don't appear there — use the manual way for them.
 - The contract edit dialog itself does not expose a section field. That's deliberate: changing the section on a contract that started in the past would silently rewrite historical staffing reports. That's why the drag-and-drop and manual paths normally produce a new contract from the effective date, so the history stays correct.
 - Drag-and-drop is the right tool for "this employee moves to the next group today". The manual path is for "Anna moves to Große on August 1".
 - The staffing-coverage calculation switches at the move date. The dashboard's staffing widget updates immediately.

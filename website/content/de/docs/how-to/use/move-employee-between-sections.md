@@ -28,7 +28,7 @@ Wenn ein bestimmtes Stichtag-Datum nötig ist (nicht „heute“) — z. B. für
 
 ## Hinweise
 
-- Das Bereiche-Brett zeigt nur **pädagogische** Mitarbeiter:innen (Fachkraft, Hilfskraft, Leitung). Nicht-pädagogisches Personal (Hauswirtschaft etc.) taucht dort nicht auf — den manuellen Weg nutzen.
+- Das Bereiche-Brett zeigt nur **pädagogische** Mitarbeiter:innen (Fachkraft, Ergänzungskraft). Nicht-pädagogisches Personal (Hauswirtschaft etc.) taucht dort nicht auf — den manuellen Weg nutzen.
 - Der Vertrag-Bearbeiten-Dialog selbst hat kein Bereichs-Feld. Das ist bewusst: Den Bereich an einem Vertrag zu ändern, der in der Vergangenheit begann, würde Personalauswertungen für die Vergangenheit still überschreiben. Drag-and-Drop und manueller Weg legen deshalb in der Regel einen neuen Vertrag ab dem Stichtag an, damit die Historie korrekt bleibt.
 - Drag-and-Drop ist das richtige Werkzeug für „diese Mitarbeiter:in wechselt heute in die nächste Gruppe“. Der manuelle Weg ist für „Anna wechselt am 1. August in die Großen“.
 - Die Personalabdeckungs-Berechnung wechselt am Stichtag. Das Personal-Widget im Dashboard aktualisiert sich sofort.
