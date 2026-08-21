@@ -4,6 +4,7 @@ import ForecastPage from '../page';
 
 // Mock next-intl
 jest.mock('next-intl', () => ({
+  useLocale: () => 'en',
   useTranslations: () => {
     const t = (key: string) => key;
     t.has = () => false;

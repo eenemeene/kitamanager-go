@@ -60,6 +60,6 @@ test.describe('Forecast', () => {
     // A projection with nothing to compare it to is not actionable; the baseline
     // is what makes the result mean anything.
     await expect(page.getByText(/current baseline/i)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(/current baseline/i)).toContainText(/\d[\d.,]*\s*€/);
+    await expect(page.getByText(/current baseline/i)).toContainText(/(?:€\s*[\d.,]+|[\d.,]+\s*€)/);
   });
 });

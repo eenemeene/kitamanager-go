@@ -31,7 +31,7 @@ import { QueryError } from '@/components/crud/query-error';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import type { ChildBillingHistoryEntry } from '@/lib/api/types';
-import { formatCurrency, formatDate } from '@/lib/utils/formatting';
+import { useFormatters } from '@/hooks/use-formatters';
 
 function StatusBadge({
   status,
@@ -90,6 +90,9 @@ function BillingRow({
   tCommon: (key: string) => string;
   tLabels: { has: (key: string) => boolean; (key: string): string };
 }) {
+  // Read here rather than threaded down like the translators above: the locale
+  // comes from context either way, and one more prop on every row buys nothing.
+  const fmt = useFormatters();
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -101,7 +104,7 @@ function BillingRow({
           ) : (
             <ChevronRight className="mr-1 inline h-4 w-4" />
           )}
-          {formatDate(entry.bill_from)}
+          {fmt.date(entry.bill_from)}
         </TableCell>
         <TableCell className="hidden md:table-cell">{entry.facility_name}</TableCell>
         <TableCell className="hidden font-mono text-xs lg:table-cell">
@@ -110,16 +113,16 @@ function BillingRow({
         <TableCell className="hidden md:table-cell">
           {entry.age != null ? entry.age : '\u2014'}
         </TableCell>
-        <TableCell className="text-right">{formatCurrency(entry.bill_total)}</TableCell>
+        <TableCell className="text-right">{fmt.currency(entry.bill_total)}</TableCell>
         <TableCell className="hidden text-right md:table-cell">
           {entry.correction_total ? (
-            <span className="text-info">{formatCurrency(entry.correction_total)}</span>
+            <span className="text-info">{fmt.currency(entry.correction_total)}</span>
           ) : (
             '\u2014'
           )}
         </TableCell>
         <TableCell className="hidden text-right md:table-cell">
-          {entry.calculated_total != null ? formatCurrency(entry.calculated_total) : '\u2014'}
+          {entry.calculated_total != null ? fmt.currency(entry.calculated_total) : '\u2014'}
         </TableCell>
         <TableCell className="hidden text-right md:table-cell">
           {entry.difference != null ? (
@@ -132,7 +135,7 @@ function BillingRow({
                     : ''
               }
             >
-              {formatCurrency(entry.difference)}
+              {fmt.currency(entry.difference)}
             </span>
           ) : (
             '\u2014'
@@ -148,7 +151,7 @@ function BillingRow({
                   : ''
             }
           >
-            {formatCurrency(entry.running_difference)}
+            {fmt.currency(entry.running_difference)}
           </span>
         </TableCell>
         <TableCell>
@@ -178,11 +181,11 @@ function BillingRow({
                             : `${prop.key}: ${prop.value}`)}
                       </TableCell>
                       <TableCell className="text-right">
-                        {prop.bill_amount != null ? formatCurrency(prop.bill_amount) : '\u2014'}
+                        {prop.bill_amount != null ? fmt.currency(prop.bill_amount) : '\u2014'}
                       </TableCell>
                       <TableCell className="text-right">
                         {prop.calculated_amount != null
-                          ? formatCurrency(prop.calculated_amount)
+                          ? fmt.currency(prop.calculated_amount)
                           : '\u2014'}
                       </TableCell>
                       <TableCell className="text-right">
@@ -195,7 +198,7 @@ function BillingRow({
                                 : ''
                           }
                         >
-                          {formatCurrency(prop.difference)}
+                          {fmt.currency(prop.difference)}
                         </span>
                       </TableCell>
                     </TableRow>
@@ -215,6 +218,7 @@ export default function ChildBillingHistoryPage() {
   const orgId = Number(params.orgId);
   const childId = Number(params.childId);
   const t = useTranslations('governmentFundingBills');
+  const fmt = useFormatters();
   const tChildren = useTranslations('children');
   const tCommon = useTranslations('common');
   const tNav = useTranslations('nav');
@@ -288,14 +292,14 @@ export default function ChildBillingHistoryPage() {
                   </div>
                   <div>
                     <p className="text-muted-foreground text-sm">{t('billedTotal')}</p>
-                    <p className="text-lg font-semibold">{formatCurrency(history.total_billed)}</p>
+                    <p className="text-lg font-semibold">{fmt.currency(history.total_billed)}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground text-sm">{t('difference')}</p>
                     <p
                       className={`text-lg font-semibold ${history.total_difference < 0 ? 'text-destructive' : history.total_difference > 0 ? 'text-success' : ''}`}
                     >
-                      {formatCurrency(history.total_difference)}
+                      {fmt.currency(history.total_difference)}
                     </p>
                     <p className="text-muted-foreground mt-1 text-xs">
                       {t('differenceExplanation')}
@@ -374,11 +378,11 @@ export default function ChildBillingHistoryPage() {
                           <TableCell className="hidden lg:table-cell" />
                           <TableCell className="hidden md:table-cell" />
                           <TableCell className="text-right">
-                            {formatCurrency(history.total_billed)}
+                            {fmt.currency(history.total_billed)}
                           </TableCell>
                           <TableCell className="hidden md:table-cell" />
                           <TableCell className="hidden text-right md:table-cell">
-                            {formatCurrency(history.total_calculated)}
+                            {fmt.currency(history.total_calculated)}
                           </TableCell>
                           <TableCell className="hidden text-right md:table-cell">
                             <span
@@ -390,7 +394,7 @@ export default function ChildBillingHistoryPage() {
                                     : ''
                               }
                             >
-                              {formatCurrency(history.total_difference)}
+                              {fmt.currency(history.total_difference)}
                             </span>
                           </TableCell>
                           <TableCell className="hidden md:table-cell" />

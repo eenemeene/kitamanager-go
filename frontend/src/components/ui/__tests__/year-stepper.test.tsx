@@ -4,6 +4,7 @@ import { YearStepper } from '../year-stepper';
 import { renderWithProviders } from '@/test-utils';
 
 jest.mock('next-intl', () => ({
+  useLocale: () => 'en',
   useTranslations: () => (key: string) => key,
 }));
 

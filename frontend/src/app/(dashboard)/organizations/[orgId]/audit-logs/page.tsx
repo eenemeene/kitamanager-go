@@ -31,6 +31,7 @@ import { QueryError } from '@/components/crud/query-error';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import type { AuditLogResponse } from '@/lib/api/types';
+import { useFormatters } from '@/hooks/use-formatters';
 
 const PAGE_LIMIT = 20;
 
@@ -261,7 +262,7 @@ interface AuditRowProps {
 
 function AuditRow({ entry, onSelect }: AuditRowProps) {
   const t = useTranslations();
-  const locale = useLocale() === 'de' ? 'de-DE' : 'en-US';
+  const locale = useFormatters().intl;
   const category = categoryOf(entry.action);
   const meta = CATEGORY_META[category];
   const Icon = meta.icon;
@@ -316,7 +317,7 @@ function AuditRow({ entry, onSelect }: AuditRowProps) {
 
 function AuditCard({ entry, onSelect }: AuditRowProps) {
   const t = useTranslations();
-  const locale = useLocale() === 'de' ? 'de-DE' : 'en-US';
+  const locale = useFormatters().intl;
   const category = categoryOf(entry.action);
   const meta = CATEGORY_META[category];
   const Icon = meta.icon;
@@ -356,7 +357,7 @@ interface AuditDetailDialogProps {
 
 function AuditDetailDialog({ entry, onClose }: AuditDetailDialogProps) {
   const t = useTranslations();
-  const locale = useLocale() === 'de' ? 'de-DE' : 'en-US';
+  const locale = useFormatters().intl;
 
   return (
     <Dialog open={!!entry} onOpenChange={(open) => !open && onClose()}>

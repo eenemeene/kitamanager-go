@@ -4,6 +4,7 @@ import { renderWithProviders } from '@/test-utils';
 import type { StaffingHoursResponse } from '@/lib/api/types';
 
 jest.mock('next-intl', () => ({
+  useLocale: () => 'de',
   useTranslations: () => (key: string) => key,
 }));
 

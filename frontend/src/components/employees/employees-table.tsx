@@ -14,10 +14,11 @@ import {
 } from '@/components/ui/table';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import type { Employee, PayPlanDetail } from '@/lib/api/types';
-import { formatDate, calculateAge, formatCurrency } from '@/lib/utils/formatting';
+import { calculateAge } from '@/lib/utils/formatting';
 import { getCurrentContract } from '@/lib/utils/contracts';
 import { calculateMonthlySalary } from '@/lib/utils/salary';
 import { calculateYearsOfService } from '@/lib/utils/step-promotions';
+import { useFormatters } from '@/hooks/use-formatters';
 
 export interface EmployeesTableProps {
   employees: Employee[];
@@ -38,6 +39,7 @@ export function EmployeesTable({
 }: EmployeesTableProps) {
   const t = useTranslations();
 
+  const fmt = useFormatters();
   return (
     <TooltipProvider>
       <Table>
@@ -102,7 +104,7 @@ export function EmployeesTable({
                   {t(`gender.${employee.gender}`)}
                 </TableCell>
                 <TableCell className="hidden md:table-cell">
-                  {formatDate(employee.birthdate)}
+                  {fmt.date(employee.birthdate)}
                 </TableCell>
                 <TableCell className="hidden md:table-cell">
                   {calculateAge(employee.birthdate)}
@@ -121,10 +123,15 @@ export function EmployeesTable({
                   {currentContract?.weekly_hours || '-'}
                 </TableCell>
                 <TableCell className="hidden lg:table-cell">
-                  {salary !== null ? formatCurrency(salary) : '-'}
+                  {salary !== null ? fmt.currency(salary) : '-'}
                 </TableCell>
                 <TableCell className="hidden lg:table-cell">
-                  {yearsOfService !== null ? yearsOfService.toFixed(1) : '-'}
+                  {yearsOfService !== null
+                    ? fmt.number(yearsOfService, {
+                        minimumFractionDigits: 1,
+                        maximumFractionDigits: 1,
+                      })
+                    : '-'}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex flex-nowrap items-center justify-end gap-0.5">

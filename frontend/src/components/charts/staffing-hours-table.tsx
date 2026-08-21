@@ -13,35 +13,25 @@ import {
 } from '@/components/ui/table';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import type { StaffingHoursResponse } from '@/lib/api/types';
+import { useFormatters } from '@/hooks/use-formatters';
 
 interface StaffingHoursTableProps {
   data: StaffingHoursResponse;
 }
 
-function formatMonthHeader(dateStr: string): string {
-  const date = new Date(dateStr + 'T00:00:00');
-  return date.toLocaleDateString('de-DE', { month: 'short', year: '2-digit' });
-}
-
-function formatHours(value: number): string {
-  if (value === 0) return '\u2013';
-  return value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function formatPercent(value: number): string {
-  if (!isFinite(value)) return '\u2013';
-  return (
-    value.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%'
-  );
-}
-
-function formatCount(value: number): string {
-  if (value === 0) return '\u2013';
-  return value.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-}
-
 export function StaffingHoursTable({ data }: StaffingHoursTableProps) {
   const t = useTranslations('statistics');
+  const fmt = useFormatters();
+  const formatMonthHeader = (dateStr: string) => fmt.monthYear(dateStr);
+  const formatHours = (value: number) =>
+    value === 0
+      ? '\u2013'
+      : fmt.number(value, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatPercent = (value: number) => (isFinite(value) ? fmt.percentage(value, 1) : '\u2013');
+  const formatCount = (value: number) =>
+    value === 0
+      ? '\u2013'
+      : fmt.number(value, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
   // Memoised so the `?? []` fallback does not produce a fresh array on every
   // render, which would invalidate the useMemo below that depends on it.

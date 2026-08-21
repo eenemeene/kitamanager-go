@@ -39,11 +39,13 @@ import { queryKeys } from '@/lib/api/queryKeys';
 import { getCurrentMonthRange } from '@/lib/utils/formatting';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUiStore } from '@/stores/ui-store';
+import { useFormatters } from '@/hooks/use-formatters';
 
 export default function OrgDashboardPage() {
   const params = useParams();
   const orgId = Number(params.orgId);
   const t = useTranslations();
+  const fmt = useFormatters();
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
 
@@ -86,8 +88,8 @@ export default function OrgDashboardPage() {
     const prevMonthStr = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
     const hasBill = billsData.data.some((b) => b.from.startsWith(prevMonthStr));
     if (hasBill) return null;
-    return prevMonth.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
-  }, [billsData]);
+    return fmt.monthYear(prevMonth, { month: 'long', year: 'numeric' });
+  }, [billsData, fmt]);
 
   // Children without vouchers
   const { data: childrenWithoutVouchers } = useQuery({

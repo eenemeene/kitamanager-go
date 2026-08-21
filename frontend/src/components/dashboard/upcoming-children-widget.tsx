@@ -15,9 +15,10 @@ import {
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import type { ContractProperties } from '@/lib/api/types';
-import { calculateAge, formatDate } from '@/lib/utils/formatting';
+import { calculateAge } from '@/lib/utils/formatting';
 import { propertiesToLabelKeys } from '@/lib/utils/contract-properties';
 import { compareDates, toUTCDate } from '@/lib/utils/contracts';
+import { useFormatters } from '@/hooks/use-formatters';
 
 interface UpcomingChildrenWidgetProps {
   orgId: number;
@@ -25,6 +26,7 @@ interface UpcomingChildrenWidgetProps {
 
 export function UpcomingChildrenWidget({ orgId }: UpcomingChildrenWidgetProps) {
   const t = useTranslations('upcomingChildren');
+  const fmt = useFormatters();
   const tChildren = useTranslations('children');
   const tContracts = useTranslations('contracts');
   const tLabels = useTranslations('fundingLabels');
@@ -78,7 +80,7 @@ export function UpcomingChildrenWidget({ orgId }: UpcomingChildrenWidgetProps) {
                     {child.first_name} {child.last_name}
                   </TableCell>
                   <TableCell>{tGender(child.gender)}</TableCell>
-                  <TableCell>{formatDate(child.birthdate)}</TableCell>
+                  <TableCell>{fmt.date(child.birthdate)}</TableCell>
                   <TableCell>{calculateAge(child.birthdate)}</TableCell>
                   <TableCell>
                     {futureContract?.section_name && <span>{futureContract.section_name}</span>}
@@ -108,7 +110,7 @@ export function UpcomingChildrenWidget({ orgId }: UpcomingChildrenWidgetProps) {
                       </span>
                     )}
                   </TableCell>
-                  <TableCell>{futureContract ? formatDate(futureContract.from) : '-'}</TableCell>
+                  <TableCell>{futureContract ? fmt.date(futureContract.from) : '-'}</TableCell>
                 </TableRow>
               ))}
           </TableBody>

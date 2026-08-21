@@ -8,7 +8,7 @@ import { scaleLinear } from 'd3-scale';
 import type { StaffingHoursResponse } from '@/lib/api/types';
 import {
   buildKitaYearBands,
-  formatDateLabel,
+  useDateLabel,
   createKitaYearBackgroundLayer,
   createTodayMarker,
   chartTheme,
@@ -43,6 +43,7 @@ export function computeBalancePercentages(
 export function StaffingHoursChart({ data }: StaffingHoursChartProps) {
   const t = useTranslations();
 
+  const formatDateLabel = useDateLabel();
   const rawDates = data.data_points.map((dp) => dp.date ?? '');
   const xLabels = rawDates.map(formatDateLabel);
   const kitaYearBands = useMemo(() => buildKitaYearBands(rawDates), [rawDates]);

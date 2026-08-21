@@ -33,12 +33,8 @@ import { Pagination } from '@/components/ui/pagination';
 import { SearchInput } from '@/components/ui/search-input';
 import { budgetItemWithEntrySchema, type BudgetItemWithEntryFormData } from '@/lib/schemas';
 import { FormErrorSummary } from '@/components/forms/form-error-summary';
-import {
-  formatDateForApi,
-  eurosToCents,
-  formatCurrency,
-  toLocalDateString,
-} from '@/lib/utils/formatting';
+import { formatDateForApi, eurosToCents, toLocalDateString } from '@/lib/utils/formatting';
+import { useFormatters } from '@/hooks/use-formatters';
 
 const today = toLocalDateString(new Date());
 
@@ -58,6 +54,7 @@ export default function BudgetItemsPage() {
   const orgId = Number(params.orgId);
   const t = useTranslations();
 
+  const fmt = useFormatters();
   const crud = useCrudPage<
     BudgetItem,
     BudgetItemWithEntryFormData,
@@ -158,10 +155,10 @@ export default function BudgetItemsPage() {
         key: 'active_amount',
         header: 'budgetItems.activeAmount',
         render: (item) =>
-          item.active_amount_cents != null ? formatCurrency(item.active_amount_cents) : '—',
+          item.active_amount_cents != null ? fmt.currency(item.active_amount_cents) : '—',
       },
     ],
-    [t]
+    [t, fmt]
   );
 
   const isEditing = crud.dialogs.isEditing;

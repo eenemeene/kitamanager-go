@@ -12,6 +12,7 @@ import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
 import { type ReportMonth, formatKitaYearLabel } from '@/lib/utils/report-month';
+import { useFormatters } from '@/hooks/use-formatters';
 
 const StaffingHoursChart = dynamic(
   () => import('@/components/charts/staffing-hours-chart').then((mod) => mod.StaffingHoursChart),
@@ -39,6 +40,7 @@ interface Props {
 export function StaffingReportSection({ orgId, reportMonth }: Props) {
   const t = useTranslations();
 
+  const fmt = useFormatters();
   const { data: sections } = useQuery({
     queryKey: queryKeys.sections.list(orgId),
     queryFn: () => apiClient.getSections(orgId, { limit: LOOKUP_FETCH_LIMIT }),
@@ -151,7 +153,9 @@ export function StaffingReportSection({ orgId, reportMonth }: Props) {
 
       <div className="mb-8 break-inside-avoid">
         <h2 className="mb-1 text-xl font-semibold">{t('statistics.staffingHoursGrid')}</h2>
-        <p className="text-muted-foreground mb-3 text-sm">{formatKitaYearLabel(reportMonth)}</p>
+        <p className="text-muted-foreground mb-3 text-sm">
+          {formatKitaYearLabel(reportMonth, fmt.locale)}
+        </p>
         {isLoadingGrid ? (
           <Skeleton className="h-[200px] w-full" />
         ) : staffingGrid ? (
@@ -163,7 +167,9 @@ export function StaffingReportSection({ orgId, reportMonth }: Props) {
 
       <div className="break-inside-avoid">
         <h2 className="mb-1 text-xl font-semibold">{t('statistics.employeeStaffingHoursGrid')}</h2>
-        <p className="text-muted-foreground mb-3 text-sm">{formatKitaYearLabel(reportMonth)}</p>
+        <p className="text-muted-foreground mb-3 text-sm">
+          {formatKitaYearLabel(reportMonth, fmt.locale)}
+        </p>
         {isLoadingEmployeeGrid ? (
           <Skeleton className="h-[200px] w-full" />
         ) : employeeStaffingGrid ? (

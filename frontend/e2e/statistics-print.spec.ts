@@ -87,7 +87,7 @@ test.describe('Statistics Print Pages', () => {
     ]) {
       await expect(page.getByText(label).first()).toBeVisible({ timeout: 15000 });
     }
-    await expect(page.locator('body')).toContainText(/\d[\d.,]*\s*€/);
+    await expect(page.locator('body')).toContainText(/(?:€\s*[\d.,]+|[\d.,]+\s*€)/);
 
     // Same chrome rule as the other print views: no sidebar on paper.
     await expect(page.locator('[class*="sidebar"]')).toHaveCount(0);

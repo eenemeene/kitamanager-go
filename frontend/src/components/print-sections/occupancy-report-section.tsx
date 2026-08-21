@@ -8,6 +8,7 @@ import { OccupancyTable } from '@/components/charts/occupancy-table';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { type ReportMonth, formatKitaYearLabel } from '@/lib/utils/report-month';
+import { useFormatters } from '@/hooks/use-formatters';
 
 interface Props {
   orgId: number;
@@ -29,6 +30,7 @@ interface Props {
 export function OccupancyReportSection({ orgId, reportMonth }: Props) {
   const t = useTranslations();
 
+  const fmt = useFormatters();
   const { data: occupancy, isLoading } = useQuery({
     queryKey: queryKeys.statistics.occupancy(
       orgId,
@@ -47,7 +49,9 @@ export function OccupancyReportSection({ orgId, reportMonth }: Props) {
   return (
     <section className="report-section break-inside-avoid">
       <h2 className="mb-1 text-xl font-semibold">{t('statistics.occupancyMatrix')}</h2>
-      <p className="text-muted-foreground mb-3 text-sm">{formatKitaYearLabel(reportMonth)}</p>
+      <p className="text-muted-foreground mb-3 text-sm">
+        {formatKitaYearLabel(reportMonth, fmt.locale)}
+      </p>
       {isLoading ? (
         <Skeleton className="h-[300px] w-full" />
       ) : occupancy ? (

@@ -4,6 +4,7 @@ import { ContractTimeline } from '../contract-timeline';
 import type { BaseContract } from '../timeline-utils';
 
 jest.mock('next-intl', () => ({
+  useLocale: () => 'en',
   useTranslations: () => {
     const t = (key: string, params?: Record<string, unknown>) => {
       if (params && 'days' in params) return `${key} (${params.days})`;

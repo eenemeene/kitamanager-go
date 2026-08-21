@@ -4,6 +4,7 @@ import { apiClient } from '@/lib/api/client';
 import { renderWithProviders, createMockPaginatedResponse } from '@/test-utils';
 
 jest.mock('next-intl', () => ({
+  useLocale: () => 'en',
   useTranslations: () => (key: string) => key,
 }));
 

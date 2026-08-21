@@ -16,6 +16,7 @@ jest.mock('next/navigation', () => ({
 }));
 
 jest.mock('next-intl', () => ({
+  useLocale: () => 'en',
   useTranslations: () => {
     const t = (key: string, values?: Record<string, unknown>) =>
       values ? `${key}(${JSON.stringify(values)})` : key;

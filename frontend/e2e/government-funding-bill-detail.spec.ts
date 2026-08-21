@@ -43,7 +43,7 @@ test.describe('Government funding bill detail', () => {
     // Two figures and their difference: the reason anyone opens this page.
     await expect(page.getByText(/facility total/i).first()).toBeVisible({ timeout: 10000 });
     await expect(page.getByText(/difference/i).first()).toBeVisible();
-    await expect(page.locator('body')).toContainText(/\d[\d.,]*\s*€/);
+    await expect(page.locator('body')).toContainText(/(?:€\s*[\d.,]+|[\d.,]+\s*€)/);
   });
 
   test('breaks the bill down per child, with a verdict on each', async ({ page }) => {

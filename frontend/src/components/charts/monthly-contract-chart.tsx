@@ -7,7 +7,7 @@ import { ExportableChart } from './exportable-chart';
 import type { StaffingHoursResponse, OccupancyResponse } from '@/lib/api/types';
 import {
   buildKitaYearBands,
-  formatDateLabel,
+  useDateLabel,
   createKitaYearBackgroundLayer,
   createTodayMarker,
   chartTheme,
@@ -30,6 +30,7 @@ const DEFAULT_COLORS = ['#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899'];
 export function MonthlyContractChart({ data, occupancy }: MonthlyContractChartProps) {
   const t = useTranslations();
 
+  const formatDateLabel = useDateLabel();
   const rawDates = data.data_points.map((dp) => dp.date ?? '');
   const xLabels = rawDates.map(formatDateLabel);
   const kitaYearBands = useMemo(() => buildKitaYearBands(rawDates), [rawDates]);
@@ -82,7 +83,7 @@ export function MonthlyContractChart({ data, occupancy }: MonthlyContractChartPr
       map.set(label, groups);
     }
     return map;
-  }, [occupancy]);
+  }, [occupancy, formatDateLabel]);
 
   const chartData = [
     {

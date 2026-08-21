@@ -22,10 +22,11 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { EmployeeContract, PayPlan, Section } from '@/lib/api/types';
-import { formatDate } from '@/lib/utils/formatting';
+
 import type { EmployeeContractFormData } from '@/lib/schemas';
 import { FormErrorSummary } from '@/components/forms/form-error-summary';
 import type { InvalidParam } from '@/lib/api/problem';
+import { useFormatters } from '@/hooks/use-formatters';
 
 interface ActiveContractInfo {
   contract: EmployeeContract;
@@ -71,6 +72,7 @@ export function EmployeeContractDialog({
 }: EmployeeContractDialogProps) {
   const t = useTranslations();
 
+  const fmt = useFormatters();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
@@ -98,7 +100,7 @@ export function EmployeeContractDialog({
                 <p className="font-medium">{t('contracts.hasActiveContractEmployee')}</p>
                 <p className="text-muted-foreground text-sm">
                   {t('contracts.activeSinceEmployee', {
-                    date: formatDate(activeContractInfo.contract.from),
+                    date: fmt.date(activeContractInfo.contract.from),
                     staffCategory: t(
                       `employees.staffCategory.${activeContractInfo.contract.staff_category}`
                     ),

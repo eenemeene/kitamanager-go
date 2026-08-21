@@ -144,23 +144,30 @@ describe('buildKitaYearBands', () => {
 
 describe('formatDateLabel', () => {
   it('formats January correctly', () => {
-    expect(formatDateLabel('2025-01-01')).toBe('Jan 25');
+    expect(formatDateLabel('2025-01-01', 'en')).toBe('Jan 25');
   });
 
   it('formats August correctly', () => {
-    expect(formatDateLabel('2024-08-01')).toBe('Aug 24');
+    expect(formatDateLabel('2024-08-01', 'en')).toBe('Aug 24');
   });
 
   it('formats December correctly', () => {
-    expect(formatDateLabel('2024-12-01')).toBe('Dec 24');
+    expect(formatDateLabel('2024-12-01', 'en')).toBe('Dec 24');
   });
 
   it('ignores day portion', () => {
-    expect(formatDateLabel('2025-03-15')).toBe('Mar 25');
+    expect(formatDateLabel('2025-03-15', 'en')).toBe('Mar 25');
   });
 
   it('formats year 2000 correctly', () => {
-    expect(formatDateLabel('2000-06-01')).toBe('Jun 00');
+    expect(formatDateLabel('2000-06-01', 'en')).toBe('Jun 00');
+  });
+
+  it('follows the locale, so a chart axis matches the table beneath it', () => {
+    // It hardcoded 'en-US' while the sibling tables hardcoded 'de-DE', which
+    // put "Mar 25" above "Mär 25" on the same statistics page.
+    expect(formatDateLabel('2025-03-01', 'de')).toBe('März 25');
+    expect(formatDateLabel('2025-12-01', 'de')).toBe('Dez. 25');
   });
 });
 

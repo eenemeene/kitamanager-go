@@ -39,9 +39,10 @@ import type {
 } from '@/lib/api/types';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
-import { formatCurrency } from '@/lib/utils/formatting';
+
 import { QueryError } from '@/components/crud/query-error';
 import { SearchInput } from '@/components/ui/search-input';
+import { useFormatters } from '@/hooks/use-formatters';
 
 /** Return the kita-year start year for a given date string (YYYY-MM-DD).
  *  Kita year runs Aug 1 – Jul 31. e.g. 2025-08-01 → 2025, 2026-03-01 → 2025 */
@@ -54,6 +55,7 @@ export default function GovernmentFundingBillsPage() {
   const params = useParams();
   const orgId = Number(params.orgId);
   const t = useTranslations('governmentFundingBills');
+  const fmt = useFormatters();
   const tCommon = useTranslations('common');
   const tStats = useTranslations('statistics');
   const { toast } = useToast();
@@ -254,7 +256,7 @@ export default function GovernmentFundingBillsPage() {
               <span
                 className={`text-sm font-semibold ${summary.totalDifference >= 0 ? 'text-success' : 'text-destructive'}`}
               >
-                {formatCurrency(summary.totalDifference)}
+                {fmt.currency(summary.totalDifference)}
               </span>
             </div>
           </div>
@@ -311,14 +313,11 @@ export default function GovernmentFundingBillsPage() {
                     return (
                       <TableRow key={item.id} className={rowStatusClass(item.id)}>
                         <TableCell>
-                          {new Date(item.from).toLocaleDateString('de-DE', {
-                            month: 'long',
-                            year: 'numeric',
-                          })}
+                          {fmt.monthYear(item.from, { month: 'long', year: 'numeric' })}
                         </TableCell>
                         <TableCell>{item.facility_name}</TableCell>
                         <TableCell className="hidden md:table-cell">
-                          {formatCurrency(item.facility_total)}
+                          {fmt.currency(item.facility_total)}
                         </TableCell>
                         {comparisonLoading ? (
                           <>
@@ -337,14 +336,14 @@ export default function GovernmentFundingBillsPage() {
                             <TableCell className="hidden md:table-cell">
                               {comp.correction_total ? (
                                 <span className="text-info">
-                                  {formatCurrency(comp.correction_total)}
+                                  {fmt.currency(comp.correction_total)}
                                 </span>
                               ) : (
                                 '\u2014'
                               )}
                             </TableCell>
                             <TableCell className="hidden md:table-cell">
-                              {formatCurrency(comp.calculated_total)}
+                              {fmt.currency(comp.calculated_total)}
                             </TableCell>
                             <TableCell className="hidden md:table-cell">
                               <span
@@ -352,7 +351,7 @@ export default function GovernmentFundingBillsPage() {
                                   comp.difference < 0 ? 'text-destructive' : 'text-success'
                                 }
                               >
-                                {formatCurrency(comp.difference)}
+                                {fmt.currency(comp.difference)}
                               </span>
                             </TableCell>
                           </>

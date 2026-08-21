@@ -1,3 +1,9 @@
+import { useMemo } from 'react';
+
+import { useFormatters } from '@/hooks/use-formatters';
+import type { Locale } from '@/i18n/config';
+import { formatMonthYear } from '@/lib/utils/formatting';
+
 /** Minimal props used by custom Nivo layers — avoids complex generic constraints. */
 interface ChartLayerProps {
   xScale: (value: string) => number;
@@ -40,10 +46,28 @@ export function buildKitaYearBands(dates: string[]): KitaYearBand[] {
   return bands;
 }
 
-/** Format a date string as "Jan 25", "Feb 25", etc. */
-export function formatDateLabel(dateStr: string): string {
-  const date = new Date(dateStr + 'T00:00:00');
-  return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+/**
+ * Format a date string as "Jan 25", "Feb 25", etc.
+ *
+ * Nivo uses the returned string as the x-axis index value, so this is a key as
+ * well as a label — every producer and every comparison has to go through the
+ * same call. That is why it takes a locale rather than reading one: it is used
+ * inside `useMemo` bodies and `.find()` predicates where a hook cannot go.
+ * Components get it pre-bound via `useDateLabel()` below.
+ */
+export function formatDateLabel(dateStr: string, locale: Locale): string {
+  return formatMonthYear(dateStr, locale);
+}
+
+/**
+ * `formatDateLabel` bound to the reader's locale.
+ *
+ * Stable across renders for a given locale, so it is safe to name in a
+ * `useMemo`/`useCallback` dependency list.
+ */
+export function useDateLabel(): (dateStr: string) => string {
+  const fmt = useFormatters();
+  return useMemo(() => (dateStr: string) => fmt.monthYear(dateStr), [fmt]);
 }
 
 /** Creates a Nivo custom layer that draws alternating background bands per Kita year */

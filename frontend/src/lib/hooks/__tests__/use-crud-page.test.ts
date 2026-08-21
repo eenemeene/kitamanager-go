@@ -18,6 +18,7 @@ jest.mock('../use-toast', () => ({
 
 // Mock next-intl
 jest.mock('next-intl', () => ({
+  useLocale: () => 'en',
   useTranslations: () => (key: string) => key,
 }));
 

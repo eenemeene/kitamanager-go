@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { HeaderWithTooltip } from '@/components/ui/header-with-tooltip';
-import { formatCurrency } from '@/lib/utils/formatting';
+import { useFormatters } from '@/hooks/use-formatters';
 
 interface FinancialSummaryCardsProps {
   totalIncome: number;
@@ -18,6 +18,7 @@ export function FinancialSummaryCards({
 }: FinancialSummaryCardsProps) {
   const t = useTranslations();
 
+  const fmt = useFormatters();
   return (
     <div className="grid gap-4 md:grid-cols-3">
       <Card>
@@ -31,7 +32,7 @@ export function FinancialSummaryCards({
         </CardHeader>
         <CardContent>
           <div data-visual-mask="currency" className="text-success text-2xl font-bold">
-            {formatCurrency(totalIncome)}
+            {fmt.currency(totalIncome)}
           </div>
         </CardContent>
       </Card>
@@ -46,7 +47,7 @@ export function FinancialSummaryCards({
         </CardHeader>
         <CardContent>
           <div data-visual-mask="currency" className="text-destructive text-2xl font-bold">
-            {formatCurrency(totalExpenses)}
+            {fmt.currency(totalExpenses)}
           </div>
         </CardContent>
       </Card>
@@ -64,7 +65,7 @@ export function FinancialSummaryCards({
             data-visual-mask="currency"
             className={`text-2xl font-bold ${balance >= 0 ? 'text-info' : 'text-destructive'}`}
           >
-            {formatCurrency(balance)}
+            {fmt.currency(balance)}
           </div>
         </CardContent>
       </Card>

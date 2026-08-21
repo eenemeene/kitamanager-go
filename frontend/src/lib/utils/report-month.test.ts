@@ -105,32 +105,32 @@ describe('parseReportMonth', () => {
 });
 
 describe('formatReportMonthLong', () => {
-  it('formats with month name + year using en-US', () => {
+  it('formats with month name + year in English', () => {
     const m = parseReportMonth('2026-04');
-    expect(formatReportMonthLong(m, 'en-US')).toBe('April 2026');
+    expect(formatReportMonthLong(m, 'en')).toBe('April 2026');
   });
 
   it('formats December correctly', () => {
     const m = parseReportMonth('2025-12');
-    expect(formatReportMonthLong(m, 'en-US')).toBe('December 2025');
+    expect(formatReportMonthLong(m, 'en')).toBe('December 2025');
   });
 });
 
 describe('formatKitaYearLabel', () => {
   it('formats the Kita-year span for a mid-Kita-year report month', () => {
     const m = parseReportMonth('2026-04');
-    expect(formatKitaYearLabel(m, 'en-US')).toBe('Aug 2025 – Jul 2026');
+    expect(formatKitaYearLabel(m, 'en')).toBe('Aug 2025 – Jul 2026');
   });
 
   it('formats the Kita-year span for an Aug report month', () => {
     const m = parseReportMonth('2026-08');
-    expect(formatKitaYearLabel(m, 'en-US')).toBe('Aug 2026 – Jul 2027');
+    expect(formatKitaYearLabel(m, 'en')).toBe('Aug 2026 – Jul 2027');
   });
 
   it('uses the requested locale for month abbreviations', () => {
     const m = parseReportMonth('2026-04');
     // German: Aug. 2025 – Juli 2026 (month abbreviations vary)
-    const label = formatKitaYearLabel(m, 'de-DE');
+    const label = formatKitaYearLabel(m, 'de');
     expect(label).toContain('2025');
     expect(label).toContain('2026');
     expect(label).toContain('–');

@@ -35,7 +35,7 @@ import {
 } from '@/lib/api/types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { formatDate, formatDateForInput, formatDateForApi } from '@/lib/utils/formatting';
+import { formatDateForInput, formatDateForApi } from '@/lib/utils/formatting';
 import { getContractStatus, compareDates } from '@/lib/utils/contracts';
 import { EmployeeContractDialog } from '@/components/employees/employee-contract-dialog';
 import { employeeContractSchema, type EmployeeContractFormData } from '@/lib/schemas';
@@ -43,12 +43,14 @@ import { useToast } from '@/lib/hooks/use-toast';
 import { showErrorToast } from '@/lib/utils/show-error-toast';
 import { validationTiming } from '@/lib/forms/validation-timing';
 import { useProblemFormErrors, suppressesToast } from '@/lib/forms/use-problem-form-errors';
+import { useFormatters } from '@/hooks/use-formatters';
 
 export default function EmployeeContractsPage() {
   const params = useParams();
   const orgId = Number(params.orgId);
   const employeeId = Number(params.employeeId);
   const t = useTranslations();
+  const fmt = useFormatters();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -400,9 +402,9 @@ export default function EmployeeContractsPage() {
                                 </span>
                               )}
                             </TableCell>
-                            <TableCell>{formatDate(contract.from)}</TableCell>
+                            <TableCell>{fmt.date(contract.from)}</TableCell>
                             <TableCell>
-                              {contract.to ? formatDate(contract.to) : t('common.ongoing')}
+                              {contract.to ? fmt.date(contract.to) : t('common.ongoing')}
                             </TableCell>
                             <TableCell>
                               {t(`employees.staffCategory.${contract.staff_category}`)}

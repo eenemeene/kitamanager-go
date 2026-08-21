@@ -69,7 +69,7 @@ test.describe('Child billing history', () => {
     const first = rows.first();
     // Currency, not merely text: a row that renders a dash for both figures
     // tells the reader nothing, and is what a broken join looks like.
-    await expect(first).toContainText(/\d[\d.,]*\s*€/);
+    await expect(first).toContainText(/(?:€\s*[\d.,]+|[\d.,]+\s*€)/);
   });
 
   test('summarises the difference, and says which way it points', async ({ page }) => {

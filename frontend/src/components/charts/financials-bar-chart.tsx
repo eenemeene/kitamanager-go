@@ -7,8 +7,9 @@ import type { BarDatum, BarCustomLayerProps } from '@nivo/bar';
 import { line, curveMonotoneX } from 'd3-shape';
 import { ExportableChart } from './exportable-chart';
 import type { FinancialResponse, FinancialDataPoint } from '@/lib/api/types';
-import { buildKitaYearBands, formatDateLabel, chartTheme } from './chart-utils';
+import { buildKitaYearBands, useDateLabel, chartTheme } from './chart-utils';
 import { toLocalDateString } from '@/lib/utils/formatting';
+import { useFormatters } from '@/hooks/use-formatters';
 
 interface FinancialsChartProps {
   data: FinancialResponse;
@@ -18,14 +19,13 @@ function centsToEur(cents: number): number {
   return Math.round(cents) / 100;
 }
 
-function formatEur(cents: number): string {
-  return (cents / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
-}
-
 type BandScale = ((v: string) => number | undefined) & { bandwidth(): number };
 
 export function FinancialsChart({ data }: FinancialsChartProps) {
   const t = useTranslations();
+  const formatDateLabel = useDateLabel();
+  const fmt = useFormatters();
+  const formatEur = (cents: number) => fmt.currency(cents);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
@@ -333,7 +333,7 @@ export function FinancialsChart({ data }: FinancialsChartProps) {
           tickPadding: 5,
           tickRotation: 0,
           format: (v) =>
-            Number(v).toLocaleString('de-DE', {
+            fmt.number(Number(v), {
               style: 'currency',
               currency: 'EUR',
               maximumFractionDigits: 0,
@@ -362,11 +362,7 @@ export function FinancialsChart({ data }: FinancialsChartProps) {
                   display: 'inline-block',
                 }}
               />
-              {id}:{' '}
-              {Math.abs(Number(value)).toLocaleString('de-DE', {
-                style: 'currency',
-                currency: 'EUR',
-              })}
+              {id}: {fmt.currency(Math.abs(Number(value)) * 100)}
             </div>
             {keyTooltips[id as string] && (
               <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4, maxWidth: 280 }}>

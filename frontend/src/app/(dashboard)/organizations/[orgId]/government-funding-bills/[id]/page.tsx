@@ -26,8 +26,9 @@ import {
 } from '@/components/ui/table';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
-import { formatCurrency } from '@/lib/utils/formatting';
+
 import type { FundingComparisonChild, MismatchType } from '@/lib/api/types';
+import { useFormatters } from '@/hooks/use-formatters';
 
 function StatusBadge({
   status,
@@ -128,6 +129,7 @@ export default function GovernmentFundingBillDetailPage() {
   const orgId = Number(params.orgId);
   const id = Number(params.id);
   const t = useTranslations('governmentFundingBills');
+  const fmt = useFormatters();
   const tCommon = useTranslations('common');
   const tLabels = useTranslations('fundingLabels');
   const [expandedChild, setExpandedChild] = useState<string | null>(null);
@@ -180,10 +182,7 @@ export default function GovernmentFundingBillDetailPage() {
         />
         <h1 className="text-2xl font-bold">{result.facility_name}</h1>
         <p className="text-muted-foreground text-sm">
-          {new Date(result.from).toLocaleDateString('de-DE', {
-            month: 'long',
-            year: 'numeric',
-          })}
+          {fmt.monthYear(result.from, { month: 'long', year: 'numeric' })}
           {' \u2014 '}
           {result.file_name}
         </p>
@@ -200,11 +199,11 @@ export default function GovernmentFundingBillDetailPage() {
           </CardHeader>
           <CardContent>
             <p className="text-lg font-semibold">
-              {formatCurrency(result.facility_total)}
+              {fmt.currency(result.facility_total)}
               {comparison && (
                 <>
                   {' / '}
-                  {formatCurrency(comparison.calculated_total)}
+                  {fmt.currency(comparison.calculated_total)}
                 </>
               )}
             </p>
@@ -218,7 +217,7 @@ export default function GovernmentFundingBillDetailPage() {
                     : 'text-destructive'
                 }`}
               >
-                {t('difference')}: {formatCurrency(comparison.difference)}
+                {t('difference')}: {fmt.currency(comparison.difference)}
               </p>
             )}
           </CardContent>
@@ -231,8 +230,7 @@ export default function GovernmentFundingBillDetailPage() {
           </CardHeader>
           <CardContent>
             <p className="text-lg font-semibold">
-              {formatCurrency(result.contract_booking)} /{' '}
-              {formatCurrency(result.correction_booking)}
+              {fmt.currency(result.contract_booking)} / {fmt.currency(result.correction_booking)}
             </p>
           </CardContent>
         </Card>
@@ -267,7 +265,7 @@ export default function GovernmentFundingBillDetailPage() {
                     <span className="font-medium">
                       {t('childCount', { count: comparison.difference_count })}
                       {' · '}
-                      {formatCurrency(
+                      {fmt.currency(
                         comparison.children
                           .filter((c) => c.status === 'difference')
                           .reduce((sum, c) => sum + (c.bill_total ?? 0), 0)
@@ -291,7 +289,7 @@ export default function GovernmentFundingBillDetailPage() {
                     <span className="font-medium">
                       {t('childCount', { count: comparison.calc_only_count })}
                       {' · '}
-                      {formatCurrency(
+                      {fmt.currency(
                         comparison.children
                           .filter((c) => c.status === 'calc_only')
                           .reduce((sum, c) => sum + (c.calculated_total || 0), 0)
@@ -412,14 +410,14 @@ export default function GovernmentFundingBillDetailPage() {
                       </TableCell>
                       <TableCell className="hidden md:table-cell">{child.birth_date}</TableCell>
                       <TableCell className="text-right">
-                        {formatCurrency(child.total_amount)}
+                        {fmt.currency(child.total_amount)}
                       </TableCell>
                       {comparison && comp && (
                         <>
                           <TableCell className="hidden text-right md:table-cell">
                             {comp.correction_total ? (
                               <span className="text-info">
-                                {formatCurrency(comp.correction_total)}
+                                {fmt.currency(comp.correction_total)}
                               </span>
                             ) : (
                               '\u2014'
@@ -427,7 +425,7 @@ export default function GovernmentFundingBillDetailPage() {
                           </TableCell>
                           <TableCell className="hidden text-right md:table-cell">
                             {comp.calculated_total != null
-                              ? formatCurrency(comp.calculated_total)
+                              ? fmt.currency(comp.calculated_total)
                               : '\u2014'}
                           </TableCell>
                           <TableCell className="hidden text-right md:table-cell">
@@ -438,7 +436,7 @@ export default function GovernmentFundingBillDetailPage() {
                                   : 'text-destructive'
                               }
                             >
-                              {comp.difference != null ? formatCurrency(comp.difference) : '\u2014'}
+                              {comp.difference != null ? fmt.currency(comp.difference) : '\u2014'}
                             </span>
                           </TableCell>
                           <TableCell>
@@ -511,7 +509,7 @@ export default function GovernmentFundingBillDetailPage() {
                                       >
                                         <div className="flex justify-end py-1">
                                           <span className="text-sm font-bold">
-                                            {formatCurrency(row.total_row_amount)}
+                                            {fmt.currency(row.total_row_amount)}
                                           </span>
                                         </div>
                                         {row.amounts.map((amt, amtIdx) => (
@@ -526,7 +524,7 @@ export default function GovernmentFundingBillDetailPage() {
                                                 labelMap.get(`${amt.key}:${amt.value}`)
                                               )}
                                             </span>
-                                            <span>{formatCurrency(amt.amount)}</span>
+                                            <span>{fmt.currency(amt.amount)}</span>
                                           </div>
                                         ))}
                                       </div>
@@ -569,12 +567,12 @@ export default function GovernmentFundingBillDetailPage() {
                                         </TableCell>
                                         <TableCell className="text-right text-sm">
                                           {prop.bill_amount != null
-                                            ? formatCurrency(prop.bill_amount)
+                                            ? fmt.currency(prop.bill_amount)
                                             : '\u2014'}
                                         </TableCell>
                                         <TableCell className="text-right text-sm">
                                           {prop.calculated_amount != null
-                                            ? formatCurrency(prop.calculated_amount)
+                                            ? fmt.currency(prop.calculated_amount)
                                             : '\u2014'}
                                         </TableCell>
                                         <TableCell className="text-right text-sm">
@@ -585,7 +583,7 @@ export default function GovernmentFundingBillDetailPage() {
                                                 : 'text-destructive'
                                             }
                                           >
-                                            {formatCurrency(prop.difference ?? 0)}
+                                            {fmt.currency(prop.difference ?? 0)}
                                           </span>
                                         </TableCell>
                                       </TableRow>
@@ -653,15 +651,13 @@ export default function GovernmentFundingBillDetailPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           {child.calculated_total != null
-                            ? formatCurrency(child.calculated_total)
+                            ? fmt.currency(child.calculated_total)
                             : '\u2014'}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           {child.contract_from
-                            ? `${new Date(child.contract_from).toLocaleDateString('de-DE')} \u2014 ${
-                                child.contract_to
-                                  ? new Date(child.contract_to).toLocaleDateString('de-DE')
-                                  : t('ongoing')
+                            ? `${fmt.date(child.contract_from)} \u2014 ${
+                                child.contract_to ? fmt.date(child.contract_to) : t('ongoing')
                               }`
                             : '\u2014'}
                         </TableCell>
@@ -675,10 +671,7 @@ export default function GovernmentFundingBillDetailPage() {
                                     href={`/organizations/${orgId}/government-funding-bills/${a.bill_id}`}
                                     className="hover:text-primary hover:underline"
                                   >
-                                    {new Date(a.bill_from).toLocaleDateString('de-DE', {
-                                      month: 'short',
-                                      year: '2-digit',
-                                    })}
+                                    {fmt.monthYear(a.bill_from)}
                                   </Link>
                                 </span>
                               ))}

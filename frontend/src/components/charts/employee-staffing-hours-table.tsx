@@ -11,26 +11,17 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { EmployeeStaffingHoursResponse } from '@/lib/api/types';
+import { useFormatters } from '@/hooks/use-formatters';
 
 interface EmployeeStaffingHoursTableProps {
   data: EmployeeStaffingHoursResponse;
 }
 
-function formatMonthHeader(dateStr: string): string {
-  const date = new Date(dateStr + 'T00:00:00');
-  return date.toLocaleDateString('de-DE', { month: 'short', year: '2-digit' });
-}
-
-function formatHours(value: number): string {
-  if (value === 0) return '\u2013';
-  return value.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-}
-
-function formatDiff(value: number): string {
-  return value.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-}
+/** One decimal, the shape every hours figure in this table uses. */
+const HOURS_DIGITS = { minimumFractionDigits: 1, maximumFractionDigits: 1 };
 
 function DiffCell({ prev, curr }: { prev: number; curr: number }) {
+  const fmt = useFormatters();
   // Both zero → no meaningful change
   if (prev === 0 && curr === 0) return <TableCell className="px-0 text-center text-[10px]" />;
   const diff = curr - prev;
@@ -40,7 +31,7 @@ function DiffCell({ prev, curr }: { prev: number; curr: number }) {
     <TableCell className="px-0 text-center text-[10px] whitespace-nowrap">
       <span className={isUp ? 'text-success' : 'text-destructive'}>
         {isUp ? '▲' : '▼'} {isUp ? '+' : ''}
-        {formatDiff(diff)}
+        {fmt.number(diff, HOURS_DIGITS)}
       </span>
     </TableCell>
   );
@@ -61,6 +52,9 @@ const STAFF_CATEGORY_TRANSLATION_KEYS: Record<string, string> = {
 export function EmployeeStaffingHoursTable({ data }: EmployeeStaffingHoursTableProps) {
   const t = useTranslations('statistics');
   const tRoot = useTranslations();
+  const fmt = useFormatters();
+  const monthHeader = (dateStr: string) => fmt.monthYear(dateStr);
+  const formatHours = (value: number) => (value === 0 ? '\u2013' : fmt.number(value, HOURS_DIGITS));
 
   // Memoised so the `?? []` fallbacks do not produce fresh arrays on every
   // render, which would invalidate the useMemo hooks below that depend on them.
@@ -117,7 +111,7 @@ export function EmployeeStaffingHoursTable({ data }: EmployeeStaffingHoursTableP
             {dates.map((d, i) => (
               <Fragment key={d}>
                 {i > 0 && <TableHead className="w-0 px-0" />}
-                <TableHead className="min-w-[70px] text-right">{formatMonthHeader(d)}</TableHead>
+                <TableHead className="min-w-[70px] text-right">{monthHeader(d)}</TableHead>
               </Fragment>
             ))}
             <TableHead className="min-w-[70px] text-right font-bold">{t('average')}</TableHead>

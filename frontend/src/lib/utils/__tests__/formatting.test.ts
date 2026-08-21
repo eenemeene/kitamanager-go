@@ -28,11 +28,11 @@ import {
 // ---------------------------------------------------------------------------
 describe('formatDate', () => {
   it('returns dash for null', () => {
-    expect(formatDate(null)).toBe('-');
+    expect(formatDate(null, 'en')).toBe('-');
   });
 
   it('returns dash for undefined', () => {
-    expect(formatDate(undefined)).toBe('-');
+    expect(formatDate(undefined, 'en')).toBe('-');
   });
 
   it('formats a valid ISO date string in English locale', () => {
@@ -50,14 +50,7 @@ describe('formatDate', () => {
   });
 
   it('returns the raw string for an invalid date', () => {
-    expect(formatDate('not-a-date')).toBe('not-a-date');
-  });
-
-  it('defaults to English locale when none is specified', () => {
-    const result = formatDate('2024-06-01');
-    expect(result).toContain('Jun');
-    expect(result).toContain('1');
-    expect(result).toContain('2024');
+    expect(formatDate('not-a-date', 'en')).toBe('not-a-date');
   });
 });
 
@@ -137,11 +130,11 @@ describe('calculateAge', () => {
 // ---------------------------------------------------------------------------
 describe('formatCurrency', () => {
   it('returns dash for null', () => {
-    expect(formatCurrency(null)).toBe('-');
+    expect(formatCurrency(null, 'de')).toBe('-');
   });
 
   it('returns dash for undefined', () => {
-    expect(formatCurrency(undefined)).toBe('-');
+    expect(formatCurrency(undefined, 'de')).toBe('-');
   });
 
   it('formats zero cents correctly', () => {
@@ -159,12 +152,6 @@ describe('formatCurrency', () => {
   it('formats 166847 cents as 1,668.47 EUR in English locale', () => {
     const result = formatCurrency(166847, 'en');
     expect(result).toContain('1,668.47');
-    expect(result).toContain('€');
-  });
-
-  it('defaults to German locale', () => {
-    const result = formatCurrency(100);
-    expect(result).toContain('1,00');
     expect(result).toContain('€');
   });
 });
@@ -239,16 +226,22 @@ describe('formatPeriod', () => {
 // ---------------------------------------------------------------------------
 describe('formatFte', () => {
   it('formats integer ratio to two decimals', () => {
-    expect(formatFte(1)).toBe('1.00');
+    expect(formatFte(1, 'en')).toBe('1.00');
   });
 
   it('formats fractional ratio to two decimals', () => {
-    expect(formatFte(0.5)).toBe('0.50');
-    expect(formatFte(0.75)).toBe('0.75');
+    expect(formatFte(0.5, 'en')).toBe('0.50');
+    expect(formatFte(0.75, 'en')).toBe('0.75');
   });
 
   it('truncates beyond two decimals', () => {
-    expect(formatFte(0.333)).toBe('0.33');
+    expect(formatFte(0.333, 'en')).toBe('0.33');
+  });
+
+  it('uses the German decimal comma, not a point', () => {
+    // It went through `toFixed`, which always emits a point — so a German
+    // reader saw "1.50" in a row where every other number said "1,50".
+    expect(formatFte(1.5, 'de')).toBe('1,50');
   });
 });
 

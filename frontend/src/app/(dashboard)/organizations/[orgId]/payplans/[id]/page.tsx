@@ -51,14 +51,7 @@ import type {
 } from '@/lib/api/types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  formatDate,
-  formatDateForApi,
-  formatCurrency,
-  formatPercentage,
-  formatPeriod,
-  eurosToCents,
-} from '@/lib/utils/formatting';
+import { formatDateForApi, eurosToCents } from '@/lib/utils/formatting';
 import { PayPlanGrid } from '@/components/payplans/payplan-grid';
 import { PayPlanSalaryChart } from '@/components/charts/payplan-salary-chart';
 import { validationTiming } from '@/lib/forms/validation-timing';
@@ -70,6 +63,7 @@ import {
   type PayPlanPeriodFormData,
   type PayPlanEntryFormData,
 } from '@/lib/schemas';
+import { useFormatters } from '@/hooks/use-formatters';
 
 export default function PayPlanDetailPage() {
   const params = useParams();
@@ -77,6 +71,7 @@ export default function PayPlanDetailPage() {
   const payPlanId = Number(params.id);
   const t = useTranslations();
 
+  const fmt = useFormatters();
   const [view, setView] = useState<'panels' | 'table'>('table');
   const [isPeriodDialogOpen, setIsPeriodDialogOpen] = useState(false);
   const [isEntryDialogOpen, setIsEntryDialogOpen] = useState(false);
@@ -379,12 +374,12 @@ export default function PayPlanDetailPage() {
                 {payPlan.periods?.map((period) => (
                   <div key={period.id}>
                     <h3 className="mb-2 text-sm font-medium">
-                      {formatPeriod(period.from, period.to, 'en', t('common.ongoing'))}
+                      {fmt.period(period.from, period.to, t('common.ongoing'))}
                       {' \u2014 '}
                       {period.weekly_hours}h / {t('payPlans.weeklyHours')}
                       {' \u2014 '}
                       {t('payPlans.employerContributionRate')}:{' '}
-                      {formatPercentage(period.employer_contribution_rate / 100)}
+                      {fmt.percentage(period.employer_contribution_rate / 100)}
                     </h3>
                     <PayPlanGrid period={period} />
                   </div>
@@ -397,13 +392,13 @@ export default function PayPlanDetailPage() {
                     <CardHeader className="flex flex-row items-center justify-between py-3">
                       <div>
                         <CardTitle className="text-base">
-                          {formatPeriod(period.from, period.to, 'en', t('common.ongoing'))}
+                          {fmt.period(period.from, period.to, t('common.ongoing'))}
                         </CardTitle>
                         <p className="text-muted-foreground text-sm">
                           {period.weekly_hours}h / {t('payPlans.weeklyHours')}
                           {' \u2014 '}
                           {t('payPlans.employerContributionRate')}:{' '}
-                          {formatPercentage(period.employer_contribution_rate / 100)}
+                          {fmt.percentage(period.employer_contribution_rate / 100)}
                         </p>
                       </div>
                       <div className="flex gap-2">
@@ -471,7 +466,7 @@ export default function PayPlanDetailPage() {
                                     ? `${entry.step_min_years}y`
                                     : '\u2014'}
                                 </TableCell>
-                                <TableCell>{formatCurrency(entry.monthly_amount)}</TableCell>
+                                <TableCell>{fmt.currency(entry.monthly_amount)}</TableCell>
                                 <TableCell className="text-right">
                                   <div className="flex flex-nowrap items-center justify-end gap-0.5">
                                     <Button

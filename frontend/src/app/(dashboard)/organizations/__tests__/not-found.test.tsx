@@ -3,6 +3,7 @@ import OrganizationNotFound from '../not-found';
 import { renderWithProviders } from '@/test-utils';
 
 jest.mock('next-intl', () => ({
+  useLocale: () => 'en',
   useTranslations: () => (key: string) => key,
 }));
 
