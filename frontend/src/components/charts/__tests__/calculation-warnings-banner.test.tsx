@@ -73,6 +73,25 @@ describe('CalculationWarningsBanner', () => {
     expect(items).toHaveLength(3);
   });
 
+  it('renders unusable_pay_plan_period via its own translation, not the raw message', () => {
+    // The forward-compat fallback below means a new backend code is never
+    // broken — it just arrives in English. German is the primary audience
+    // here, so a code that ships without its string is a real gap even
+    // though nothing crashes.
+    const w = makeWarning({
+      code: 'unusable_pay_plan_period',
+      message: 'pay plan period has invalid weekly hours; salary excluded',
+      employee_id: 42,
+      contract_id: 99,
+      payplan_id: 7,
+      date: '2026-03-01',
+    });
+    render(<CalculationWarningsBanner warnings={[w]} />);
+    const item = screen.getByTestId('calculation-warnings-banner');
+    expect(item).toHaveTextContent('unusablePayPlanPeriod');
+    expect(item).not.toHaveTextContent('pay plan period has invalid weekly hours');
+  });
+
   it('renders unknown codes via the raw backend message (forward compat)', () => {
     // A backend evolution that ships a new code before the frontend
     // adds an i18n entry must NOT crash or render an empty line — fall

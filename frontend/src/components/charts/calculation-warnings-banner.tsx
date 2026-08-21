@@ -84,6 +84,8 @@ function renderWarning(t: ReturnType<typeof useTranslations>, w: CalculationWarn
         empPart +
         datePart
       );
+    case 'unusable_pay_plan_period':
+      return t('unusablePayPlanPeriod', { payPlan: w.payplan_id ?? '?' }) + empPart + datePart;
     default:
       return w.message + empPart + datePart;
   }

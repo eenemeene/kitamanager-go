@@ -347,7 +347,8 @@
       "title": "{count, plural, one {# Datenqualitätswarnung} other {# Datenqualitätswarnungen}}",
       "missingPayPlan": "Gehalt ausgeschlossen: Vertrag verweist auf unbekannte Entgelttabelle {payPlan}",
       "noPayPlanPeriod": "Gehalt ausgeschlossen: Entgelttabelle {payPlan} hat keinen Zeitraum, der dieses Datum abdeckt",
-      "noPayPlanEntry": "Gehalt ausgeschlossen: Die Entgelttabelle hat keinen Eintrag für Entgeltgruppe {grade}, Stufe {step}"
+      "noPayPlanEntry": "Gehalt ausgeschlossen: Die Entgelttabelle hat keinen Eintrag für Entgeltgruppe {grade}, Stufe {step}",
+      "unusablePayPlanPeriod": "Gehalt ausgeschlossen: Der Zeitraum der Entgelttabelle {payPlan} hat ungültige Wochenstunden"
     }
   },
   "months": {
