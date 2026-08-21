@@ -347,7 +347,8 @@
       "title": "{count, plural, one {# data-quality warning} other {# data-quality warnings}}",
       "missingPayPlan": "Salary excluded: contract references unknown pay plan {payPlan}",
       "noPayPlanPeriod": "Salary excluded: pay plan {payPlan} has no period covering this date",
-      "noPayPlanEntry": "Salary excluded: pay plan has no entry for grade {grade}, step {step}"
+      "noPayPlanEntry": "Salary excluded: pay plan has no entry for grade {grade}, step {step}",
+      "unusablePayPlanPeriod": "Salary excluded: pay plan {payPlan} has a period with invalid weekly hours"
     }
   },
   "months": {
