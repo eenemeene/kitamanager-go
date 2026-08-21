@@ -127,10 +127,27 @@ func (s *UserOrganizationStore) SetSuperAdmin(ctx context.Context, userID uint, 
 	return nil
 }
 
-// CountSuperAdmins returns the total number of superadmin users
-func (s *UserOrganizationStore) CountSuperAdmins(ctx context.Context) (int64, error) {
+// CountUsableSuperAdminsExcluding returns how many superadmins would still be
+// able to sign in if `excludeUserID` were removed.
+//
+// Three things make a superadmin unusable and all three are filtered here:
+// tombstoned (GORM's soft-delete scope on models.User), deactivated
+// (`active = false`, which RequireAuth rejects), and the user the caller is
+// about to remove.
+//
+// The exclusion is what makes this answer the right question. The previous
+// CountSuperAdmins asked "how many are there?" and callers compared against 1 —
+// which over-counts when the peer keeping the total above 1 is a superadmin who
+// can no longer log in, and under-counts nothing in return. Asking "if I take
+// this user out, is anyone left?" is the invariant the guards actually want, and
+// it stays correct whether or not the excluded user was usable to begin with.
+func (s *UserOrganizationStore) CountUsableSuperAdminsExcluding(ctx context.Context, excludeUserID uint) (int64, error) {
 	var count int64
-	err := DBFromContext(ctx, s.db).Model(&models.User{}).Where("is_superadmin = ?", true).Count(&count).Error
+	err := DBFromContext(ctx, s.db).Model(&models.User{}).
+		Where("is_superadmin = ?", true).
+		Where("active = ?", true).
+		Where("id <> ?", excludeUserID).
+		Count(&count).Error
 	return count, err
 }
 

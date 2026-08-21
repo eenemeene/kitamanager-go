@@ -177,12 +177,21 @@ func (s *UserStore) FindByOrganizations(ctx context.Context, orgIDs []uint, sear
 // CASCADE-delete with the user, so a hard-deleted user is naturally
 // excluded; soft-deleted users keep their user_organizations rows
 // hence the explicit filter.
+//
+// The shared organization must be live too. A tombstoned organization
+// keeps its user_organizations rows for the same reason, so without the
+// third filter two users went on "sharing" an organization that had been
+// deleted — and that shared membership is what grants visibility over
+// each other.
 func (s *UserStore) SharesOrganization(ctx context.Context, userID1, userID2 uint) (bool, error) {
 	var count int64
-	err := DBFromContext(ctx, s.db).Table("user_organizations uo1").
-		Joins("JOIN user_organizations uo2 ON uo2.organization_id = uo1.organization_id").
-		Joins("JOIN users u1 ON u1.id = uo1.user_id AND u1.deleted_at IS NULL").
-		Joins("JOIN users u2 ON u2.id = uo2.user_id AND u2.deleted_at IS NULL").
+	err := ExcludeSoftDeletedOrganizations(
+		DBFromContext(ctx, s.db).Table("user_organizations uo1").
+			Joins("JOIN user_organizations uo2 ON uo2.organization_id = uo1.organization_id").
+			Joins("JOIN users u1 ON u1.id = uo1.user_id AND u1.deleted_at IS NULL").
+			Joins("JOIN users u2 ON u2.id = uo2.user_id AND u2.deleted_at IS NULL").
+			Joins("JOIN organizations ON organizations.id = uo1.organization_id"),
+	).
 		Where("uo1.user_id = ? AND uo2.user_id = ?", userID1, userID2).
 		Count(&count).Error
 	if err != nil {
@@ -192,15 +201,20 @@ func (s *UserStore) SharesOrganization(ctx context.Context, userID1, userID2 uin
 }
 
 // IsAdminInSharedOrg checks whether the requester has admin role in at
-// least one organization that the target user belongs to. Closes audit
-// finding R-M-1 (same rationale as SharesOrganization): both users
-// must be non-tombstoned.
+// least one LIVE organization that the target user belongs to. Closes
+// audit finding R-M-1 (same rationale as SharesOrganization): both users
+// must be non-tombstoned, and so must the organization that connects
+// them — otherwise deleting an organization leaves its admins holding
+// admin power over its former members indefinitely.
 func (s *UserStore) IsAdminInSharedOrg(ctx context.Context, requesterID, targetUserID uint) (bool, error) {
 	var count int64
-	err := DBFromContext(ctx, s.db).Table("user_organizations uo_req").
-		Joins("JOIN user_organizations uo_target ON uo_target.organization_id = uo_req.organization_id").
-		Joins("JOIN users u_req ON u_req.id = uo_req.user_id AND u_req.deleted_at IS NULL").
-		Joins("JOIN users u_target ON u_target.id = uo_target.user_id AND u_target.deleted_at IS NULL").
+	err := ExcludeSoftDeletedOrganizations(
+		DBFromContext(ctx, s.db).Table("user_organizations uo_req").
+			Joins("JOIN user_organizations uo_target ON uo_target.organization_id = uo_req.organization_id").
+			Joins("JOIN users u_req ON u_req.id = uo_req.user_id AND u_req.deleted_at IS NULL").
+			Joins("JOIN users u_target ON u_target.id = uo_target.user_id AND u_target.deleted_at IS NULL").
+			Joins("JOIN organizations ON organizations.id = uo_req.organization_id"),
+	).
 		Where("uo_req.user_id = ? AND uo_target.user_id = ? AND uo_req.role = ?",
 			requesterID, targetUserID, "admin").
 		Count(&count).Error

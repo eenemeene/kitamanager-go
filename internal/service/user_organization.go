@@ -246,13 +246,16 @@ func (s *UserOrganizationService) SetSuperAdmin(ctx context.Context, userID uint
 		return classifyStoreError(err, "user")
 	}
 
-	// Prevent demoting the last superadmin
+	// Prevent demoting the last superadmin. Counting everyone *except* this
+	// user answers "is anyone left afterwards?", which stays right even when
+	// the user being demoted is already deactivated — the old count-and-
+	// compare-to-1 treated an unusable peer as a live one.
 	if !isSuperAdmin && user.IsSuperAdmin {
-		count, err := s.userOrgStore.CountSuperAdmins(ctx)
+		remaining, err := s.userOrgStore.CountUsableSuperAdminsExcluding(ctx, userID)
 		if err != nil {
 			return apperror.InternalWrap(err, "failed to count superadmins")
 		}
-		if count <= 1 {
+		if remaining == 0 {
 			return apperror.BadRequest("cannot demote the last superadmin")
 		}
 	}
