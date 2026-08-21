@@ -2,6 +2,13 @@
 #
 # Run the race-enabled tests for the packages a commit actually touches.
 #
+# "Touches" includes embedded assets, not just Go files: a commit that only
+# edits internal/i18n/locales/de.json or a file under
+# internal/database/migrations changes what its package does, and the tests that
+# judge it live in that package. See the `files` pattern on the go-test hook in
+# .pre-commit-config.yaml for which paths route here, and
+# resolve_embedding_package below for how they map back to a package.
+#
 # The hook used to run `go test -race -p 1 ./...` on every commit containing a Go
 # file: the whole suite, serialized, with the race detector. That is roughly
 # fourteen minutes before each commit lands, and CI runs the same suite again on
@@ -26,11 +33,46 @@ if [ "$#" -eq 0 ]; then
   exit 0
 fi
 
-# Map each staged Go file to its package directory, then deduplicate. Files in
-# the repository root map to ".", which `go test` understands.
+# Resolve an embedded asset to the package that compiles it in.
+#
+# //go:embed can only reach into subdirectories of the embedding package, so the
+# nearest ancestor that is a Go package is the one whose behaviour the file
+# changes. Walking up rather than consulting a table means a new //go:embed
+# needs a line in .pre-commit-config.yaml and nothing here.
+resolve_embedding_package() {
+  local dir="$1"
+  while [ "$dir" != "." ] && [ "$dir" != "/" ]; do
+    if go list "./$dir" >/dev/null 2>&1; then
+      printf './%s\n' "$dir"
+      return 0
+    fi
+    dir=$(dirname "$dir")
+  done
+  return 1
+}
+
+# Map each staged file to its package directory, then deduplicate. Files in the
+# repository root map to ".", which `go test` understands.
+#
+# A .go file maps to its own directory. Anything else is here because the hook's
+# `files` pattern routed it in as an embedded asset -- editing
+# internal/i18n/locales/de.json changes what internal/i18n does without touching
+# a Go file, and the tests that would catch a dropped translation live in that
+# package. Those resolve by walking up; a .go file does not, because when
+# `go list` fails on its own directory the cause is a build tag, and substituting
+# the parent package would run the wrong tests rather than report the skip.
 packages=$(for file in "$@"; do
   dir=$(dirname "$file")
-  printf './%s\n' "${dir#./}"
+  dir=${dir#./}
+  case "$file" in
+  *.go)
+    printf './%s\n' "$dir"
+    ;;
+  *)
+    resolve_embedding_package "$dir" ||
+      echo "skipping $file: no enclosing Go package" >&2
+    ;;
+  esac
 done | sort -u)
 
 # Drop packages whose files are all behind a build tag this run does not set --

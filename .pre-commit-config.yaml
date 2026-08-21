@@ -87,11 +87,20 @@ repos:
       # default per-CPU parallelism starts many containers at once and
       # flakes on resource exhaustion (`connection refused` mid-run),
       # compounded by -race's memory overhead.
+      # Matched by path rather than `types: [go]` so embedded assets reach the
+      # script too. //go:embed compiles internal/i18n/locales/*.json into
+      # internal/i18n and internal/database/migrations/*.sql into
+      # internal/database, so editing one changes what that package does while
+      # touching no Go file at all — and under `types: [go]` this hook then did
+      # not run. Two commits that changed only a message catalogue got past it
+      # that way, and internal/i18n has the tests that would have judged them.
+      # The script maps each path back to the package that embeds it; a future
+      # //go:embed needs a branch added here and nothing there.
       - id: go-test
         name: go test (changed packages)
         entry: scripts/precommit-go-test.sh
         language: system
-        types: [go]
+        files: '^(.+\.go|internal/i18n/locales/.+\.json|internal/database/migrations/.+\.sql)$'
 
       - id: go-integration-test
         name: go integration test
