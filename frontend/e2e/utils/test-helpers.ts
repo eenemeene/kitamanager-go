@@ -1131,7 +1131,7 @@ export async function createEmployeeWithContractViaApi(
  * keeps the layout assertions below from being about that instead.
  */
 export async function navigateViaMobileSidebar(page: Page, name: RegExp, url: RegExp) {
-  const hamburger = page.getByRole('button', { name: /menu/i });
+  const hamburger = page.getByRole('button', { name: /open menu/i });
   await expect(hamburger).toBeVisible({ timeout: 10000 });
   const overlay = page.getByRole('dialog');
 

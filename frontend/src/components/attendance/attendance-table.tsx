@@ -47,26 +47,26 @@ const QUICK_BUTTONS: {
   {
     status: 'present',
     icon: CheckCircle,
-    color: 'text-green-600 hover:text-green-700 hover:bg-green-50',
-    activeColor: 'bg-green-100 text-green-700 border-green-300',
+    color: 'text-success hover:bg-success/10',
+    activeColor: 'bg-success/15 text-success border-success/40',
   },
   {
     status: 'absent',
     icon: XCircle,
-    color: 'text-red-600 hover:text-red-700 hover:bg-red-50',
-    activeColor: 'bg-red-100 text-red-700 border-red-300',
+    color: 'text-destructive hover:bg-destructive/10',
+    activeColor: 'bg-destructive/15 text-destructive border-destructive/40',
   },
   {
     status: 'sick',
     icon: Thermometer,
-    color: 'text-orange-600 hover:text-orange-700 hover:bg-orange-50',
-    activeColor: 'bg-orange-100 text-orange-700 border-orange-300',
+    color: 'text-warning hover:bg-warning/10',
+    activeColor: 'bg-warning/15 text-warning border-warning/40',
   },
   {
     status: 'vacation',
     icon: Palmtree,
-    color: 'text-blue-600 hover:text-blue-700 hover:bg-blue-50',
-    activeColor: 'bg-blue-100 text-blue-700 border-blue-300',
+    color: 'text-info hover:bg-info/10',
+    activeColor: 'bg-info/15 text-info border-info/40',
   },
 ];
 

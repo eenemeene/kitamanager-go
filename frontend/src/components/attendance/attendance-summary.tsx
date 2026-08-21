@@ -32,28 +32,28 @@ export function AttendanceSummary({ orgId, date }: AttendanceSummaryProps) {
         value={data?.present ?? 0}
         icon={CheckCircle}
         loading={isLoading}
-        valueClassName="text-green-600"
+        valueClassName="text-success"
       />
       <StatCard
         title={t('absent')}
         value={data?.absent ?? 0}
         icon={XCircle}
         loading={isLoading}
-        valueClassName="text-red-600"
+        valueClassName="text-destructive"
       />
       <StatCard
         title={t('sick')}
         value={data?.sick ?? 0}
         icon={Thermometer}
         loading={isLoading}
-        valueClassName="text-orange-600"
+        valueClassName="text-warning"
       />
       <StatCard
         title={t('vacation')}
         value={data?.vacation ?? 0}
         icon={Palmtree}
         loading={isLoading}
-        valueClassName="text-blue-600"
+        valueClassName="text-info"
       />
       <StatCard
         title={t('notRecorded')}

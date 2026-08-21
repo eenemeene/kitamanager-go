@@ -377,7 +377,7 @@ export default function AttendancePage() {
           value={sectionFilter ? String(sectionFilter) : 'all'}
           onValueChange={(value) => setSectionFilter(value === 'all' ? undefined : Number(value))}
         >
-          <SelectTrigger className="w-full md:w-[200px]">
+          <SelectTrigger aria-label={tStats('filterBySection')} className="w-full md:w-[200px]">
             <SelectValue placeholder={tStats('filterBySection')} />
           </SelectTrigger>
           <SelectContent>

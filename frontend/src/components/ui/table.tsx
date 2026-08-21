@@ -4,7 +4,14 @@ import { cn } from '@/lib/utils';
 
 const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
   ({ className, ...props }, ref) => (
-    <div className="relative w-full overflow-auto">
+    // A scroll container with no focusable child cannot be scrolled by
+    // keyboard (WCAG 2.1.1) -- the columns hidden off the right edge on a
+    // phone were reachable by touch drag and by nothing else. tabIndex makes
+    // it a tab stop, which in turn obliges it to show focus, hence the ring.
+    <div
+      tabIndex={0}
+      className="focus-visible:ring-ring relative w-full overflow-auto focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+    >
       <table ref={ref} className={cn('w-full caption-bottom text-sm', className)} {...props} />
     </div>
   )

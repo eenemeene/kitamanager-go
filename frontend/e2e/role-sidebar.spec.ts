@@ -102,7 +102,7 @@ const ADMIN_NAV: Visibility[] = [
 // is robust to different Playwright project widths.
 async function ensureSidebarVisible(page: Page) {
   await page.waitForLoadState('load');
-  const hamburger = page.getByRole('button', { name: /menu/i });
+  const hamburger = page.getByRole('button', { name: /open menu/i });
   if (await hamburger.isVisible().catch(() => false)) {
     await page.waitForTimeout(300);
     await hamburger.click();

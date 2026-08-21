@@ -7,7 +7,7 @@ test.use({ locale: 'en-US' });
 /** Open the mobile sidebar if the viewport is narrow (hamburger menu visible). */
 async function ensureSidebarVisible(page: Page) {
   await page.waitForLoadState('load');
-  const hamburger = page.getByRole('button', { name: /menu/i });
+  const hamburger = page.getByRole('button', { name: /open menu/i });
   const isHamburgerVisible = await hamburger.isVisible().catch(() => false);
   if (isHamburgerVisible) {
     // Wait for React hydration so the click handler is attached
@@ -75,7 +75,7 @@ test.describe('Mobile Navigation', () => {
 
   test('should show hamburger menu on mobile', async ({ page }) => {
     // Hamburger menu should be visible
-    const hamburger = page.getByRole('button', { name: /menu/i });
+    const hamburger = page.getByRole('button', { name: /open menu/i });
     await expect(hamburger).toBeVisible({ timeout: 10000 });
 
     // Desktop sidebar should not be visible (it has hidden md:flex)
@@ -87,7 +87,7 @@ test.describe('Mobile Navigation', () => {
     await page.waitForLoadState('load');
 
     // Open sidebar via hamburger
-    const hamburger = page.getByRole('button', { name: /menu/i });
+    const hamburger = page.getByRole('button', { name: /open menu/i });
     await expect(hamburger).toBeVisible({ timeout: 10000 });
     await hamburger.click();
 
@@ -110,7 +110,7 @@ test.describe('Mobile Navigation', () => {
     // on any pathname change rather than on the tap that caused one.
     await page.waitForLoadState('load');
 
-    await page.getByRole('button', { name: /menu/i }).click();
+    await page.getByRole('button', { name: /open menu/i }).click();
     const overlay = page.getByRole('dialog');
     await expect(overlay).toBeVisible({ timeout: 10000 });
 

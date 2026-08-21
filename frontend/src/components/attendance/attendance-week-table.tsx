@@ -42,35 +42,35 @@ const STATUS_BUTTONS: {
   {
     status: 'present',
     icon: CheckCircle,
-    color: 'text-green-600 hover:bg-green-50',
-    activeColor: 'bg-green-100 text-green-700 border-green-300',
+    color: 'text-success hover:bg-success/10',
+    activeColor: 'bg-success/15 text-success border-success/40',
   },
   {
     status: 'absent',
     icon: XCircle,
-    color: 'text-red-600 hover:bg-red-50',
-    activeColor: 'bg-red-100 text-red-700 border-red-300',
+    color: 'text-destructive hover:bg-destructive/10',
+    activeColor: 'bg-destructive/15 text-destructive border-destructive/40',
   },
   {
     status: 'sick',
     icon: Thermometer,
-    color: 'text-orange-600 hover:bg-orange-50',
-    activeColor: 'bg-orange-100 text-orange-700 border-orange-300',
+    color: 'text-warning hover:bg-warning/10',
+    activeColor: 'bg-warning/15 text-warning border-warning/40',
   },
   {
     status: 'vacation',
     icon: Palmtree,
-    color: 'text-blue-600 hover:bg-blue-50',
-    activeColor: 'bg-blue-100 text-blue-700 border-blue-300',
+    color: 'text-info hover:bg-info/10',
+    activeColor: 'bg-info/15 text-info border-info/40',
   },
 ];
 
 const STATUS_ICON_MAP: Record<ChildAttendanceStatus, { icon: typeof CheckCircle; color: string }> =
   {
-    present: { icon: CheckCircle, color: 'text-green-600' },
-    absent: { icon: XCircle, color: 'text-red-600' },
-    sick: { icon: Thermometer, color: 'text-orange-600' },
-    vacation: { icon: Palmtree, color: 'text-blue-600' },
+    present: { icon: CheckCircle, color: 'text-success' },
+    absent: { icon: XCircle, color: 'text-destructive' },
+    sick: { icon: Thermometer, color: 'text-warning' },
+    vacation: { icon: Palmtree, color: 'text-info' },
   };
 
 // --- EditableTime ---
@@ -350,7 +350,7 @@ function AttendanceCell({
             <TooltipTrigger asChild>
               <Button
                 variant="outline"
-                className="gap-1 text-green-600 hover:bg-green-50 hover:text-green-700"
+                className="text-success hover:bg-success/10 hover:text-success gap-1"
                 onClick={() => onCheckIn(childId, dateStr)}
                 aria-label={t('checkIn')}
               >
@@ -390,7 +390,7 @@ function AttendanceCell({
           <div className="flex items-center gap-1">
             <EditableTime
               value={checkIn}
-              className="text-green-700"
+              className="text-success"
               onSave={(newTime) =>
                 onUpdateTime(childId, dateStr, attendance.id, 'check_in_time', newTime)
               }
@@ -400,7 +400,7 @@ function AttendanceCell({
               <TooltipTrigger asChild>
                 <Button
                   variant="outline"
-                  className="gap-1 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+                  className="text-warning hover:bg-warning/10 hover:text-warning gap-1"
                   onClick={() => onCheckOut(childId, dateStr, attendance.id)}
                   aria-label={t('checkOut')}
                 >
@@ -439,7 +439,7 @@ function AttendanceCell({
           <div className="flex items-center gap-1">
             <EditableTime
               value={checkIn}
-              className="text-green-700"
+              className="text-success"
               onSave={(newTime) =>
                 onUpdateTime(childId, dateStr, attendance.id, 'check_in_time', newTime)
               }
