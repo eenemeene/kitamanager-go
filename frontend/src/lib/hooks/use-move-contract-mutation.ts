@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { toLocalDateString } from '@/lib/utils/formatting';
 import { useMutationFeedback } from './use-mutation-feedback';
+import { todayBerlinString } from '@/lib/utils/contracts';
 
 interface HasContracts {
   id: number;
@@ -67,7 +67,7 @@ export function useMoveContractMutation<T extends HasContracts>(config: MoveCont
       // The server no longer infers this from the dates — that inference was the
       // whole problem — so the client states which it means. It can: it knows when
       // the contract starts.
-      const today = toLocalDateString(new Date());
+      const today = todayBerlinString();
       const startsLater = variables.from.slice(0, 10) > today;
       if (startsLater) {
         return config.correctFn(

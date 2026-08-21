@@ -40,7 +40,6 @@
                     "diverse_count",
                     "female_count",
                     "male_count",
-                    "max_age",
                     "min_age"
                 ],
                 "type": "object"
@@ -209,14 +208,11 @@
                     "id",
                     "ip_address",
                     "ip_anonymized",
-                    "organization_id",
                     "request_id",
-                    "resource_id",
                     "resource_type",
                     "success",
                     "timestamp",
-                    "user_email",
-                    "user_id"
+                    "user_email"
                 ],
                 "type": "object"
             },
@@ -407,7 +403,6 @@
                     "from",
                     "id",
                     "notes",
-                    "to",
                     "updated_at"
                 ],
                 "type": "object"
@@ -477,7 +472,6 @@
                     }
                 },
                 "required": [
-                    "active_amount_cents",
                     "category",
                     "created_at",
                     "id",
@@ -621,12 +615,18 @@
                     "check_in_time": {
                         "example": "2025-06-15T08:00:00Z",
                         "format": "date-time",
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "check_out_time": {
                         "example": "2025-06-15T16:00:00Z",
                         "format": "date-time",
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "child_id": {
                         "example": 1,
@@ -680,7 +680,6 @@
                     "id",
                     "note",
                     "organization_id",
-                    "recorded_by",
                     "status",
                     "updated_at"
                 ],
@@ -788,17 +787,13 @@
                     }
                 },
                 "required": [
-                    "age",
                     "bill_from",
                     "bill_id",
                     "bill_to",
                     "bill_total",
                     "birth_date",
-                    "calculated_total",
                     "child_name",
-                    "contract_id",
                     "correction_total",
-                    "difference",
                     "facility_name",
                     "properties",
                     "running_difference",
@@ -1045,7 +1040,10 @@
                     "to": {
                         "example": "2025-12-31",
                         "format": "date-time",
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "updated_at": {
                         "format": "date-time",
@@ -1064,7 +1062,6 @@
                     "id",
                     "properties",
                     "section_id",
-                    "section_name",
                     "to",
                     "updated_at",
                     "version"
@@ -1257,16 +1254,13 @@
                 },
                 "required": [
                     "birthdate",
-                    "contracts",
                     "created_at",
                     "first_name",
                     "gender",
                     "id",
                     "last_name",
                     "organization_id",
-                    "school_entry_date",
-                    "updated_at",
-                    "vouchers"
+                    "updated_at"
                 ],
                 "type": "object"
             },
@@ -1421,7 +1415,6 @@
                     "last_name",
                     "organization_id",
                     "school_entry_date",
-                    "suggestions",
                     "updated_at",
                     "vouchers"
                 ],
@@ -1807,7 +1800,10 @@
                     "to": {
                         "example": "2025-12-31",
                         "format": "date-time",
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "updated_at": {
                         "format": "date-time",
@@ -1830,10 +1826,8 @@
                     "grade",
                     "id",
                     "payplan_id",
-                    "payplan_name",
                     "properties",
                     "section_id",
-                    "section_name",
                     "staff_category",
                     "step",
                     "to",
@@ -2027,7 +2021,6 @@
                 },
                 "required": [
                     "birthdate",
-                    "contracts",
                     "created_at",
                     "first_name",
                     "gender",
@@ -2185,9 +2178,6 @@
                     "code",
                     "detail",
                     "instance",
-                    "invalid_params",
-                    "localized",
-                    "params",
                     "request_id",
                     "status",
                     "title",
@@ -2246,8 +2236,7 @@
                     }
                 },
                 "required": [
-                    "activated",
-                    "backup_codes"
+                    "activated"
                 ],
                 "type": "object"
             },
@@ -2392,12 +2381,8 @@
                 },
                 "required": [
                     "activated",
-                    "backup_codes_remaining",
                     "created_at",
-                    "enabled_at",
                     "id",
-                    "label",
-                    "last_used_at",
                     "type"
                 ],
                 "type": "object"
@@ -2525,20 +2510,14 @@
                     }
                 },
                 "required": [
-                    "actual_funding",
-                    "actual_funding_correction",
-                    "actual_funding_regular",
                     "balance",
                     "budget_expenses",
                     "budget_income",
-                    "budget_item_details",
                     "child_count",
                     "date",
                     "employer_costs",
-                    "funding_details",
                     "funding_income",
                     "gross_salary",
-                    "salary_details",
                     "staff_count",
                     "total_expenses",
                     "total_income"
@@ -2588,8 +2567,7 @@
                     }
                 },
                 "required": [
-                    "data_points",
-                    "warnings"
+                    "data_points"
                 ],
                 "type": "object"
             },
@@ -2850,13 +2828,6 @@
                         "type": "array"
                     }
                 },
-                "required": [
-                    "employee_staffing_hours",
-                    "financials",
-                    "occupancy",
-                    "staffing_hours",
-                    "warnings"
-                ],
                 "type": "object"
             },
             "FundingComparisonAmount": {
@@ -2864,12 +2835,18 @@
                     "bill_amount": {
                         "description": "nil if not in bill",
                         "example": 166847,
-                        "type": "integer"
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
                     },
                     "calculated_amount": {
                         "description": "nil if not calculable",
                         "example": 166847,
-                        "type": "integer"
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
                     },
                     "difference": {
                         "description": "bill - calc (0 if either nil)",
@@ -3000,17 +2977,10 @@
                     }
                 },
                 "required": [
-                    "age",
-                    "bill_appearances",
                     "bill_total",
                     "birth_date",
-                    "calculated_total",
-                    "child_id",
                     "child_name",
-                    "contract_from",
-                    "contract_to",
                     "correction_total",
-                    "difference",
                     "properties",
                     "status",
                     "voucher_number"
@@ -3078,7 +3048,6 @@
                     "bill_value",
                     "calc_value",
                     "category",
-                    "child_id",
                     "child_name",
                     "description",
                     "issue_type",
@@ -3307,9 +3276,7 @@
                 },
                 "required": [
                     "birth_date",
-                    "child_id",
                     "child_name",
-                    "contract_id",
                     "district",
                     "matched",
                     "rows",
@@ -3457,7 +3424,6 @@
                     "contract_booking",
                     "correction_booking",
                     "created_at",
-                    "created_by",
                     "facility_name",
                     "facility_total",
                     "file_name",
@@ -3665,7 +3631,6 @@
                     "full_time_weekly_hours",
                     "government_funding_id",
                     "id",
-                    "properties",
                     "to",
                     "updated_at"
                 ],
@@ -3730,7 +3695,10 @@
                     "to": {
                         "example": "2024-02-29",
                         "format": "date-time",
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "updated_at": {
                         "example": "2024-01-15T10:30:00Z",
@@ -3834,8 +3802,6 @@
                     "id",
                     "key",
                     "label",
-                    "max_age",
-                    "min_age",
                     "payment",
                     "period_id",
                     "requirement",
@@ -3956,8 +3922,6 @@
                     "id",
                     "key",
                     "label",
-                    "max_age",
-                    "min_age",
                     "payment",
                     "period_id",
                     "requirement",
@@ -4164,9 +4128,7 @@
                     }
                 },
                 "required": [
-                    "credential_id",
                     "id",
-                    "label",
                     "type"
                 ],
                 "type": "object"
@@ -5310,8 +5272,6 @@
                 "required": [
                     "first",
                     "last",
-                    "next",
-                    "prev",
                     "self"
                 ],
                 "type": "object"
@@ -5438,7 +5398,6 @@
                     "monthly_amount",
                     "period_id",
                     "step",
-                    "step_min_years",
                     "updated_at"
                 ],
                 "type": "object"
@@ -5549,11 +5508,9 @@
                 "required": [
                     "created_at",
                     "employer_contribution_rate",
-                    "entries",
                     "from",
                     "id",
                     "payplan_id",
-                    "to",
                     "updated_at",
                     "weekly_hours"
                 ],
@@ -5719,8 +5676,6 @@
                     "created_by",
                     "id",
                     "is_default",
-                    "max_age_months",
-                    "min_age_months",
                     "name",
                     "organization_id",
                     "updated_at"
@@ -5956,7 +5911,6 @@
                     "bill_birth_date",
                     "child_name",
                     "district",
-                    "existing_child_match",
                     "first_name",
                     "first_seen_bill_from",
                     "first_seen_bill_id",
@@ -6050,7 +6004,6 @@
                     }
                 },
                 "required": [
-                    "organization",
                     "organization_id",
                     "role",
                     "user_id"
@@ -6111,7 +6064,6 @@
                 "required": [
                     "created_at",
                     "created_by",
-                    "organization",
                     "organization_id",
                     "role",
                     "user_id"
@@ -6209,7 +6161,10 @@
                     "last_login": {
                         "example": "2024-01-15T10:30:00Z",
                         "format": "date-time",
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "name": {
                         "example": "John Doe",

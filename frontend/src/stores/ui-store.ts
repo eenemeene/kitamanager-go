@@ -15,6 +15,7 @@ interface UiState {
   toggleMobileSidebar: () => void;
   setMobileSidebarOpen: (open: boolean) => void;
   setSelectedOrganization: (orgId: number | null) => void;
+  clearOrganizationSelection: () => void;
   syncFromRoute: (orgId: number | null) => void;
   isValidOrganization: (orgId: number) => boolean;
   fetchOrganizations: () => Promise<void>;
@@ -48,6 +49,14 @@ export const useUiStore = create<UiState>()(
 
       setSelectedOrganization: (orgId: number | null) => {
         set({ selectedOrganizationId: orgId });
+      },
+
+      // Called when a session ends. The selection is persisted, so without this
+      // the next user to sign in on this browser is routed straight into the
+      // previous user's organization by the root page -- which reads the stored
+      // id before the organization list has been fetched.
+      clearOrganizationSelection: () => {
+        set({ selectedOrganizationId: null, organizations: [], organizationsLoading: false });
       },
 
       syncFromRoute: (orgId: number | null) => {

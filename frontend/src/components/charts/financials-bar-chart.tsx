@@ -8,8 +8,8 @@ import { line, curveMonotoneX } from 'd3-shape';
 import { ExportableChart } from './exportable-chart';
 import type { FinancialResponse, FinancialDataPoint } from '@/lib/api/types';
 import { buildKitaYearBands, useDateLabel, chartTheme } from './chart-utils';
-import { toLocalDateString } from '@/lib/utils/formatting';
 import { useFormatters } from '@/hooks/use-formatters';
+import { todayBerlinString } from '@/lib/utils/contracts';
 
 interface FinancialsChartProps {
   data: FinancialResponse;
@@ -64,7 +64,7 @@ export function FinancialsChart({ data }: FinancialsChartProps) {
   const keys = [fundingKey, budgetIncomeKey, grossSalaryKey, employerCostsKey, budgetExpensesKey];
   const colors = ['#22c55e', '#14b8a6', '#ef4444', '#f97316', '#f59e0b'];
 
-  const todayStr = toLocalDateString(new Date());
+  const todayStr = todayBerlinString();
   const todayLabel = formatDateLabel(todayStr);
 
   const KitaYearBackground = useMemo(() => {

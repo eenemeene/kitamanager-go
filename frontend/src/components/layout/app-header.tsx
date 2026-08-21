@@ -27,8 +27,15 @@ export function AppHeader() {
   const { user, logout } = useAuthStore();
   const { sidebarCollapsed, sidebarMobileOpen, toggleMobileSidebar } = useUiStore();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    // Awaited, because the navigation races the request otherwise. `logout()`
+    // is what makes the server clear the session cookie, and the proxy decides
+    // whether /login is reachable by looking at `csrf_token` -- so navigating
+    // first meant the proxy could still see a logged-in user and bounce the
+    // request straight back to the dashboard. Awaiting also guarantees the
+    // cache and the stored organization are gone before the login screen, and
+    // therefore the next account, appears.
+    await logout();
     router.push('/login');
   };
 

@@ -9,7 +9,7 @@ import { queryKeys } from '@/lib/api/queryKeys';
 import { useFrontendVersion } from '@/hooks/use-frontend-version';
 import { type ReportMonth, formatReportMonthLong } from '@/lib/utils/report-month';
 import { useFormatters } from '@/hooks/use-formatters';
-import { toLocalDateString } from '@/lib/utils/formatting';
+import { todayBerlinString } from '@/lib/utils/contracts';
 
 interface Props {
   orgId: number;
@@ -88,7 +88,7 @@ export function ReportCover({ orgId, orgName, reportMonth }: Props) {
         ) - 100
       : null;
 
-  const generatedAt = fmt.date(toLocalDateString(new Date()));
+  const generatedAt = fmt.date(todayBerlinString());
   const monthLabel = formatReportMonthLong(reportMonth, fmt.locale);
 
   return (

@@ -55,10 +55,21 @@ describe('useResourceListFilters', () => {
     expect(result.current.page).toBe(1);
   });
 
-  it('initializes activeOn to today', () => {
-    const now = new Date();
-    const { result } = renderHook(() => useResourceListFilters());
-    // Should be the same day (within test execution time)
-    expect(result.current.activeOn.toDateString()).toBe(now.toDateString());
+  it('initializes activeOn to Berlin today, not the browser day', () => {
+    // The default feeds `active_on`, which the server evaluates against
+    // `models.Today()`. Pinned to 00:30 on 1 August in Berlin -- still 31 July
+    // in UTC -- so the two answers differ and a browser-clock default fails.
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-07-31T22:30:00Z'));
+    try {
+      const { result } = renderHook(() => useResourceListFilters());
+
+      const activeOn = result.current.activeOn;
+      expect(activeOn.getFullYear()).toBe(2026);
+      expect(activeOn.getMonth()).toBe(7);
+      expect(activeOn.getDate()).toBe(1);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

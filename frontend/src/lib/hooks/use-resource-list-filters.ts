@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useDebouncedValue } from './use-debounced-value';
+import { todayBerlinString } from '@/lib/utils/contracts';
 
 interface UseResourceListFiltersConfig {
   /** Debounce delay for search input in ms (default: 300) */
@@ -18,7 +19,12 @@ export function useResourceListFilters({ debounceMs = 300 }: UseResourceListFilt
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
   const search = useDebouncedValue(searchInput, debounceMs);
-  const [activeOn, setActiveOn] = useState(() => new Date());
+  // Local midnight on *Berlin's* today, not the browser's. The value is read
+  // back with `toLocalDateString`, so anchoring it this way makes the filter
+  // agree with `models.Today()` on the server -- which is what decides whether
+  // a contract counts as active. A user in a zone behind Berlin would otherwise
+  // open the page already filtered to yesterday.
+  const [activeOn, setActiveOn] = useState(() => new Date(`${todayBerlinString()}T00:00:00`));
 
   const setSearchAndResetPage = useCallback((value: string) => {
     setSearchInput(value);

@@ -33,10 +33,11 @@ import { Pagination } from '@/components/ui/pagination';
 import { SearchInput } from '@/components/ui/search-input';
 import { budgetItemWithEntrySchema, type BudgetItemWithEntryFormData } from '@/lib/schemas';
 import { FormErrorSummary } from '@/components/forms/form-error-summary';
-import { formatDateForApi, eurosToCents, toLocalDateString } from '@/lib/utils/formatting';
+import { formatDateForApi, eurosToCents } from '@/lib/utils/formatting';
 import { useFormatters } from '@/hooks/use-formatters';
+import { todayBerlinString } from '@/lib/utils/contracts';
 
-const today = toLocalDateString(new Date());
+const today = todayBerlinString();
 
 const defaultValues: BudgetItemWithEntryFormData = {
   name: '',

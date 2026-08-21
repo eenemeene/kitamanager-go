@@ -305,7 +305,13 @@ interface AttendanceCellProps {
   childId: number;
   dateStr: string;
   onCheckIn: (childId: number, dateStr: string) => void;
-  onCheckOut: (childId: number, dateStr: string, attendanceId: number) => void;
+  /** `checkInTime` lets the page clamp the stamp so it sorts after the check-in. */
+  onCheckOut: (
+    childId: number,
+    dateStr: string,
+    attendanceId: number,
+    checkInTime?: string | null
+  ) => void;
   onUpdateTime: (
     childId: number,
     dateStr: string,
@@ -401,7 +407,9 @@ function AttendanceCell({
                 <Button
                   variant="outline"
                   className="text-warning hover:bg-warning/10 hover:text-warning gap-1"
-                  onClick={() => onCheckOut(childId, dateStr, attendance.id)}
+                  onClick={() =>
+                    onCheckOut(childId, dateStr, attendance.id, attendance.check_in_time)
+                  }
                   aria-label={t('checkOut')}
                 >
                   <LogOut className="h-4 w-4" />
@@ -510,8 +518,24 @@ function AttendanceCell({
 interface AttendanceWeekTableProps {
   childRecords: Child[];
   attendanceByDate: Map<string, ChildAttendanceResponse[]>;
+  /**
+   * Which children have an active contract on which day, keyed "YYYY-MM-DD".
+   *
+   * A day missing from the map is a day still loading, and is left alone -- the
+   * alternative is flashing "not enrolled" across the whole grid on every week
+   * change. A day present but not listing a child means that child has no
+   * contract then, and the cell says so rather than offering a check-in that
+   * would record attendance against no contract.
+   */
+  enrolledByDate?: Map<string, Set<number>>;
   onCheckIn: (childId: number, dateStr: string) => void;
-  onCheckOut: (childId: number, dateStr: string, attendanceId: number) => void;
+  /** `checkInTime` lets the page clamp the stamp so it sorts after the check-in. */
+  onCheckOut: (
+    childId: number,
+    dateStr: string,
+    attendanceId: number,
+    checkInTime?: string | null
+  ) => void;
   onUpdateTime: (
     childId: number,
     dateStr: string,
@@ -532,6 +556,7 @@ interface AttendanceWeekTableProps {
 export function AttendanceWeekTable({
   childRecords,
   attendanceByDate,
+  enrolledByDate,
   onCheckIn,
   onCheckOut,
   onUpdateTime,
@@ -576,6 +601,21 @@ export function AttendanceWeekTable({
               const dayStr = format(day, 'yyyy-MM-dd');
               const dayRecords = attendanceByDate.get(dayStr) ?? [];
               const attendance = dayRecords.find((a) => a.child_id === child.id);
+              const enrolledThatDay = enrolledByDate?.get(dayStr);
+              // An existing record wins over the roster: something was recorded
+              // for that day, and hiding it would hide data.
+              if (enrolledThatDay && !enrolledThatDay.has(child.id) && !attendance) {
+                return (
+                  <TableCell key={dayStr} className="text-center">
+                    <span
+                      className="text-muted-foreground/60 text-xs"
+                      title={t('notEnrolledTooltip')}
+                    >
+                      {t('notEnrolled')}
+                    </span>
+                  </TableCell>
+                );
+              }
               return (
                 <TableCell key={dayStr} className="text-center">
                   <div className="flex justify-center">

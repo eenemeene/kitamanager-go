@@ -37,6 +37,7 @@ import { useCrudDialogs } from '@/lib/hooks/use-crud-dialogs';
 import { useCrudMutations } from '@/lib/hooks/use-crud-mutations';
 import { FormErrorSummary } from '@/components/forms/form-error-summary';
 import { useProblemFormErrors, suppressesToast } from '@/lib/forms/use-problem-form-errors';
+import { useResetOnReopen } from '@/lib/forms/use-reset-on-reopen';
 import { useResourceListFilters } from '@/lib/hooks/use-resource-list-filters';
 import { governmentFundingSchema, type GovernmentFundingFormData } from '@/lib/schemas';
 import { SearchInput } from '@/components/ui/search-input';
@@ -92,6 +93,11 @@ export default function GovernmentFundingsPage() {
   // The one way field violations reach a form: watch what the mutation
   // rejected. Both mutations feed this form -- it is the same dialog for
   // create and edit.
+  // A dialog that just opened has nothing pending -- react-query keeps a
+  // mutation's rejection until the next attempt, so without this the form
+  // reopened showing the previous submit's summary.
+  useResetOnReopen(dialogs.isDialogOpen, mutations.createMutation, mutations.updateMutation);
+
   const unmappedViolations = useProblemFormErrors(
     [mutations.createMutation.error, mutations.updateMutation.error],
     { setError, clearErrors, getValues }

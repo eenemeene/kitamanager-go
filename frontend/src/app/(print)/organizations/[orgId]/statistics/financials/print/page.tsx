@@ -9,7 +9,7 @@ import { FinancialsReportSection } from '@/components/print-sections/financials-
 import { useUiStore } from '@/stores/ui-store';
 import { parseReportMonth, formatReportMonthLong } from '@/lib/utils/report-month';
 import { useFormatters } from '@/hooks/use-formatters';
-import { toLocalDateString } from '@/lib/utils/formatting';
+import { todayBerlinString } from '@/lib/utils/contracts';
 
 export default function FinancialsPrintPage() {
   const params = useParams();
@@ -43,7 +43,7 @@ export default function FinancialsPrintPage() {
             {formatReportMonthLong(reportMonth, fmt.locale)}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            {orgName} &middot; {fmt.date(toLocalDateString(new Date()))}
+            {orgName} &middot; {fmt.date(todayBerlinString())}
           </p>
         </div>
         <button

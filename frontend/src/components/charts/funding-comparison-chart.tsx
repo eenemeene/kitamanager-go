@@ -26,8 +26,9 @@ import {
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { HeaderWithTooltip } from '@/components/ui/header-with-tooltip';
 import { buildKitaYearBands, useDateLabel, kitaYearLabel, chartTheme } from './chart-utils';
-import { toLocalDateString, getCurrentMonthStart } from '@/lib/utils/formatting';
+import { getCurrentMonthStart } from '@/lib/utils/formatting';
 import { useFormatters } from '@/hooks/use-formatters';
+import { todayBerlinString } from '@/lib/utils/contracts';
 
 interface FundingComparisonChartProps {
   data: FinancialResponse;
@@ -81,7 +82,7 @@ export function FundingComparisonChart({
     [allPoints, calculatedKey, actualRegularKey, actualCorrectionKey, formatDateLabel]
   );
 
-  const todayStr = toLocalDateString(new Date());
+  const todayStr = todayBerlinString();
   const todayLabel = formatDateLabel(todayStr);
 
   const KitaYearBackground = useMemo(() => {

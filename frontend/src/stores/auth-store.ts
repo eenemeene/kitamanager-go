@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { apiClient } from '@/lib/api/client';
 import type { User, LoginRequest, LoginResponse, Role, UserMembership } from '@/lib/api/types';
 import { getCookie } from '@/lib/utils';
+import { clearSessionCache } from '@/lib/api/session-cache';
+import { useUiStore } from './ui-store';
 
 /**
  * Check if CSRF cookie is present (indicates authenticated session).
@@ -37,6 +39,29 @@ function buildOrgRoleMap(memberships: UserMembership[]): Map<number, Role> {
     }
   }
   return map;
+}
+
+/**
+ * Everything a departing user leaves behind in this tab.
+ *
+ * Logout and login are both soft navigations, so nothing here is torn down by a
+ * remount -- the next user inherits it all. Three things had to go:
+ *
+ *   - The react-query cache, which still held the previous user's data and, for
+ *     `['factors', 'me']` and `['me', 'sessions']`, held it under a key with no
+ *     identity in it. The settings page would render the previous user's MFA
+ *     factors and active sessions until the refetch landed.
+ *   - The selected organization, which is persisted. This used to remove a key
+ *     called `selectedOrgId` that nothing has ever written -- zustand persists
+ *     the ui store under `ui-storage` -- so the removal was a no-op and the next
+ *     user was redirected straight into the previous user's organization by the
+ *     root page.
+ *   - The organization list itself, so the selector cannot show a name from an
+ *     account that is no longer signed in.
+ */
+function endSession() {
+  clearSessionCache();
+  useUiStore.getState().clearOrganizationSelection();
 }
 
 export const useAuthStore = create<AuthState>()((set, get) => ({
@@ -97,9 +122,10 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     } catch {
       // Ignore logout errors - cookies may already be cleared
     }
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('selectedOrgId');
-    }
+    // Auth state first, then everything downstream of it. The org selector
+    // refetches whenever it sees an authenticated user with an empty
+    // organization list, so emptying the list while `isAuthenticated` was still
+    // true would fire one guaranteed-401 request on the way out.
     set({
       user: null,
       isAuthenticated: false,
@@ -107,6 +133,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       memberships: [],
       orgRoleMap: new Map(),
     });
+    endSession();
   },
 
   loadUser: async () => {
@@ -165,7 +192,6 @@ if (typeof window !== 'undefined') {
 apiClient.setOnUnauthorized(() => {
   // Clear local state without calling logout endpoint (already unauthorized).
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('selectedOrgId');
     // Clear the JS-readable csrf_token cookie. Without this, hasAuthCookie()
     // keeps returning true after the server rejected our session, which
     // causes components to re-fire authenticated requests in an infinite
@@ -179,4 +205,5 @@ apiClient.setOnUnauthorized(() => {
     memberships: [],
     orgRoleMap: new Map(),
   });
+  endSession();
 });

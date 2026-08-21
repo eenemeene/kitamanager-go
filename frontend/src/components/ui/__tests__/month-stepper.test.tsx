@@ -57,18 +57,25 @@ describe('MonthStepper', () => {
     expect(calledDate.getDate()).toBe(1);
   });
 
-  it('calls onChange with today when Today button clicked', async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<MonthStepper value={new Date(2024, 5, 1)} onChange={onChange} />);
+  it('calls onChange with Berlin today when Today button clicked', async () => {
+    // See day-stepper: this date becomes a query parameter, so it has to be the
+    // server's calendar day. Pinned to a moment where Berlin and UTC disagree.
+    jest.useFakeTimers({ advanceTimers: true });
+    jest.setSystemTime(new Date('2026-07-31T22:30:00Z'));
+    try {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      renderWithProviders(<MonthStepper value={new Date(2024, 5, 1)} onChange={onChange} />);
 
-    await user.click(screen.getByText('today'));
+      await user.click(screen.getByText('today'));
 
-    expect(onChange).toHaveBeenCalledTimes(1);
-    const calledDate = onChange.mock.calls[0][0] as Date;
-    const now = new Date();
-    expect(calledDate.getFullYear()).toBe(now.getFullYear());
-    expect(calledDate.getMonth()).toBe(now.getMonth());
-    expect(calledDate.getDate()).toBe(now.getDate());
+      expect(onChange).toHaveBeenCalledTimes(1);
+      const calledDate = onChange.mock.calls[0][0] as Date;
+      expect(calledDate.getFullYear()).toBe(2026);
+      expect(calledDate.getMonth()).toBe(7);
+      expect(calledDate.getDate()).toBe(1);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('handles year boundary correctly (January to December)', async () => {

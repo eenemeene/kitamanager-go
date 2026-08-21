@@ -15,12 +15,16 @@
 //     across packages; we don't have that ambiguity in this spec, and
 //     the long names produce unreadable generated TypeScript.
 //
-//   - Schemas whose name ends in `Response` get every property marked
-//     required. swaggo only emits `required` from `binding:"required"`
-//     tags, which by convention only appear on request DTOs; response
-//     fields are always present at runtime but the spec doesn't say so.
-//     We assert that runtime contract here so generated TypeScript types
-//     don't become useless walls of `field?: T | undefined`.
+//   - Response schemas get their properties marked required, except the ones
+//     the Go source says may be absent. swaggo only emits `required` from
+//     `binding:"required"` tags, which by convention only appear on request
+//     DTOs, so response fields carry no requiredness at all and the generated
+//     TypeScript would be a useless wall of `field?: T | undefined`.
+//
+//     The requiredness cannot be read off the spec, because swaggo emits no
+//     signal for `omitempty`; it is read from internal/models directly (see
+//     gofields.go). A field that is `omitempty` on a pointer, slice or map is
+//     left optional, and a pointer that is always written is marked nullable.
 //
 // Run via `make swagger-docs`; CI invokes the same target with a
 // dirty-tree check.
@@ -50,15 +54,16 @@ const schemaPrefix = "github_com_eenemeene_kitamanager-go_internal_models."
 func main() {
 	in := flag.String("in", "docs/swagger.json", "input Swagger 2.0 file")
 	out := flag.String("out", "docs/openapi.json", "output OpenAPI 3.0 file")
+	models := flag.String("models", modelsDirFrom("."), "directory holding the model DTOs")
 	flag.Parse()
 
-	if err := run(*in, *out); err != nil {
+	if err := run(*in, *out, *models); err != nil {
 		fmt.Fprintf(os.Stderr, "openapi-fixer: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func run(inPath, outPath string) error {
+func run(inPath, outPath, modelsDir string) error {
 	// #nosec G304 -- inPath is the path the developer typed on the
 	// command line to a local dev tool that runs in `make swagger-fix`.
 	// There is no network surface, no untrusted input source, and the
@@ -78,7 +83,11 @@ func run(inPath, outPath string) error {
 		return fmt.Errorf("convert to openapi 3.0: %w", err)
 	}
 
-	markResponsePropertiesRequired(v3)
+	shapes, err := goStructFields(modelsDir)
+	if err != nil {
+		return err
+	}
+	markResponsePropertiesRequired(v3, shapes)
 	allowFreeFormObjectProperties(v3)
 	assignOperationIDs(v3)
 	declareContractETag(v3)
@@ -429,23 +438,29 @@ func allowFreeFormObjectProperties(doc *openapi3.T) {
 }
 
 // markResponsePropertiesRequired walks every schema whose name does NOT
-// end in `Request` and adds every defined property to its `required`
-// list (deduplicating against any required entries already present).
+// end in `Request` and adds every property to its `required` list, except the
+// ones the Go source says may be absent — and marks nullable the ones that may
+// be written as null.
 //
-// swaggo derives the `required` array from `binding:"required"` struct
-// tags, which by convention only appear on request DTOs. Response and
-// supporting (shared) types end up with no required properties, which
-// generates useless TypeScript where every consumer must ?? every read.
+// swaggo derives the `required` array from `binding:"required"` struct tags,
+// which by convention only appear on request DTOs. Response and supporting
+// (shared) types end up with no required properties, which generates useless
+// TypeScript where every consumer must ?? every read.
 //
-// We trust the convention: response/shared structs populate every field
-// they declare. If a response field is genuinely optional (omitempty +
-// may be nil), this rule is wrong for that field — checking individual
-// fields would require reading Go source. Revisit per-field if false
-// positives appear at consumer sites.
+// The blanket "responses populate every field" rule that used to live here was
+// close but not true, and the exceptions were not rare: 76 fields across the
+// spec carry `omitempty` on a pointer, slice or map, or are pointers that
+// marshal to null. The generated types promised `child.contracts: T[]` for a
+// child with no contracts and `attendance.check_in_time: string` for a record
+// with none, so every consumer that trusted the type was one absent field away
+// from a TypeError — and the compiler said the guard was unnecessary.
+//
+// `shapes` is read straight from internal/models, because the spec carries no
+// signal for `omitempty` and there is nowhere else to learn it.
 //
 // Request schemas are left alone: their `required` lists come straight
 // from `binding:"required"` tags which is the right truth for inputs.
-func markResponsePropertiesRequired(spec *openapi3.T) {
+func markResponsePropertiesRequired(spec *openapi3.T, shapes map[string]map[string]fieldShape) {
 	if spec.Components == nil {
 		return
 	}
@@ -487,16 +502,39 @@ func markResponsePropertiesRequired(spec *openapi3.T) {
 		if len(schema.Properties) == 0 {
 			continue
 		}
+		// The Go struct behind this schema, if we can find it. Generic
+		// instances (PaginatedResponse-UserResponse) and hand-declared shapes
+		// have none; those keep the all-required treatment, which is correct
+		// for them — their fields are built by the handler, not marshalled
+		// from a tagged struct.
+		fields := shapes[shortName]
+
 		existing := make(map[string]struct{}, len(schema.Required))
 		for _, r := range schema.Required {
 			existing[r] = struct{}{}
 		}
-		for prop := range schema.Properties {
+		for prop, propRef := range schema.Properties {
+			shape := fields[prop]
+			if shape.Omitted {
+				// `omitempty` on something nilable: the field is genuinely
+				// absent from the payload when empty, so claiming it is
+				// required would be a lie the compiler enforces.
+				continue
+			}
+			if shape.Nullable && propRef != nil && propRef.Value != nil {
+				// A pointer that is always written: present, but possibly null.
+				propRef.Value.Nullable = true
+			}
 			if _, ok := existing[prop]; !ok {
 				schema.Required = append(schema.Required, prop)
 				existing[prop] = struct{}{}
 			}
 		}
+		// A field can be listed required by a `binding:"required"` tag and still
+		// be omitempty on the response side; drop those so the two agree.
+		schema.Required = slices.DeleteFunc(schema.Required, func(name string) bool {
+			return fields[name].Omitted
+		})
 		sort.Strings(schema.Required)
 	}
 }

@@ -23,6 +23,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useCrudMutations } from '@/lib/hooks/use-crud-mutations';
 import { FormErrorSummary } from '@/components/forms/form-error-summary';
 import { useProblemFormErrors, suppressesToast } from '@/lib/forms/use-problem-form-errors';
+import { useResetOnReopen } from '@/lib/forms/use-reset-on-reopen';
 import { useCrudDialogs } from '@/lib/hooks/use-crud-dialogs';
 import {
   CrudPageHeader,
@@ -188,6 +189,11 @@ export default function UsersPage() {
 
   // Each form reacts to the mutation that submits it, so an edit rejection
   // cannot mark fields on the create form or the other way round.
+  // A dialog that just opened has nothing pending -- react-query keeps a
+  // mutation's rejection until the next attempt, so without this the form
+  // reopened showing the previous submit's summary.
+  useResetOnReopen(dialogs.isDialogOpen, mutations.createMutation, mutations.updateMutation);
+
   const unmappedCreate = useProblemFormErrors(mutations.createMutation.error, {
     setError: setErrorCreate,
     clearErrors: clearErrorsCreate,

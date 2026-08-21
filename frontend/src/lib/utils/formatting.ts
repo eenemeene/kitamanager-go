@@ -19,6 +19,7 @@
 import { format, parseISO, differenceInYears, type Locale as DateFnsLocale } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import type { Locale } from '@/i18n/config';
+import { todayBerlinString } from './contracts';
 
 const dateFnsLocales: Record<Locale, DateFnsLocale> = {
   de,
@@ -228,25 +229,27 @@ export function formatMonthRange(min?: number | null, max?: number | null): stri
 
 /**
  * Returns the first day of the current month as a YYYY-MM-DD string.
+ *
+ * "Current" in Europe/Berlin, like every other date decision here -- these feed
+ * the statistics endpoints' `from`/`to`, and the server snaps its own ranges
+ * with `models.Today()`.
  */
 export function getCurrentMonthStart(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+  return `${todayBerlinString().slice(0, 7)}-01`;
 }
 
 /**
  * Returns the first and last day of the current month as YYYY-MM-DD strings.
  */
 export function getCurrentMonthRange(): { from: string; to: string } {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  const first = new Date(y, m, 1);
-  const last = new Date(y, m + 1, 0);
+  const [year, month] = todayBerlinString().split('-').map(Number);
   const pad = (n: number) => n.toString().padStart(2, '0');
+  // Day 0 of the next month is the last day of this one, and Date.UTC
+  // normalises December into the following January for us.
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
   return {
-    from: `${first.getFullYear()}-${pad(first.getMonth() + 1)}-${pad(first.getDate())}`,
-    to: `${last.getFullYear()}-${pad(last.getMonth() + 1)}-${pad(last.getDate())}`,
+    from: `${year}-${pad(month)}-01`,
+    to: `${year}-${pad(month)}-${pad(lastDay)}`,
   };
 }
 

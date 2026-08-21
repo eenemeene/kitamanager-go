@@ -12,7 +12,7 @@ import {
   createTodayMarker,
   chartTheme,
 } from './chart-utils';
-import { toLocalDateString } from '@/lib/utils/formatting';
+import { todayBerlinString } from '@/lib/utils/contracts';
 
 interface MonthlyContractChartProps {
   data: StaffingHoursResponse;
@@ -46,7 +46,7 @@ export function MonthlyContractChart({ data, occupancy }: MonthlyContractChartPr
     [kitaYearBands, xLabels, t]
   );
 
-  const todayStr = toLocalDateString(new Date());
+  const todayStr = todayBerlinString();
   const todayLabel = formatDateLabel(todayStr);
 
   const counts = data.data_points.map((dp) => dp.child_count ?? 0);

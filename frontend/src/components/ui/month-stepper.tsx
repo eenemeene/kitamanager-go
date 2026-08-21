@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useState } from 'react';
+import { todayBerlinDate } from '@/lib/utils/contracts';
 
 const dateFnsLocales: Record<string, typeof de> = {
   de: de,
@@ -37,7 +38,7 @@ export function MonthStepper({ value, onChange }: MonthStepperProps) {
   // Anchored on today (not `value`) so the bounds don't drift when
   // the user navigates through history — every time the popover
   // opens the dropdown spans the same window.
-  const today = new Date();
+  const today = todayBerlinDate();
   const startMonth = startOfMonth(subYears(today, yearRangeBackOffset));
   const endMonth = startOfMonth(addYears(today, yearRangeForwardOffset));
 
@@ -125,7 +126,7 @@ export function MonthStepper({ value, onChange }: MonthStepperProps) {
         <ChevronsRight className="h-4 w-4" />
       </Button>
 
-      <Button variant="ghost" className="text-sm" onClick={() => onChange(new Date())}>
+      <Button variant="ghost" className="text-sm" onClick={() => onChange(todayBerlinDate())}>
         {t('today')}
       </Button>
     </div>

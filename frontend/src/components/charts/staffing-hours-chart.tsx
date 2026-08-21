@@ -13,7 +13,7 @@ import {
   createTodayMarker,
   chartTheme,
 } from './chart-utils';
-import { toLocalDateString } from '@/lib/utils/formatting';
+import { todayBerlinString } from '@/lib/utils/contracts';
 
 interface StaffingHoursChartProps {
   data: StaffingHoursResponse;
@@ -160,7 +160,7 @@ export function StaffingHoursChart({ data }: StaffingHoursChartProps) {
   }, [xLabels, balancePercentages]);
 
   // Find today marker position
-  const todayStr = toLocalDateString(new Date());
+  const todayStr = todayBerlinString();
 
   const chartData = [
     {

@@ -1,5 +1,7 @@
 import { useAuthStore } from '../auth-store';
+import { useUiStore } from '../ui-store';
 import { apiClient } from '@/lib/api/client';
+import { clearSessionCache } from '@/lib/api/session-cache';
 import type { UserMembership } from '@/lib/api/types';
 
 // Mock the API client.
@@ -15,6 +17,12 @@ jest.mock('@/lib/api/client', () => ({
       (globalThis as any).__authTestUnauthorizedCb = cb;
     }),
   },
+}));
+
+jest.mock('@/lib/api/session-cache', () => ({
+  clearSessionCache: jest.fn(),
+  registerQueryClient: jest.fn(),
+  unregisterQueryClient: jest.fn(),
 }));
 
 function getUnauthorizedCallback(): () => void {
@@ -182,7 +190,7 @@ describe('useAuthStore', () => {
         isAuthenticated: true,
         userLoaded: true,
       });
-      localStorage.setItem('selectedOrgId', '1');
+      useUiStore.setState({ selectedOrganizationId: 1 });
 
       await useAuthStore.getState().logout();
 
@@ -190,8 +198,41 @@ describe('useAuthStore', () => {
       expect(state.user).toBeNull();
       expect(state.isAuthenticated).toBe(false);
       expect(state.userLoaded).toBe(false);
-      expect(localStorage.getItem('selectedOrgId')).toBeNull();
       expect(apiClient.logout).toHaveBeenCalled();
+    });
+
+    // The three things a departing user leaves behind in this tab. Logout and
+    // login are both soft navigations, so none of it is cleared by a remount.
+    it('drops the cached data, so the next user does not read it', async () => {
+      (apiClient.logout as jest.Mock).mockResolvedValue(undefined);
+
+      await useAuthStore.getState().logout();
+
+      expect(clearSessionCache).toHaveBeenCalled();
+    });
+
+    it('clears the persisted organization selection', async () => {
+      // This used to remove a localStorage key called `selectedOrgId` that
+      // nothing has ever written -- the ui store persists under `ui-storage` --
+      // so the selection survived, and the root page redirected the next user
+      // straight into the previous user's organization.
+      (apiClient.logout as jest.Mock).mockResolvedValue(undefined);
+      useUiStore.setState({ selectedOrganizationId: 7, organizations: [] });
+
+      await useAuthStore.getState().logout();
+
+      expect(useUiStore.getState().selectedOrganizationId).toBeNull();
+    });
+
+    it('clears the session state even when the logout request fails', async () => {
+      // A network failure must not leave the previous user's data readable.
+      (apiClient.logout as jest.Mock).mockRejectedValue(new Error('Network error'));
+      useUiStore.setState({ selectedOrganizationId: 7 });
+
+      await useAuthStore.getState().logout();
+
+      expect(clearSessionCache).toHaveBeenCalled();
+      expect(useUiStore.getState().selectedOrganizationId).toBeNull();
     });
 
     it('clears state even if logout API fails', async () => {
@@ -501,7 +542,7 @@ describe('useAuthStore', () => {
         ],
         orgRoleMap: new Map([[5, 'admin' as const]]),
       });
-      localStorage.setItem('selectedOrgId', '5');
+      useUiStore.setState({ selectedOrganizationId: 5 });
 
       // Trigger the unauthorized callback captured at module load
       getUnauthorizedCallback()();
@@ -512,7 +553,17 @@ describe('useAuthStore', () => {
       expect(state.userLoaded).toBe(false);
       expect(state.memberships).toEqual([]);
       expect(state.orgRoleMap.size).toBe(0);
-      expect(localStorage.getItem('selectedOrgId')).toBeNull();
+    });
+
+    it('drops the cache and the organization selection too', () => {
+      // A 401 is the server telling us the session is already over; the tab has
+      // to forget just as much as it would on an explicit logout.
+      useUiStore.setState({ selectedOrganizationId: 5 });
+
+      getUnauthorizedCallback()();
+
+      expect(clearSessionCache).toHaveBeenCalled();
+      expect(useUiStore.getState().selectedOrganizationId).toBeNull();
     });
 
     it('clears the csrf_token cookie so hasAuthCookie() no longer returns true', () => {

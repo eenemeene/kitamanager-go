@@ -16,9 +16,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { apiClient } from '@/lib/api/client';
-import { toLocalDateString } from '@/lib/utils/formatting';
 import { queryKeys } from '@/lib/api/queryKeys';
-import { getActiveContract } from '@/lib/utils/contracts';
+import { getActiveContract, todayBerlinString } from '@/lib/utils/contracts';
 import { type Section, LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
 
 interface AgeAlert {
@@ -96,7 +95,7 @@ export function SectionAgeAlertsWidget({ orgId }: SectionAgeAlertsWidgetProps) {
       // occupancy and staffing reports read. A contract that has not started yet
       // has no such history, and an amendment of it would be refused anyway,
       // because an effective date has to fall after the contract's own start.
-      const today = toLocalDateString(new Date());
+      const today = todayBerlinString();
       if (from.slice(0, 10) > today) {
         await apiClient.correctChildContract(orgId, childId, contractId, version, {
           section_id: sectionId,

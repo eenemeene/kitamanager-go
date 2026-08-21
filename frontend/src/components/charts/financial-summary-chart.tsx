@@ -7,8 +7,8 @@ import type { BarDatum, BarCustomLayerProps } from '@nivo/bar';
 import { ExportableChart } from './exportable-chart';
 import type { FinancialResponse } from '@/lib/api/types';
 import { buildKitaYearBands, useDateLabel, kitaYearLabel, chartTheme } from './chart-utils';
-import { toLocalDateString } from '@/lib/utils/formatting';
 import { useFormatters } from '@/hooks/use-formatters';
+import { todayBerlinString } from '@/lib/utils/contracts';
 
 interface FinancialSummaryChartProps {
   data: FinancialResponse;
@@ -79,7 +79,7 @@ export function FinancialSummaryChart({ data }: FinancialSummaryChartProps) {
     };
   }, [data, balanceKey, formatDateLabel]);
 
-  const todayStr = toLocalDateString(new Date());
+  const todayStr = todayBerlinString();
   const todayLabel = formatDateLabel(todayStr);
 
   const KitaYearBackground = useMemo(() => {

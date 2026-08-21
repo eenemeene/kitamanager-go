@@ -19,11 +19,18 @@ import { AttendanceWeekTable } from '@/components/attendance/attendance-week-tab
 import { QueryError } from '@/components/crud/query-error';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
-import type { ChildAttendanceResponse, ChildAttendanceStatus, Section } from '@/lib/api/types';
+import type {
+  Child,
+  ChildAttendanceResponse,
+  ChildAttendanceStatus,
+  Section,
+} from '@/lib/api/types';
 import { LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
+import { checkOutTimestampOnDate, timestampOnDate } from '@/lib/utils/attendance-time';
 import { useToast } from '@/lib/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import { useState } from 'react';
+import { todayBerlinDate } from '@/lib/utils/contracts';
 
 export default function AttendancePage() {
   const params = useParams();
@@ -34,7 +41,7 @@ export default function AttendancePage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [selectedDate, setSelectedDate] = useState(() => todayBerlinDate());
   const [sectionFilter, setSectionFilter] = useState<number | undefined>(undefined);
 
   // Compute Mon-Fri dates
@@ -57,17 +64,60 @@ export default function AttendancePage() {
   });
   const sections: Section[] = sectionsData?.data ?? [];
 
-  // Fetch children with active contracts for the week
-  const {
-    data: weekChildren,
-    isLoading: childrenLoading,
-    error: childrenError,
-    refetch: refetchChildren,
-  } = useQuery({
-    queryKey: [...queryKeys.children.allUnpaginated(orgId), weekMondayStr, sectionFilter],
-    queryFn: () => apiClient.getChildrenAllForDate(orgId, weekMondayStr, sectionFilter),
-    enabled: !!orgId,
+  // The roster, per day.
+  //
+  // This used to be a single fetch of the children active on the *Monday*, used
+  // as the row set for all five columns. A child whose contract started on the
+  // Tuesday was missing from the whole week -- no row, so no way to record them
+  // at all -- and one whose contract ended on the Wednesday kept an inviting
+  // check-in button for the Thursday and Friday they were no longer enrolled
+  // for. Asking per day is the only answer that is right on both ends, and it
+  // also gives the grid what it needs to grey out the days a child is not
+  // enrolled for rather than silently offering them.
+  const weekChildrenQueries = useQueries({
+    queries: weekDays.map((day) => {
+      const dayStr = format(day, 'yyyy-MM-dd');
+      return {
+        queryKey: [...queryKeys.children.allUnpaginated(orgId), dayStr, sectionFilter],
+        queryFn: () => apiClient.getChildrenAllForDate(orgId, dayStr, sectionFilter),
+        enabled: !!orgId,
+      };
+    }),
   });
+
+  const childrenLoading = weekChildrenQueries.some((q) => q.isLoading);
+  const childrenError = weekChildrenQueries.find((q) => q.error)?.error ?? null;
+  const refetchChildren = useCallback(() => {
+    for (const query of weekChildrenQueries) query.refetch();
+  }, [weekChildrenQueries]);
+
+  // Every child enrolled on any day of the week, deduplicated. The table sorts
+  // by name, so the union needs no ordering of its own.
+  const weekChildren = useMemo(() => {
+    const byId = new Map<number, Child>();
+    for (const query of weekChildrenQueries) {
+      for (const child of query.data ?? []) {
+        if (!byId.has(child.id)) byId.set(child.id, child);
+      }
+    }
+    return [...byId.values()];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekChildrenQueries.map((q) => q.data)]);
+
+  // Which children are enrolled on which day, so a cell outside a child's
+  // contract can say so instead of offering a check-in.
+  const enrolledByDate = useMemo(() => {
+    const map = new Map<string, Set<number>>();
+    weekDays.forEach((day, i) => {
+      const dayStr = format(day, 'yyyy-MM-dd');
+      const data = weekChildrenQueries[i]?.data;
+      // No entry at all while the day is still loading: the grid then leaves
+      // the cell alone rather than flashing "not enrolled" at every child.
+      if (data) map.set(dayStr, new Set(data.map((c) => c.id)));
+    });
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekDays, weekChildrenQueries.map((q) => q.data)]);
 
   // Fetch attendance for all 5 weekdays in parallel
   const weekAttendanceQueries = useQueries({
@@ -102,20 +152,23 @@ export default function AttendancePage() {
 
   const getChildName = useCallback(
     (childId: number): string => {
-      const child = weekChildren?.find((c) => c.id === childId);
+      const child = weekChildren.find((c) => c.id === childId);
       return child ? `${child.first_name} ${child.last_name}` : '';
     },
     [weekChildren]
   );
 
-  // Check-in mutation: create attendance with status=present and check_in_time=now
+  // Check-in mutation: create attendance with status=present, stamped at the
+  // current time of day *on the day being recorded*. The grid offers check-in
+  // for any weekday of any week the stepper reaches, so `new Date()` wrote
+  // today's instant onto another day's row -- invisible behind an HH:mm
+  // display, and the cause of a rejected update on the next edit.
   const checkInMutation = useMutation({
     mutationFn: async ({ childId, forDate }: { childId: number; forDate: string }) => {
-      const checkInTime = new Date().toISOString();
       return apiClient.createChildAttendance(orgId, childId, {
         date: forDate,
         status: 'present',
-        check_in_time: checkInTime,
+        check_in_time: timestampOnDate(forDate),
       });
     },
     onSuccess: (data, variables) => {
@@ -147,20 +200,23 @@ export default function AttendancePage() {
     },
   });
 
-  // Check-out mutation: update attendance with check_out_time=now
+  // Check-out mutation: same rule as check-in -- the current time of day on the
+  // day being recorded. `checkInTime` comes along so the stamp can be clamped
+  // to sort after it; see checkOutTimestampOnDate for the midnight case.
   const checkOutMutation = useMutation({
     mutationFn: async ({
       childId,
       forDate,
       attendanceId,
+      checkInTime,
     }: {
       childId: number;
       forDate: string;
       attendanceId: number;
+      checkInTime?: string | null;
     }) => {
-      const checkOutTime = new Date().toISOString();
       return apiClient.updateChildAttendance(orgId, childId, attendanceId, {
-        check_out_time: checkOutTime,
+        check_out_time: checkOutTimestampOnDate(forDate, checkInTime),
       });
     },
     onSuccess: (_data, variables) => {
@@ -206,8 +262,8 @@ export default function AttendancePage() {
   );
 
   const handleCheckOut = useCallback(
-    (childId: number, forDate: string, attendanceId: number) => {
-      checkOutMutation.mutate({ childId, forDate, attendanceId });
+    (childId: number, forDate: string, attendanceId: number, checkInTime?: string | null) => {
+      checkOutMutation.mutate({ childId, forDate, attendanceId, checkInTime });
     },
     [checkOutMutation]
   );
@@ -227,10 +283,11 @@ export default function AttendancePage() {
       field: 'check_in_time' | 'check_out_time';
       time: string;
     }) => {
-      const localDate = new Date(`${forDate}T${time}:00`);
-      const isoTime = localDate.toISOString();
+      const [hours, minutes] = time.split(':').map(Number);
+      const onThatDay = new Date();
+      onThatDay.setHours(hours, minutes, 0, 0);
       return apiClient.updateChildAttendance(orgId, childId, attendanceId, {
-        [field]: isoTime,
+        [field]: timestampOnDate(forDate, onThatDay),
       });
     },
     onSuccess: (_data, variables) => {
@@ -412,8 +469,9 @@ export default function AttendancePage() {
             </div>
           ) : (
             <AttendanceWeekTable
-              childRecords={weekChildren ?? []}
+              childRecords={weekChildren}
               attendanceByDate={weekAttendanceByDate}
+              enrolledByDate={enrolledByDate}
               onCheckIn={handleCheckIn}
               onCheckOut={handleCheckOut}
               onUpdateTime={handleUpdateTime}

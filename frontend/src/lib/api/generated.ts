@@ -2426,7 +2426,7 @@ export interface components {
        * @description nil for open-ended (6+)
        * @example 3
        */
-      max_age: number;
+      max_age?: number;
       /** @example 3 */
       min_age: number;
     };
@@ -2495,11 +2495,11 @@ export interface components {
        */
       ip_anonymized: boolean;
       /** @example 1 */
-      organization_id: number;
+      organization_id?: number;
       /** @example 4b89e4e0-6c37-4e1c-9a78-5d34b2a5f9a1 */
       request_id: string;
       /** @example 42 */
-      resource_id: number;
+      resource_id?: number;
       /** @example employee */
       resource_type: string;
       /** @example true */
@@ -2509,7 +2509,7 @@ export interface components {
       /** @example admin@example.com */
       user_email: string;
       /** @example 1 */
-      user_id: number;
+      user_id?: number;
     };
     BackupCodesPayload: {
       /**
@@ -2590,7 +2590,7 @@ export interface components {
        * Format: date-time
        * @example 2024-12-31T00:00:00Z
        */
-      to: string;
+      to?: string;
       /** Format: date-time */
       updated_at: string;
     };
@@ -2612,7 +2612,7 @@ export interface components {
     };
     BudgetItemResponse: {
       /** @example 50000 */
-      active_amount_cents: number;
+      active_amount_cents?: number;
       /** @example income */
       category: string;
       /** Format: date-time */
@@ -2691,12 +2691,12 @@ export interface components {
        * Format: date-time
        * @example 2025-06-15T08:00:00Z
        */
-      check_in_time: string;
+      check_in_time: string | null;
       /**
        * Format: date-time
        * @example 2025-06-15T16:00:00Z
        */
-      check_out_time: string;
+      check_out_time: string | null;
       /** @example 1 */
       child_id: number;
       /** @example Emma Schmidt */
@@ -2717,7 +2717,7 @@ export interface components {
        *     should render "anonymous" or similar when the field is absent.
        * @example 1
        */
-      recorded_by: number;
+      recorded_by?: number;
       /** @example present */
       status: string;
       /** Format: date-time */
@@ -2743,7 +2743,7 @@ export interface components {
     };
     ChildBillingHistoryEntryResponse: {
       /** @example 3 */
-      age: number;
+      age?: number;
       /** @example 2025-11-01 */
       bill_from: string;
       /** @example 1 */
@@ -2755,15 +2755,15 @@ export interface components {
       /** @example 01.20 */
       birth_date: string;
       /** @example 166847 */
-      calculated_total: number;
+      calculated_total?: number;
       /** @example Mustermann, Max */
       child_name: string;
       /** @example 99 */
-      contract_id: number;
+      contract_id?: number;
       /** @example 0 */
       correction_total: number;
       /** @example 0 */
-      difference: number;
+      difference?: number;
       /** @example Kita Sonnenschein */
       facility_name: string;
       properties: components['schemas']['FundingComparisonAmount'][];
@@ -2880,12 +2880,12 @@ export interface components {
       /** @example 2 */
       section_id: number;
       /** @example Krippe */
-      section_name: string;
+      section_name?: string;
       /**
        * Format: date-time
        * @example 2025-12-31
        */
-      to: string;
+      to: string | null;
       /** Format: date-time */
       updated_at: string;
       /**
@@ -2956,7 +2956,7 @@ export interface components {
        * @example 2020-03-10
        */
       birthdate: string;
-      contracts: components['schemas']['ChildContractResponse'][];
+      contracts?: components['schemas']['ChildContractResponse'][];
       /** Format: date-time */
       created_at: string;
       /** @example Emma */
@@ -2977,10 +2977,10 @@ export interface components {
        * @description Carries a yaml tag like its neighbours so a YAML round-trip preserves it.
        * @example 2028-08-01
        */
-      school_entry_date: string;
+      school_entry_date?: string;
       /** Format: date-time */
       updated_at: string;
-      vouchers: string[];
+      vouchers?: string[];
     };
     ChildUpdateRequest: {
       /** @example 2020-03-10 */
@@ -3046,7 +3046,7 @@ export interface components {
        * @example 2028-08-01
        */
       school_entry_date: string;
-      suggestions: components['schemas']['VoucherSuggestion'][];
+      suggestions?: components['schemas']['VoucherSuggestion'][];
       /** Format: date-time */
       updated_at: string;
       vouchers: string[];
@@ -3229,12 +3229,12 @@ export interface components {
       /** @example 1 */
       payplan_id: number;
       /** @example TV eene meene */
-      payplan_name: string;
+      payplan_name?: string;
       properties: components['schemas']['ContractProperties'];
       /** @example 2 */
       section_id: number;
       /** @example Krippe */
-      section_name: string;
+      section_name?: string;
       /** @example qualified */
       staff_category: string;
       /** @example 3 */
@@ -3243,7 +3243,7 @@ export interface components {
        * Format: date-time
        * @example 2025-12-31
        */
-      to: string;
+      to: string | null;
       /** Format: date-time */
       updated_at: string;
       /**
@@ -3316,7 +3316,7 @@ export interface components {
        * @example 1990-05-15
        */
       birthdate: string;
-      contracts: components['schemas']['EmployeeContractResponse'][];
+      contracts?: components['schemas']['EmployeeContractResponse'][];
       /** Format: date-time */
       created_at: string;
       /** @example Max */
@@ -3386,7 +3386,7 @@ export interface components {
        * @description InvalidParams lists the fields a validation error rejected, so a form can
        *     mark the offending inputs instead of showing one sentence above all of them.
        */
-      invalid_params: components['schemas']['InvalidParam'][];
+      invalid_params?: components['schemas']['InvalidParam'][];
       /**
        * @description Localized carries the user-facing rendering when the client negotiated a
        *     language the catalogue covers. The members above stay English, always:
@@ -3395,13 +3395,13 @@ export interface components {
        *     whoever is handling it. This follows Google's AIP-193, where the
        *     developer-facing message and the localized one travel together.
        */
-      localized: components['schemas']['LocalizedMessage'];
+      localized?: components['schemas']['LocalizedMessage'];
       /**
        * @description Params carries the specifics of this occurrence as key/value data, so a
        *     client that renders in another language can interpolate them into its own
        *     message instead of parsing them back out of Detail.
        */
-      params: {
+      params?: {
         [key: string]: string;
       };
       /**
@@ -3449,7 +3449,7 @@ export interface components {
     FactorActivateResponse: {
       /** @example true */
       activated: boolean;
-      backup_codes: components['schemas']['BackupCodesPayload'];
+      backup_codes?: components['schemas']['BackupCodesPayload'];
     };
     FactorDeleteRequest: {
       /** @example 123456 */
@@ -3502,11 +3502,11 @@ export interface components {
        *     "backup_codes"; nil otherwise.
        * @example 7
        */
-      backup_codes_remaining: number;
+      backup_codes_remaining?: number;
       /** Format: date-time */
       created_at: string;
       /** Format: date-time */
-      enabled_at: string;
+      enabled_at?: string;
       /** @description Populated only on the enrollment response. Which member appears follows the factor's type: totp, backup_codes, or webauthn. */
       enrollment?:
         | components['schemas']['TOTPEnrollmentPayload']
@@ -3515,9 +3515,9 @@ export interface components {
       /** @example 42 */
       id: number;
       /** @example Authenticator app */
-      label: string;
+      label?: string;
       /** Format: date-time */
-      last_used_at: string;
+      last_used_at?: string;
       /**
        * @example totp
        * @enum {string}
@@ -3541,17 +3541,17 @@ export interface components {
        * @description Actual funding from government funding bills
        * @example 5100000
        */
-      actual_funding: number;
+      actual_funding?: number;
       /**
        * @description cents, correction rows only
        * @example 100000
        */
-      actual_funding_correction: number;
+      actual_funding_correction?: number;
       /**
        * @description cents, regular billing only
        * @example 5000000
        */
-      actual_funding_regular: number;
+      actual_funding_regular?: number;
       /**
        * @description cents (income - expenses)
        * @example 230000
@@ -3568,7 +3568,7 @@ export interface components {
        */
       budget_income: number;
       /** @description Breakdowns */
-      budget_item_details: components['schemas']['FinancialBudgetItemDetail'][];
+      budget_item_details?: components['schemas']['FinancialBudgetItemDetail'][];
       /**
        * @description Counts
        * @example 45
@@ -3581,7 +3581,7 @@ export interface components {
        * @example 770000
        */
       employer_costs: number;
-      funding_details: components['schemas']['FinancialFundingDetail'][];
+      funding_details?: components['schemas']['FinancialFundingDetail'][];
       /**
        * @description Income
        * @example 5000000
@@ -3592,7 +3592,7 @@ export interface components {
        * @example 3500000
        */
       gross_salary: number;
-      salary_details: components['schemas']['FinancialSalaryDetail'][];
+      salary_details?: components['schemas']['FinancialSalaryDetail'][];
       /** @example 12 */
       staff_count: number;
       /**
@@ -3618,7 +3618,7 @@ export interface components {
     };
     FinancialResponse: {
       data_points: components['schemas']['FinancialDataPoint'][];
-      warnings: components['schemas']['CalculationWarning'][];
+      warnings?: components['schemas']['CalculationWarning'][];
     };
     FinancialSalaryDetail: {
       /** @example 66000 */
@@ -3733,23 +3733,23 @@ export interface components {
       to?: string;
     };
     ForecastResponse: {
-      employee_staffing_hours: components['schemas']['EmployeeStaffingHoursResponse'];
-      financials: components['schemas']['FinancialResponse'];
-      occupancy: components['schemas']['OccupancyResponse'];
-      staffing_hours: components['schemas']['StaffingHoursResponse'];
-      warnings: components['schemas']['CalculationWarning'][];
+      employee_staffing_hours?: components['schemas']['EmployeeStaffingHoursResponse'];
+      financials?: components['schemas']['FinancialResponse'];
+      occupancy?: components['schemas']['OccupancyResponse'];
+      staffing_hours?: components['schemas']['StaffingHoursResponse'];
+      warnings?: components['schemas']['CalculationWarning'][];
     };
     FundingComparisonAmount: {
       /**
        * @description nil if not in bill
        * @example 166847
        */
-      bill_amount: number;
+      bill_amount: number | null;
       /**
        * @description nil if not calculable
        * @example 166847
        */
-      calculated_amount: number;
+      calculated_amount: number | null;
       /**
        * @description bill - calc (0 if either nil)
        * @example 0
@@ -3776,26 +3776,26 @@ export interface components {
     };
     FundingComparisonChild: {
       /** @example 3 */
-      age: number;
-      bill_appearances: components['schemas']['BillAppearance'][];
+      age?: number;
+      bill_appearances?: components['schemas']['BillAppearance'][];
       /** @example 166847 */
       bill_total: number;
       /** @example 01.20 */
       birth_date: string;
       /** @example 166847 */
-      calculated_total: number;
+      calculated_total?: number;
       /** @example 42 */
-      child_id: number;
+      child_id?: number;
       /** @example Mustermann, Max */
       child_name: string;
       /** @example 2024-01-01 */
-      contract_from: string;
+      contract_from?: string;
       /** @example 2025-12-31 */
-      contract_to: string;
+      contract_to?: string;
       /** @example 0 */
       correction_total: number;
       /** @example 0 */
-      difference: number;
+      difference?: number;
       properties: components['schemas']['FundingComparisonAmount'][];
       /**
        * @description match|difference|bill_only|calc_only
@@ -3817,7 +3817,7 @@ export interface components {
       /** @example property_mismatch */
       category: string;
       /** @example 42 */
-      child_id: number;
+      child_id?: number;
       /** @example Bagus, Nathan Albert */
       child_name: string;
       /** @example integration:integration b — in contract but not billed */
@@ -3896,11 +3896,11 @@ export interface components {
       /** @example 01.20 */
       birth_date: string;
       /** @example 42 */
-      child_id: number;
+      child_id?: number;
       /** @example Mustermann, Max */
       child_name: string;
       /** @example 99 */
-      contract_id: number;
+      contract_id?: number;
       /** @example 1 */
       district: number;
       /** @example true */
@@ -3948,7 +3948,7 @@ export interface components {
        *     (migration 000014 ON DELETE SET NULL).
        * @example 1
        */
-      created_by: number;
+      created_by?: number;
       /** @example Kita Sonnenschein */
       facility_name: string;
       /** @example 500000 */
@@ -4038,7 +4038,7 @@ export interface components {
       government_funding_id: number;
       /** @example 1 */
       id: number;
-      properties: components['schemas']['GovernmentFundingProperty'][];
+      properties?: components['schemas']['GovernmentFundingProperty'][];
       /** Format: date-time */
       to: string;
       /**
@@ -4086,7 +4086,7 @@ export interface components {
        * Format: date-time
        * @example 2024-02-29
        */
-      to: string;
+      to: string | null;
       /**
        * Format: date-time
        * @example 2024-01-15T10:30:00Z
@@ -4132,9 +4132,9 @@ export interface components {
       /** @example Ganztag */
       label: string;
       /** @example 3 */
-      max_age: number;
+      max_age?: number;
       /** @example 0 */
-      min_age: number;
+      min_age?: number;
       /** @example 166847 */
       payment: number;
       /** @example 1 */
@@ -4181,9 +4181,9 @@ export interface components {
       /** @example Ganztag */
       label: string;
       /** @example 3 */
-      max_age: number;
+      max_age?: number;
       /** @example 0 */
-      min_age: number;
+      min_age?: number;
       /** @example 166847 */
       payment: number;
       /** @example 1 */
@@ -4284,11 +4284,11 @@ export interface components {
        *     to expose: credential ids are public by WebAuthn design.
        * @example AQIDBAU...
        */
-      credential_id: string;
+      credential_id?: string;
       /** @example 42 */
       id: number;
       /** @example iPhone */
-      label: string;
+      label?: string;
       /**
        * @example totp
        * @enum {string}
@@ -4681,9 +4681,9 @@ export interface components {
       /** @example /api/v1/users?page=5&limit=20 */
       last: string;
       /** @example /api/v1/users?page=3&limit=20 */
-      next: string;
+      next?: string;
       /** @example /api/v1/users?page=1&limit=20 */
-      prev: string;
+      prev?: string;
       /** @example /api/v1/users?page=2&limit=20 */
       self: string;
     };
@@ -4728,7 +4728,7 @@ export interface components {
       /** @example 3 */
       step: number;
       /** @example 3 */
-      step_min_years: number;
+      step_min_years?: number;
       /** Format: date-time */
       updated_at: string;
     };
@@ -4769,7 +4769,7 @@ export interface components {
        * @example 2200
        */
       employer_contribution_rate: number;
-      entries: components['schemas']['PayPlanEntryResponse'][];
+      entries?: components['schemas']['PayPlanEntryResponse'][];
       /**
        * Format: date-time
        * @example 2024-01-01T00:00:00Z
@@ -4783,7 +4783,7 @@ export interface components {
        * Format: date-time
        * @example 2024-12-31T00:00:00Z
        */
-      to: string;
+      to?: string;
       /** Format: date-time */
       updated_at: string;
       /** @example 39 */
@@ -4855,9 +4855,9 @@ export interface components {
       /** @example false */
       is_default: boolean;
       /** @example 36 */
-      max_age_months: number;
+      max_age_months?: number;
       /** @example 0 */
-      min_age_months: number;
+      min_age_months?: number;
       /** @example Krippe */
       name: string;
       /** @example 1 */
@@ -4941,7 +4941,7 @@ export interface components {
       child_name: string;
       /** @example 11 */
       district: number;
-      existing_child_match: components['schemas']['ExistingChildMatchResponse'];
+      existing_child_match?: components['schemas']['ExistingChildMatchResponse'];
       /** @example Max */
       first_name: string;
       /** @example 2025-01-01 */
@@ -4973,7 +4973,7 @@ export interface components {
       password: string;
     };
     UserMembership: {
-      organization: components['schemas']['Organization'];
+      organization?: components['schemas']['Organization'];
       /** @example 1 */
       organization_id: number;
       /**
@@ -4995,7 +4995,7 @@ export interface components {
       created_at: string;
       /** @example admin@example.com */
       created_by: string;
-      organization: components['schemas']['Organization'];
+      organization?: components['schemas']['Organization'];
       /** @example 1 */
       organization_id: number;
       /**
@@ -5050,7 +5050,7 @@ export interface components {
        * Format: date-time
        * @example 2024-01-15T10:30:00Z
        */
-      last_login: string;
+      last_login: string | null;
       /** @example John Doe */
       name: string;
       /**

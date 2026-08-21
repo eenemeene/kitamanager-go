@@ -1009,6 +1009,8 @@
     "create": "Anwesenheit erfassen",
     "deleteConfirm": "Möchten Sie diesen Anwesenheitseintrag wirklich löschen?",
     "noChildren": "Keine Kinder mit aktiven Verträgen für dieses Datum.",
+    "notEnrolled": "Nicht angemeldet",
+    "notEnrolledTooltip": "An diesem Tag kein laufender Vertrag",
     "quickMark": "Schnell markieren",
     "previousDay": "Vorheriger Tag",
     "nextDay": "Nächster Tag",

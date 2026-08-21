@@ -8,25 +8,79 @@ export function toUTCDate(d: string): number {
 }
 
 /**
- * Start-of-day timestamp for "today" as a calendar date in Europe/Berlin.
+ * The calendar date an instant falls on in Europe/Berlin, as "YYYY-MM-DD".
  *
- * This mirrors the backend's `models.Today()` (the canonical "what date is
- * it?" source, defaulting to Europe/Berlin). Deriving "today" from the
- * browser's *UTC* day instead would be off by one for a Berlin user in the
- * post-midnight window (00:00–01:00/02:00 local is still "yesterday" in UTC),
- * making contract-status badges and the active-contract pick disagree with
- * the server. Returned as a UTC-midnight timestamp so it compares directly
- * against `toUTCDate(period.from)`.
+ * This is the frontend's `models.Today()`: the one place that answers "what
+ * date is it?", anchored to the application timezone rather than to whatever
+ * zone the browser happens to be in. Everything that needs today — list
+ * filters, contract-start defaults, "fetch the active roster" — goes through
+ * this or `todayBerlin()` below, so that the client and the server never
+ * disagree about which day it is.
+ *
+ * Two ways they used to disagree, both real:
+ *
+ *   - The browser is behind Berlin. At 20:00 in New York it is already 02:00
+ *     the next day in Berlin, so a "tomorrow" default computed from the local
+ *     clock lands on the day the server already calls today — and the amend
+ *     threshold, which compares against `models.Today()`, rejects it.
+ *   - The browser *is* Berlin but the code derived the day from UTC. Between
+ *     midnight and 01:00/02:00 local, UTC is still on yesterday.
+ *
+ * `en-CA` is not a display choice: its short date format is ISO 8601, so
+ * `formatToParts` hands back zero-padded numeric year/month/day with no
+ * locale-specific reordering to undo.
  */
-export function todayBerlin(): number {
-  const parts = new Intl.DateTimeFormat('en-US', {
+export function berlinDateString(instant: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Berlin',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).formatToParts(new Date());
-  const get = (type: string) => Number(parts.find((p) => p.type === type)!.value);
-  return Date.UTC(get('year'), get('month') - 1, get('day'));
+  }).formatToParts(instant);
+  const get = (type: string) => parts.find((p) => p.type === type)!.value;
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+/** Today's calendar date in Europe/Berlin, as "YYYY-MM-DD". */
+export function todayBerlinString(): string {
+  return berlinDateString();
+}
+
+/**
+ * Today's calendar date in Europe/Berlin, as a `Date` at local midnight.
+ *
+ * For the places that hold a date in component state and hand it to a picker or
+ * a `date-fns` calculation. Local midnight rather than UTC midnight because
+ * that is what `toLocalDateString` and `date-fns` read back, so the value
+ * survives the round trip as the same calendar day.
+ */
+export function todayBerlinDate(): Date {
+  return new Date(`${todayBerlinString()}T00:00:00`);
+}
+
+/**
+ * Start-of-day timestamp for "today" as a calendar date in Europe/Berlin.
+ *
+ * The numeric counterpart of `todayBerlinString()`, returned as a UTC-midnight
+ * timestamp so it compares directly against `toUTCDate(period.from)`.
+ */
+export function todayBerlin(): number {
+  return toUTCDate(todayBerlinString());
+}
+
+/**
+ * Shift a "YYYY-MM-DD" date string by whole days, returning the same shape.
+ *
+ * Pure calendar arithmetic on the date parts — no local-midnight `Date` in the
+ * middle, which is what made the older helpers shift by an extra day in zones
+ * behind UTC. Handles month, year and leap boundaries via `Date.UTC`'s own
+ * normalisation.
+ */
+export function addDaysToDateString(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.slice(0, 10).split('-').map(Number);
+  const shifted = new Date(Date.UTC(y, m - 1, d + days));
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}`;
 }
 
 /**
@@ -96,15 +150,14 @@ export function getCurrentContract<T extends { from: string; to?: string | null 
 }
 
 /**
- * Get the day before a given date string (YYYY-MM-DD format)
+ * Get the day before a given date string.
+ *
+ * Accepts either "YYYY-MM-DD" or a full RFC3339 timestamp, and answers in
+ * "YYYY-MM-DD" — callers pass both, since a contract's `from` arrives from the
+ * API as `2025-01-15T00:00:00Z` but is edited as a bare date.
  */
 export function getDayBefore(dateStr: string): string {
-  const date = new Date(`${dateStr}T00:00:00`);
-  date.setDate(date.getDate() - 1);
-  const y = date.getFullYear();
-  const m = (date.getMonth() + 1).toString().padStart(2, '0');
-  const d = date.getDate().toString().padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  return addDaysToDateString(dateStr, -1);
 }
 
 /**

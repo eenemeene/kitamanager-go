@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiClient } from '@/lib/api/client';
+import { useAuthStore } from '@/stores/auth-store';
 import { queryKeys } from '@/lib/api/queryKeys';
 import type {
   FactorActivateResponse,
@@ -15,9 +16,17 @@ import type {
 // cheap (one query, backed by the REST /users/me/factors endpoint)
 // and the result is the exact shape the Settings TwoFactorCard needs.
 export function useFactors() {
+  // Keyed by who is asking. `/users/me/factors` resolves the user from the
+  // session cookie, so the request is right either way -- but the cache entry
+  // was not, and a same-tab account switch served the previous user's factors.
+  const userId = useAuthStore((s) => s.user?.id);
   return useQuery<FactorListResponse>({
-    queryKey: queryKeys.factors.all(),
+    queryKey: queryKeys.factors.all(userId),
     queryFn: () => apiClient.listMyFactors(),
+    // Deliberately not gated on `userId`: the request resolves the user from
+    // the session cookie, so it is valid before the store has hydrated. Gating
+    // it would mean a failed `loadUser` left the settings page permanently
+    // empty. The id is here to separate cache entries, nothing more.
   });
 }
 
@@ -58,7 +67,7 @@ export function useActivateFactor() {
     mutationFn: ({ factorId, code, webauthnResponse }) =>
       apiClient.activateFactor(factorId, { code, webauthnResponse }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.factors.all() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.factors.root() });
     },
   });
 }
@@ -77,7 +86,7 @@ export function useRegenerateBackupCodes() {
     mutationFn: ({ factorId, password, code }) =>
       apiClient.regenerateBackupCodes(factorId, password, code),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.factors.all() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.factors.root() });
     },
   });
 }
@@ -91,7 +100,7 @@ export function useDeleteFactor() {
   return useMutation<void, Error, { factorId: number; password: string; code?: string }>({
     mutationFn: ({ factorId, password, code }) => apiClient.deleteFactor(factorId, password, code),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.factors.all() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.factors.root() });
     },
   });
 }

@@ -6,6 +6,10 @@ import { renderWithProviders } from '@/test-utils';
 
 jest.mock('@/lib/api/client', () => ({
   apiClient: {
+    // The auth store registers this at module scope, and these components now
+    // reach it for the current user's id. A mock without it fails the whole
+    // suite at import time.
+    setOnUnauthorized: jest.fn(),
     getSessions: jest.fn(),
     revokeSession: jest.fn(),
   },

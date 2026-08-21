@@ -74,20 +74,28 @@ export function useContractMutation<TCreateData, TAmendData, TContract, TAmendRe
       if (entity && endCurrentContract) {
         const active = getActiveContract(entity.contracts);
         if (active) {
-          return config.amendFn(entityId, active.id, active.version, config.toAmendData(data));
+          const result = await config.amendFn(
+            entityId,
+            active.id,
+            active.version,
+            config.toAmendData(data)
+          );
+          return { result, amended: true };
         }
       }
-      return config.createFn(entityId, data);
+      return { result: await config.createFn(entityId, data), amended: false };
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
       feedback.invalidate(config.invalidateQueryKeys);
       if (config.extraInvalidateKeys) {
         feedback.invalidate(config.extraInvalidateKeys(variables.entityId));
       }
+      // What actually happened, not what was asked for. Ticking the box with no
+      // active contract to end falls through to a plain create, and the toast
+      // still announced that the previous contract had been ended -- naming an
+      // operation that did not occur, on a screen about contract history.
       feedback.notifySuccess(
-        variables.endCurrentContract
-          ? t('contracts.previousContractEnded')
-          : t('contracts.createSuccess')
+        data.amended ? t('contracts.previousContractEnded') : t('contracts.createSuccess')
       );
       config.onSuccess?.();
     },
