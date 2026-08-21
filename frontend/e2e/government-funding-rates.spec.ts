@@ -32,9 +32,7 @@ test.describe('Government Fundings', () => {
     });
 
     test('should display government fundings list', async ({ page }) => {
-      await expect(
-        page.getByRole('heading', { name: /government funding/i }).first()
-      ).toBeVisible();
+      await expect(page.getByRole('heading', { name: /funding rate/i }).first()).toBeVisible();
       await expect(page.locator('table, [role="table"]')).toBeVisible({ timeout: 10000 });
     });
 
