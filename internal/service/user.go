@@ -150,8 +150,12 @@ func (s *UserService) Update(ctx context.Context, id uint, req *models.UserUpdat
 		return nil, apperror.NotFound("user")
 	}
 
-	if err := s.guardSuperAdminTarget(ctx, requesterID, id, "modify"); err != nil {
+	protected, err := s.targetIsProtectedSuperAdmin(ctx, requesterID, id)
+	if err != nil {
 		return nil, err
+	}
+	if protected {
+		return nil, apperror.Forbidden("only superadmins can modify a superadmin")
 	}
 
 	user, err := s.store.FindByID(ctx, id)
@@ -189,8 +193,12 @@ func (s *UserService) Update(ctx context.Context, id uint, req *models.UserUpdat
 	// superadmin to call it.
 	deactivating := req.Active != nil && !*req.Active && user.Active
 	if deactivating && user.IsSuperAdmin {
-		if err := s.guardLastSuperAdmin(ctx, id, "deactivate"); err != nil {
+		orphan, err := s.removingWouldOrphanSuperAdmins(ctx, id)
+		if err != nil {
 			return nil, err
+		}
+		if orphan {
+			return nil, apperror.BadRequest("cannot deactivate the last superadmin")
 		}
 	}
 	if req.Active != nil {
@@ -309,15 +317,13 @@ func (s *UserService) ResetPassword(ctx context.Context, userID uint, newPasswor
 		return err
 	}
 
-	// Prevent non-superadmin from resetting a superadmin's password
-	if user.IsSuperAdmin {
-		requesterIsSuperAdmin, err := s.userOrgStore.IsSuperAdmin(ctx, requesterID)
-		if err != nil {
-			return apperror.InternalWrap(err, "failed to check superadmin status")
-		}
-		if !requesterIsSuperAdmin {
-			return apperror.Forbidden("only superadmins can reset a superadmin's password")
-		}
+	// Prevent non-superadmin from resetting a superadmin's password.
+	protected, err := s.targetIsProtectedSuperAdmin(ctx, requesterID, userID)
+	if err != nil {
+		return err
+	}
+	if protected {
+		return apperror.Forbidden("only superadmins can reset a superadmin's password")
 	}
 
 	// Verify the requester has admin-level access to the target user
@@ -357,8 +363,12 @@ func (s *UserService) Delete(ctx context.Context, id uint, requesterID uint) err
 		return apperror.NotFound("user")
 	}
 
-	if err := s.guardSuperAdminTarget(ctx, requesterID, id, "delete"); err != nil {
+	protected, err := s.targetIsProtectedSuperAdmin(ctx, requesterID, id)
+	if err != nil {
 		return err
+	}
+	if protected {
+		return apperror.Forbidden("only superadmins can delete a superadmin")
 	}
 
 	// Prevent deleting the last superadmin
@@ -367,8 +377,12 @@ func (s *UserService) Delete(ctx context.Context, id uint, requesterID uint) err
 		return classifyStoreError(err, "user")
 	}
 	if user.IsSuperAdmin {
-		if err := s.guardLastSuperAdmin(ctx, id, "delete"); err != nil {
+		orphan, err := s.removingWouldOrphanSuperAdmins(ctx, id)
+		if err != nil {
 			return err
+		}
+		if orphan {
+			return apperror.BadRequest("cannot delete the last superadmin")
 		}
 	}
 
@@ -439,8 +453,12 @@ func (s *UserService) HardDelete(ctx context.Context, id uint, requesterID uint)
 		return classifyStoreError(err, "user")
 	}
 	if user.IsSuperAdmin {
-		if err := s.guardLastSuperAdmin(ctx, id, "purge"); err != nil {
+		orphan, err := s.removingWouldOrphanSuperAdmins(ctx, id)
+		if err != nil {
 			return err
+		}
+		if orphan {
+			return apperror.BadRequest("cannot purge the last superadmin")
 		}
 	}
 	if err := s.store.HardDelete(ctx, id); err != nil {
@@ -449,63 +467,65 @@ func (s *UserService) HardDelete(ctx context.Context, id uint, requesterID uint)
 	return nil
 }
 
-// guardSuperAdminTarget refuses an action by a non-superadmin against a
-// superadmin target. `action` names the operation for the message, e.g.
-// "deactivate" — the rule is one rule, but a caller is better served by being
-// told which of their actions was refused.
+// targetIsProtectedSuperAdmin reports whether the target is a superadmin the
+// requester has no standing to act on. A superadmin may act on a peer, and
+// anyone may act on themselves.
 //
-// This is deliberately a separate gate from verifyRequesterCanModifyUser rather
-// than a branch inside it. That function's callers flatten every failure to
-// NotFound to avoid confirming a user's existence, which is right for "you have
-// no admin relationship with this person" and wrong here: an org admin can
-// already read a superadmin peer through GET /users/{id}, so answering 404 on
-// the write would be a lie they can trivially detect. Forbidden is the honest
-// answer and leaks nothing new.
+// A predicate rather than a guard that formats its own refusal, because the
+// refusal has to be a message the translator can reach. Parameterising the verb
+// — "only superadmins can %s a superadmin" — reads fine in Go and is unusable in
+// German: the catalogue's existing entries are whole sentences
+// ("Nur Superadmins können das Passwort eines Superadmins zurücksetzen"), which
+// no amount of verb interpolation will build. Callers therefore emit their own
+// registered literal, and this holds only the rule.
 //
-// Not applied to HardDelete: that route is superadmin-only at the router, and
-// its target may already be tombstoned, where IsSuperAdmin reports false
-// because the lookup is soft-delete scoped. A check there would be decoration.
-func (s *UserService) guardSuperAdminTarget(ctx context.Context, requesterID, targetUserID uint, action string) error {
+// Separate from verifyRequesterCanModifyUser, whose callers flatten failures to
+// NotFound to avoid confirming a user's existence. That is right for "no admin
+// relationship" and wrong here: an org admin can already read a superadmin peer
+// through GET /users/{id}, so 404 on the write would be a detectable lie.
+// Forbidden is honest and leaks nothing new.
+//
+// Not consulted by HardDelete: that route is superadmin-only at the router, and
+// its target may already be tombstoned, where IsSuperAdmin reports false because
+// the lookup is soft-delete scoped.
+func (s *UserService) targetIsProtectedSuperAdmin(ctx context.Context, requesterID, targetUserID uint) (bool, error) {
 	if requesterID == targetUserID {
-		return nil
+		return false, nil
 	}
 
 	targetIsSuperAdmin, err := s.userOrgStore.IsSuperAdmin(ctx, targetUserID)
 	if err != nil {
-		return apperror.InternalWrap(err, "failed to check superadmin status")
+		return false, apperror.InternalWrap(err, "failed to check superadmin status")
 	}
 	if !targetIsSuperAdmin {
-		return nil
+		return false, nil
 	}
 
 	requesterIsSuperAdmin, err := s.userOrgStore.IsSuperAdmin(ctx, requesterID)
 	if err != nil {
-		return apperror.InternalWrap(err, "failed to check superadmin status")
+		return false, apperror.InternalWrap(err, "failed to check superadmin status")
 	}
-	if !requesterIsSuperAdmin {
-		return apperror.Forbidden("only superadmins can %s a superadmin", action)
-	}
-	return nil
+	return !requesterIsSuperAdmin, nil
 }
 
-// guardLastSuperAdmin refuses an operation that would leave nobody able to sign
-// in as a superadmin. `action` names the operation for the message.
+// removingWouldOrphanSuperAdmins reports whether taking this user out would
+// leave nobody able to sign in as a superadmin.
 //
-// Called from every path that can remove a superadmin's powers — delete, purge,
+// Consulted by every path that can strip a superadmin's powers — delete, purge,
 // deactivate, demote — because the lockout is identical whichever door it comes
-// through, and the deactivate door was the one left open. Deactivation revokes
-// every session and RequireAuth refuses inactive accounts, so a deactivated last
-// superadmin is as unrecoverable as a deleted one: SetSuperAdmin is
-// superadmin-only, so no remaining role can promote a replacement.
-func (s *UserService) guardLastSuperAdmin(ctx context.Context, targetUserID uint, action string) error {
+// through, and deactivate was the door left open. An inactive account fails
+// RequireAuth and its sessions are revoked, so a deactivated last superadmin is
+// as unrecoverable as a deleted one: SetSuperAdmin is superadmin-only, so no
+// remaining role can promote a replacement.
+//
+// Like the predicate above, it returns a fact rather than a refusal so each
+// caller can raise the registered message for its own action.
+func (s *UserService) removingWouldOrphanSuperAdmins(ctx context.Context, targetUserID uint) (bool, error) {
 	remaining, err := s.userOrgStore.CountUsableSuperAdminsExcluding(ctx, targetUserID)
 	if err != nil {
-		return apperror.InternalWrap(err, "failed to count superadmins")
+		return false, apperror.InternalWrap(err, "failed to count superadmins")
 	}
-	if remaining == 0 {
-		return apperror.BadRequest("cannot %s the last superadmin", action)
-	}
-	return nil
+	return remaining == 0, nil
 }
 
 // verifyRequesterCanModifyUser checks that the requester can modify the target user.

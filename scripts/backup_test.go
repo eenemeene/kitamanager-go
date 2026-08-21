@@ -159,12 +159,18 @@ func seedData(t *testing.T, db *gorm.DB) {
 	}
 	must(t, db.Create(empContract).Error)
 
+	// WeeklyHours is the divisor in the salary calculation, so it has to be a
+	// real value: the zero value this fixture used to rely on is exactly the
+	// input that produced +Inf and an implementation-defined int conversion,
+	// and migration 000026 now rejects it at the DB.
 	payPlanPeriod := &models.PayPlanPeriod{
 		PayPlanID: payPlan.ID,
 		Period: models.Period{
 			From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 			To:   timePtr(time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)),
 		},
+		WeeklyHours:              39.0,
+		EmployerContributionRate: 2100,
 	}
 	must(t, db.Create(payPlanPeriod).Error)
 
