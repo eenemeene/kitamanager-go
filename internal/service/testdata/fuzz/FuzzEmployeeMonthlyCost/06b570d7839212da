@@ -1,0 +1,5 @@
+go test fuzz v1
+int(9223372036854775772)
+float64(100)
+float64(100)
+int(9988)

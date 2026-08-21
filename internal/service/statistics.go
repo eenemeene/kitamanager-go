@@ -429,7 +429,17 @@ func (s *StatisticsService) EstimateEmployeeCost(ctx context.Context, orgID uint
 		return nil, apperror.NotFound("pay plan entry for grade %s step %d", req.Grade, req.Step)
 	}
 
-	gross, contrib := employeeMonthlyCost(entry.MonthlyAmount, req.WeeklyHours, period.WeeklyHours, period.EmployerContributionRate)
+	gross, contrib, ok := employeeMonthlyCost(entry.MonthlyAmount, req.WeeklyHours, period.WeeklyHours, period.EmployerContributionRate)
+	if !ok {
+		// The period exists but cannot produce a figure — weekly_hours is the
+		// divisor and is zero or otherwise unusable. Refusing is the whole
+		// point: the alternative is answering 200 with a number nobody should
+		// act on. Conflict rather than NotFound because the period is there;
+		// it is its state that blocks the calculation.
+		return nil, apperror.Conflict(
+			"pay plan period has invalid weekly hours (%v) and cannot be used to estimate a salary",
+			period.WeeklyHours)
+	}
 
 	return &models.EmployeeCostEstimateResponse{
 		Date:                     date.Format(models.DateFormat),

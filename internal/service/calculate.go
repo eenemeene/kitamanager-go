@@ -30,10 +30,68 @@ type resolvedPayPlanPeriod struct {
 
 // employeeMonthlyCost computes gross salary and employer contribution for a single
 // employee contract's parameters against a resolved pay plan period + entry.
-func employeeMonthlyCost(monthlyAmount int, weeklyHours, periodWeeklyHours float64, employerContributionRate int) (gross, employerCosts int) {
-	gross = int(math.Round(float64(monthlyAmount) * weeklyHours / periodWeeklyHours))
-	employerCosts = int(math.Round(float64(gross) * float64(employerContributionRate) / 10000.0))
-	return
+//
+// Returns ok=false when the inputs cannot produce a meaningful figure, in which
+// case both amounts are zero. Callers must not treat that as "this employee
+// costs nothing" — a silent zero is a wrong number, and in a funding tool a
+// wrong number is worse than a refusal.
+//
+// The guard exists because periodWeeklyHours is a divisor. At zero the quotient
+// is +Inf and int(math.Round(+Inf)) is implementation-defined in Go: on amd64 it
+// yields math.MinInt64 truncated to int. No panic, no error — just nonsense
+// money flowing into /statistics/financials, the forecast and the estimate
+// endpoint. pay_plan_periods.weekly_hours had no CHECK constraint (migration
+// 000026 adds one), so the invariant lived only in validatePayPlanPeriodFields
+// and any row written around it produced exactly that.
+//
+// Checking the divisor alone is not enough. A very small but non-zero divisor
+// overflows the same way — 1e-300 against a large monthly amount exceeds the
+// int64 range long before the divisor reaches zero — so the computed value is
+// what gets range-checked, not just its inputs. NaN propagates through
+// comparisons as false, hence the explicit IsNaN tests rather than relying on
+// the bounds check to reject it.
+func employeeMonthlyCost(monthlyAmount int, weeklyHours, periodWeeklyHours float64, employerContributionRate int) (gross, employerCosts int, ok bool) {
+	if math.IsNaN(periodWeeklyHours) || math.IsInf(periodWeeklyHours, 0) || periodWeeklyHours <= 0 {
+		return 0, 0, false
+	}
+	if math.IsNaN(weeklyHours) || math.IsInf(weeklyHours, 0) || weeklyHours < 0 {
+		return 0, 0, false
+	}
+
+	grossFloat := math.Round(float64(monthlyAmount) * weeklyHours / periodWeeklyHours)
+	if !representableAsInt(grossFloat) {
+		return 0, 0, false
+	}
+	gross = int(grossFloat)
+
+	contribFloat := math.Round(float64(gross) * float64(employerContributionRate) / 10000.0)
+	if !representableAsInt(contribFloat) {
+		return 0, 0, false
+	}
+	employerCosts = int(contribFloat)
+
+	return gross, employerCosts, true
+}
+
+// representableAsInt reports whether f can be converted to int without the
+// conversion being implementation-defined. Go specifies the behaviour of a
+// float-to-int conversion only when the value is representable in the target
+// type; outside that range the result is whatever the platform does.
+//
+// The asymmetry between the two bounds is not a typo. math.MinInt is -2^63,
+// which float64 holds exactly, so >= is right. math.MaxInt is 2^63-1, which
+// float64 cannot hold — float64(math.MaxInt) rounds UP to 2^63, one past the
+// largest int. Writing <= there admits exactly the value that overflows, which
+// is how the first version of this guard still returned math.MinInt64 for a
+// monthly amount near the top of the range. The fuzzer found it in 19 seconds.
+//
+// Strict < is also tight rather than conservative: the largest float64 below
+// 2^63 is 9223372036854774784, comfortably inside int64.
+func representableAsInt(f float64) bool {
+	if math.IsNaN(f) || math.IsInf(f, 0) {
+		return false
+	}
+	return f >= float64(math.MinInt) && f < float64(math.MaxInt)
 }
 
 // buildFundingPeriodIndex pre-computes which funding period is active for each
@@ -332,7 +390,28 @@ func calculateFinancials(
 				continue
 			}
 
-			gross, contrib := employeeMonthlyCost(entry.MonthlyAmount, ec.WeeklyHours, resolved.period.WeeklyHours, resolved.period.EmployerContributionRate)
+			gross, contrib, ok := employeeMonthlyCost(entry.MonthlyAmount, ec.WeeklyHours, resolved.period.WeeklyHours, resolved.period.EmployerContributionRate)
+			if !ok {
+				// Same treatment as a missing pay-plan entry: exclude the
+				// contract and tell the caller why, rather than folding a
+				// meaningless zero into the org's salary total.
+				slog.Warn("pay plan period cannot produce a salary; salary not counted",
+					"employee_id", emp.ID, "contract_id", ec.ID, "payplan_id", ec.PayPlanID,
+					"period_weekly_hours", resolved.period.WeeklyHours,
+					"contract_weekly_hours", ec.WeeklyHours,
+					"date", date.Format(models.DateFormat))
+				addWarning(models.CalculationWarning{
+					Code:       "unusable_pay_plan_period",
+					Message:    "pay plan period has invalid weekly hours; salary excluded",
+					EmployeeID: emp.ID,
+					ContractID: ec.ID,
+					PayPlanID:  ec.PayPlanID,
+					Grade:      ec.Grade,
+					Step:       ec.Step,
+					Date:       date.Format(models.DateFormat),
+				})
+				continue
+			}
 			grossSalary += gross
 			employerCosts += contrib
 
