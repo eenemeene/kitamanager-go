@@ -13,7 +13,7 @@ async function ensureSidebarVisible(page: Page) {
     // Wait for React hydration so the click handler is attached
     await page.waitForTimeout(300);
     await hamburger.click();
-    await page.locator('div.fixed.inset-0.z-50').waitFor({ state: 'visible', timeout: 5000 });
+    await page.getByRole('dialog').waitFor({ state: 'visible', timeout: 5000 });
   }
 }
 
@@ -92,7 +92,7 @@ test.describe('Mobile Navigation', () => {
     await hamburger.click();
 
     // Sidebar navigation should appear (use role-based selector)
-    const sidebarNav = page.locator('div.fixed.inset-0.z-50 nav');
+    const sidebarNav = page.getByRole('dialog').locator('nav');
     await expect(sidebarNav).toBeVisible({ timeout: 5000 });
 
     // Close by clicking backdrop
@@ -111,7 +111,7 @@ test.describe('Mobile Navigation', () => {
     await page.waitForLoadState('load');
 
     await page.getByRole('button', { name: /menu/i }).click();
-    const overlay = page.locator('div.fixed.inset-0.z-50');
+    const overlay = page.getByRole('dialog');
     await expect(overlay).toBeVisible({ timeout: 10000 });
 
     // Wait past the redirect, then require the drawer to still be there.
@@ -130,6 +130,6 @@ test.describe('Mobile Navigation', () => {
 
     // The tap closes the drawer behind you and still navigates. Both, because
     // closing unmounts the anchor: do it too eagerly and the navigation is lost.
-    await expect(page.locator('div.fixed.inset-0.z-50')).not.toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 });
   });
 });

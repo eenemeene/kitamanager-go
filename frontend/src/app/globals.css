@@ -24,20 +24,25 @@
     --accent: 262 30% 95%;
     --accent-foreground: 262 50% 20%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 84% 41%;
     --destructive-foreground: 0 0% 100%;
 
+    /* --border is decorative (dividers, card edges) and stays light.
+       --input is the *boundary of a control*, which WCAG 1.4.11 requires to
+       reach 3:1 against its surface — at the old shared 90% it was 1.25:1 and
+       a text field was an invisible rectangle. The two roles need two values,
+       so the token that was shared is now split. */
     --border: 260 15% 90%;
-    --input: 260 15% 90%;
+    --input: 260 15% 61%;
     --ring: 262 83% 58%;
 
     --radius: 0.5rem;
 
-    --success: 142 71% 45%;
+    --success: 142 71% 26%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
+    --warning: 38 92% 28%;
     --warning-foreground: 0 0% 100%;
-    --info: 217 91% 60%;
+    --info: 217 91% 45%;
     --info-foreground: 0 0% 100%;
 
     --sidebar: 262 30% 97%;
@@ -57,8 +62,13 @@
     --popover: 262 25% 9%;
     --popover-foreground: 260 15% 93%;
 
-    --primary: 262 83% 65%;
-    --primary-foreground: 0 0% 100%;
+    /* In the dark theme these fills are *light*, so they carry dark ink, not
+       white. White on the old values ran 1.84:1 (warning) to 4.20:1 (primary) —
+       a success badge was effectively unreadable. Keeping the fill light also
+       keeps `text-primary` legible on the near-black ground, which is the other
+       half of the same token's job. */
+    --primary: 262 83% 66%;
+    --primary-foreground: 262 45% 8%;
 
     --secondary: 262 20% 16%;
     --secondary-foreground: 260 15% 93%;
@@ -70,24 +80,24 @@
     --accent-foreground: 260 15% 93%;
 
     --destructive: 0 84% 65%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 262 45% 8%;
 
     --border: 262 20% 16%;
-    --input: 262 20% 16%;
-    --ring: 262 83% 65%;
+    --input: 262 20% 45%;
+    --ring: 262 83% 66%;
 
     --success: 142 60% 55%;
-    --success-foreground: 0 0% 100%;
+    --success-foreground: 262 45% 8%;
     --warning: 38 92% 60%;
-    --warning-foreground: 0 0% 100%;
+    --warning-foreground: 262 45% 8%;
     --info: 217 91% 70%;
-    --info-foreground: 0 0% 100%;
+    --info-foreground: 262 45% 8%;
 
     --sidebar: 262 25% 8%;
     --sidebar-foreground: 260 15% 85%;
     --sidebar-border: 262 20% 14%;
-    --sidebar-active: 262 83% 65%;
-    --sidebar-active-foreground: 0 0% 100%;
+    --sidebar-active: 262 83% 66%;
+    --sidebar-active-foreground: 262 45% 8%;
   }
 }
 

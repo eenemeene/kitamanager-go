@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { useTranslations } from 'next-intl';
 import { X } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -32,36 +33,46 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <DialogPortal>
-    <DialogOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        // The original geometry, unchanged for every dialog that has not been
-        // converted: a centred box that scrolls as a whole.
-        'group bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid max-h-[85vh] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto border p-6 shadow-lg duration-200 sm:w-full sm:max-w-lg sm:rounded-lg ' +
-          // With a DialogBody it becomes three regions: header, scrolling body,
-          // footer. The padding moves into them, so it is dropped here.
-          'has-[[data-dialog-body]]:flex has-[[data-dialog-body]]:flex-col has-[[data-dialog-body]]:gap-0 has-[[data-dialog-body]]:overflow-hidden has-[[data-dialog-body]]:p-0 ' +
-          // And below sm it becomes the screen: no centred box, no height cap,
-          // no margins, so the keyboard has somewhere to go and there is only
-          // one scroll container in play. 100dvh rather than 100vh, which
-          // ignores the browser's collapsing chrome and leaves the bottom of the
-          // layout under the URL bar.
-          'max-sm:has-[[data-dialog-body]]:inset-0 max-sm:has-[[data-dialog-body]]:top-0 max-sm:has-[[data-dialog-body]]:left-0 max-sm:has-[[data-dialog-body]]:h-[100dvh] max-sm:has-[[data-dialog-body]]:max-h-none max-sm:has-[[data-dialog-body]]:w-full max-sm:has-[[data-dialog-body]]:max-w-none max-sm:has-[[data-dialog-body]]:translate-x-0 max-sm:has-[[data-dialog-body]]:translate-y-0 max-sm:has-[[data-dialog-body]]:rounded-none max-sm:has-[[data-dialog-body]]:border-0',
-        className
-      )}
-      {...props}
-    >
-      {children}
-      <DialogPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:pointer-events-none">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </DialogPrimitive.Close>
-    </DialogPrimitive.Content>
-  </DialogPortal>
-));
+>(({ className, children, ...props }, ref) => {
+  const t = useTranslations('common');
+  return (
+    <DialogPortal>
+      <DialogOverlay />
+      <DialogPrimitive.Content
+        ref={ref}
+        className={cn(
+          // The original geometry, unchanged for every dialog that has not been
+          // converted: a centred box that scrolls as a whole.
+          'group bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid max-h-[85vh] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto border p-6 shadow-lg duration-200 sm:w-full sm:max-w-lg sm:rounded-lg ' +
+            // With a DialogBody it becomes three regions: header, scrolling body,
+            // footer. The padding moves into them, so it is dropped here.
+            'has-[[data-dialog-body]]:flex has-[[data-dialog-body]]:flex-col has-[[data-dialog-body]]:gap-0 has-[[data-dialog-body]]:overflow-hidden has-[[data-dialog-body]]:p-0 ' +
+            // And below sm it becomes the screen: no centred box, no height cap,
+            // no margins, so the keyboard has somewhere to go and there is only
+            // one scroll container in play. 100dvh rather than 100vh, which
+            // ignores the browser's collapsing chrome and leaves the bottom of the
+            // layout under the URL bar.
+            'max-sm:has-[[data-dialog-body]]:inset-0 max-sm:has-[[data-dialog-body]]:top-0 max-sm:has-[[data-dialog-body]]:left-0 max-sm:has-[[data-dialog-body]]:h-[100dvh] max-sm:has-[[data-dialog-body]]:max-h-none max-sm:has-[[data-dialog-body]]:w-full max-sm:has-[[data-dialog-body]]:max-w-none max-sm:has-[[data-dialog-body]]:translate-x-0 max-sm:has-[[data-dialog-body]]:translate-y-0 max-sm:has-[[data-dialog-body]]:rounded-none max-sm:has-[[data-dialog-body]]:border-0',
+          className
+        )}
+        {...props}
+      >
+        {children}
+        {/* 44px, not a bare 16px icon. Below `sm` these dialogs are the whole
+          screen, which makes this the primary way out of one — it has to meet
+          the same touch minimum as everything else, and its label has to come
+          from the catalogue like every other string the user hears. The icon
+          keeps its 16px drawing; only the hit area grows around it. */}
+        <DialogPrimitive.Close
+          aria-label={t('close')}
+          className="ring-offset-background focus-visible:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-2 right-2 inline-flex h-11 w-11 items-center justify-center rounded-md opacity-70 transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none"
+        >
+          <X className="h-4 w-4" />
+        </DialogPrimitive.Close>
+      </DialogPrimitive.Content>
+    </DialogPortal>
+  );
+});
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 /**
@@ -129,7 +140,7 @@ const DialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn('text-lg leading-none font-semibold tracking-tight', className)}
+    className={cn('pr-8 text-lg leading-none font-semibold tracking-tight', className)}
     {...props}
   />
 ));
@@ -141,7 +152,7 @@ const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn('text-muted-foreground text-sm', className)}
+    className={cn('text-muted-foreground pr-8 text-sm', className)}
     {...props}
   />
 ));

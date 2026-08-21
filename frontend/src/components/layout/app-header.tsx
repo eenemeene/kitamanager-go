@@ -18,13 +18,14 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useUiStore } from '@/stores/ui-store';
 import { cn } from '@/lib/utils';
 import { locales, localeNames, type Locale } from '@/i18n/config';
+import { MOBILE_SIDEBAR_ID } from './app-sidebar';
 
 export function AppHeader() {
   const t = useTranslations();
   const router = useRouter();
   const { setTheme, theme } = useTheme();
   const { user, logout } = useAuthStore();
-  const { sidebarCollapsed, toggleMobileSidebar } = useUiStore();
+  const { sidebarCollapsed, sidebarMobileOpen, toggleMobileSidebar } = useUiStore();
 
   const handleLogout = () => {
     logout();
@@ -53,13 +54,19 @@ export function AppHeader() {
         !sidebarCollapsed && 'lg:left-64'
       )}
     >
-      {/* Mobile hamburger */}
+      {/* Mobile hamburger. Below md this is the only route to every other page,
+          so it reports its state: `aria-expanded` says whether the drawer is
+          open and `aria-controls` names the panel it opens. The label comes
+          from the catalogue — it used to be the English literal "Menu", which
+          is what a German screen-reader user heard. */}
       <Button
         variant="ghost"
         size="icon"
         onClick={toggleMobileSidebar}
         className="md:hidden"
-        aria-label="Menu"
+        aria-label={t('common.openMenu')}
+        aria-expanded={sidebarMobileOpen}
+        aria-controls={MOBILE_SIDEBAR_ID}
       >
         <Menu className="h-5 w-5" />
       </Button>
@@ -96,7 +103,12 @@ export function AppHeader() {
       {/* User Menu */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="relative rounded-full">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative rounded-full"
+            aria-label={t('common.userMenu')}
+          >
             <Avatar className="h-10 w-10">
               <AvatarFallback className="bg-primary text-primary-foreground">
                 {userInitials}
