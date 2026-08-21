@@ -7,6 +7,7 @@ import { ForecastOptimizeTab } from '../forecast-optimize-tab';
 // assertions can verify both the key and the count/balance arguments
 // without depending on real translation files.
 jest.mock('next-intl', () => ({
+  useLocale: () => 'en',
   useTranslations: () => {
     const t = (key: string, values?: Record<string, unknown>) =>
       values ? `${key}(${JSON.stringify(values)})` : key;

@@ -33,10 +33,11 @@ import type {
   ChildBillingSummaryEntry,
   ContractProperties,
 } from '@/lib/api/types';
-import { formatDate, calculateAge, formatCurrency, formatFte } from '@/lib/utils/formatting';
+import { calculateAge } from '@/lib/utils/formatting';
 import { propertiesToLabelKeys } from '@/lib/utils/contract-properties';
 import { classifySchoolOverrun, getCurrentContract } from '@/lib/utils/contracts';
 import { classifySchoolEnrollment } from '@/lib/utils/school-enrollment';
+import { useFormatters } from '@/hooks/use-formatters';
 
 export interface ChildrenTableProps {
   items: Child[];
@@ -74,6 +75,7 @@ export function ChildrenTable({
   isAdjustingContractEnd,
 }: ChildrenTableProps) {
   const t = useTranslations();
+  const fmt = useFormatters();
   const tLabels = useTranslations('fundingLabels');
 
   return (
@@ -127,7 +129,7 @@ export function ChildrenTable({
                     overrun === 'no-end-past-school-start'
                       ? 'children.contractHasNoEndPastSchoolStart'
                       : 'children.contractRunsPastSchoolStart',
-                    { date: formatDate(enrollment.mussContractEnd) }
+                    { date: fmt.date(enrollment.mussContractEnd) }
                   )
                 : '';
             return (
@@ -138,9 +140,7 @@ export function ChildrenTable({
                 <TableCell className="hidden lg:table-cell">
                   {t(`gender.${child.gender}`)}
                 </TableCell>
-                <TableCell className="hidden lg:table-cell">
-                  {formatDate(child.birthdate)}
-                </TableCell>
+                <TableCell className="hidden lg:table-cell">{fmt.date(child.birthdate)}</TableCell>
                 <TableCell className="hidden md:table-cell">
                   <div className="flex flex-col gap-1">
                     <span>{calculateAge(child.birthdate)}</span>
@@ -183,7 +183,7 @@ export function ChildrenTable({
                               )
                             }
                             aria-label={t('children.adjustContractEnd', {
-                              date: formatDate(enrollment.mussContractEnd),
+                              date: fmt.date(enrollment.mussContractEnd),
                             })}
                           >
                             <CalendarCheck className="h-4 w-4" />
@@ -192,7 +192,7 @@ export function ChildrenTable({
                         <TooltipContent className="max-w-xs">
                           <p>
                             {t('children.adjustContractEnd', {
-                              date: formatDate(enrollment.mussContractEnd),
+                              date: fmt.date(enrollment.mussContractEnd),
                             })}
                           </p>
                         </TooltipContent>
@@ -229,7 +229,7 @@ export function ChildrenTable({
                     if (!funding || funding.funding === 0) {
                       return <span className="text-muted-foreground text-sm">-</span>;
                     }
-                    return <span className="font-medium">{formatCurrency(funding.funding)}</span>;
+                    return <span className="font-medium">{fmt.currency(funding.funding)}</span>;
                   })()}
                 </TableCell>
                 <TableCell className="hidden text-right lg:table-cell">
@@ -238,7 +238,7 @@ export function ChildrenTable({
                     if (!funding || funding.requirement === 0) {
                       return <span className="text-muted-foreground text-sm">-</span>;
                     }
-                    return <span className="font-medium">{formatFte(funding.requirement)}</span>;
+                    return <span className="font-medium">{fmt.fte(funding.requirement)}</span>;
                   })()}
                 </TableCell>
                 <TableCell className="hidden text-right lg:table-cell">
@@ -270,7 +270,7 @@ export function ChildrenTable({
                                 ? t('children.billingOverage')
                                 : ''}
                           </span>
-                          {formatCurrency(diff)}
+                          {fmt.currency(diff)}
                         </span>
                         <span className="text-muted-foreground text-xs">{coverage}</span>
                       </div>

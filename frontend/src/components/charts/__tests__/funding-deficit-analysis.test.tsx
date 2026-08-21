@@ -8,6 +8,18 @@ import type {
   FundingComparisonSummary,
 } from '@/lib/api/types';
 
+// German on purpose: the assertions below are about German number and currency
+// output. Pinning the locale here means they now also prove the component
+// follows the reader's language instead of formatting German unconditionally.
+jest.mock('next-intl', () => ({
+  useLocale: () => 'de',
+  useTranslations: () => {
+    const t = (key: string) => key;
+    t.has = () => false;
+    return t;
+  },
+}));
+
 // FundingDeficitAnalysis is a TableRow component, so it must render
 // inside <Table><TableBody>...</TableBody></Table> — without that,
 // React warns and queries fail in odd ways. Wrap each test in this

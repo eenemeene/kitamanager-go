@@ -13,24 +13,21 @@ import {
 } from '@/components/ui/table';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import type { FinancialResponse } from '@/lib/api/types';
-import { formatCurrency } from '@/lib/utils/formatting';
+import { useFormatters } from '@/hooks/use-formatters';
 
 interface BudgetTableProps {
   data: FinancialResponse;
 }
 
-function formatMonthHeader(dateStr: string): string {
-  const date = new Date(dateStr + 'T00:00:00');
-  return date.toLocaleDateString('de-DE', { month: 'short', year: '2-digit' });
-}
-
-function formatCurrencyCell(cents: number): string {
-  if (cents === 0) return '\u2013';
-  return formatCurrency(cents);
-}
-
 export function BudgetTable({ data }: BudgetTableProps) {
   const t = useTranslations('statistics');
+  const fmt = useFormatters();
+
+  // Both of these were module-level helpers with 'de-DE' baked in. They live
+  // in the component now because the locale does, and a zero renders as a dash
+  // rather than "0,00 \u20ac" so an empty month reads as empty.
+  const monthHeader = (dateStr: string) => fmt.monthYear(dateStr);
+  const currencyCell = (cents: number) => (cents === 0 ? '\u2013' : fmt.currency(cents));
 
   // Memoised so the `?? []` fallback does not produce a fresh array on every
   // render, which would invalidate the useMemo hooks below that depend on it.
@@ -173,36 +170,36 @@ export function BudgetTable({ data }: BudgetTableProps) {
             {rows.map((row) => (
               <TableRow key={row.date}>
                 <TableCell className="bg-background sticky left-0 z-10 font-medium">
-                  {formatMonthHeader(row.date)}
+                  {monthHeader(row.date)}
                 </TableCell>
                 {/* Income columns */}
                 <TableCell className="text-right tabular-nums">
-                  {formatCurrencyCell(row.fundingIncome)}
+                  {currencyCell(row.fundingIncome)}
                 </TableCell>
                 {hasActualFunding && (
                   <TableCell className="text-right tabular-nums">
-                    {row.actualFunding != null ? formatCurrencyCell(row.actualFunding) : '\u2013'}
+                    {row.actualFunding != null ? currencyCell(row.actualFunding) : '\u2013'}
                   </TableCell>
                 )}
                 {row.incomeItemValues.map((val, i) => (
                   <TableCell key={incomeItems[i]} className="text-right tabular-nums">
-                    {formatCurrencyCell(val)}
+                    {currencyCell(val)}
                   </TableCell>
                 ))}
                 <TableCell className="text-success text-right font-bold tabular-nums">
-                  {formatCurrencyCell(row.totalIncome)}
+                  {currencyCell(row.totalIncome)}
                 </TableCell>
                 {/* Expense columns */}
                 <TableCell className="text-right tabular-nums">
-                  {formatCurrencyCell(row.salaries)}
+                  {currencyCell(row.salaries)}
                 </TableCell>
                 {row.expenseItemValues.map((val, i) => (
                   <TableCell key={expenseItems[i]} className="text-right tabular-nums">
-                    {formatCurrencyCell(val)}
+                    {currencyCell(val)}
                   </TableCell>
                 ))}
                 <TableCell className="text-destructive text-right font-bold tabular-nums">
-                  {formatCurrencyCell(row.totalExpenses)}
+                  {currencyCell(row.totalExpenses)}
                 </TableCell>
                 {/* Balance */}
                 <TableCell
@@ -210,7 +207,7 @@ export function BudgetTable({ data }: BudgetTableProps) {
                     row.balance >= 0 ? 'text-success' : 'text-destructive'
                   }`}
                 >
-                  {formatCurrencyCell(row.balance)}
+                  {currencyCell(row.balance)}
                 </TableCell>
               </TableRow>
             ))}
@@ -219,40 +216,38 @@ export function BudgetTable({ data }: BudgetTableProps) {
             <TableRow className="border-t-2 font-bold">
               <TableCell className="bg-background sticky left-0 z-10">{t('annualTotal')}</TableCell>
               <TableCell className="text-right tabular-nums">
-                {formatCurrencyCell(totals.fundingIncome)}
+                {currencyCell(totals.fundingIncome)}
               </TableCell>
               {hasActualFunding && (
                 <TableCell className="text-right tabular-nums">
-                  {totals.actualFunding != null
-                    ? formatCurrencyCell(totals.actualFunding)
-                    : '\u2013'}
+                  {totals.actualFunding != null ? currencyCell(totals.actualFunding) : '\u2013'}
                 </TableCell>
               )}
               {totals.incomeItemValues.map((val, i) => (
                 <TableCell key={incomeItems[i]} className="text-right tabular-nums">
-                  {formatCurrencyCell(val)}
+                  {currencyCell(val)}
                 </TableCell>
               ))}
               <TableCell className="text-success text-right tabular-nums">
-                {formatCurrencyCell(totals.totalIncome)}
+                {currencyCell(totals.totalIncome)}
               </TableCell>
               <TableCell className="text-right tabular-nums">
-                {formatCurrencyCell(totals.salaries)}
+                {currencyCell(totals.salaries)}
               </TableCell>
               {totals.expenseItemValues.map((val, i) => (
                 <TableCell key={expenseItems[i]} className="text-right tabular-nums">
-                  {formatCurrencyCell(val)}
+                  {currencyCell(val)}
                 </TableCell>
               ))}
               <TableCell className="text-destructive text-right tabular-nums">
-                {formatCurrencyCell(totals.totalExpenses)}
+                {currencyCell(totals.totalExpenses)}
               </TableCell>
               <TableCell
                 className={`text-right tabular-nums ${
                   totals.balance >= 0 ? 'text-success' : 'text-destructive'
                 }`}
               >
-                {formatCurrencyCell(totals.balance)}
+                {currencyCell(totals.balance)}
               </TableCell>
             </TableRow>
           </TableBody>

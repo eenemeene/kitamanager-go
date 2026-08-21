@@ -15,7 +15,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
-import { formatCurrency } from '@/lib/utils/formatting';
+import { useFormatters } from '@/hooks/use-formatters';
 
 function formatServiceStart(dateStr: string): string {
   const d = new Date(dateStr);
@@ -29,6 +29,7 @@ interface StepPromotionsWidgetProps {
 export function StepPromotionsWidget({ orgId }: StepPromotionsWidgetProps) {
   const t = useTranslations('stepPromotions');
 
+  const fmt = useFormatters();
   const { data } = useQuery({
     queryKey: queryKeys.stepPromotions(orgId),
     queryFn: () => apiClient.getStepPromotions(orgId),
@@ -45,7 +46,7 @@ export function StepPromotionsWidget({ orgId }: StepPromotionsWidgetProps) {
         <div className="flex flex-row items-center justify-between">
           <CardTitle className="text-base font-medium">{t('title')}</CardTitle>
           <Badge variant="secondary">
-            {t('totalCost', { amount: formatCurrency(data.total_monthly_cost_delta) })} (
+            {t('totalCost', { amount: fmt.currency(data.total_monthly_cost_delta) })} (
             {t('inclEmployerContrib')}{' '}
             <Tooltip delayDuration={0}>
               <TooltipTrigger className="cursor-help underline decoration-dotted underline-offset-2">
@@ -88,9 +89,14 @@ export function StepPromotionsWidget({ orgId }: StepPromotionsWidgetProps) {
                 <TableCell className="text-center">{p.current_step}</TableCell>
                 <TableCell className="text-center">{p.eligible_step}</TableCell>
                 <TableCell>{formatServiceStart(p.service_start)}</TableCell>
-                <TableCell className="text-right">{p.years_of_service.toFixed(1)}</TableCell>
                 <TableCell className="text-right">
-                  +{formatCurrency(p.monthly_cost_delta)}
+                  {fmt.number(p.years_of_service, {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1,
+                  })}
+                </TableCell>
+                <TableCell className="text-right">
+                  +{fmt.currency(p.monthly_cost_delta)}
                   {(() => {
                     const salaryDelta = p.new_amount - p.current_amount;
                     const contribDelta = p.monthly_cost_delta - salaryDelta;
@@ -98,7 +104,7 @@ export function StepPromotionsWidget({ orgId }: StepPromotionsWidgetProps) {
                       return (
                         <>
                           {' '}
-                          ({formatCurrency(contribDelta)}{' '}
+                          ({fmt.currency(contribDelta)}{' '}
                           <Tooltip delayDuration={0}>
                             <TooltipTrigger className="cursor-help underline decoration-dotted underline-offset-2">
                               {t('employerContrib')}

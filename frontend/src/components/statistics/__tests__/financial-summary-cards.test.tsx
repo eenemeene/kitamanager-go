@@ -2,6 +2,18 @@ import { render, screen } from '@testing-library/react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { FinancialSummaryCards } from '../financial-summary-cards';
 
+// German on purpose: the assertions below are about German number and currency
+// output. Pinning the locale here means they now also prove the component
+// follows the reader's language instead of formatting German unconditionally.
+jest.mock('next-intl', () => ({
+  useLocale: () => 'de',
+  useTranslations: () => {
+    const t = (key: string) => key;
+    t.has = () => false;
+    return t;
+  },
+}));
+
 // FinancialSummaryCards displays three KPI tiles. Tests cover:
 //   - basic render with positive values
 //   - currency formatting (cents → de-DE Euro)

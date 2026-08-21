@@ -47,17 +47,12 @@ import type {
 } from '@/lib/api/types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  formatCurrency,
-  formatPeriod,
-  formatDateForApi,
-  eurosToCents,
-  centsToEuros,
-} from '@/lib/utils/formatting';
+import { formatDateForApi, eurosToCents, centsToEuros } from '@/lib/utils/formatting';
 import { budgetItemEntrySchema, type BudgetItemEntryFormData } from '@/lib/schemas';
 import { validationTiming } from '@/lib/forms/validation-timing';
 import { useProblemFormErrors, suppressesToast } from '@/lib/forms/use-problem-form-errors';
 import { FormErrorSummary } from '@/components/forms/form-error-summary';
+import { useFormatters } from '@/hooks/use-formatters';
 
 export default function BudgetItemDetailPage() {
   const params = useParams();
@@ -65,6 +60,7 @@ export default function BudgetItemDetailPage() {
   const budgetItemId = Number(params.id);
   const t = useTranslations();
 
+  const fmt = useFormatters();
   const [isEntryDialogOpen, setIsEntryDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<BudgetItemEntry | null>(null);
   const [isDeleteEntryDialogOpen, setIsDeleteEntryDialogOpen] = useState(false);
@@ -243,10 +239,8 @@ export default function BudgetItemDetailPage() {
               <TableBody>
                 {budgetItem.entries.map((entry) => (
                   <TableRow key={entry.id}>
-                    <TableCell>
-                      {formatPeriod(entry.from, entry.to, 'en', t('common.ongoing'))}
-                    </TableCell>
-                    <TableCell>{formatCurrency(entry.amount_cents)}</TableCell>
+                    <TableCell>{fmt.period(entry.from, entry.to, t('common.ongoing'))}</TableCell>
+                    <TableCell>{fmt.currency(entry.amount_cents)}</TableCell>
                     <TableCell>{entry.notes || '-'}</TableCell>
                     <TableCell className="text-right">
                       <Button

@@ -1,3 +1,6 @@
+import type { Locale } from '@/i18n/config';
+import { intlLocale } from './formatting';
+
 /**
  * Helpers for the print/report pages: parse a `?month=YYYY-MM` query
  * parameter and derive the date filters every API call needs to be
@@ -126,14 +129,21 @@ function formatYYYYMMDD(d: Date): string {
 }
 
 /**
- * Format a ReportMonth as a long human-readable label, e.g. "April 2026"
- * (or "abril de 2026" depending on locale). Used for print-page subtitles.
- * Locale defaults to the runtime default — matching the rest of the print
- * pages' use of `toLocaleDateString()`.
+ * Format a ReportMonth as a long human-readable label, e.g. "April 2026" /
+ * "April 2026". Used for print-page subtitles.
+ *
+ * The locale used to be optional and no caller passed one, so these labels fell
+ * back to the runtime default. In the report-pdf container that is Chromium's
+ * own locale, which meant a German monthly report carried English month names
+ * in its section headers — on the one artefact that leaves the building.
  */
-export function formatReportMonthLong(rm: ReportMonth, locale?: string): string {
+export function formatReportMonthLong(rm: ReportMonth, locale: Locale): string {
   const date = new Date(Date.UTC(rm.year, rm.monthNumber - 1, 1));
-  return date.toLocaleDateString(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  return date.toLocaleDateString(intlLocale(locale), {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
 }
 
 /**
@@ -142,15 +152,15 @@ export function formatReportMonthLong(rm: ReportMonth, locale?: string): string 
  * a glance which 12 months the table represents (and why it's not aligned
  * with the calendar year).
  */
-export function formatKitaYearLabel(rm: ReportMonth, locale?: string): string {
+export function formatKitaYearLabel(rm: ReportMonth, locale: Locale): string {
   const start = new Date(Date.UTC(rm.kitaYearStartYear, 7, 1));
   const end = new Date(Date.UTC(rm.kitaYearStartYear + 1, 6, 1));
-  const startLabel = start.toLocaleDateString(locale, {
+  const startLabel = start.toLocaleDateString(intlLocale(locale), {
     month: 'short',
     year: 'numeric',
     timeZone: 'UTC',
   });
-  const endLabel = end.toLocaleDateString(locale, {
+  const endLabel = end.toLocaleDateString(intlLocale(locale), {
     month: 'short',
     year: 'numeric',
     timeZone: 'UTC',

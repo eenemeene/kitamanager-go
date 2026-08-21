@@ -15,7 +15,8 @@ import {
 } from '@/components/ui/table';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import type { GovernmentFundingPeriod, GovernmentFundingProperty } from '@/lib/api/types';
-import { formatAgeRange, formatCurrency, formatFte } from '@/lib/utils/formatting';
+import { formatAgeRange } from '@/lib/utils/formatting';
+import { useFormatters } from '@/hooks/use-formatters';
 
 interface PropertiesGroupedByKeyProps {
   period: GovernmentFundingPeriod;
@@ -30,6 +31,7 @@ export function PropertiesGroupedByKey({
 }: PropertiesGroupedByKeyProps) {
   const tLabels = useTranslations('fundingLabels');
 
+  const fmt = useFormatters();
   const translateLabel = (key: string, value: string, fallbackLabel?: string) => {
     const translationKey = `${key}--${value}`;
     const translated = tLabels.has(translationKey) ? tLabels(translationKey) : null;
@@ -103,8 +105,8 @@ export function PropertiesGroupedByKey({
                           <TableCell>
                             {formatAgeRange(property.min_age, property.max_age, t('common.years'))}
                           </TableCell>
-                          <TableCell>{formatCurrency(property.payment)}</TableCell>
-                          <TableCell>{formatFte(property.requirement)}</TableCell>
+                          <TableCell>{fmt.currency(property.payment)}</TableCell>
+                          <TableCell>{fmt.fte(property.requirement)}</TableCell>
                           <TableCell className="text-right">
                             <Button
                               size="icon"

@@ -5,6 +5,7 @@ import { ForecastOptimizeTab } from '../forecast-optimize-tab';
 
 // Mock next-intl
 jest.mock('next-intl', () => ({
+  useLocale: () => 'en',
   useTranslations: () => {
     const t = (key: string) => key;
     t.has = () => false;

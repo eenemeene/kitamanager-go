@@ -12,18 +12,16 @@ import {
 } from '@/components/ui/table';
 import type { OccupancyResponse } from '@/lib/api/types';
 import { HeaderWithTooltip } from '@/components/ui/header-with-tooltip';
+import { useFormatters } from '@/hooks/use-formatters';
 
 interface OccupancyTableProps {
   data: OccupancyResponse;
 }
 
-function formatMonthHeader(dateStr: string): string {
-  const date = new Date(dateStr + 'T00:00:00');
-  return date.toLocaleDateString('de-DE', { month: 'short', year: '2-digit' });
-}
-
 export function OccupancyTable({ data }: OccupancyTableProps) {
   const t = useTranslations('statistics');
+  const fmt = useFormatters();
+  const formatMonthHeader = (dateStr: string) => fmt.monthYear(dateStr);
 
   const months = useMemo(() => data.data_points.map((dp) => dp.date ?? ''), [data.data_points]);
 

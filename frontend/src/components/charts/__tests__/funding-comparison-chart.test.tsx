@@ -3,6 +3,7 @@ import { renderWithProviders } from '@/test-utils';
 import type { FinancialResponse } from '@/lib/api/types';
 
 jest.mock('next-intl', () => ({
+  useLocale: () => 'en',
   useTranslations: () => (key: string) => key,
 }));
 

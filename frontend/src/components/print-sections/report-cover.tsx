@@ -5,9 +5,11 @@ import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
-import { formatCurrency } from '@/lib/utils/formatting';
+
 import { useFrontendVersion } from '@/hooks/use-frontend-version';
 import { type ReportMonth, formatReportMonthLong } from '@/lib/utils/report-month';
+import { useFormatters } from '@/hooks/use-formatters';
+import { toLocalDateString } from '@/lib/utils/formatting';
 
 interface Props {
   orgId: number;
@@ -26,6 +28,7 @@ interface Props {
  */
 export function ReportCover({ orgId, orgName, reportMonth }: Props) {
   const t = useTranslations();
+  const fmt = useFormatters();
   const webVersion = useFrontendVersion();
 
   const { data: childrenList } = useQuery({
@@ -85,8 +88,8 @@ export function ReportCover({ orgId, orgName, reportMonth }: Props) {
         ) - 100
       : null;
 
-  const generatedAt = new Date().toLocaleDateString();
-  const monthLabel = formatReportMonthLong(reportMonth);
+  const generatedAt = fmt.date(toLocalDateString(new Date()));
+  const monthLabel = formatReportMonthLong(reportMonth, fmt.locale);
 
   return (
     <section className="report-section break-inside-avoid">
@@ -122,17 +125,17 @@ export function ReportCover({ orgId, orgName, reportMonth }: Props) {
         />
         <KpiCard
           label={t('statistics.totalIncome')}
-          value={reportMonthFinancials ? formatCurrency(reportMonthFinancials.total_income) : '—'}
+          value={reportMonthFinancials ? fmt.currency(reportMonthFinancials.total_income) : '—'}
           tone="success"
         />
         <KpiCard
           label={t('statistics.totalExpenses')}
-          value={reportMonthFinancials ? formatCurrency(reportMonthFinancials.total_expenses) : '—'}
+          value={reportMonthFinancials ? fmt.currency(reportMonthFinancials.total_expenses) : '—'}
           tone="destructive"
         />
         <KpiCard
           label={t('statistics.balance')}
-          value={reportMonthFinancials ? formatCurrency(reportMonthFinancials.balance) : '—'}
+          value={reportMonthFinancials ? fmt.currency(reportMonthFinancials.balance) : '—'}
           tone={
             reportMonthFinancials
               ? (reportMonthFinancials.balance ?? 0) >= 0

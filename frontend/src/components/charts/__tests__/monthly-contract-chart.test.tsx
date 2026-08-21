@@ -3,6 +3,7 @@ import { MonthlyContractChart } from '../monthly-contract-chart';
 import type { StaffingHoursResponse } from '@/lib/api/types';
 
 jest.mock('next-intl', () => ({
+  useLocale: () => 'en',
   useTranslations: () => (key: string, params?: Record<string, unknown>) => {
     if (params) return `${key}`;
     return key;

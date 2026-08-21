@@ -8,11 +8,14 @@ import { Printer } from 'lucide-react';
 import { StaffingReportSection } from '@/components/print-sections/staffing-report-section';
 import { useUiStore } from '@/stores/ui-store';
 import { parseReportMonth, formatReportMonthLong } from '@/lib/utils/report-month';
+import { useFormatters } from '@/hooks/use-formatters';
+import { toLocalDateString } from '@/lib/utils/formatting';
 
 export default function StaffingPrintPage() {
   const params = useParams();
   const orgId = Number(params.orgId);
   const t = useTranslations();
+  const fmt = useFormatters();
   const { organizations, fetchOrganizations } = useUiStore();
   const searchParams = useSearchParams();
   const reportMonth = useMemo(() => parseReportMonth(searchParams.get('month')), [searchParams]);
@@ -36,10 +39,10 @@ export default function StaffingPrintPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            {t('nav.statisticsStaffing')} &middot; {formatReportMonthLong(reportMonth)}
+            {t('nav.statisticsStaffing')} &middot; {formatReportMonthLong(reportMonth, fmt.locale)}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            {orgName} &middot; {new Date().toLocaleDateString()}
+            {orgName} &middot; {fmt.date(toLocalDateString(new Date()))}
           </p>
         </div>
         <button

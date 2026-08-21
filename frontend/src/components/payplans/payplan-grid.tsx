@@ -11,8 +11,9 @@ import {
 } from '@/components/ui/table';
 import { useTranslations } from 'next-intl';
 import type { PayPlanPeriod } from '@/lib/api/types';
-import { formatCurrency } from '@/lib/utils/formatting';
+
 import { compareGrade } from '@/lib/utils/grade';
+import { useFormatters } from '@/hooks/use-formatters';
 
 interface PayPlanGridProps {
   period: PayPlanPeriod;
@@ -20,6 +21,7 @@ interface PayPlanGridProps {
 
 export function PayPlanGrid({ period }: PayPlanGridProps) {
   const t = useTranslations();
+  const fmt = useFormatters();
   const entries = period.entries ?? [];
 
   // The grid wants the highest grade at the top (descending), so sort by
@@ -81,11 +83,11 @@ export function PayPlanGrid({ period }: PayPlanGridProps) {
                 <React.Fragment key={step}>
                   {i > 0 && (
                     <TableCell className="px-1 text-center text-[0.65rem] leading-tight text-emerald-600 dark:text-emerald-400">
-                      {pctIncrease !== undefined ? `↗${pctIncrease.toFixed(1)}%` : ''}
+                      {pctIncrease !== undefined ? `↗${fmt.percentage(pctIncrease, 1)}` : ''}
                     </TableCell>
                   )}
                   <TableCell className="text-right">
-                    {amount !== undefined ? formatCurrency(amount) : ''}
+                    {amount !== undefined ? fmt.currency(amount) : ''}
                   </TableCell>
                 </React.Fragment>
               );

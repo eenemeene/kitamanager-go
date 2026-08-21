@@ -4,6 +4,7 @@ import { BoundaryHandle } from '../boundary-handle';
 import type { BaseContract } from '../timeline-utils';
 
 jest.mock('next-intl', () => ({
+  useLocale: () => 'en',
   useTranslations: () => {
     const t = (key: string) => key;
     t.has = () => false;

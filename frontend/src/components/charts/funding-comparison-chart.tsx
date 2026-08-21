@@ -25,8 +25,9 @@ import {
 } from '@/components/ui/table';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { HeaderWithTooltip } from '@/components/ui/header-with-tooltip';
-import { buildKitaYearBands, formatDateLabel, kitaYearLabel, chartTheme } from './chart-utils';
+import { buildKitaYearBands, useDateLabel, kitaYearLabel, chartTheme } from './chart-utils';
 import { toLocalDateString, getCurrentMonthStart } from '@/lib/utils/formatting';
+import { useFormatters } from '@/hooks/use-formatters';
 
 interface FundingComparisonChartProps {
   data: FinancialResponse;
@@ -38,10 +39,6 @@ interface FundingComparisonChartProps {
 
 type BandScale = ((v: string) => number | undefined) & { bandwidth(): number };
 
-function formatEur(cents: number): string {
-  return (cents / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
-}
-
 export function FundingComparisonChart({
   data,
   compareData,
@@ -49,6 +46,9 @@ export function FundingComparisonChart({
   forceExpanded = false,
 }: FundingComparisonChartProps) {
   const t = useTranslations('statistics');
+  const formatDateLabel = useDateLabel();
+  const fmt = useFormatters();
+  const formatEur = (cents: number) => fmt.currency(cents);
   const tCommon = useTranslations('common');
   const params = useParams();
   const orgId = params.orgId;
@@ -78,7 +78,7 @@ export function FundingComparisonChart({
         }
         return entry;
       }),
-    [allPoints, calculatedKey, actualRegularKey, actualCorrectionKey]
+    [allPoints, calculatedKey, actualRegularKey, actualCorrectionKey, formatDateLabel]
   );
 
   const todayStr = toLocalDateString(new Date());
@@ -405,7 +405,7 @@ export function FundingComparisonChart({
             tickPadding: 5,
             tickRotation: 0,
             format: (v) =>
-              Number(v).toLocaleString('de-DE', {
+              fmt.number(Number(v), {
                 style: 'currency',
                 currency: 'EUR',
                 maximumFractionDigits: 0,

@@ -4,6 +4,7 @@ import { Pagination } from '../pagination';
 import { renderWithProviders } from '@/test-utils';
 
 jest.mock('next-intl', () => ({
+  useLocale: () => 'en',
   useTranslations: () => (key: string, params?: Record<string, unknown>) => {
     if (params) return `${key}(${JSON.stringify(params)})`;
     return key;

@@ -1,9 +1,10 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { formatDate } from '@/lib/utils/formatting';
+
 import { Badge } from '@/components/ui/badge';
 import type { ReactNode } from 'react';
+import { useFormatters } from '@/hooks/use-formatters';
 
 interface TimelineSegmentProps {
   from: string;
@@ -33,6 +34,7 @@ const badgeVariants = {
 export function TimelineSegment({ from, to, status, children }: TimelineSegmentProps) {
   const t = useTranslations();
 
+  const fmt = useFormatters();
   const statusLabel =
     status === 'active'
       ? t('common.active')
@@ -58,7 +60,7 @@ export function TimelineSegment({ from, to, status, children }: TimelineSegmentP
             {statusLabel}
           </Badge>
           <span className="text-muted-foreground text-xs">
-            {formatDate(from)} &mdash; {to ? formatDate(to) : t('common.ongoing')}
+            {fmt.date(from)} &mdash; {to ? fmt.date(to) : t('common.ongoing')}
           </span>
         </div>
         {/* Details */}

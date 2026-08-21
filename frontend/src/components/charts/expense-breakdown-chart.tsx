@@ -6,6 +6,7 @@ import { ResponsivePie } from '@nivo/pie';
 import type { FinancialDataPoint, FinancialSalaryDetail } from '@/lib/api/types';
 import { chartTheme } from './chart-utils';
 import { ExportableChart } from './exportable-chart';
+import { useFormatters } from '@/hooks/use-formatters';
 
 interface ExpenseBreakdownChartProps {
   data: FinancialDataPoint;
@@ -17,15 +18,6 @@ export interface SliceDatum {
   value: number;
   color: string;
   salaryDetail?: FinancialSalaryDetail;
-}
-
-function formatEur(cents: number): string {
-  return (cents / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
-}
-
-function formatPct(value: number, total: number): string {
-  if (total === 0) return '0%';
-  return `${((value / total) * 100).toFixed(1)}%`;
 }
 
 export const EXPENSE_BREAKDOWN_COLORS = [
@@ -114,6 +106,10 @@ export function buildExpenseSlices(
 export function ExpenseBreakdownChart({ data }: ExpenseBreakdownChartProps) {
   const t = useTranslations();
 
+  const fmt = useFormatters();
+  const formatEur = (cents: number) => fmt.currency(cents);
+  const formatPct = (value: number, total: number) =>
+    total === 0 ? '0%' : fmt.percentage(value / total, 1, true);
   const pieData = useMemo(() => buildExpenseSlices(data, t), [data, t]);
 
   const total = useMemo(() => pieData.reduce((sum, s) => sum + s.value, 0), [pieData]);

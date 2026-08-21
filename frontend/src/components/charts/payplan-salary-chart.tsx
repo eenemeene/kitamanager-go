@@ -13,8 +13,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { PayPlanPeriod } from '@/lib/api/types';
-import { formatCurrency } from '@/lib/utils/formatting';
+
 import { compareGrade } from '@/lib/utils/grade';
+import { useFormatters } from '@/hooks/use-formatters';
 
 interface PayPlanSalaryChartProps {
   periods: PayPlanPeriod[];
@@ -42,6 +43,7 @@ const GRADE_COLORS = [
 export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
   const t = useTranslations();
 
+  const fmt = useFormatters();
   // Collect all unique steps and grades across periods
   const { allSteps, allGrades } = useMemo(() => {
     const stepSet = new Set<number>();
@@ -77,7 +79,7 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
 
     const data = sortedPeriods.map((period) => {
       const d = new Date(period.from);
-      const label = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      const label = fmt.monthYear(d, { month: 'short', year: 'numeric' });
       const row: Record<string, string | number> = { period: label };
       for (const grade of allGrades) {
         const entry = period.entries?.find((e) => e.grade === grade && e.step === selectedStep);
@@ -89,7 +91,7 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
     });
 
     return { barData: data, gradeColorMap: colorMap };
-  }, [allGrades, sortedPeriods, selectedStep]);
+  }, [allGrades, sortedPeriods, selectedStep, fmt]);
 
   // Compute which grades actually have data for the selected step
   const activeGrades = useMemo(
@@ -144,7 +146,7 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
           axisLeft={{
             tickSize: 5,
             tickPadding: 5,
-            format: (v) => formatCurrency(Number(v) * 100),
+            format: (v) => fmt.currency(Number(v) * 100),
           }}
           tooltip={({ id, value, indexValue }) => {
             // Find previous period value for % change
@@ -177,7 +179,7 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
                       display: 'inline-block',
                     }}
                   />
-                  {id}: {formatCurrency(value * 100)}
+                  {id}: {fmt.currency(value * 100)}
                   {pctChange != null && (
                     <span
                       style={{
@@ -187,7 +189,7 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
                       }}
                     >
                       {pctChange >= 0 ? '+' : ''}
-                      {pctChange.toFixed(1)}%
+                      {fmt.percentage(pctChange, 1)}
                     </span>
                   )}
                 </div>

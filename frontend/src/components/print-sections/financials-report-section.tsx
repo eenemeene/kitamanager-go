@@ -10,12 +10,13 @@ import { BudgetTable } from '@/components/charts/budget-table';
 import type { FundingComparisonResponse, FundingComparisonSummary } from '@/lib/api/types';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
-import { formatCurrency, toLocalDateString } from '@/lib/utils/formatting';
+import { toLocalDateString } from '@/lib/utils/formatting';
 import {
   type ReportMonth,
   formatReportMonthLong,
   formatKitaYearLabel,
 } from '@/lib/utils/report-month';
+import { useFormatters } from '@/hooks/use-formatters';
 
 const FinancialsChart = dynamic(
   () => import('@/components/charts/financials-bar-chart').then((mod) => mod.FinancialsChart),
@@ -65,6 +66,7 @@ interface Props {
 export function FinancialsReportSection({ orgId, reportMonth }: Props) {
   const t = useTranslations();
 
+  const fmt = useFormatters();
   const { data: financials, isLoading: isLoadingFinancials } = useQuery({
     queryKey: queryKeys.statistics.financials(orgId, reportMonth.trendFrom, reportMonth.trendTo),
     queryFn: () =>
@@ -167,14 +169,16 @@ export function FinancialsReportSection({ orgId, reportMonth }: Props) {
     <section className="report-section">
       {reportMonthFinancials && (
         <div className="mb-8 break-inside-avoid">
-          <p className="text-muted-foreground mb-2 text-sm">{formatReportMonthLong(reportMonth)}</p>
+          <p className="text-muted-foreground mb-2 text-sm">
+            {formatReportMonthLong(reportMonth, fmt.locale)}
+          </p>
           <div className="grid grid-cols-3 gap-4">
             <div className="rounded-lg border p-4">
               <p className="text-muted-foreground text-sm font-medium">
                 {t('statistics.totalIncome')}
               </p>
               <p className="text-success mt-1 text-2xl font-bold">
-                {formatCurrency(reportMonthFinancials.total_income)}
+                {fmt.currency(reportMonthFinancials.total_income)}
               </p>
             </div>
             <div className="rounded-lg border p-4">
@@ -182,7 +186,7 @@ export function FinancialsReportSection({ orgId, reportMonth }: Props) {
                 {t('statistics.totalExpenses')}
               </p>
               <p className="text-destructive mt-1 text-2xl font-bold">
-                {formatCurrency(reportMonthFinancials.total_expenses)}
+                {fmt.currency(reportMonthFinancials.total_expenses)}
               </p>
             </div>
             <div className="rounded-lg border p-4">
@@ -192,7 +196,7 @@ export function FinancialsReportSection({ orgId, reportMonth }: Props) {
                   (reportMonthFinancials.balance ?? 0) >= 0 ? 'text-info' : 'text-destructive'
                 }`}
               >
-                {formatCurrency(reportMonthFinancials.balance ?? 0)}
+                {fmt.currency(reportMonthFinancials.balance ?? 0)}
               </p>
             </div>
           </div>
@@ -242,7 +246,9 @@ export function FinancialsReportSection({ orgId, reportMonth }: Props) {
 
       {reportMonthFinancials && (
         <div className="mb-8 break-inside-avoid">
-          <p className="text-muted-foreground mb-2 text-sm">{formatReportMonthLong(reportMonth)}</p>
+          <p className="text-muted-foreground mb-2 text-sm">
+            {formatReportMonthLong(reportMonth, fmt.locale)}
+          </p>
           <div className="grid grid-cols-2 gap-6">
             <div>
               <h2 className="mb-3 text-xl font-semibold">{t('statistics.fundingBreakdown')}</h2>
@@ -262,7 +268,9 @@ export function FinancialsReportSection({ orgId, reportMonth }: Props) {
 
       <div className="break-inside-avoid">
         <h2 className="mb-1 text-xl font-semibold">{t('statistics.budgetOverview')}</h2>
-        <p className="text-muted-foreground mb-3 text-sm">{formatKitaYearLabel(reportMonth)}</p>
+        <p className="text-muted-foreground mb-3 text-sm">
+          {formatKitaYearLabel(reportMonth, fmt.locale)}
+        </p>
         {isLoadingBudget ? (
           <Skeleton className="h-[300px] w-full" />
         ) : budgetFinancials ? (

@@ -4,6 +4,7 @@ import { renderWithProviders } from '@/test-utils';
 import type { PayPlanPeriod } from '@/lib/api/types';
 
 jest.mock('next-intl', () => ({
+  useLocale: () => 'en',
   useTranslations: () => (key: string) => key,
 }));
 

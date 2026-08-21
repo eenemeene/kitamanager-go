@@ -1,22 +1,83 @@
-import { format, parseISO, differenceInYears, type Locale } from 'date-fns';
-import { de, enUS } from 'date-fns/locale';
+/**
+ * Display formatting.
+ *
+ * Every function here that renders a number, a date or an amount takes the
+ * reader's locale as a required argument. It used to be optional, and the
+ * defaults disagreed with each other — `formatCurrency` defaulted to German
+ * while `formatDate` defaulted to English — so a German contract card printed
+ * a German euro amount beside an English date, and neither language was
+ * internally consistent. 60 of 64 currency call sites and 24 of 29 date call
+ * sites simply took the default.
+ *
+ * Requiring the argument turns that from something a caller has to remember
+ * into something the compiler will not let them forget. Components should not
+ * call these directly, though: `useFormatters()` in `@/hooks/use-formatters`
+ * binds the locale once from `useLocale()` and is what the UI uses. These stay
+ * exported for tests and for the few callers outside a React tree.
+ */
 
-const locales: Record<string, Locale> = {
-  de: de,
+import { format, parseISO, differenceInYears, type Locale as DateFnsLocale } from 'date-fns';
+import { de, enUS } from 'date-fns/locale';
+import type { Locale } from '@/i18n/config';
+
+const dateFnsLocales: Record<Locale, DateFnsLocale> = {
+  de,
   en: enUS,
 };
 
 /**
+ * The BCP 47 tag `Intl` needs, from the app's short locale code.
+ *
+ * The app stores 'de' / 'en' because that is what next-intl matches catalogues
+ * on. `Intl` accepts those, but resolves bare 'de' and 'en' to region-neutral
+ * defaults, and for 'en' that is not the US convention the UI was written
+ * against. Naming the region keeps the output stable.
+ */
+export function intlLocale(locale: Locale): string {
+  return locale === 'de' ? 'de-DE' : 'en-US';
+}
+
+/**
  * Format a date string for display
  */
-export function formatDate(dateString: string | null | undefined, locale = 'en'): string {
+export function formatDate(dateString: string | null | undefined, locale: Locale): string {
   if (!dateString) return '-';
   try {
     const date = parseISO(dateString);
-    return format(date, 'PP', { locale: locales[locale] || enUS });
+    return format(date, 'PP', { locale: dateFnsLocales[locale] });
   } catch {
     return dateString;
   }
+}
+
+/**
+ * Format a date as a month and year, the shape chart axes and table headers
+ * use — "Mär 26" by default, "März 2026" with `{ month: 'long', year:
+ * 'numeric' }`.
+ *
+ * Six chart and table files each had their own copy of this, and they did not
+ * agree: the charts hardcoded 'en-US' while the tables beside them hardcoded
+ * 'de-DE', so one page could label the same month "Mar 26" above "Mär 26".
+ */
+export function formatMonthYear(
+  date: string | Date,
+  locale: Locale,
+  options: Intl.DateTimeFormatOptions = { month: 'short', year: '2-digit' }
+): string {
+  // A bare "YYYY-MM-DD" parses as UTC midnight, which is the previous day in
+  // any timezone behind UTC; anchoring at local midnight keeps the month right.
+  const value = typeof date === 'string' ? new Date(`${date.slice(0, 10)}T00:00:00`) : date;
+  if (isNaN(value.getTime())) return typeof date === 'string' ? date : '';
+  return value.toLocaleDateString(intlLocale(locale), options);
+}
+
+/** Format a number with the locale's separators. */
+export function formatNumber(
+  value: number,
+  locale: Locale,
+  options?: Intl.NumberFormatOptions
+): string {
+  return value.toLocaleString(intlLocale(locale), options);
 }
 
 /**
@@ -68,10 +129,10 @@ export function calculateAge(birthdate: string): number {
  * Format currency from cents to display format
  * All monetary values from API are in cents
  */
-export function formatCurrency(cents: number | null | undefined, locale = 'de'): string {
+export function formatCurrency(cents: number | null | undefined, locale: Locale): string {
   if (cents === null || cents === undefined) return '-';
   const euros = cents / 100;
-  return new Intl.NumberFormat(locale === 'de' ? 'de-DE' : 'en-US', {
+  return new Intl.NumberFormat(intlLocale(locale), {
     style: 'currency',
     currency: 'EUR',
   }).format(euros);
@@ -97,7 +158,7 @@ export function centsToEuros(cents: number): number {
 export function formatPeriod(
   from: string,
   to: string | null | undefined,
-  locale = 'en',
+  locale: Locale,
   ongoingText = 'ongoing'
 ): string {
   const fromFormatted = formatDate(from, locale);
@@ -106,27 +167,33 @@ export function formatPeriod(
 }
 
 /**
- * Format FTE (Full Time Equivalent) / staffing ratio
+ * Format FTE (Full Time Equivalent) / staffing ratio.
+ *
+ * Two decimals, through the locale rather than `toFixed`, which always emits a
+ * decimal point and so showed a German reader "1.50" where every other number
+ * on the same row said "1,50".
  */
-export function formatFte(ratio: number): string {
-  return ratio.toFixed(2);
+export function formatFte(ratio: number, locale: Locale): string {
+  return formatNumber(ratio, locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 /**
  * Format a percentage. Pass `value` as a fraction (0.125 for 12.5%) when
- * `asFraction` is true (default), or pre-multiplied when false (12.5 for 12.5%).
- * Locale 'de' uses comma as decimal separator.
+ * `asFraction` is true, or pre-multiplied when false (12.5 for 12.5%).
  */
 export function formatPercentage(
   value: number | null | undefined,
+  locale: Locale,
   fractionDigits = 2,
-  locale = 'de',
   asFraction = false
 ): string {
   if (value === null || value === undefined || !isFinite(value)) return '-';
   const pct = asFraction ? value * 100 : value;
   return (
-    pct.toLocaleString(locale === 'de' ? 'de-DE' : 'en-US', {
+    formatNumber(pct, locale, {
       minimumFractionDigits: fractionDigits,
       maximumFractionDigits: fractionDigits,
     }) + '%'

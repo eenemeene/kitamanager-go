@@ -29,6 +29,7 @@ jest.mock('@/lib/hooks/use-toast', () => {
 });
 
 jest.mock('next-intl', () => ({
+  useLocale: () => 'en',
   useTranslations: () => (key: string, params?: Record<string, unknown>) => {
     if (params) {
       const tail = Object.entries(params)

@@ -28,7 +28,7 @@ import type {
   GovernmentFundingPeriodCreateRequest,
   GovernmentFundingPropertyCreateRequest,
 } from '@/lib/api/types';
-import { formatDateForApi, formatPeriod, eurosToCents } from '@/lib/utils/formatting';
+import { formatDateForApi, eurosToCents } from '@/lib/utils/formatting';
 import type {
   GovernmentFundingPeriodFormData,
   GovernmentFundingPropertyFormData,
@@ -37,12 +37,14 @@ import { PropertiesGroupedByKey } from '@/components/government-funding-rates/pr
 import { PeriodFormDialog } from '@/components/government-funding-rates/period-form-dialog';
 import { suppressesToast } from '@/lib/forms/use-problem-form-errors';
 import { PropertyFormDialog } from '@/components/government-funding-rates/property-form-dialog';
+import { useFormatters } from '@/hooks/use-formatters';
 
 export default function GovernmentFundingDetailPage() {
   const params = useParams();
   const fundingId = Number(params.id);
   const t = useTranslations();
 
+  const fmt = useFormatters();
   const [isPeriodDialogOpen, setIsPeriodDialogOpen] = useState(false);
   const [isPropertyDialogOpen, setIsPropertyDialogOpen] = useState(false);
   const [isDeletePeriodDialogOpen, setIsDeletePeriodDialogOpen] = useState(false);
@@ -195,7 +197,7 @@ export default function GovernmentFundingDetailPage() {
                   <CardHeader className="flex flex-row items-center justify-between py-3">
                     <div>
                       <CardTitle className="text-base">
-                        {formatPeriod(period.from, period.to, 'en', t('common.ongoing'))}{' '}
+                        {fmt.period(period.from, period.to, t('common.ongoing'))}{' '}
                         <span className="text-muted-foreground text-sm font-normal">
                           ({period.full_time_weekly_hours}h/FTE)
                         </span>

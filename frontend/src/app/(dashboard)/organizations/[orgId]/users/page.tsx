@@ -18,7 +18,7 @@ import type { User, UserCreateRequest, UserUpdateRequest, UserMembership } from 
 import { Pagination } from '@/components/ui/pagination';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { formatDate } from '@/lib/utils/formatting';
+
 import { useAuthStore } from '@/stores/auth-store';
 import { useCrudMutations } from '@/lib/hooks/use-crud-mutations';
 import { FormErrorSummary } from '@/components/forms/form-error-summary';
@@ -41,6 +41,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { UserMembershipDialog } from '@/components/users/user-membership-dialog';
 import { validationTiming } from '@/lib/forms/validation-timing';
+import { useFormatters } from '@/hooks/use-formatters';
 
 const createDefaultValues: UserCreateFormData = {
   name: '',
@@ -59,6 +60,7 @@ export default function UsersPage() {
   const params = useParams();
   const orgId = Number(params.orgId);
   const t = useTranslations();
+  const fmt = useFormatters();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuthStore();
@@ -262,11 +264,11 @@ export default function UsersPage() {
     baseColumns.push({
       key: 'lastLogin',
       header: 'users.lastLogin',
-      render: (user) => formatDate(user.last_login),
+      render: (user) => fmt.date(user.last_login),
     });
 
     return baseColumns;
-  }, [t, isSuperadmin, currentUser?.id, handleSuperadminToggle, membershipsByUserId]);
+  }, [t, fmt, isSuperadmin, currentUser?.id, handleSuperadminToggle, membershipsByUserId]);
 
   const renderActions = (user: User) => (
     <>

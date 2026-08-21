@@ -3,6 +3,7 @@ import { PayPlanSalaryChart } from '../payplan-salary-chart';
 import type { PayPlanPeriod } from '@/lib/api/types';
 
 jest.mock('next-intl', () => ({
+  useLocale: () => 'en',
   useTranslations: () => (key: string) => key,
 }));
 

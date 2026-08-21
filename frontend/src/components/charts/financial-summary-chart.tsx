@@ -6,8 +6,9 @@ import { ResponsiveBar } from '@nivo/bar';
 import type { BarDatum, BarCustomLayerProps } from '@nivo/bar';
 import { ExportableChart } from './exportable-chart';
 import type { FinancialResponse } from '@/lib/api/types';
-import { buildKitaYearBands, formatDateLabel, kitaYearLabel, chartTheme } from './chart-utils';
+import { buildKitaYearBands, useDateLabel, kitaYearLabel, chartTheme } from './chart-utils';
 import { toLocalDateString } from '@/lib/utils/formatting';
+import { useFormatters } from '@/hooks/use-formatters';
 
 interface FinancialSummaryChartProps {
   data: FinancialResponse;
@@ -15,13 +16,12 @@ interface FinancialSummaryChartProps {
 
 type BandScale = ((v: string) => number | undefined) & { bandwidth(): number };
 
-function formatEur(cents: number): string {
-  return (cents / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
-}
-
 export function FinancialSummaryChart({ data }: FinancialSummaryChartProps) {
   const t = useTranslations();
 
+  const formatDateLabel = useDateLabel();
+  const fmt = useFormatters();
+  const formatEur = (cents: number) => fmt.currency(cents);
   const balanceKey = t('statistics.cumulativeBalance');
 
   const rawDates = data.data_points.map((dp) => dp.date ?? '');
@@ -77,7 +77,7 @@ export function FinancialSummaryChart({ data }: FinancialSummaryChartProps) {
       deltas: monthlyDeltas,
       deficitInfo: { deficits, consecutiveDeficitMonths },
     };
-  }, [data, balanceKey]);
+  }, [data, balanceKey, formatDateLabel]);
 
   const todayStr = toLocalDateString(new Date());
   const todayLabel = formatDateLabel(todayStr);
@@ -288,7 +288,7 @@ export function FinancialSummaryChart({ data }: FinancialSummaryChartProps) {
             tickPadding: 5,
             tickRotation: 0,
             format: (v) =>
-              Number(v).toLocaleString('de-DE', {
+              fmt.number(Number(v), {
                 style: 'currency',
                 currency: 'EUR',
                 maximumFractionDigits: 0,

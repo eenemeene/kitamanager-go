@@ -4,6 +4,7 @@ import { AttendanceTable, type AttendanceRow } from '../attendance-table';
 import { renderWithProviders } from '@/test-utils';
 
 jest.mock('next-intl', () => ({
+  useLocale: () => 'en',
   useTranslations: () => (key: string) => key,
 }));
 

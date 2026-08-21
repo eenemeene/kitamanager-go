@@ -4,6 +4,7 @@ import { SearchInput } from '../search-input';
 import { renderWithProviders } from '@/test-utils';
 
 jest.mock('next-intl', () => ({
+  useLocale: () => 'en',
   useTranslations: () => (key: string) => key,
 }));
 

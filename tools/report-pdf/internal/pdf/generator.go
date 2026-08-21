@@ -115,6 +115,20 @@ func (g *Generator) localeCookie() *playwright.OptionalCookie {
 	}
 }
 
+// browserLocale maps the configured locale to the BCP 47 tag Chromium expects,
+// mirroring `intlLocale()` in the frontend so both halves of a report agree.
+// Returns nil when no locale was configured, leaving the browser default.
+func (g *Generator) browserLocale() *string {
+	switch g.locale {
+	case "de":
+		return playwright.String("de-DE")
+	case "en":
+		return playwright.String("en-US")
+	default:
+		return nil
+	}
+}
+
 // GenerateCombinedReport navigates to the combined /report/print page
 // and exports it as a single PDF at outputPath. The frontend page
 // drives all four section renders + cover + page-break CSS in one
@@ -127,6 +141,12 @@ func (g *Generator) localeCookie() *playwright.OptionalCookie {
 func (g *Generator) GenerateCombinedReport(orgID, month, outputPath string) error {
 	ctx, err := g.browser.NewContext(playwright.BrowserNewContextOptions{
 		Viewport: &playwright.Size{Width: 1600, Height: 900},
+		// Chromium's own locale, not just the cookie. The cookie tells next-intl
+		// which catalogue to load; this tells the JS engine what `Intl` and
+		// `toLocaleDateString` should produce. Without it the container's default
+		// won, so a German report rendered German prose around English month
+		// names and an M/D/YYYY cover date.
+		Locale: g.browserLocale(),
 	})
 	if err != nil {
 		return fmt.Errorf("create browser context: %w", err)

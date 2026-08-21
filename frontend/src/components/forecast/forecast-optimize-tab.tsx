@@ -19,6 +19,7 @@ import { useForecastStore } from '@/stores/forecast-store';
 import { useUiStore } from '@/stores/ui-store';
 import { suggestContractEnd } from '@/lib/utils/school-enrollment';
 import { formatDateForApi } from '@/lib/utils/formatting';
+import { useFormatters } from '@/hooks/use-formatters';
 
 interface ForecastOptimizeTabProps {
   baselineBalanceCents: number | null;
@@ -32,6 +33,7 @@ export function ForecastOptimizeTab({
   const params = useParams();
   const orgId = Number(params.orgId);
   const t = useTranslations();
+  const fmt = useFormatters();
   const store = useForecastStore();
   const organizations = useUiStore((s) => s.organizations);
   const orgState = organizations.find((o) => o.id === orgId)?.state ?? 'berlin';
@@ -322,10 +324,7 @@ export function ForecastOptimizeTab({
                 className={`text-xs ${baselineBalanceCents >= 0 ? 'text-success' : 'text-destructive'}`}
               >
                 {t('statistics.forecastBaselineBalance', {
-                  amount: (baselineBalanceCents / 100).toLocaleString('de-DE', {
-                    style: 'currency',
-                    currency: 'EUR',
-                  }),
+                  amount: fmt.currency(baselineBalanceCents),
                 })}
               </p>
             ) : null}
@@ -393,10 +392,7 @@ export function ForecastOptimizeTab({
           <p className="text-sm font-medium">
             {t('statistics.forecastOptimizeResult', {
               count: optimizeResult.childrenAdded,
-              balance: (optimizeResult.finalBalance / 100).toLocaleString('de-DE', {
-                style: 'currency',
-                currency: 'EUR',
-              }),
+              balance: fmt.currency(optimizeResult.finalBalance),
             })}
           </p>
           {optimizeResult.childrenAdded > 0 && (

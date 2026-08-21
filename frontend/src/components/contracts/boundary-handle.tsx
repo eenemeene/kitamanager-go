@@ -4,10 +4,11 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { CalendarIcon } from 'lucide-react';
 import { parseISO, addDays } from 'date-fns';
-import { formatDate } from '@/lib/utils/formatting';
+
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { BaseContract } from './timeline-utils';
+import { useFormatters } from '@/hooks/use-formatters';
 
 interface BoundaryHandleProps {
   upperContract: BaseContract;
@@ -34,6 +35,7 @@ export function BoundaryHandle({
   isUpdating,
 }: BoundaryHandleProps) {
   const t = useTranslations();
+  const fmt = useFormatters();
   const [open, setOpen] = useState(false);
 
   const endDate = lowerContract.to || '';
@@ -72,7 +74,7 @@ export function BoundaryHandle({
             >
               <CalendarIcon className="text-muted-foreground h-3.5 w-3.5" />
               <span className="text-muted-foreground ml-2 text-xs font-medium">
-                {formatDate(endDate)} | {formatDate(startDate)}
+                {fmt.date(endDate)} | {fmt.date(startDate)}
               </span>
             </button>
           </PopoverTrigger>

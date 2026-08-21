@@ -48,7 +48,7 @@ import {
 } from '@/lib/api/types';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { formatDate, formatDateForInput, formatDateForApi } from '@/lib/utils/formatting';
+import { formatDateForInput, formatDateForApi } from '@/lib/utils/formatting';
 import { propertiesToLabelKeys } from '@/lib/utils/contract-properties';
 import { suggestContractEnd } from '@/lib/utils/school-enrollment';
 import { getContractStatus, compareDates } from '@/lib/utils/contracts';
@@ -59,12 +59,14 @@ import { useUiStore } from '@/stores/ui-store';
 import { validationTiming } from '@/lib/forms/validation-timing';
 import { useProblemFormErrors, suppressesToast } from '@/lib/forms/use-problem-form-errors';
 import { FormErrorSummary } from '@/components/forms/form-error-summary';
+import { useFormatters } from '@/hooks/use-formatters';
 
 export default function ChildContractsPage() {
   const params = useParams();
   const orgId = Number(params.orgId);
   const childId = Number(params.childId);
   const t = useTranslations();
+  const fmt = useFormatters();
   const tLabels = useTranslations('fundingLabels');
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -409,9 +411,9 @@ export default function ChildContractsPage() {
                                 </span>
                               )}
                             </TableCell>
-                            <TableCell>{formatDate(contract.from)}</TableCell>
+                            <TableCell>{fmt.date(contract.from)}</TableCell>
                             <TableCell>
-                              {contract.to ? formatDate(contract.to) : t('common.ongoing')}
+                              {contract.to ? fmt.date(contract.to) : t('common.ongoing')}
                             </TableCell>
                             <TableCell>
                               {contract.properties &&

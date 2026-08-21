@@ -32,12 +32,7 @@ import {
 } from '@/lib/api/types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  formatDate,
-  formatDateForInput,
-  formatDateForApi,
-  toLocalDateString,
-} from '@/lib/utils/formatting';
+import { formatDateForInput, formatDateForApi, toLocalDateString } from '@/lib/utils/formatting';
 import { showErrorToast } from '@/lib/utils/show-error-toast';
 import { useContractMutation } from '@/lib/hooks/use-contract-mutation';
 import { useImportMutation } from '@/lib/hooks/use-import-mutation';
@@ -60,12 +55,14 @@ import {
   type ChildContractFormData,
   type ChildWithContractFormData,
 } from '@/lib/schemas';
+import { useFormatters } from '@/hooks/use-formatters';
 
 export default function ChildrenPage() {
   const params = useParams();
   const router = useRouter();
   const orgId = Number(params.orgId);
   const t = useTranslations();
+  const fmt = useFormatters();
   const { toast } = useToast();
 
   const {
@@ -320,7 +317,7 @@ export default function ChildrenPage() {
         queryKey: queryKeys.children.contracts(orgId, variables.childId),
       });
       toast({
-        title: t('children.contractEndAdjusted', { date: formatDate(variables.to) }),
+        title: t('children.contractEndAdjusted', { date: fmt.date(variables.to) }),
       });
     },
     onError: (error: unknown) => {

@@ -15,16 +15,13 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useFormatters } from '@/hooks/use-formatters';
 
 interface FundingDeficitAnalysisProps {
   summary: FundingComparisonSummary;
   orgId: string | string[];
   /** When true, the deficit analysis section is expanded. Used for print/PDF export. */
   forceExpanded?: boolean;
-}
-
-function formatEur(cents: number): string {
-  return (cents / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
 }
 
 const MAX_INITIAL_ISSUES = 10;
@@ -35,6 +32,8 @@ export function FundingDeficitAnalysis({
   forceExpanded = false,
 }: FundingDeficitAnalysisProps) {
   const t = useTranslations('statistics');
+  const fmt = useFormatters();
+  const formatEur = (cents: number) => fmt.currency(cents);
   const [showAllIssues, setShowAllIssues] = useState(forceExpanded);
   const [expanded, setExpanded] = useState(forceExpanded);
 

@@ -27,7 +27,7 @@ import { PropertyTagInput } from '@/components/ui/tag-input';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useFundingAttributes } from '@/lib/hooks/use-funding-attributes';
 import { childContractSchema, type ChildContractFormData } from '@/lib/schemas';
-import { formatDate, formatDateForInput, toLocalDateString } from '@/lib/utils/formatting';
+import { formatDateForInput, toLocalDateString } from '@/lib/utils/formatting';
 import { propertiesToLabelKeys } from '@/lib/utils/contract-properties';
 import { getActiveContract, isDateBefore } from '@/lib/utils/contracts';
 import { suggestContractEnd } from '@/lib/utils/school-enrollment';
@@ -35,6 +35,7 @@ import type { Child, Section, ContractProperties } from '@/lib/api/types';
 import { validationTiming } from '@/lib/forms/validation-timing';
 import { useProblemFormErrors } from '@/lib/forms/use-problem-form-errors';
 import { FormErrorSummary } from '@/components/forms/form-error-summary';
+import { useFormatters } from '@/hooks/use-formatters';
 
 export interface ChildContractCreateDialogProps {
   open: boolean;
@@ -64,6 +65,7 @@ export function ChildContractCreateDialog({
   onSubmit,
 }: ChildContractCreateDialogProps) {
   const t = useTranslations();
+  const fmt = useFormatters();
   const tLabels = useTranslations('fundingLabels');
   const { toast } = useToast();
   const [endCurrentContract, setEndCurrentContract] = useState(true);
@@ -207,7 +209,7 @@ export function ChildContractCreateDialog({
                 <p className="font-medium">{t('contracts.hasActiveContract')}</p>
                 <p className="text-muted-foreground text-sm">
                   {t('contracts.activeSince', {
-                    date: formatDate(activeContract.from),
+                    date: fmt.date(activeContract.from),
                     attrs:
                       propertiesToLabelKeys(activeContract.properties as ContractProperties)
                         .map((k) => (tLabels.has(k) ? tLabels(k) : k.split('--').pop()))
