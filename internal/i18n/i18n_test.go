@@ -106,8 +106,8 @@ func TestPluralFormsAreSelected(t *testing.T) {
 	}{
 		{"en", 1, "Cannot delete section with 1 currently-assigned child; reassign them first"},
 		{"en", 3, "Cannot delete section with 3 currently-assigned children; reassign them first"},
-		{"de", 1, "Der Bereich kann nicht gelöscht werden, da ihm noch 1 Kind zugeordnet ist; bitte zuerst umbuchen"},
-		{"de", 3, "Der Bereich kann nicht gelöscht werden, da ihm noch 3 Kinder zugeordnet sind; bitte zuerst umbuchen"},
+		{"de", 1, "Der Bereich kann nicht gelöscht werden, da ihm noch 1 Kind zugeordnet ist; bitte zuerst neu zuordnen"},
+		{"de", 3, "Der Bereich kann nicht gelöscht werden, da ihm noch 3 Kinder zugeordnet sind; bitte zuerst neu zuordnen"},
 	}
 	for _, tt := range tests {
 		got, ok := render(t, tt.lang, msg, tt.count)

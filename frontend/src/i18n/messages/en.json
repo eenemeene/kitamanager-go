@@ -111,7 +111,7 @@
     "children": "Children",
     "users": "Users",
     "auditLog": "Audit Log",
-    "governmentFundings": "Government Fundings",
+    "governmentFundings": "Funding rates",
     "payPlans": "Pay Plans",
     "sections": "Sections",
     "statistics": "Statistics",
@@ -770,7 +770,7 @@
     "selectState": "Select State"
   },
   "governmentFundings": {
-    "title": "Government Fundings",
+    "title": "Funding rates",
     "create": "Create Funding",
     "edit": "Edit Funding",
     "newGovernmentFunding": "New Government Funding",

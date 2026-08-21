@@ -89,3 +89,29 @@ Detailed conventions live under `.claude/rules/` and load only when Claude reads
 - **Integrationsstatus A/B** — Berlin Kita classification under Eingliederungshilfe (SGB IX/SGB VIII)
 
 When in doubt about wording, mirror what's in `configs/government-fundings/berlin.yaml` and the user-guide pages.
+
+### German UI terms — one word per concept
+
+Each of these had two to four German words in circulation across the two
+message catalogues, for one thing on screen. The left column is what to use;
+the right is what was in use and why it lost. Applies to
+`internal/i18n/locales/de.json` and `frontend/src/i18n/messages/de.json` alike.
+
+| Use | Not | Why |
+|---|---|---|
+| **Entgelttabelle** | ~~Tarif~~, ~~Tarifvertrag~~, ~~Vergütungsplan~~ | A *Tarifvertrag* is the TVöD collective agreement, a *Tarif* a rate. The salary table is neither, and the user guide already says Entgelttabelle |
+| **Abrechnung** | ~~Rechnung~~ | A *Rechnung* is an invoice you issue; the ISBJ file is the opposite direction. UI labels say Abrechnung; prose may use *ISBJ-Bescheid*, which is what operators call it |
+| **Fördersatz / Fördersätze** | ~~Staatliche Finanzierung~~, ~~Finanzierungsconfig~~ | The nav item, the tooltips that point at it, the route, and the user guide now agree |
+| **Satzdifferenz** | ~~Tarifunterschied~~ | "Rate" here is a Fördersatz. In an app that also handles TVöD salaries, *Tarif* reads as wages |
+| **Saldo** (masculine — *der* Saldo) | ~~Bilanz~~ | A *Bilanz* is a balance sheet, not income minus expenses for a month |
+| **Deckung** | ~~Abgleich~~ | *Abgleich* is a reconciliation, not a ratio |
+| **Bereich** | ~~Gruppe~~ | The product term for a section, per the user guide |
+| **Eigenschaft** | ~~Merkmal~~ | Contract and funding properties |
+| **Personalschlüssel** | ~~Betreuungsschlüssel~~ | The VOKitaFöG term |
+| **Ergänzungskraft** | ~~Hilfskraft~~ | The `supplementary` staff category, per the glossary |
+| **Über-/Unterdeckung** | ~~Überschuss~~ | The two have to be a matching pair |
+| **Gutschein(nummer)** | ~~Voucher~~ | No Anglicism where a German term is the domain word |
+
+Register and typography: **Sie**, never *du*. `z. B.` with a space, `…` not
+`...`, `„…“` not `"…"`, `Kita-Jahr` hyphenated. Em dashes (—) match the rest
+of the project — do not "correct" them to en dashes.
