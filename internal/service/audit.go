@@ -760,6 +760,37 @@ func (s *AuditService) LogResourceImport(ctx context.Context, actorID uint, acto
 	})
 }
 
+// IPVisibility controls how much of an actor's IP address a read may return.
+//
+// The zero value is IPAnonymized on purpose. Every audit read has to decide
+// this, and a caller who forgets — a new endpoint, a refactor that drops an
+// argument — gets the answer that protects the data rather than the one that
+// publishes it.
+//
+// Which viewers get IPFull is a routing question, not a service one: the
+// handlers resolve it from ctxkeys.IsSuperAdmin, which the authorization
+// middleware already populates on every path.
+type IPVisibility int
+
+const (
+	// IPAnonymized returns only the network prefix of each address.
+	IPAnonymized IPVisibility = iota
+	// IPFull returns addresses exactly as recorded.
+	IPFull
+)
+
+// applyIPVisibility reduces the addresses in a page of audit rows unless the
+// viewer is entitled to see them in full.
+func applyIPVisibility(rows []models.AuditLogResponse, visibility IPVisibility) []models.AuditLogResponse {
+	if visibility == IPFull {
+		return rows
+	}
+	for i := range rows {
+		rows[i] = rows[i].WithAnonymizedIP()
+	}
+	return rows
+}
+
 // GetLogs returns paginated audit logs
 func (s *AuditService) GetLogs(ctx context.Context, limit, offset int) ([]models.AuditLogResponse, int64, error) {
 	if s == nil || s.store == nil {
@@ -775,7 +806,7 @@ func (s *AuditService) GetLogs(ctx context.Context, limit, offset int) ([]models
 }
 
 // GetLogsFiltered returns paginated audit logs with optional filters
-func (s *AuditService) GetLogsFiltered(ctx context.Context, action string, userID *uint, from *time.Time, to *time.Time, limit, offset int) ([]models.AuditLogResponse, int64, error) {
+func (s *AuditService) GetLogsFiltered(ctx context.Context, action string, userID *uint, from *time.Time, to *time.Time, limit, offset int, visibility IPVisibility) ([]models.AuditLogResponse, int64, error) {
 	if s == nil || s.store == nil {
 		return nil, 0, nil
 	}
@@ -785,13 +816,13 @@ func (s *AuditService) GetLogsFiltered(ctx context.Context, action string, userI
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch audit logs")
 	}
 
-	return toResponseList(logs, (*models.AuditLog).ToResponse), total, nil
+	return applyIPVisibility(toResponseList(logs, (*models.AuditLog).ToResponse), visibility), total, nil
 }
 
 // GetLogsByOrganization returns audit logs scoped to a single organization
 // with optional filters. Identity-level events (org_id IS NULL) are excluded
 // — only the superadmin-only GetLogsFiltered path sees those.
-func (s *AuditService) GetLogsByOrganization(ctx context.Context, orgID uint, action string, userID *uint, from, to *time.Time, limit, offset int) ([]models.AuditLogResponse, int64, error) {
+func (s *AuditService) GetLogsByOrganization(ctx context.Context, orgID uint, action string, userID *uint, from, to *time.Time, limit, offset int, visibility IPVisibility) ([]models.AuditLogResponse, int64, error) {
 	if s == nil || s.store == nil {
 		return nil, 0, nil
 	}
@@ -801,11 +832,11 @@ func (s *AuditService) GetLogsByOrganization(ctx context.Context, orgID uint, ac
 		return nil, 0, apperror.InternalWrap(err, "failed to fetch audit logs")
 	}
 
-	return toResponseList(logs, (*models.AuditLog).ToResponse), total, nil
+	return applyIPVisibility(toResponseList(logs, (*models.AuditLog).ToResponse), visibility), total, nil
 }
 
 // GetLogByID returns a single audit log entry by ID
-func (s *AuditService) GetLogByID(ctx context.Context, id uint) (*models.AuditLogResponse, error) {
+func (s *AuditService) GetLogByID(ctx context.Context, id uint, visibility IPVisibility) (*models.AuditLogResponse, error) {
 	if s == nil || s.store == nil {
 		return nil, apperror.NotFound("audit log")
 	}
@@ -816,6 +847,9 @@ func (s *AuditService) GetLogByID(ctx context.Context, id uint) (*models.AuditLo
 	}
 
 	resp := log.ToResponse()
+	if visibility != IPFull {
+		resp = resp.WithAnonymizedIP()
+	}
 	return &resp, nil
 }
 

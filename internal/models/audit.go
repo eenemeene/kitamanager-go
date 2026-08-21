@@ -1,6 +1,7 @@
 package models
 
 import (
+	"net"
 	"time"
 )
 
@@ -173,9 +174,17 @@ type AuditLogResponse struct {
 	ResourceType   string      `json:"resource_type,omitempty" example:"employee"`
 	ResourceID     *uint       `json:"resource_id,omitempty" example:"42"`
 	OrganizationID *uint       `json:"organization_id,omitempty" example:"1"`
-	IPAddress      string      `json:"ip_address,omitempty" example:"192.168.1.1"`
-	Details        string      `json:"details,omitempty" example:"{\"resource_name\":\"John Doe\"}"`
-	Success        bool        `json:"success" example:"true"`
+	// IPAddress is the actor's address. Viewers without superadmin rights
+	// receive only the network prefix (IPv4 /24, IPv6 /48) — see
+	// IPAnonymized.
+	IPAddress string `json:"ip_address,omitempty" example:"192.168.1.1"`
+	// IPAnonymized reports that IPAddress carries only a network prefix
+	// rather than the address that was recorded. Absent when the viewer sees
+	// the full value, so a client can tell a truncated address from one that
+	// genuinely ends in .0 instead of guessing.
+	IPAnonymized bool   `json:"ip_anonymized,omitempty" example:"true"`
+	Details      string `json:"details,omitempty" example:"{\"resource_name\":\"John Doe\"}"`
+	Success      bool   `json:"success" example:"true"`
 }
 
 func (a *AuditLog) ToResponse() AuditLogResponse {
@@ -193,4 +202,54 @@ func (a *AuditLog) ToResponse() AuditLogResponse {
 		Details:        a.Details,
 		Success:        a.Success,
 	}
+}
+
+// AnonymizeIP reduces an address to its network prefix.
+//
+// An audit row already names the actor by email, so the IP is not what
+// identifies them — it identifies *where they were*. A home address geolocates
+// to a household and a mobile address to a movement trail, and neither is
+// something a colleague with audit-log access needs. The network prefix keeps
+// the question an org admin legitimately asks — was this done from the Kita or
+// from outside it — and drops the rest.
+//
+// IPv4 keeps /24 and IPv6 keeps /48. /48 rather than /64 because a residential
+// IPv6 allocation is typically a /56 or /64, so keeping 64 bits would preserve
+// exactly the household-level identification this is meant to remove.
+//
+// An address that will not parse returns empty. That case should not arise —
+// ClientIP produces a valid address — but a row written by older code or a
+// hand-edited database should fail closed rather than pass an unknown string
+// through to a viewer who is not entitled to the real one.
+func AnonymizeIP(ip string) string {
+	if ip == "" {
+		return ""
+	}
+	parsed := net.ParseIP(ip)
+	if parsed == nil {
+		return ""
+	}
+	// To4 also catches IPv4-mapped IPv6 ("::ffff:192.0.2.1"), which must be
+	// treated as the IPv4 address it is rather than masked as a v6 prefix.
+	if v4 := parsed.To4(); v4 != nil {
+		return net.IPv4(v4[0], v4[1], v4[2], 0).String()
+	}
+	return parsed.Mask(net.CIDRMask(48, 128)).String()
+}
+
+// WithAnonymizedIP returns a copy of the response carrying only the network
+// prefix of the recorded address, flagged so the client knows it is looking at
+// a prefix.
+//
+// The flag is set whenever a value was reduced, including when the value could
+// not be parsed and was therefore dropped entirely — "you are not seeing the
+// recorded address" is true in both cases, and silently returning an empty
+// field would misreport a redaction as an absent value.
+func (r AuditLogResponse) WithAnonymizedIP() AuditLogResponse {
+	if r.IPAddress == "" {
+		return r
+	}
+	r.IPAddress = AnonymizeIP(r.IPAddress)
+	r.IPAnonymized = true
+	return r
 }

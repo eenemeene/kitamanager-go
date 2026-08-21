@@ -468,6 +468,15 @@ func TestAuditLogHandler_List_ResponseFields(t *testing.T) {
 	handler := NewAuditLogHandler(auditService)
 
 	r := setupTestRouter()
+	// The global feed is superadmin-only in routes.go, and the handler now
+	// reads ctxkeys.IsSuperAdmin to decide between the recorded IP and its
+	// network prefix. Reached without the authorization middleware the
+	// handler fails closed and anonymizes — correct, but not what this test
+	// asserts, which is the set of fields a superadmin receives.
+	r.Use(func(c *gin.Context) {
+		c.Set(ctxkeys.IsSuperAdmin, true)
+		c.Next()
+	})
 	r.GET("/audit-logs", handler.List)
 
 	w := performRequest(r, "GET", "/audit-logs", nil)

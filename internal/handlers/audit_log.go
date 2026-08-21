@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/eenemeene/kitamanager-go/internal/ctxkeys"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 )
@@ -17,6 +18,26 @@ type AuditLogHandler struct {
 // NewAuditLogHandler creates a new AuditLogHandler
 func NewAuditLogHandler(auditService *service.AuditService) *AuditLogHandler {
 	return &AuditLogHandler{auditService: auditService}
+}
+
+// auditIPVisibility decides how much of each actor's IP address this caller may
+// see.
+//
+// Superadmins see addresses as recorded; everyone else — in practice the org
+// admins reading their own organization's feed — sees only the network prefix.
+// An audit row already names the actor by email, so the address is not what
+// identifies them; it identifies where they were, which a colleague has no
+// business reading.
+//
+// The flag comes from ctxkeys.IsSuperAdmin, which all three authorization
+// middlewares populate before the handler runs. That key was introduced for
+// this exact purpose and then had no reader for the lifetime of the feature,
+// so the redaction its comment described never actually happened.
+func auditIPVisibility(c *gin.Context) service.IPVisibility {
+	if c.GetBool(ctxkeys.IsSuperAdmin) {
+		return service.IPFull
+	}
+	return service.IPAnonymized
 }
 
 // List godoc
@@ -54,7 +75,7 @@ func (h *AuditLogHandler) List(c *gin.Context) {
 		return
 	}
 
-	logs, total, err := h.auditService.GetLogsFiltered(c.Request.Context(), action, userID, from, to, params.Limit, params.Offset())
+	logs, total, err := h.auditService.GetLogsFiltered(c.Request.Context(), action, userID, from, to, params.Limit, params.Offset(), auditIPVisibility(c))
 	if err != nil {
 		respondError(c, err)
 		return
@@ -104,7 +125,7 @@ func (h *AuditLogHandler) ListByOrganization(c *gin.Context) {
 		return
 	}
 
-	logs, total, err := h.auditService.GetLogsByOrganization(c.Request.Context(), orgID, action, userID, from, to, params.Limit, params.Offset())
+	logs, total, err := h.auditService.GetLogsByOrganization(c.Request.Context(), orgID, action, userID, from, to, params.Limit, params.Offset(), auditIPVisibility(c))
 	if err != nil {
 		respondError(c, err)
 		return
@@ -133,7 +154,7 @@ func (h *AuditLogHandler) Get(c *gin.Context) {
 		return
 	}
 
-	log, err := h.auditService.GetLogByID(c.Request.Context(), id)
+	log, err := h.auditService.GetLogByID(c.Request.Context(), id, auditIPVisibility(c))
 	if err != nil {
 		respondError(c, err)
 		return

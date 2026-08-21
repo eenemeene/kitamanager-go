@@ -611,7 +611,7 @@ func TestAuditService_GetLogsFiltered(t *testing.T) {
 	readSvc := &AuditService{store: store.NewAuditStore(db)}
 
 	t.Run("no filters returns all", func(t *testing.T) {
-		logs, total, err := readSvc.GetLogsFiltered(ctx, "", nil, nil, nil, 100, 0)
+		logs, total, err := readSvc.GetLogsFiltered(ctx, "", nil, nil, nil, 100, 0, IPFull)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -627,7 +627,7 @@ func TestAuditService_GetLogsFiltered(t *testing.T) {
 		// The action filter is a case-insensitive substring match, so the
 		// fragment "login" also matches "login_failed". Two LogLogin rows
 		// plus one LogLoginFailed row = 3.
-		logs, total, err := readSvc.GetLogsFiltered(ctx, string(models.AuditActionLogin), nil, nil, nil, 100, 0)
+		logs, total, err := readSvc.GetLogsFiltered(ctx, string(models.AuditActionLogin), nil, nil, nil, 100, 0, IPFull)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -643,7 +643,7 @@ func TestAuditService_GetLogsFiltered(t *testing.T) {
 		// "employee_create" is unique enough that the substring behavior
 		// does not widen the match. Guards against regressions where a
 		// full action string suddenly returns extras.
-		logs, total, err := readSvc.GetLogsFiltered(ctx, "employee_create", nil, nil, nil, 100, 0)
+		logs, total, err := readSvc.GetLogsFiltered(ctx, "employee_create", nil, nil, nil, 100, 0, IPFull)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -657,7 +657,7 @@ func TestAuditService_GetLogsFiltered(t *testing.T) {
 
 	t.Run("filter by user_id", func(t *testing.T) {
 		userID := uint(1)
-		logs, total, err := readSvc.GetLogsFiltered(ctx, "", &userID, nil, nil, 100, 0)
+		logs, total, err := readSvc.GetLogsFiltered(ctx, "", &userID, nil, nil, 100, 0, IPFull)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -670,7 +670,7 @@ func TestAuditService_GetLogsFiltered(t *testing.T) {
 	})
 
 	t.Run("pagination", func(t *testing.T) {
-		logs, total, err := readSvc.GetLogsFiltered(ctx, "", nil, nil, nil, 2, 0)
+		logs, total, err := readSvc.GetLogsFiltered(ctx, "", nil, nil, nil, 2, 0, IPFull)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -701,7 +701,7 @@ func TestAuditService_GetLogByID(t *testing.T) {
 	}
 
 	t.Run("found", func(t *testing.T) {
-		log, err := readSvc.GetLogByID(ctx, logs[0].ID)
+		log, err := readSvc.GetLogByID(ctx, logs[0].ID, IPFull)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -714,7 +714,7 @@ func TestAuditService_GetLogByID(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		_, err := readSvc.GetLogByID(ctx, 99999)
+		_, err := readSvc.GetLogByID(ctx, 99999, IPFull)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -760,7 +760,7 @@ func TestAuditService_GetLogsByOrganization_HidesIdentityEvents(t *testing.T) {
 	readSvc := NewAuditService(auditStore)
 	defer readSvc.Shutdown()
 
-	logs, total, err := readSvc.GetLogsByOrganization(ctx, org.ID, "", nil, nil, nil, 100, 0)
+	logs, total, err := readSvc.GetLogsByOrganization(ctx, org.ID, "", nil, nil, nil, 100, 0, IPFull)
 	if err != nil {
 		t.Fatalf("GetLogsByOrganization: %v", err)
 	}
@@ -772,7 +772,7 @@ func TestAuditService_GetLogsByOrganization_HidesIdentityEvents(t *testing.T) {
 	}
 
 	// Sanity: the global (superadmin) endpoint DOES see everything.
-	allLogs, allTotal, err := readSvc.GetLogsFiltered(ctx, "", nil, nil, nil, 100, 0)
+	allLogs, allTotal, err := readSvc.GetLogsFiltered(ctx, "", nil, nil, nil, 100, 0, IPFull)
 	if err != nil {
 		t.Fatalf("GetLogsFiltered: %v", err)
 	}
@@ -785,7 +785,7 @@ func TestAuditService_GetLogsFiltered_NilService(t *testing.T) {
 	var svc *AuditService
 	ctx := context.Background()
 
-	logs, total, err := svc.GetLogsFiltered(ctx, "", nil, nil, nil, 10, 0)
+	logs, total, err := svc.GetLogsFiltered(ctx, "", nil, nil, nil, 10, 0, IPFull)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -801,7 +801,7 @@ func TestAuditService_GetLogByID_NilService(t *testing.T) {
 	var svc *AuditService
 	ctx := context.Background()
 
-	_, err := svc.GetLogByID(ctx, 1)
+	_, err := svc.GetLogByID(ctx, 1, IPFull)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}

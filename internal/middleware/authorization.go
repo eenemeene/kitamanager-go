@@ -43,6 +43,9 @@ func (m *AuthorizationMiddleware) RequirePermission(resource, action string) gin
 		// so downstream handlers do not need to repeat the DB lookup, and
 		// it is resolved before the org checks below so that the value is
 		// present on every exit path, not only the ones that get through.
+		//
+		// Read by handlers.auditIPVisibility, which decides whether an audit
+		// row carries the recorded IP address or only its network prefix.
 		isSuperAdmin, err := m.permissionService.IsSuperAdmin(c.Request.Context(), userIDUint)
 		if err != nil {
 			problem.Write(c, http.StatusInternalServerError, apperror.CodeInternal, "authorization check failed")
@@ -186,7 +189,7 @@ func (m *AuthorizationMiddleware) RequireGlobalPermission(resource, action strin
 		}
 
 		// Resolve superadmin up-front so downstream handlers can read the
-		// ctx key without repeating the lookup (M2).
+		// ctx key without repeating the lookup — see handlers.auditIPVisibility.
 		isSuperAdmin, err := m.permissionService.IsSuperAdmin(c.Request.Context(), userIDUint)
 		if err != nil {
 			problem.Write(c, http.StatusInternalServerError, apperror.CodeInternal, "authorization check failed")
