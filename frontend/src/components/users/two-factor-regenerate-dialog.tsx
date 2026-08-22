@@ -87,7 +87,7 @@ export function TwoFactorRegenerateDialog({ open, onOpenChange, factorId, onComp
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent autoFocusFirstField>
         <DialogHeader>
           <DialogTitle>{t('title')}</DialogTitle>
           <DialogDescription>{t('description')}</DialogDescription>
