@@ -533,13 +533,25 @@ jobs:
           BASE_URL: http://localhost:3000
           CI: true
 
+      # Uploaded whether or not the shard passed.
+      #
+      # `if: failure()` meant a *changed* visual baseline was only ever kept
+      # because the change also failed the job -- and if a shard went green, the
+      # rendered pages were discarded with nothing to look at. The suite
+      # screenshots ten pages across three viewports on every run
+      # (visual-regression.spec.ts); throwing that away on success is the whole
+      # reason nobody looks at it.
+      #
+      # !cancelled() rather than always(): a cancelled run has half-written
+      # files and uploading them only produces a confusing artifact.
       - name: Upload Playwright report
         uses: actions/upload-artifact@v7
-        if: failure()
+        if: ${{ !cancelled() }}
         with:
           name: playwright-report-shard-${{ matrix.shard }}
           path: frontend/test-results/
           retention-days: 7
+          if-no-files-found: ignore
 
       # Smoke-test the report-pdf tool against the same running stack the
       # E2E suite just exercised: verifies the print pages still render
@@ -618,6 +630,112 @@ jobs:
           path: /tmp/report-pdfs/report-*.pdf
           retention-days: 30
           if-no-files-found: ignore
+
+  # Says, on the PR itself, which rendered pages changed.
+  #
+  # The suite screenshots ten pages across three viewports on every run and
+  # fails when one stops matching its committed baseline -- but the evidence
+  # landed in a zip attached to a job, which nobody opens unless they already
+  # suspect something. So an intentional redesign and an accidental regression
+  # looked identical from the PR: a red shard called "E2E Tests (shard 3/6)".
+  #
+  # This does not embed the images. It cannot: artifacts are authenticated zip
+  # downloads, GitHub markdown will not render them, and `data:` URIs are
+  # stripped from comments. What it can do is name the pages that moved and put
+  # the download one click away, which is the difference between noticing and
+  # not.
+  #
+  # One comment for the whole run, edited in place on each push, rather than six
+  # (one per shard) accumulating on every commit.
+  e2e-screenshots:
+    name: E2E Screenshot Report
+    runs-on: ubuntu-latest
+    # !cancelled() and not success(): runs even when a shard failed, which is
+    # exactly when there is something to report.
+    if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+    needs: [e2e]
+    permissions:
+      pull-requests: write
+    steps:
+      # continue-on-error, because a clean run may leave nothing to upload: the
+      # upload step carries `if-no-files-found: ignore`, so when Playwright
+      # writes no diffs there is no artifact to fetch and download-artifact
+      # treats that as a failure. Nothing to download is the good outcome here,
+      # not an error -- the summary step reads a missing directory as "no pages
+      # changed" and says so.
+      - name: Download every shard's report
+        uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          pattern: playwright-report-shard-*
+          path: reports
+          merge-multiple: false
+
+      - name: Summarise what changed
+        id: summary
+        run: |
+          # Playwright writes `<name>-diff.png` beside the actual and expected
+          # images only when a comparison fails, so the diffs *are* the list of
+          # pages that moved.
+          mapfile -t diffs < <(find reports -name '*-diff.png' -printf '%f\n' 2>/dev/null | sed 's/-diff\.png$//' | sort -u)
+          {
+            echo "changed<<EOF"
+            printf '%s\n' "${diffs[@]}"
+            echo "EOF"
+            echo "count=${#diffs[@]}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Comment on the pull request
+        uses: actions/github-script@v9
+        env:
+          CHANGED: ${{ steps.summary.outputs.changed }}
+          COUNT: ${{ steps.summary.outputs.count }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const marker = '<!-- e2e-screenshots -->';
+            const count = Number(process.env.COUNT || 0);
+            const changed = (process.env.CHANGED || '').split('\n').filter(Boolean);
+
+            const body = count === 0
+              ? `${marker}\n### Visual baselines\n\nEvery page still matches its committed baseline.\n\n[Screenshots from this run](${process.env.RUN_URL}#artifacts) are attached per shard.`
+              : [
+                  marker,
+                  '### Visual baselines',
+                  '',
+                  `${count} rendered ${count === 1 ? 'page has' : 'pages have'} changed:`,
+                  '',
+                  ...changed.map((n) => `- \`${n}\``),
+                  '',
+                  'If these are intended, refresh them with `npx playwright test --update-snapshots` and commit the result.',
+                  '',
+                  `[Download the before/after/diff images](${process.env.RUN_URL}#artifacts) — GitHub cannot render artifact contents inline, so they arrive as a zip per shard.`,
+                ].join('\n');
+
+            // Edit the run's own comment rather than adding one per push.
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+            const existing = comments.find((c) => c.body?.startsWith(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
 
   swagger-docs:
     name: Swagger Docs
