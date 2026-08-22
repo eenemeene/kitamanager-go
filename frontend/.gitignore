@@ -9,6 +9,12 @@
 
 # Next.js
 /.next/
+# Isolated build dirs. `next.config.ts` honours NEXT_DIST_DIR so a production
+# build can be made and served without clobbering a running `make dev`;
+# `make web-visual-baselines` uses `.next-baseline`, and ad-hoc probes use
+# whatever name is to hand. Without this a stray `git add -A` commits a few
+# thousand build artefacts.
+/.next-*/
 /out/
 
 # Production

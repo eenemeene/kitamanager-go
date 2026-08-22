@@ -44,8 +44,20 @@ export function StatCard({
           <Skeleton className="h-8 w-20" />
         ) : (
           <>
-            <div className={`text-2xl font-bold ${valueClassName ?? ''}`}>{value}</div>
-            {description && <p className="text-muted-foreground text-xs">{description}</p>}
+            {/* Every one of these is counted as of today -- active contracts,
+                and a staffing requirement that is a function of the children's
+                ages. So they drift on their own, without anybody changing the
+                page, whenever a contract boundary or an age bracket is crossed.
+                Masked so the dashboard's visual baseline watches the layout
+                rather than expiring on a date nobody chose. */}
+            <div data-visual-mask="stat" className={`text-2xl font-bold ${valueClassName ?? ''}`}>
+              {value}
+            </div>
+            {description && (
+              <p data-visual-mask="stat" className="text-muted-foreground text-xs">
+                {description}
+              </p>
+            )}
           </>
         )}
       </CardContent>
