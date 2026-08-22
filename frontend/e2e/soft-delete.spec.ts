@@ -144,21 +144,16 @@ test.describe('User soft-delete', () => {
 // -----------------------------------------------------------------
 
 test.describe('Organization soft-delete', () => {
-  test('deleted org becomes invisible to its members; the name can be reused', async ({
-    page,
-  }) => {
+  test('deleted org becomes invisible to its members; the name can be reused', async ({ page }) => {
     await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
     const name = uniqueName('Soft-Delete Org');
     const original = await createOrganizationViaApi(page, name);
 
     // Sanity: the org is fetchable before delete.
-    const beforeStatus = await page.evaluate(
-      async (id: number) => {
-        const r = await fetch(`/api/v1/organizations/${id}`, { credentials: 'same-origin' });
-        return r.status;
-      },
-      original.id
-    );
+    const beforeStatus = await page.evaluate(async (id: number) => {
+      const r = await fetch(`/api/v1/organizations/${id}`, { credentials: 'same-origin' });
+      return r.status;
+    }, original.id);
     expect(beforeStatus).toBe(200);
 
     // Admin deletes the organization.
@@ -167,13 +162,10 @@ test.describe('Organization soft-delete', () => {
     // GET /organizations/:id returns 404 afterwards. The row is
     // tombstoned, not purged, but GORM auto-scoping makes it
     // invisible to default paths.
-    const afterStatus = await page.evaluate(
-      async (id: number) => {
-        const r = await fetch(`/api/v1/organizations/${id}`, { credentials: 'same-origin' });
-        return r.status;
-      },
-      original.id
-    );
+    const afterStatus = await page.evaluate(async (id: number) => {
+      const r = await fetch(`/api/v1/organizations/${id}`, { credentials: 'same-origin' });
+      return r.status;
+    }, original.id);
     expect(afterStatus).toBe(404);
 
     // List must also exclude the soft-deleted org. Using the
@@ -219,13 +211,10 @@ test.describe('Organization soft-delete', () => {
     await loginViaForm(memberPage, email, pw);
 
     // Sanity: member can reach the org's data.
-    const beforeStatus = await memberPage.evaluate(
-      async (id: number) => {
-        const r = await fetch(`/api/v1/organizations/${id}`, { credentials: 'same-origin' });
-        return r.status;
-      },
-      org.id
-    );
+    const beforeStatus = await memberPage.evaluate(async (id: number) => {
+      const r = await fetch(`/api/v1/organizations/${id}`, { credentials: 'same-origin' });
+      return r.status;
+    }, org.id);
     expect(beforeStatus).toBe(200);
 
     // Admin soft-deletes the org.
@@ -234,13 +223,10 @@ test.describe('Organization soft-delete', () => {
     // Member's org-scoped request now 404s (org appears not to
     // exist) rather than 403, because the org resolver can't even
     // load the row.
-    const afterStatus = await memberPage.evaluate(
-      async (id: number) => {
-        const r = await fetch(`/api/v1/organizations/${id}`, { credentials: 'same-origin' });
-        return r.status;
-      },
-      org.id
-    );
+    const afterStatus = await memberPage.evaluate(async (id: number) => {
+      const r = await fetch(`/api/v1/organizations/${id}`, { credentials: 'same-origin' });
+      return r.status;
+    }, org.id);
     expect(afterStatus).toBe(404);
 
     // Cleanup.

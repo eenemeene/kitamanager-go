@@ -84,7 +84,7 @@ export function TwoFactorDisableDialog({ open, onOpenChange, factorId }: Props) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent autoFocusFirstField>
         <DialogHeader>
           <DialogTitle>{t('title')}</DialogTitle>
           <DialogDescription>{t('description')}</DialogDescription>

@@ -30,10 +30,23 @@ const DialogOverlay = React.forwardRef<
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
+interface DialogContentProps extends React.ComponentPropsWithoutRef<
+  typeof DialogPrimitive.Content
+> {
+  /**
+   * Let the browser focus the first field on open, instead of the dialog itself.
+   *
+   * Opt in only where the dialog *is* one short input and the user's next act is
+   * certainly to type into it -- an MFA code, a password confirmation. Those
+   * forms already run `mode: 'onChange'` for the same reason.
+   */
+  autoFocusFirstField?: boolean;
+}
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => {
+  DialogContentProps
+>(({ className, children, autoFocusFirstField, onOpenAutoFocus, ...props }, ref) => {
   const t = useTranslations('common');
   return (
     <DialogPortal>
@@ -55,6 +68,29 @@ const DialogContent = React.forwardRef<
             'max-sm:has-[[data-dialog-body]]:inset-0 max-sm:has-[[data-dialog-body]]:top-0 max-sm:has-[[data-dialog-body]]:left-0 max-sm:has-[[data-dialog-body]]:h-[100dvh] max-sm:has-[[data-dialog-body]]:max-h-none max-sm:has-[[data-dialog-body]]:w-full max-sm:has-[[data-dialog-body]]:max-w-none max-sm:has-[[data-dialog-body]]:translate-x-0 max-sm:has-[[data-dialog-body]]:translate-y-0 max-sm:has-[[data-dialog-body]]:rounded-none max-sm:has-[[data-dialog-body]]:border-0',
           className
         )}
+        // Focus the dialog, not the first field.
+        //
+        // Radix focuses the first focusable descendant on open, which puts the
+        // cursor in a field the user did not choose. Forms here validate
+        // `onTouched` -- a field is judged once the user has finished with it --
+        // so their first click anywhere else *blurs* that field and it is judged
+        // for a value they were never given the chance to enter. Opening Create
+        // Child and adding a property first answered with "First name is
+        // required" and a red "Please correct 1 entry" above a form barely
+        // started, which is exactly the "told you are wrong before you had a
+        // chance to be right" behaviour validation-timing.ts exists to prevent.
+        //
+        // Focusing the container is also the better announcement: a screen
+        // reader reads the dialog's title and role rather than starting halfway
+        // in at an unlabelled-in-context input.
+        onOpenAutoFocus={(event) => {
+          onOpenAutoFocus?.(event);
+          if (autoFocusFirstField || event.defaultPrevented) return;
+          event.preventDefault();
+          // Radix gives Content tabIndex={-1}, so it takes focus without
+          // becoming a tab stop.
+          (event.currentTarget as HTMLElement | null)?.focus();
+        }}
         {...props}
       >
         {children}
