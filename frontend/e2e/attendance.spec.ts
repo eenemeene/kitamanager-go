@@ -487,16 +487,23 @@ test.describe('Attendance Editable Times', () => {
       });
     };
 
-    // Check-in first, then check-out. The server validates the pair on every
-    // partial update, so an edit that would transiently invert them is refused --
-    // and moving a stay earlier inverts it if the check-out goes first.
+    // Widen the stay, then narrow it. The server validates the pair on every
+    // partial update, so no single edit may leave check-out before check-in --
+    // and check-in and check-out are both stamped at the current time of day,
+    // which the test does not control.
     //
-    // This used to pass in the other order only because the check-in was
-    // recorded on the wrong day: it was stamped `new Date()` regardless of which
-    // column was clicked, so a check-out at 16:45 on a *future* Monday beat it
-    // trivially. The timestamp now lands on the day being recorded, which is
-    // what the grid has always claimed on screen, so the order matters here in
-    // exactly the way it matters for a user correcting a stay.
+    // That is why neither fixed two-edit order works. Correcting to 08:00-16:45
+    // from a stamp of `now`:
+    //
+    //   now before 08:00   check-in first inverts the pair (08:00 > check-out)
+    //   now 08:00-16:45    either order is fine
+    //   now after 16:45    check-out first inverts it (16:45 < check-in)
+    //
+    // So roughly two thirds of the day fails under either order, and which two
+    // thirds depends on which order you pick. Pushing check-out out to 23:30
+    // first makes every subsequent edit valid on its own, whatever the clock
+    // says: 08:00 lands below 23:30, and 16:45 lands above 08:00.
+    await editTime('Check-out', '23:30');
     await editTime('Check-in', '08:00');
     await editTime('Check-out', '16:45');
 
