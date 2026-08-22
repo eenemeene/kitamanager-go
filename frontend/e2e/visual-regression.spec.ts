@@ -19,6 +19,34 @@ function dynamicMasks(page: Page): Locator[] {
   return [page.locator('[data-visual-mask]')];
 }
 
+/**
+ * Screenshot the page into the run's report, then compare it to the baseline.
+ *
+ * The attach is the point. `toHaveScreenshot` compares and discards: on a match
+ * it keeps nothing, and Playwright's own `screenshot: 'only-on-failure'` adds
+ * nothing either. So a green run produced a report with no pictures in it at
+ * all -- the ten pages this file renders across three viewports existed only as
+ * a pass/fail verdict, and the merged CI report carried zero attachments.
+ *
+ * Attaching first also means the render survives a failed comparison, sitting
+ * beside the expected/actual/diff triplet Playwright adds in that case.
+ *
+ * The second capture costs one extra screenshot per page. `mask` is passed to
+ * both so the attachment shows exactly what was compared, pink boxes and all,
+ * rather than a picture that disagrees with the verdict beside it.
+ */
+async function shoot(
+  target: Page | Locator,
+  name: string,
+  options: { maxDiffPixelRatio: number; mask?: Locator[] }
+) {
+  await test.info().attach(name, {
+    body: await target.screenshot({ mask: options.mask }),
+    contentType: 'image/png',
+  });
+  await expect(target).toHaveScreenshot(name, options);
+}
+
 test.describe('Visual Regression - Login', () => {
   test('login page', async ({ page }) => {
     await page.goto('/login');
@@ -28,7 +56,7 @@ test.describe('Visual Regression - Login', () => {
     // Login page has no dashboard chrome (no sidebar version footer)
     // and no dynamic data, but applying dynamicMasks here is a no-op
     // safety net in case future copy adds a build-hash banner.
-    await expect(page).toHaveScreenshot('login-page.png', {
+    await shoot(page, 'login-page.png', {
       maxDiffPixelRatio: 0.01,
       mask: dynamicMasks(page),
     });
@@ -55,7 +83,7 @@ test.describe('Visual Regression - Dashboard', () => {
     await expect(page.locator('table, [role="table"]')).toBeVisible({ timeout: 10000 });
     await page.waitForLoadState('load');
 
-    await expect(page).toHaveScreenshot('organizations-list.png', {
+    await shoot(page, 'organizations-list.png', {
       maxDiffPixelRatio: 0.02,
       mask: dynamicMasks(page),
     });
@@ -67,7 +95,7 @@ test.describe('Visual Regression - Dashboard', () => {
     // Wait for table to render
     await expect(page.locator('table, [role="table"]').first()).toBeVisible({ timeout: 10000 });
 
-    await expect(page).toHaveScreenshot('employees-list.png', {
+    await shoot(page, 'employees-list.png', {
       maxDiffPixelRatio: 0.03,
       mask: dynamicMasks(page),
     });
@@ -78,7 +106,7 @@ test.describe('Visual Regression - Dashboard', () => {
     await page.waitForLoadState('load');
     await expect(page.locator('table, [role="table"]').first()).toBeVisible({ timeout: 10000 });
 
-    await expect(page).toHaveScreenshot('children-list.png', {
+    await shoot(page, 'children-list.png', {
       maxDiffPixelRatio: 0.03,
       mask: dynamicMasks(page),
     });
@@ -90,7 +118,7 @@ test.describe('Visual Regression - Dashboard', () => {
     // Wait for the kanban board to render
     await expect(page.getByText(/drag children/i)).toBeVisible({ timeout: 10000 });
 
-    await expect(page).toHaveScreenshot('sections-board.png', {
+    await shoot(page, 'sections-board.png', {
       maxDiffPixelRatio: 0.01,
       mask: dynamicMasks(page),
     });
@@ -101,7 +129,7 @@ test.describe('Visual Regression - Dashboard', () => {
     // Wait for statistics cards to render (avoid networkidle — react-query background requests prevent it)
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10000 });
 
-    await expect(page).toHaveScreenshot('statistics-overview.png', {
+    await shoot(page, 'statistics-overview.png', {
       maxDiffPixelRatio: 0.02,
       mask: dynamicMasks(page),
     });
@@ -118,7 +146,7 @@ test.describe('Visual Regression - Dashboard', () => {
     //   - the chart area itself: SVG rendering has sub-pixel
     //     anti-aliasing jitter between runs, and the "Today" marker
     //     shifts position over time
-    await expect(page).toHaveScreenshot('statistics-financials.png', {
+    await shoot(page, 'statistics-financials.png', {
       maxDiffPixelRatio: 0.01,
       mask: [...dynamicMasks(page), page.locator('[role="application"]')],
     });
@@ -159,7 +187,7 @@ test.describe('Visual Regression - Dialogs', () => {
     await page.getByRole('button', { name: /new organization/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
 
-    await expect(page).toHaveScreenshot('create-organization-dialog.png', {
+    await shoot(page, 'create-organization-dialog.png', {
       maxDiffPixelRatio: 0.01,
       mask: dynamicMasks(page),
     });
@@ -172,7 +200,7 @@ test.describe('Visual Regression - Dialogs', () => {
     await page.getByRole('button', { name: /new employee/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
 
-    await expect(page).toHaveScreenshot('create-employee-dialog.png', {
+    await shoot(page, 'create-employee-dialog.png', {
       maxDiffPixelRatio: 0.01,
       mask: dynamicMasks(page),
     });
@@ -227,7 +255,7 @@ test.describe('Visual Regression - Dialogs', () => {
     // 3:1 instead of being invisible. CI came in at 922px, ratio 0.01, which is
     // exactly what the siblings already absorb; 0.02 gives it the same headroom
     // with a margin, without loosening the others.
-    await expect(dialog).toHaveScreenshot('create-child-dialog.png', {
+    await shoot(dialog, 'create-child-dialog.png', {
       maxDiffPixelRatio: 0.02,
     });
   });
