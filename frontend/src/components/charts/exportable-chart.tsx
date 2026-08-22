@@ -85,7 +85,16 @@ export function ExportableChart({ children, filename, className }: ExportableCha
   }, [filename]);
 
   return (
-    <div ref={ref} className={cn('relative', className)}>
+    // Masked for visual regression, at the wrapper rather than per test.
+    //
+    // Every chart here redraws from data derived from today, and SVG carries
+    // sub-pixel anti-aliasing jitter between runs on top of that, so no chart
+    // can be part of a pixel comparison. The tests used to mask
+    // `[role="application"]`, which is nivo's own attribute -- it is absent at
+    // the mobile breakpoint, so the entire staffing chart was compared there and
+    // failed on data that legitimately differs. One attribute on the shared
+    // wrapper covers all 35 charts at every breakpoint.
+    <div ref={ref} data-visual-mask="chart" className={cn('relative', className)}>
       {children}
       <button
         onClick={handleExport}
