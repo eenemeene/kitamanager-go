@@ -7,7 +7,13 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 2, // Add 2 retries locally to handle flaky login
   workers: process.env.CI ? 1 : 4, // Reduce parallelism to avoid race conditions
-  reporter: process.env.CI ? 'github' : 'list',
+  // In CI each shard writes a blob instead of its own report, and a follow-up
+  // job merges all six into one HTML report. Six shards previously produced six
+  // separate artifacts, each a fragment: finding the screenshots for one failing
+  // test meant guessing which shard had run it and downloading that zip. The
+  // merged report is a single browsable page carrying every screenshot, diff and
+  // trace. `github` stays alongside it for the inline PR annotations.
+  reporter: process.env.CI ? [['github'], ['blob']] : 'list',
   timeout: 30000,
 
   use: {
