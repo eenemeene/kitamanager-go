@@ -71,17 +71,28 @@ func (s *BudgetItemService) Create(ctx context.Context, orgID uint, req *models.
 		PerChild:       req.PerChild,
 	}
 
-	if err := s.store.Create(ctx, item); err != nil {
-		if store.IsDuplicateKeyError(err) {
-			return nil, apperror.Conflict("budget item with this name already exists in the organization")
+	// An item and its first amount commit or fail together. CreateEntry opens
+	// its own transaction; the transactor reuses an outer one for nested calls.
+	err = s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
+		if err := s.store.Create(txCtx, item); err != nil {
+			if store.IsDuplicateKeyError(err) {
+				return apperror.Conflict("budget item with this name already exists in the organization")
+			}
+			return apperror.InternalWrap(err, "failed to create budget item")
 		}
-		return nil, apperror.InternalWrap(err, "failed to create budget item")
+		if req.Entry == nil {
+			return nil
+		}
+		_, err := s.CreateEntry(txCtx, item.ID, orgID, req.Entry)
+		return err
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	// Newly-created item has no entries yet; asOf is irrelevant but
-	// must be passed. Use models.Today() for consistency with other
-	// "what's active right now" call sites (Berlin calendar day, not
-	// the server's UTC clock instant).
+	// asOf matters only once an entry exists. models.Today() for consistency
+	// with the other "what's active right now" call sites (Berlin calendar day,
+	// not the server's UTC clock instant).
 	resp := item.ToResponse(models.Today())
 	return &resp, nil
 }

@@ -94,25 +94,24 @@ export function AddChildFromBillDialog({
   const submitMutation = useMutation({
     mutationFn: async () => {
       if (!billChild) throw new Error('no bill child');
+      // `from` is a Go `time.Time`, which only unmarshals RFC3339 -- and a
+      // `<input type="date">` yields a bare "YYYY-MM-DD". `formatDateForApi` is
+      // the conversion every other contract call site already uses.
+      const from = formatDateForApi(contractFrom);
+      if (!from) throw new Error('invalid contract start date');
+      // Child and contract in one request, so a rejected contract cannot leave a
+      // childless record behind.
       const newChild = await apiClient.createChild(orgId, {
         first_name: firstName,
         last_name: lastName,
         gender,
         birthdate,
+        contract: { from, section_id: sectionId, properties: {} },
       });
-      // `from` is a Go `time.Time`, which only unmarshals RFC3339 -- and a
-      // `<input type="date">` yields a bare "YYYY-MM-DD". Sending it raw 400'd
-      // every time: the child above was created, the contract was refused, and
-      // the user was left with an error toast and a child with no contract and
-      // no voucher. `formatDateForApi` is the conversion every other contract
-      // call site already uses.
-      const from = formatDateForApi(contractFrom);
-      if (!from) throw new Error('invalid contract start date');
-      await apiClient.createChildContract(orgId, newChild.id, {
-        from,
-        section_id: sectionId,
-        properties: {},
-      });
+      // The voucher deliberately stays outside that: a cross-org 409 means the
+      // number belongs to somebody else, and discarding a correct child and
+      // contract over it would be the worse outcome. The child is usable and the
+      // voucher can be attached from the Vouchers dialog.
       await apiClient.assignChildVoucher(orgId, newChild.id, billChild.voucher_number);
       return newChild;
     },

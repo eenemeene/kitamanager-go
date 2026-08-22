@@ -193,20 +193,47 @@ describe('contract start date on the wire', () => {
 
   it('sends RFC3339, not the bare date the input holds', async () => {
     (apiClient.createChild as jest.Mock).mockResolvedValue({ id: 99 });
-    (apiClient.createChildContract as jest.Mock).mockResolvedValue({ id: 5 });
     (apiClient.assignChildVoucher as jest.Mock).mockResolvedValue(undefined);
 
     await fillAndSubmit();
 
-    await waitFor(() => expect(apiClient.createChildContract).toHaveBeenCalled());
-    const [, , payload] = (apiClient.createChildContract as jest.Mock).mock.calls[0];
-    expect(payload.from).toBe('2025-02-01T00:00:00Z');
-    expect(payload.section_id).toBe(7);
+    await waitFor(() => expect(apiClient.createChild).toHaveBeenCalled());
+    const [, payload] = (apiClient.createChild as jest.Mock).mock.calls[0];
+    expect(payload.contract.from).toBe('2025-02-01T00:00:00Z');
+    expect(payload.contract.section_id).toBe(7);
+  });
+
+  it('creates the child and contract in one request', async () => {
+    // Two requests meant a rejected contract left a childless record behind.
+    // The contract rides inside the create so the server can commit both or
+    // neither.
+    (apiClient.createChild as jest.Mock).mockResolvedValue({ id: 99 });
+    (apiClient.assignChildVoucher as jest.Mock).mockResolvedValue(undefined);
+
+    await fillAndSubmit();
+
+    await waitFor(() => expect(apiClient.createChild).toHaveBeenCalled());
+    expect(apiClient.createChildContract).not.toHaveBeenCalled();
+  });
+
+  it('keeps the child when only the voucher is refused', async () => {
+    // Deliberately outside the transaction: a cross-org 409 means the number
+    // belongs to someone else, and discarding a correct child and contract over
+    // it would be the worse outcome. The user is told, and fixes the voucher
+    // from the Vouchers dialog.
+    (apiClient.createChild as jest.Mock).mockResolvedValue({ id: 99 });
+    (apiClient.assignChildVoucher as jest.Mock).mockRejectedValue(new Error('voucher taken'));
+
+    await fillAndSubmit();
+
+    await waitFor(() =>
+      expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: 'destructive' }))
+    );
+    expect(apiClient.createChild).toHaveBeenCalledTimes(1);
   });
 
   it('completes the whole chain and reports success', async () => {
     (apiClient.createChild as jest.Mock).mockResolvedValue({ id: 99 });
-    (apiClient.createChildContract as jest.Mock).mockResolvedValue({ id: 5 });
     (apiClient.assignChildVoucher as jest.Mock).mockResolvedValue(undefined);
 
     await fillAndSubmit();

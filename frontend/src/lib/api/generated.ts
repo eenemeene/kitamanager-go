@@ -2532,6 +2532,13 @@ export interface components {
     BudgetItemCreateRequest: {
       /** @example income */
       category: string;
+      /**
+       * @description Entry creates the item's first amount in the same transaction. Optional,
+       *     and for the same reason as ChildCreateRequest.Contract: composing the two
+       *     writes client-side leaves a budget item with no amount behind whenever the
+       *     second one fails, which reads as €0 everywhere it is totalled.
+       */
+      entry?: components['schemas']['BudgetItemEntryCreateRequest'];
       /** @example Elternbeiträge */
       name: string;
       /** @example true */
@@ -2899,6 +2906,18 @@ export interface components {
     ChildCreateRequest: {
       /** @example 2020-03-10 */
       birthdate: string;
+      /**
+       * @description Contract creates the child's first contract in the same transaction.
+       *
+       *     Optional, so every existing caller is unaffected — but it is how the UI
+       *     should create a child, because a child and their first contract are one
+       *     act. Composing it client-side as two requests meant the second could fail
+       *     (a deleted section, a contract before the birthdate, a dropped
+       *     connection) and leave a child with no contract behind: invisible in a list
+       *     that filters on an active contract, uncounted by funding, and duplicated
+       *     on every retry because nothing about a child is unique.
+       */
+      contract?: components['schemas']['ChildContractCreateRequest'];
       /** @example Emma */
       first_name: string;
       /**

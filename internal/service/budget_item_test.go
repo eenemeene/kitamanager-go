@@ -1385,3 +1385,86 @@ func createBudgetItemService(db *gorm.DB) *BudgetItemService {
 	transactor := store.NewTransactor(db)
 	return NewBudgetItemService(budgetItemStore, transactor)
 }
+
+// ---------------------------------------------------------------------------
+// Creating a budget item together with its first amount
+// ---------------------------------------------------------------------------
+
+// Same rule as ChildCreateRequest.Contract: the item and its first entry commit
+// or fail together. Composed client-side as two requests, a rejected entry left
+// an item with no amount -- which reads as €0 wherever it is totalled, rather
+// than as the error it was.
+
+func TestBudgetItemService_Create_WithEntry_CommitsBoth(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createBudgetItemService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	item, err := svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{
+		Name:     "Elternbeiträge",
+		Category: "income",
+		Entry: &models.BudgetItemEntryCreateRequest{
+			From:        time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+			AmountCents: 12345,
+		},
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	var entries int64
+	db.Model(&models.BudgetItemEntry{}).Where("budget_item_id = ?", item.ID).Count(&entries)
+	if entries != 1 {
+		t.Errorf("persisted entries = %d, want 1", entries)
+	}
+}
+
+func TestBudgetItemService_Create_WithEntry_RollsBackItemWhenEntryFails(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createBudgetItemService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	_, err := svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{
+		Name:     "Elternbeiträge",
+		Category: "income",
+		Entry: &models.BudgetItemEntryCreateRequest{
+			// Ends before it starts.
+			From:        time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+			To:          &to,
+			AmountCents: 12345,
+		},
+	})
+	if err == nil {
+		t.Fatal("expected the create to be rejected")
+	}
+
+	var items int64
+	db.Model(&models.BudgetItem{}).Where("organization_id = ?", org.ID).Count(&items)
+	if items != 0 {
+		t.Errorf("budget item rows = %d, want 0 -- the item outlived the rejected entry", items)
+	}
+}
+
+func TestBudgetItemService_Create_WithoutEntry_StillWorks(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createBudgetItemService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	item, err := svc.Create(ctx, org.ID, &models.BudgetItemCreateRequest{
+		Name:     "Elternbeiträge",
+		Category: "income",
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if item.ID == 0 {
+		t.Error("expected ID to be set")
+	}
+}

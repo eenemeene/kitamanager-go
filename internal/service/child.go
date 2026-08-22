@@ -86,12 +86,48 @@ func (s *ChildService) Create(ctx context.Context, orgID uint, req *models.Child
 
 	// The child-only field rides in on the buildEntity closure, which
 	// personCreate already takes per caller. Nothing shared with Employee moves.
-	return personCreate(ctx,
-		&validation.PersonCreateFields{FirstName: req.FirstName, LastName: req.LastName, Gender: req.Gender, Birthdate: req.Birthdate},
-		func(p models.Person) *models.Child {
-			return &models.Child{Person: p, SchoolEntryDate: req.SchoolEntryDate}
-		},
-		s.store.Create, (*models.Child).ToResponse, orgID, "child")
+	createChild := func(ctx context.Context) (*models.ChildResponse, error) {
+		return personCreate(ctx,
+			&validation.PersonCreateFields{FirstName: req.FirstName, LastName: req.LastName, Gender: req.Gender, Birthdate: req.Birthdate},
+			func(p models.Person) *models.Child {
+				return &models.Child{Person: p, SchoolEntryDate: req.SchoolEntryDate}
+			},
+			s.store.Create, (*models.Child).ToResponse, orgID, "child")
+	}
+
+	if req.Contract == nil {
+		return createChild(ctx)
+	}
+
+	// A child and their first contract are one act, so they commit or fail
+	// together. CreateContract opens its own transaction; the transactor reuses
+	// an outer one for nested calls, so this joins rather than nests.
+	//
+	// mapContractDeferredOverlap has to wrap the *outer* call. The EXCLUDE
+	// constraint guarding overlaps is DEFERRABLE INITIALLY DEFERRED, so it
+	// fires at COMMIT — and the commit now happens out here. Left to the inner
+	// call alone, a genuine overlap would escape as a raw 500 instead of the
+	// 409 it is.
+	var resp *models.ChildResponse
+	err := mapContractDeferredOverlap(s.transactor.InTransaction(ctx, func(txCtx context.Context) error {
+		created, err := createChild(txCtx)
+		if err != nil {
+			return err
+		}
+		contract, err := s.CreateContract(txCtx, created.ID, orgID, req.Contract)
+		if err != nil {
+			return err
+		}
+		// Answer with the contract that was created, so the caller does not have
+		// to re-read the child to learn what it committed.
+		created.Contracts = []models.ChildContractResponse{*contract}
+		resp = created
+		return nil
+	}))
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 // Update updates an existing child, validating it belongs to the specified organization

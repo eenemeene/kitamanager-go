@@ -11247,6 +11247,14 @@ const docTemplate = `{
                     "type": "string",
                     "example": "income"
                 },
+                "entry": {
+                    "description": "Entry creates the item's first amount in the same transaction. Optional,\nand for the same reason as ChildCreateRequest.Contract: composing the two\nwrites client-side leaves a budget item with no amount behind whenever the\nsecond one fails, which reads as €0 everywhere it is totalled.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.BudgetItemEntryCreateRequest"
+                        }
+                    ]
+                },
                 "name": {
                     "type": "string",
                     "example": "Elternbeiträge"
@@ -11923,6 +11931,14 @@ const docTemplate = `{
                 "birthdate": {
                     "type": "string",
                     "example": "2020-03-10"
+                },
+                "contract": {
+                    "description": "Contract creates the child's first contract in the same transaction.\n\nOptional, so every existing caller is unaffected — but it is how the UI\nshould create a child, because a child and their first contract are one\nact. Composing it client-side as two requests meant the second could fail\n(a deleted section, a contract before the birthdate, a dropped\nconnection) and leave a child with no contract behind: invisible in a list\nthat filters on an active contract, uncounted by funding, and duplicated\non every retry because nothing about a child is unique.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractCreateRequest"
+                        }
+                    ]
                 },
                 "first_name": {
                     "type": "string",

@@ -4289,3 +4289,142 @@ func TestChildService_Import_RoundTripsSchoolEntryDate(t *testing.T) {
 		t.Errorf("SchoolEntryDate = %s, want 2027-08-01", got)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Creating a child together with their first contract
+// ---------------------------------------------------------------------------
+
+// A child and their first contract are one act, and the API composes them in
+// one transaction so a rejected contract cannot leave a child behind.
+//
+// Composing it client-side is what these replace. Three call sites did it as
+// two requests, and when the second failed -- a deleted section, a contract
+// before the birthdate, a dropped connection -- the child stayed: absent from a
+// list that filters on an active contract, uncounted by funding, and duplicated
+// on every retry, because nothing about a child is unique.
+
+func TestChildService_Create_WithContract_CommitsBoth(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	section := createTestSection(t, db, "Krippe", org.ID, false)
+
+	child, err := svc.Create(ctx, org.ID, &models.ChildCreateRequest{
+		FirstName: "Emma",
+		LastName:  "Schmidt",
+		Gender:    "female",
+		Birthdate: "2020-05-15",
+		Contract: &models.ChildContractCreateRequest{
+			From:      time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+			SectionID: section.ID,
+		},
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// The response carries the contract, so the caller need not re-read.
+	if len(child.Contracts) != 1 {
+		t.Fatalf("expected 1 contract on the response, got %d", len(child.Contracts))
+	}
+	if child.Contracts[0].SectionID != section.ID {
+		t.Errorf("SectionID = %d, want %d", child.Contracts[0].SectionID, section.ID)
+	}
+
+	var contracts int64
+	db.Model(&models.ChildContract{}).Where("child_id = ?", child.ID).Count(&contracts)
+	if contracts != 1 {
+		t.Errorf("persisted contracts = %d, want 1", contracts)
+	}
+}
+
+func TestChildService_Create_WithContract_RollsBackChildWhenContractFails(t *testing.T) {
+	// The whole point. Each case rejects the contract for a different reason;
+	// none of them may leave a child in the database.
+	cases := []struct {
+		name     string
+		contract func(sectionID uint) *models.ChildContractCreateRequest
+	}{
+		{
+			name: "section belongs to no organization",
+			contract: func(uint) *models.ChildContractCreateRequest {
+				return &models.ChildContractCreateRequest{
+					From:      time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+					SectionID: 99999,
+				}
+			},
+		},
+		{
+			name: "contract starts before the child was born",
+			contract: func(sectionID uint) *models.ChildContractCreateRequest {
+				return &models.ChildContractCreateRequest{
+					From:      time.Date(2010, 1, 1, 0, 0, 0, 0, time.UTC),
+					SectionID: sectionID,
+				}
+			},
+		},
+		{
+			name: "period ends before it starts",
+			contract: func(sectionID uint) *models.ChildContractCreateRequest {
+				to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+				return &models.ChildContractCreateRequest{
+					From:      time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+					To:        &to,
+					SectionID: sectionID,
+				}
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := setupTestDB(t)
+			svc := createChildService(db)
+			ctx := context.Background()
+
+			org := createTestOrganization(t, db, "Test Org")
+			section := createTestSection(t, db, "Krippe", org.ID, false)
+
+			_, err := svc.Create(ctx, org.ID, &models.ChildCreateRequest{
+				FirstName: "Emma",
+				LastName:  "Schmidt",
+				Gender:    "female",
+				Birthdate: "2020-05-15",
+				Contract:  tc.contract(section.ID),
+			})
+			if err == nil {
+				t.Fatal("expected the create to be rejected")
+			}
+
+			var children int64
+			db.Model(&models.Child{}).Where("organization_id = ?", org.ID).Count(&children)
+			if children != 0 {
+				t.Errorf("child rows = %d, want 0 -- the child outlived the rejected contract", children)
+			}
+		})
+	}
+}
+
+func TestChildService_Create_WithoutContract_StillWorks(t *testing.T) {
+	// The field is optional, and every existing caller omits it.
+	db := setupTestDB(t)
+	svc := createChildService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+
+	child, err := svc.Create(ctx, org.ID, &models.ChildCreateRequest{
+		FirstName: "Emma",
+		LastName:  "Schmidt",
+		Gender:    "female",
+		Birthdate: "2020-05-15",
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(child.Contracts) != 0 {
+		t.Errorf("expected no contracts, got %d", len(child.Contracts))
+	}
+}
