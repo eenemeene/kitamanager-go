@@ -26,6 +26,32 @@ function dynamicMasks(page: Page): Locator[] {
 }
 
 /**
+ * Wait until every chart on the page has actually laid out.
+ *
+ * Masking a chart hides its pixels but not its height. Nivo mounts after its
+ * data arrives and measures its container, so a screenshot taken too early
+ * catches a chart of a different size -- and everything below it sits at a
+ * different offset, which is a diff of the whole lower half of the page.
+ *
+ * That is what made these tests flap: the same commit went green, then red, with
+ * the failing diff showing the section heading rendered twice at two vertical
+ * positions. It looked like nondeterministic data and was not.
+ */
+async function chartsReady(page: Page) {
+  const charts = page.locator('[data-visual-mask="chart"]');
+  const count = await charts.count();
+  for (let i = 0; i < count; i++) {
+    // The svg exists only once nivo has measured and drawn.
+    await expect(charts.nth(i).locator('svg').first()).toBeVisible({ timeout: 15000 });
+  }
+  // One animation frame after the last one appears, so a chart that is still
+  // transitioning into its final height has settled.
+  await page.evaluate(
+    () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))))
+  );
+}
+
+/**
  * Screenshot the page into the run's report, then compare it to the baseline.
  *
  * The attach is the point. `toHaveScreenshot` compares and discards: on a match
@@ -141,6 +167,8 @@ test.describe('Visual Regression - Dashboard', () => {
     // Wait for statistics cards to render (avoid networkidle — react-query background requests prevent it)
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10000 });
 
+    await chartsReady(page);
+
     await shoot(page, 'statistics-overview.png', {
       maxDiffPixelRatio: 0.02,
       mask: dynamicMasks(page),
@@ -158,6 +186,8 @@ test.describe('Visual Regression - Dashboard', () => {
     //   - the chart area itself: SVG rendering has sub-pixel
     //     anti-aliasing jitter between runs, and the "Today" marker
     //     shifts position over time
+    await chartsReady(page);
+
     await shoot(page, 'statistics-financials.png', {
       maxDiffPixelRatio: 0.01,
       mask: [...dynamicMasks(page), page.locator('[role="application"]')],
@@ -310,6 +340,8 @@ test.describe('Visual Regression - Operations', () => {
     // funding totals, pending promotions. `[data-visual-mask]` covers the
     // numbers; the charts are masked wholesale for the same reason the
     // financials page masks them, SVG anti-aliasing jitter between runs.
+    await chartsReady(page);
+
     await shoot(page, 'dashboard.png', {
       maxDiffPixelRatio: 0.02,
       mask: [...dynamicMasks(page), page.locator('[role="application"]')],
@@ -381,6 +413,8 @@ test.describe('Visual Regression - Operations', () => {
 
     // Chart masked, page chrome not: the filters, the legend and the table
     // beneath it are what a layout change would break.
+    await chartsReady(page);
+
     await shoot(page, 'statistics-staffing.png', {
       maxDiffPixelRatio: 0.02,
       mask: [...dynamicMasks(page), page.locator('[role="application"]')],
