@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 	"math/rand"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -21,18 +23,49 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/validation"
 )
 
+// rng is the single source for every generated value below.
+//
+// Deterministic on purpose. Go's global rand has been auto-seeded per process
+// since 1.20, so seeding twice produced different children -- different names,
+// genders and ages -- and nothing built on top of a seeded database could be
+// reproduced. That broke the visual baselines outright: a screenshot of the
+// attendance roster or the dashboard's staffing figures is a picture of this
+// data, so the committed PNG matched or did not depending on which children CI
+// happened to invent that morning. Three consecutive CI runs demonstrated it --
+// one produced a baseline, the next matched it, the third did not.
+//
+// Set SEED_RANDOM_SEED to vary it deliberately; leave it alone to get the same
+// database locally and in CI, which is what makes a baseline meaningful.
+//
+// Not safe for concurrent use, and does not need to be: seeding is sequential.
+//
+//nolint:gosec // G404: not security-sensitive, and determinism is the point
+var rng = rand.New(rand.NewSource(testDataSeed())) // #nosec G404
+
+// defaultTestDataSeed is arbitrary. What matters is that it never changes --
+// every committed visual baseline is a picture of the data it produces.
+const defaultTestDataSeed int64 = 20260101
+
+func testDataSeed() int64 {
+	if raw := os.Getenv("SEED_RANDOM_SEED"); raw != "" {
+		if n, err := strconv.ParseInt(raw, 10, 64); err == nil {
+			return n
+		}
+		slog.Warn("SEED_RANDOM_SEED is not an integer; using the default",
+			"value", raw, "default", defaultTestDataSeed)
+	}
+	return defaultTestDataSeed
+}
+
 // randInt returns a random integer in [0, n) for test data generation.
-// #nosec G404 - math/rand is acceptable for non-security test data
 func randInt(n int) int {
-	return rand.Intn(n)
+	return rng.Intn(n)
 }
 
 // randomGender returns a random gender for test data.
 // Distribution: ~49% male, ~49% female, ~2% diverse
-//
-//nolint:gosec // G404: math/rand is fine for test data generation
 func randomGender() string {
-	r := rand.Intn(100) // #nosec G404
+	r := rng.Intn(100)
 	if r < 49 {
 		return string(models.GenderMale)
 	} else if r < 98 {
@@ -1002,7 +1035,7 @@ func randomDateBetween(from, to time.Time) time.Time {
 	if days <= 0 {
 		return from
 	}
-	return from.AddDate(0, 0, rand.Intn(days)) // #nosec G404
+	return from.AddDate(0, 0, rng.Intn(days))
 }
 
 // randomJoinDate returns a realistic Kita join date weighted toward Aug-Oct.
