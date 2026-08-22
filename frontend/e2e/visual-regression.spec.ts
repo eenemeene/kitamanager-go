@@ -47,7 +47,13 @@ async function shoot(
   options: { maxDiffPixelRatio: number; mask?: Locator[] }
 ) {
   await test.info().attach(name, {
-    body: await target.screenshot({ mask: options.mask }),
+    // `scale: 'css'` because that is what toHaveScreenshot compares at, while
+    // page.screenshot() defaults to 'device'. On a Pixel 7 (ratio 2.625) the two
+    // differ by more than a factor of two -- 412x839 against 1082x2202 -- so
+    // without this the attachment is a different rendering from the verdict
+    // printed beside it, and unusable as a baseline. Invisible at ratio 1, which
+    // is chromium and tablet, so it only shows up on mobile.
+    body: await target.screenshot({ mask: options.mask, scale: 'css' }),
     contentType: 'image/png',
   });
   await expect(target).toHaveScreenshot(name, options);
