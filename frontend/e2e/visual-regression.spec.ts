@@ -1,5 +1,11 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
-import { login, getFirstOrganization, resetBerlinFundingFromConfig } from './utils/test-helpers';
+import {
+  login,
+  getFirstOrganization,
+  getGovernmentFundingsViaApi,
+  getPayPlansViaApi,
+  resetBerlinFundingFromConfig,
+} from './utils/test-helpers';
 
 // Ensure English locale for consistent text rendering
 test.use({ locale: 'en-US' });
@@ -257,6 +263,121 @@ test.describe('Visual Regression - Dialogs', () => {
     // with a margin, without loosening the others.
     await shoot(dialog, 'create-child-dialog.png', {
       maxDiffPixelRatio: 0.02,
+    });
+  });
+});
+
+/**
+ * The rest of the product.
+ *
+ * The suite covered seven pages and three dialogs while the app has
+ * twenty-six routes, so most of it -- including the surfaces that are hardest to
+ * eyeball a regression on -- had no picture taken of it at all. The 709 tests in
+ * the other forty spec files are behavioural: they click and assert, and none of
+ * them capture pixels.
+ *
+ * Chosen for visual weight against baseline stability. A page whose content is
+ * derived from "today" flip-flops between runs and burns CI on retries, so
+ * anything date-derived is either masked here or left out: the audit log is
+ * nothing but timestamps, and the forecast redraws from the current Kita year.
+ */
+test.describe('Visual Regression - Operations', () => {
+  let orgId: number;
+
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await login(page);
+    orgId = (await getFirstOrganization(page)).id;
+    await page.close();
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test('dashboard', async ({ page }) => {
+    await page.goto(`/organizations/${orgId}/dashboard`);
+    await page.waitForLoadState('load');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10000 });
+
+    // The widgets are almost entirely derived from today -- staffing coverage,
+    // funding totals, pending promotions. `[data-visual-mask]` covers the
+    // numbers; the charts are masked wholesale for the same reason the
+    // financials page masks them, SVG anti-aliasing jitter between runs.
+    await shoot(page, 'dashboard.png', {
+      maxDiffPixelRatio: 0.02,
+      mask: [...dynamicMasks(page), page.locator('[role="application"]')],
+    });
+  });
+
+  test('attendance week grid', async ({ page }) => {
+    await page.goto(`/organizations/${orgId}/attendance`);
+    await page.waitForLoadState('load');
+    await expect(page.locator('table').first()).toBeVisible({ timeout: 15000 });
+
+    // The header row carries this week's dates ("Mon 18.08"), so it is different
+    // every Monday and has to be masked or the baseline expires weekly. What is
+    // being watched here is the grid itself: five columns of dense cells with
+    // 36px touch targets, the surface most at risk from a layout change.
+    await shoot(page, 'attendance-week-grid.png', {
+      maxDiffPixelRatio: 0.02,
+      mask: [...dynamicMasks(page), page.locator('thead')],
+    });
+  });
+
+  test('pay plan detail', async ({ page }) => {
+    const payPlans = await getPayPlansViaApi(page, orgId);
+    test.skip(payPlans.length === 0, 'no pay plan in the seed to render');
+
+    await page.goto(`/organizations/${orgId}/payplans/${payPlans[0].id}`);
+    await page.waitForLoadState('load');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10000 });
+
+    // A grade-by-step salary grid: dense, wide, and entirely fixed data, so it
+    // needs no masking beyond the version footer and makes a strict baseline.
+    await shoot(page, 'payplan-detail.png', {
+      maxDiffPixelRatio: 0.01,
+      mask: dynamicMasks(page),
+    });
+  });
+
+  test('funding rate detail', async ({ page }) => {
+    const fundings = await getGovernmentFundingsViaApi(page);
+    test.skip(fundings.length === 0, 'no funding configuration to render');
+
+    await page.goto(`/government-funding-rates/${fundings[0].id}`);
+    await page.waitForLoadState('load');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10000 });
+
+    // Periods and their properties -- the Berlin rate table. Fixed data, and the
+    // page the ISBJ calculations are read against.
+    await shoot(page, 'funding-rate-detail.png', {
+      maxDiffPixelRatio: 0.01,
+      mask: dynamicMasks(page),
+    });
+  });
+
+  test('budget items list', async ({ page }) => {
+    await page.goto(`/organizations/${orgId}/budget-items`);
+    await page.waitForLoadState('load');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10000 });
+
+    await shoot(page, 'budget-items-list.png', {
+      maxDiffPixelRatio: 0.02,
+      mask: dynamicMasks(page),
+    });
+  });
+
+  test('statistics staffing page', async ({ page }) => {
+    await page.goto(`/organizations/${orgId}/statistics/staffing`);
+    await page.waitForLoadState('load');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10000 });
+
+    // Chart masked, page chrome not: the filters, the legend and the table
+    // beneath it are what a layout change would break.
+    await shoot(page, 'statistics-staffing.png', {
+      maxDiffPixelRatio: 0.02,
+      mask: [...dynamicMasks(page), page.locator('[role="application"]')],
     });
   });
 });

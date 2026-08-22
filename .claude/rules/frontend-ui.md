@@ -80,3 +80,20 @@ When a row has many actions (>3) and the table shows at `md:`, hide secondary on
 New pages must be verified at **375px** (phone), **820px** (mainstream iPad portrait), and **1280px** (desktop). Use Playwright or the browser DevTools device toolbar.
 
 The E2E suite has `responsive.spec.ts` with `Responsive Layout - Mobile / Tablet / Desktop` describes as a template. The Tablet describe uses `hasTouch: true` and asserts touch-target sizes (≥44px) on the daily-use surfaces.
+
+## A layout change probably moves a visual baseline
+
+Sixteen pages and dialogs carry committed screenshots
+(`e2e/visual-regression.spec.ts-snapshots/`, three viewports each) that CI
+compares pixel-for-pixel, so a spacing, sizing or colour change here reds
+the E2E shards on a page you may not have opened. That is the suite working: it
+catches what no assertion describes.
+
+Regenerate with **`make web-visual-baselines`**, never `--update-snapshots` by
+hand against `make dev` — the dev-mode badge gets baked into the committed PNG.
+The full reasoning is in `.claude/rules/e2e-tests.md`, which does not load while
+you are in `src/`, hence this pointer.
+
+If the value you are rendering is derived from *today* — a count of active
+contracts, anything age-based, a formatted date range — give it
+`data-visual-mask="<category>"` so the baseline does not expire on its own.

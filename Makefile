@@ -1,6 +1,7 @@
 .PHONY: build lint test clean ci dev dev-fresh \
 	api-build api-run api-lint api-test-all api-test-unit api-test-integration api-test-contract api-test-fuzz api-test-coverage api-test-backup api-test-race \
-	web-install web-dev web-build web-lint web-format web-format-check web-type-check web-test web-test-coverage web-test-e2e web-test-e2e-fresh web-test-e2e-demo web-test-e2e-headed web-playwright-install screenshots \
+	web-install web-dev web-build web-lint web-format web-format-check web-type-check web-test web-test-coverage web-test-e2e web-test-e2e-fresh web-test-e2e-demo web-test-e2e-headed web-playwright-install \
+	web-visual-baselines web-visual-baselines-stop screenshots \
 	docs schema-docs swagger-docs swagger-check api-types api-types-check docker-up docker-down docker-rebuild docker-reset install-hooks uninstall-hooks pre-commit \
 	report-pdf-build report-pdf
 
@@ -269,6 +270,50 @@ web-test-e2e-headed: frontend/node_modules
 # Uses Chromium for better video recording support
 web-test-e2e-demo: frontend/node_modules
 	cd frontend && SLOWMO=500 VIDEO=1 npx playwright test --headed --project=chromium
+
+# Regenerate the visual-regression baselines.
+#
+# A baseline is the committed PNG a page is expected to look like. The suite
+# screenshots each page and compares it pixel-for-pixel; a mismatch fails CI.
+# So a baseline is only worth as much as the environment that produced it, and
+# producing one against the wrong environment bakes that environment's quirks
+# into a file every future run is judged against.
+#
+# Which is why this does not use `make dev`. CI serves a production build;
+# `next dev` paints a dev-mode issues badge that lands inside the mobile
+# viewport, and regenerating there commits the badge as the expected appearance
+# of the page. This builds and serves production the way CI does, on its own
+# port and its own dist directory so a running `make dev` is left alone, against
+# an API on its own port because the running one only allows :3000 as an origin.
+#
+# Verified before writing anything: the existing baselines are re-run first, and
+# if this machine renders differently from the runner they fail here rather than
+# in CI, on a PR, after the new PNGs are already committed.
+#
+# Needs Postgres and a seeded database — the same one `make dev` uses is fine.
+# Review the diff before committing: `git diff --stat` should list only the
+# pages you meant to change.
+web-visual-baselines: frontend/node_modules
+	@command -v openssl >/dev/null || { echo "openssl needed for throwaway keys"; exit 1; }
+	@echo "==> starting an isolated API on :8081"
+	@set -a; . ./.env; set +a; 	SERVER_PORT=8081 CORS_ALLOW_ORIGINS=http://localhost:3100 	CSRF_HMAC_KEY=$$(openssl rand -hex 32) TOTP_ENCRYPTION_KEY=$$(openssl rand -hex 32) 	  ./bin/kitamanager-api > /tmp/kitamanager-baseline-api.log 2>&1 & echo $$! > /tmp/kitamanager-baseline-api.pid
+	@sleep 5
+	@echo "==> building the frontend the way CI does"
+	cd frontend && NEXT_DIST_DIR=.next-baseline BACKEND_URL=http://localhost:8081 npx next build
+	cd frontend && NEXT_DIST_DIR=.next-baseline BACKEND_URL=http://localhost:8081 	  npx next start -p 3100 > /tmp/kitamanager-baseline-web.log 2>&1 & echo $$! > /tmp/kitamanager-baseline-web.pid
+	@sleep 8
+	@echo "==> checking this machine renders like the runner (existing baselines must pass)"
+	@cd frontend && CI=true BASE_URL=http://localhost:3100 	  npx playwright test visual-regression --reporter=line || 	  echo "   ^ failures above are the pages that will be rewritten"
+	@echo "==> writing baselines"
+	cd frontend && CI=true BASE_URL=http://localhost:3100 	  npx playwright test visual-regression --update-snapshots --reporter=line
+	@$(MAKE) --no-print-directory web-visual-baselines-stop
+	@echo "==> done. Review with: git status --short frontend/e2e/visual-regression.spec.ts-snapshots/"
+
+# Stop whatever web-visual-baselines started. Safe to run on its own if a run
+# was interrupted and left the ports held.
+web-visual-baselines-stop:
+	@for f in /tmp/kitamanager-baseline-api.pid /tmp/kitamanager-baseline-web.pid; do 	  [ -f $$f ] && kill $$(cat $$f) 2>/dev/null; rm -f $$f; 	done; true
+	@rm -rf frontend/.next-baseline
 
 # Install Playwright browsers
 web-playwright-install: frontend/node_modules

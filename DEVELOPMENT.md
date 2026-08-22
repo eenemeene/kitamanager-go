@@ -86,6 +86,7 @@ See the [RBAC reference](website/content/en/docs/reference/rbac.md) for the deta
 | `make web-test-coverage` | Run tests with coverage |
 | `make web-test-e2e` | Run Playwright E2E tests |
 | `make web-test-e2e-headed` | Run E2E tests with browser visible |
+| `make web-visual-baselines` | Regenerate visual-regression baselines (builds prod on :3100 — never regenerate against `make dev`) |
 | `make web-lint` | Run ESLint |
 | `make web-format` | Format code with Prettier |
 | `make web-type-check` | TypeScript type checking |

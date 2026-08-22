@@ -52,6 +52,10 @@ export function WeekStepper({ value, onChange }: WeekStepperProps) {
             // small screens, so the machine-readable value lives here.
             data-testid="week-stepper-value"
             data-value={format(monday, 'yyyy-MM-dd')}
+            // The label reads "Mon 17.08 - Fri 21.08 2026", so it is different
+            // every Monday. Without this the attendance visual baseline expires
+            // weekly and CI reds on a page nobody changed.
+            data-visual-mask="date"
             className="text-sm font-medium md:min-w-[260px]"
           >
             {/* Two renderings, toggled by CSS rather than a media-query hook, so
