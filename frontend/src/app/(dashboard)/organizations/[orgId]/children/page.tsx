@@ -170,21 +170,24 @@ export default function ChildrenPage() {
   const mutations = useCrudMutations<Child, ChildWithContractFormData, ChildUpdateRequest>({
     resourceName: 'children',
     queryKey: queryKeys.children.all(orgId),
-    createFn: async (data) => {
-      const child = await apiClient.createChild(orgId, {
+    // One request, so the child and their first contract commit or fail
+    // together. As two requests, a rejected contract left the child behind:
+    // missing from a list that filters on an active contract, uncounted by
+    // funding, and duplicated on every retry, since nothing about a child is
+    // unique.
+    createFn: (data) =>
+      apiClient.createChild(orgId, {
         first_name: data.first_name,
         last_name: data.last_name,
         gender: data.gender,
         birthdate: data.birthdate,
-      });
-      await apiClient.createChildContract(orgId, child.id, {
-        from: formatDateForApi(data.contract_from) || data.contract_from,
-        to: formatDateForApi(data.contract_to) ?? undefined,
-        section_id: data.section_id,
-        properties: data.properties as ContractProperties | undefined,
-      });
-      return child;
-    },
+        contract: {
+          from: formatDateForApi(data.contract_from) || data.contract_from,
+          to: formatDateForApi(data.contract_to) ?? undefined,
+          section_id: data.section_id,
+          properties: data.properties as ContractProperties | undefined,
+        },
+      }),
     updateFn: (id, data) => apiClient.updateChild(orgId, id, data),
     deleteFn: (id) => apiClient.deleteChild(orgId, id),
     onSuccess: () => dialogs.closeDialog(),

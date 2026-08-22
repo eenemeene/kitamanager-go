@@ -58,6 +58,16 @@ type ChildCreateRequest struct {
 	// birthdate. A plain pointer suffices here because on a create there is no
 	// stored value that omitting could destroy.
 	SchoolEntryDate *time.Time `json:"school_entry_date,omitempty" format:"date-time" example:"2028-08-01"`
+	// Contract creates the child's first contract in the same transaction.
+	//
+	// Optional, so every existing caller is unaffected — but it is how the UI
+	// should create a child, because a child and their first contract are one
+	// act. Composing it client-side as two requests meant the second could fail
+	// (a deleted section, a contract before the birthdate, a dropped
+	// connection) and leave a child with no contract behind: invisible in a list
+	// that filters on an active contract, uncounted by funding, and duplicated
+	// on every retry because nothing about a child is unique.
+	Contract *ChildContractCreateRequest `json:"contract,omitempty"`
 }
 
 // ChildUpdateRequest represents the request body for updating a child.

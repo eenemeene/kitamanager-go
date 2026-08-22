@@ -92,6 +92,11 @@ type BudgetItemCreateRequest struct {
 	Name     string `json:"name" binding:"required" example:"Elternbeiträge"`
 	Category string `json:"category" binding:"required" example:"income"`
 	PerChild bool   `json:"per_child" example:"true"`
+	// Entry creates the item's first amount in the same transaction. Optional,
+	// and for the same reason as ChildCreateRequest.Contract: composing the two
+	// writes client-side leaves a budget item with no amount behind whenever the
+	// second one fails, which reads as €0 everywhere it is totalled.
+	Entry *BudgetItemEntryCreateRequest `json:"entry,omitempty"`
 }
 
 // BudgetItemUpdateRequest is the request body for updating a budget item.

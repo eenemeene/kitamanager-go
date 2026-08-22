@@ -77,24 +77,24 @@ export default function BudgetItemsPage() {
       entry_notes: undefined,
     }),
     listFn: (orgId, params) => apiClient.getBudgetItems(orgId, params),
-    createFn: async (orgId, data) => {
-      // Create the budget item first
-      const budgetItem = await apiClient.createBudgetItem(orgId, {
+    // One request: the item and its first amount commit or fail together. As
+    // two, a rejected entry left an item with no amount, which reads as €0
+    // wherever it is totalled rather than as the error it was.
+    createFn: (orgId, data) => {
+      const entryData = data as unknown as BudgetItemWithEntryFormData;
+      return apiClient.createBudgetItem(orgId, {
         name: data.name,
         category: data.category,
         per_child: data.per_child,
+        entry: entryData.entry_from
+          ? {
+              from: formatDateForApi(entryData.entry_from) || entryData.entry_from,
+              to: formatDateForApi(entryData.entry_to) || undefined,
+              amount_cents: eurosToCents(entryData.entry_amount_euros),
+              notes: entryData.entry_notes || '',
+            }
+          : undefined,
       });
-      // Create the first entry
-      const entryData = data as unknown as BudgetItemWithEntryFormData;
-      if (entryData.entry_from) {
-        await apiClient.createBudgetItemEntry(orgId, budgetItem.id, {
-          from: formatDateForApi(entryData.entry_from) || entryData.entry_from,
-          to: formatDateForApi(entryData.entry_to) || undefined,
-          amount_cents: eurosToCents(entryData.entry_amount_euros),
-          notes: entryData.entry_notes || '',
-        });
-      }
-      return budgetItem;
     },
     // The form schema includes the entry_* fields used by the create flow,
     // but BudgetItemUpdateRequest accepts only {name, category, per_child}.

@@ -190,6 +190,14 @@ definitions:
       category:
         example: income
         type: string
+      entry:
+        allOf:
+        - $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.BudgetItemEntryCreateRequest'
+        description: |-
+          Entry creates the item's first amount in the same transaction. Optional,
+          and for the same reason as ChildCreateRequest.Contract: composing the two
+          writes client-side leaves a budget item with no amount behind whenever the
+          second one fails, which reads as €0 everywhere it is totalled.
       name:
         example: Elternbeiträge
         type: string
@@ -694,6 +702,19 @@ definitions:
       birthdate:
         example: "2020-03-10"
         type: string
+      contract:
+        allOf:
+        - $ref: '#/definitions/github_com_eenemeene_kitamanager-go_internal_models.ChildContractCreateRequest'
+        description: |-
+          Contract creates the child's first contract in the same transaction.
+
+          Optional, so every existing caller is unaffected — but it is how the UI
+          should create a child, because a child and their first contract are one
+          act. Composing it client-side as two requests meant the second could fail
+          (a deleted section, a contract before the birthdate, a dropped
+          connection) and leave a child with no contract behind: invisible in a list
+          that filters on an active contract, uncounted by funding, and duplicated
+          on every retry because nothing about a child is unique.
       first_name:
         example: Emma
         maxLength: 255
