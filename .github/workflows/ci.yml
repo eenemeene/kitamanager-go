@@ -533,24 +533,25 @@ jobs:
           BASE_URL: http://localhost:3000
           CI: true
 
-      # Uploaded whether or not the shard passed.
+      # The shard's blob, which is an intermediate: the e2e-report job merges all
+      # six into one HTML report. Kept briefly and only for that.
       #
-      # `if: failure()` meant a *changed* visual baseline was only ever kept
-      # because the change also failed the job -- and if a shard went green, the
-      # rendered pages were discarded with nothing to look at. The suite
-      # screenshots ten pages across three viewports on every run
+      # Uploaded whether or not the shard passed. `if: failure()` meant a
+      # *changed* visual baseline was only ever kept because the change also
+      # failed the job, and a green shard discarded its rendered pages entirely.
+      # The suite screenshots ten pages across three viewports on every run
       # (visual-regression.spec.ts); throwing that away on success is the whole
       # reason nobody looks at it.
       #
-      # !cancelled() rather than always(): a cancelled run has half-written
-      # files and uploading them only produces a confusing artifact.
-      - name: Upload Playwright report
+      # !cancelled() rather than always(): a cancelled shard leaves a truncated
+      # blob, and merging one of those fails the report for every other shard.
+      - name: Upload blob report
         uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
-          name: playwright-report-shard-${{ matrix.shard }}
-          path: frontend/test-results/
-          retention-days: 7
+          name: blob-report-${{ matrix.shard }}
+          path: frontend/blob-report/
+          retention-days: 1
           if-no-files-found: ignore
 
       # Smoke-test the report-pdf tool against the same running stack the
@@ -631,53 +632,95 @@ jobs:
           retention-days: 30
           if-no-files-found: ignore
 
-  # Says, on the PR itself, which rendered pages changed.
+  # One report for the whole run, and a comment pointing at it.
   #
-  # The suite screenshots ten pages across three viewports on every run and
-  # fails when one stops matching its committed baseline -- but the evidence
-  # landed in a zip attached to a job, which nobody opens unless they already
-  # suspect something. So an intentional redesign and an accidental regression
-  # looked identical from the PR: a red shard called "E2E Tests (shard 3/6)".
+  # Sharding six ways produced six artifacts, each a fragment: finding the
+  # screenshots for one failing test meant working out which shard had run it and
+  # downloading that zip. Playwright's blob reporter exists for exactly this --
+  # each shard emits a blob, `merge-reports` stitches them into a single HTML
+  # report carrying every screenshot, diff and trace, browsable as one page.
   #
-  # This does not embed the images. It cannot: artifacts are authenticated zip
-  # downloads, GitHub markdown will not render them, and `data:` URIs are
-  # stripped from comments. What it can do is name the pages that moved and put
-  # the download one click away, which is the difference between noticing and
-  # not.
-  #
-  # One comment for the whole run, edited in place on each push, rather than six
-  # (one per shard) accumulating on every commit.
-  e2e-screenshots:
-    name: E2E Screenshot Report
+  # The comment does not embed the images and cannot: artifacts are
+  # authenticated zip downloads, GitHub markdown will not render them, and
+  # `data:` URIs are stripped. What it can do is say whether any rendered page
+  # moved and put the report one click away, which is the difference between
+  # noticing and not -- from the PR alone, an intended redesign and an accidental
+  # regression both look like a red "E2E Tests (shard 3/6)".
+  e2e-report:
+    name: E2E Report
     runs-on: ubuntu-latest
-    # !cancelled() and not success(): runs even when a shard failed, which is
-    # exactly when there is something to report.
-    if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+    # !cancelled() rather than success(): a failed shard is exactly when there is
+    # something to look at.
+    if: ${{ !cancelled() }}
     needs: [e2e]
     permissions:
       pull-requests: write
     steps:
-      # continue-on-error, because a clean run may leave nothing to upload: the
-      # upload step carries `if-no-files-found: ignore`, so when Playwright
-      # writes no diffs there is no artifact to fetch and download-artifact
-      # treats that as a failure. Nothing to download is the good outcome here,
-      # not an error -- the summary step reads a missing directory as "no pages
-      # changed" and says so.
-      - name: Download every shard's report
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.node-version
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install web dependencies
+        run: cd frontend && npm ci
+
+      # continue-on-error: a cancelled or crashed shard may upload no blob, and
+      # download-artifact treats a missing artifact as a failure. A partial
+      # report beats none.
+      - name: Download every shard's blob
         uses: actions/download-artifact@v8
         continue-on-error: true
         with:
-          pattern: playwright-report-shard-*
-          path: reports
-          merge-multiple: false
+          pattern: blob-report-*
+          path: frontend/all-blob-reports
+          merge-multiple: true
 
-      - name: Summarise what changed
-        id: summary
+      - name: Merge into one report
+        id: merge
+        working-directory: frontend
         run: |
-          # Playwright writes `<name>-diff.png` beside the actual and expected
-          # images only when a comparison fails, so the diffs *are* the list of
-          # pages that moved.
-          mapfile -t diffs < <(find reports -name '*-diff.png' -printf '%f\n' 2>/dev/null | sed 's/-diff\.png$//' | sort -u)
+          if [ -z "$(ls -A all-blob-reports 2>/dev/null)" ]; then
+            echo "merged=false" >> "$GITHUB_OUTPUT"
+            echo "No blobs to merge."
+            exit 0
+          fi
+          npx playwright merge-reports --reporter html ./all-blob-reports
+          # A second pass for a machine-readable copy. The summary step needs the
+          # attachment names, and those live *inside* the blob zips -- scanning
+          # the blob directory for `*-diff.png` finds nothing, because every one
+          # of them is a zip entry rather than a file on disk.
+          npx playwright merge-reports --reporter json ./all-blob-reports > merged-report.json
+          echo "merged=true" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the merged report
+        if: ${{ steps.merge.outputs.merged == 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Which rendered pages changed
+        id: summary
+        working-directory: frontend
+        run: |
+          # Playwright writes `<name>-diff.png` only when a screenshot comparison
+          # fails, so the diff attachments are the list of pages that moved.
+          #
+          # Grepping names out of the JSON rather than walking its structure: the
+          # attachment name and its path both end in the same filename, so
+          # basename + sort -u collapses them, and a shape change in the report
+          # cannot silently empty the list. The report link is the point of the
+          # comment either way, so this degrades to "no diffs" rather than
+          # failing the job.
+          mapfile -t diffs < <(
+            grep -oE '"[^"]*-diff\.png"' merged-report.json 2>/dev/null |
+              tr -d '"' | xargs -r -n1 basename | sed 's/-diff\.png$//' | sort -u
+          )
           {
             echo "changed<<EOF"
             printf '%s\n' "${diffs[@]}"
@@ -686,33 +729,48 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Comment on the pull request
+        if: ${{ github.event_name == 'pull_request' }}
         uses: actions/github-script@v9
         env:
           CHANGED: ${{ steps.summary.outputs.changed }}
           COUNT: ${{ steps.summary.outputs.count }}
+          MERGED: ${{ steps.merge.outputs.merged }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
           script: |
-            const marker = '<!-- e2e-screenshots -->';
+            const marker = '<!-- e2e-report -->';
             const count = Number(process.env.COUNT || 0);
             const changed = (process.env.CHANGED || '').split('\n').filter(Boolean);
+            const merged = process.env.MERGED === 'true';
+            const link = `${process.env.RUN_URL}#artifacts`;
 
-            const body = count === 0
-              ? `${marker}\n### Visual baselines\n\nEvery page still matches its committed baseline.\n\n[Screenshots from this run](${process.env.RUN_URL}#artifacts) are attached per shard.`
-              : [
-                  marker,
-                  '### Visual baselines',
-                  '',
+            const lines = [marker, '### Playwright report', ''];
+
+            if (!merged) {
+              lines.push('No report was produced — every shard was cancelled or crashed before writing one.');
+            } else {
+              lines.push(
+                `[Download \`playwright-report\`](${link}) — all six shards merged into one page, with every screenshot, diff and trace.`,
+                '',
+                'Unzip and open `index.html`. GitHub cannot render artifact contents inline, so it arrives as a zip.',
+                ''
+              );
+              if (count === 0) {
+                lines.push('Every rendered page still matches its committed baseline.');
+              } else {
+                lines.push(
                   `${count} rendered ${count === 1 ? 'page has' : 'pages have'} changed:`,
                   '',
                   ...changed.map((n) => `- \`${n}\``),
                   '',
-                  'If these are intended, refresh them with `npx playwright test --update-snapshots` and commit the result.',
-                  '',
-                  `[Download the before/after/diff images](${process.env.RUN_URL}#artifacts) — GitHub cannot render artifact contents inline, so they arrive as a zip per shard.`,
-                ].join('\n');
+                  'If those are intended, refresh them with `npx playwright test --update-snapshots` and commit the result.'
+                );
+              }
+            }
 
-            // Edit the run's own comment rather than adding one per push.
+            const body = lines.join('\n');
+
+            // Edit this run's comment rather than adding one per push.
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
