@@ -122,13 +122,21 @@ func (h *ChildAttendanceHandler) Update(c *gin.Context) {
 		return
 	}
 
+	before, err := h.service.GetByID(c.Request.Context(), attendanceID, orgID, childID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	attendance, err := h.service.Update(c.Request.Context(), attendanceID, orgID, childID, req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	auditUpdate(c, h.auditService, "child_attendance", attendance.ID, fmt.Sprintf("child=%d date=%s", attendance.ChildID, attendance.Date))
+	auditUpdateWithChanges(c, h.auditService, "child_attendance", attendance.ID,
+		fmt.Sprintf("child=%d date=%s", attendance.ChildID, attendance.Date),
+		auditChangesOf(before, attendance))
 
 	c.JSON(http.StatusOK, attendance)
 }
@@ -167,7 +175,8 @@ func (h *ChildAttendanceHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	auditDelete(c, h.auditService, "child_attendance", attendanceID, fmt.Sprintf("child=%d date=%s", attendance.ChildID, attendance.Date))
+	auditDeleteWithSnapshot(c, h.auditService, "child_attendance", attendanceID,
+		fmt.Sprintf("child=%d date=%s", attendance.ChildID, attendance.Date), auditSnapshot(attendance))
 
 	c.Status(http.StatusNoContent)
 }

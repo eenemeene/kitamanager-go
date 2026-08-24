@@ -147,13 +147,26 @@ func (h *PayPlanHandler) Update(c *gin.Context) {
 		return
 	}
 
+	// Hand-written rather than auditChangesOf: GetByID answers with a
+	// PayPlanDetailResponse and Update with a PayPlanResponse, and the generic
+	// differ only accepts two values of the same type — precisely so that
+	// fields one DTO has and the other lacks cannot be reported as changes that
+	// never happened. Name is the only field PayPlanUpdateRequest can touch.
+	before, err := h.service.GetByID(c.Request.Context(), id, orgID, nil)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	payplan, err := h.service.Update(c.Request.Context(), id, orgID, req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	auditUpdate(c, h.auditService, "pay_plan", payplan.ID, payplan.Name)
+	changes := map[string]any{}
+	recordChange(changes, "name", before.Name, payplan.Name)
+	auditUpdateWithChanges(c, h.auditService, "pay_plan", payplan.ID, payplan.Name, changes)
 
 	c.JSON(http.StatusOK, payplan)
 }
@@ -193,7 +206,7 @@ func (h *PayPlanHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	auditDelete(c, h.auditService, "pay_plan", id, payplan.Name)
+	auditDeleteWithSnapshot(c, h.auditService, "pay_plan", id, payplan.Name, auditSnapshot(payplan))
 
 	c.Status(http.StatusNoContent)
 }
@@ -288,6 +301,7 @@ func (h *PayPlanHandler) GetPeriod(c *gin.Context) {
 func (h *PayPlanHandler) UpdatePeriod(c *gin.Context) {
 	handleOrgNestedUpdate(c, "payPlanId", "periodId",
 		auditConfig{h.auditService, "pay_plan_period", "payplan"},
+		h.service.GetPeriod,
 		h.service.UpdatePeriod,
 		func(r *models.PayPlanPeriodResponse) uint { return r.ID },
 	)
@@ -414,6 +428,7 @@ func (h *PayPlanHandler) GetEntry(c *gin.Context) {
 func (h *PayPlanHandler) UpdateEntry(c *gin.Context) {
 	handleOrgDeepNestedUpdate(c, "payPlanId", "periodId", "entryId",
 		auditConfig{h.auditService, "pay_plan_entry", "period"},
+		h.service.GetEntry,
 		h.service.UpdateEntry,
 		func(r *models.PayPlanEntryResponse) uint { return r.ID },
 	)

@@ -140,13 +140,27 @@ func (h *BudgetItemHandler) Update(c *gin.Context) {
 		return
 	}
 
+	// Hand-written rather than auditChangesOf: GetByID answers with a
+	// BudgetItemDetailResponse and Update with a BudgetItemResponse, and the
+	// generic differ only accepts two values of the same type. These three are
+	// exactly what BudgetItemUpdateRequest can change.
+	before, err := h.service.GetByID(c.Request.Context(), id, orgID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	item, err := h.service.Update(c.Request.Context(), id, orgID, req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	auditUpdate(c, h.auditService, "budget_item", item.ID, item.Name)
+	changes := map[string]any{}
+	recordChange(changes, "name", before.Name, item.Name)
+	recordChange(changes, "category", before.Category, item.Category)
+	recordChange(changes, "per_child", before.PerChild, item.PerChild)
+	auditUpdateWithChanges(c, h.auditService, "budget_item", item.ID, item.Name, changes)
 
 	c.JSON(http.StatusOK, item)
 }
@@ -186,7 +200,7 @@ func (h *BudgetItemHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	auditDelete(c, h.auditService, "budget_item", id, item.Name)
+	auditDeleteWithSnapshot(c, h.auditService, "budget_item", id, item.Name, auditSnapshot(item))
 
 	c.Status(http.StatusNoContent)
 }
@@ -284,6 +298,7 @@ func (h *BudgetItemHandler) GetEntry(c *gin.Context) {
 func (h *BudgetItemHandler) UpdateEntry(c *gin.Context) {
 	handleOrgNestedUpdate(c, "budgetItemId", "entryId",
 		auditConfig{h.auditService, "budget_item_entry", "budget_item"},
+		h.service.GetEntryByID,
 		h.service.UpdateEntry,
 		func(r *models.BudgetItemEntryResponse) uint { return r.ID },
 	)
