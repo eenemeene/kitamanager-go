@@ -200,6 +200,15 @@ type Config struct {
 	// audit_entries_fallback_total above zero is a softer signal
 	// (latency spike or DB hot-spot) but worth dashboarding so
 	// drops have a leading indicator.
+	//
+	// **Volume.** Rows are also written for refused requests
+	// (`access_denied`), including refused reads, which are not covered
+	// by the mutation rate limiter. That path is the one place where
+	// audit volume is driven by traffic an attacker chooses rather than
+	// by work the application did, so it is capped per actor — see
+	// middleware.denialAuditLimit. Sizing the retention window, budget
+	// for that cap times the number of accounts rather than for the
+	// mutation rate alone.
 	AuditLogRetentionDays int
 
 	// SMTP

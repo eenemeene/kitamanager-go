@@ -818,3 +818,122 @@ func TestAuditStore_Cleanup(t *testing.T) {
 		t.Errorf("expected 1 remaining, got %d", total)
 	}
 }
+
+// TestAuditStore_Paging_StableAcrossIdenticalTimestamps is the regression test
+// for the missing ORDER BY tiebreaker.
+//
+// Every row here shares one timestamp to the microsecond, which is what the
+// loop emitters actually produce: LogResourceUpdateAcrossOrgs writes one row
+// per organization back to back, and the YAML importers write one per imported
+// record. Ordering by timestamp alone leaves the order inside that tie group up
+// to the executor, so paging over it could return the same row on two pages and
+// never return another one at all.
+//
+// Walking the whole table one page at a time and demanding that the ids seen be
+// exactly the ids stored tests the property that matters, rather than asserting
+// one particular order.
+func TestAuditStore_Paging_StableAcrossIdenticalTimestamps(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewAuditStore(db)
+	ctx := context.Background()
+
+	const rows = 25
+	const pageSize = 4
+
+	shared := time.Now().UTC().Truncate(time.Microsecond)
+	want := make(map[uint]bool, rows)
+	for range rows {
+		log := &models.AuditLog{
+			UserID:    uintPtr(1),
+			UserEmail: "test@example.com",
+			Action:    models.AuditActionChildDelete,
+			Timestamp: shared,
+		}
+		if err := store.Create(ctx, log); err != nil {
+			t.Fatalf("failed to create audit log: %v", err)
+		}
+		want[log.ID] = true
+	}
+
+	seen := make(map[uint]int, rows)
+	var order []uint
+	for offset := 0; offset < rows; offset += pageSize {
+		page, total, err := store.FindAllFiltered(ctx, "", nil, nil, nil, pageSize, offset)
+		if err != nil {
+			t.Fatalf("page at offset %d: %v", offset, err)
+		}
+		if total != rows {
+			t.Fatalf("page at offset %d: expected total %d, got %d", offset, rows, total)
+		}
+		for _, l := range page {
+			seen[l.ID]++
+			order = append(order, l.ID)
+		}
+	}
+
+	for id, count := range seen {
+		if count != 1 {
+			t.Errorf("row %d returned %d times across pages, expected exactly 1", id, count)
+		}
+	}
+	for id := range want {
+		if seen[id] == 0 {
+			t.Errorf("row %d was never returned by any page", id)
+		}
+	}
+	if len(order) != rows {
+		t.Fatalf("expected %d rows across all pages, got %d", rows, len(order))
+	}
+
+	// Within one timestamp the tiebreaker is id DESC, so the walk must be
+	// strictly descending. Without it the sequence is merely *some* order.
+	for i := 1; i < len(order); i++ {
+		if order[i] >= order[i-1] {
+			t.Fatalf("ids not strictly descending at position %d: %v", i, order)
+		}
+	}
+}
+
+// TestAuditStore_FindByOrganization_PagingStableAcrossIdenticalTimestamps is the
+// org-scoped twin of the above. It matters independently because the org feed is
+// the one an org admin actually reads, and because it goes through a different
+// index (idx_audit_logs_org_ts) whose leading column is organization_id.
+func TestAuditStore_FindByOrganization_PagingStableAcrossIdenticalTimestamps(t *testing.T) {
+	db := setupTestDB(t)
+	store := NewAuditStore(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Kita Sonnenschein").ID
+	shared := time.Now().UTC().Truncate(time.Microsecond)
+	const rows = 9
+	for range rows {
+		if err := store.Create(ctx, &models.AuditLog{
+			UserID:         uintPtr(1),
+			UserEmail:      "test@example.com",
+			Action:         models.AuditActionChildDelete,
+			OrganizationID: &org,
+			Timestamp:      shared,
+		}); err != nil {
+			t.Fatalf("failed to create audit log: %v", err)
+		}
+	}
+
+	seen := map[uint]int{}
+	for offset := 0; offset < rows; offset += 2 {
+		page, _, err := store.FindByOrganization(ctx, org, "", nil, nil, nil, 2, offset)
+		if err != nil {
+			t.Fatalf("page at offset %d: %v", offset, err)
+		}
+		for _, l := range page {
+			seen[l.ID]++
+		}
+	}
+	if len(seen) != rows {
+		t.Errorf("expected %d distinct rows across pages, got %d", rows, len(seen))
+	}
+	for id, count := range seen {
+		if count != 1 {
+			t.Errorf("row %d returned %d times across pages, expected exactly 1", id, count)
+		}
+	}
+}

@@ -62,6 +62,7 @@ definitions:
     - password_reset
     - password_reset_failed
     - audit_log_purged
+    - access_denied
     - password_change
     - password_change_failed
     - factor_enrolled
@@ -97,6 +98,7 @@ definitions:
     - AuditActionPasswordReset
     - AuditActionPasswordResetFailed
     - AuditActionAuditLogPurged
+    - AuditActionAccessDenied
     - AuditActionPasswordChange
     - AuditActionPasswordChangeFailed
     - AuditActionFactorEnrolled

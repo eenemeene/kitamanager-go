@@ -25,6 +25,7 @@ import (
 	"golang.org/x/text/language"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
+	"github.com/eenemeene/kitamanager-go/internal/ctxkeys"
 	"github.com/eenemeene/kitamanager-go/internal/i18n"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 )
@@ -180,6 +181,11 @@ func Writef(c *gin.Context, status int, code, format string, args ...any) {
 // extension members such as invalid_params.
 func WriteProblem(c *gin.Context, p models.ErrorResponse) {
 	c.Abort()
+	// Leave the reason where a wrapping middleware can find it. By the time
+	// the audit-denial middleware regains control the body is already on the
+	// wire and all it can otherwise observe is the status code.
+	c.Set(ctxkeys.ProblemCode, p.Code)
+	c.Set(ctxkeys.ProblemDetail, p.Detail)
 	c.Header("Content-Type", ContentType)
 	if p.Localized != nil {
 		// The body now genuinely contains two languages, and Content-Language

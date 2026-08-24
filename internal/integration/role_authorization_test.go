@@ -3,10 +3,13 @@
 package integration
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -101,6 +104,11 @@ func setupFullProductionRouter(t *testing.T) (*gin.Engine, *rbac.Enforcer) {
 	csrfMW := middleware.NewCSRFMiddleware(testCSRFHMACKey)
 
 	r := gin.New()
+	// Production installs this on the engine (cmd/api/main.go), not inside
+	// routes.Setup. Without it every audit row written here would carry an
+	// empty request id, and the harness would stop being able to see a class
+	// of correlation bug that production does have.
+	r.Use(middleware.RequestID())
 	routes.Setup(r, routes.Deps{
 		Auth:                  handlers.NewAuthHandler(authService, false),
 		User:                  handlers.NewUserHandler(userService, userOrgService, auditService, sessionStore),
@@ -121,6 +129,10 @@ func setupFullProductionRouter(t *testing.T) (*gin.Engine, *rbac.Enforcer) {
 		AuthMiddleware:        authMW,
 		AuthzMiddleware:       authzMW,
 		CSRFMiddleware:        csrfMW,
+		// Wiring this here means the negative matrix below also
+		// exercises the denial audit path on every one of its rows,
+		// not just the dedicated test.
+		AccessDenialAuditor: auditService,
 		// Rate limiters: nil is honoured by routes.Setup as "skip the
 		// limiter middleware" — exactly what we want in tests since
 		// the matrix fires many requests in quick succession.
@@ -547,4 +559,150 @@ func hasPathPlaceholder(s string) bool {
 		}
 	}
 	return false
+}
+
+// waitForAuditRows polls for audit rows matching `action`, because audit writes
+// go through a background worker and a test that reads immediately after the
+// response would race it.
+func waitForAuditRows(t *testing.T, action models.AuditAction) []models.AuditLog {
+	t.Helper()
+	deadline := time.Now().Add(3 * time.Second)
+	var rows []models.AuditLog
+	for {
+		if err := testDB.Where("action = ?", action).Order("id").Find(&rows).Error; err != nil {
+			t.Fatalf("query audit_logs: %v", err)
+		}
+		if len(rows) > 0 || time.Now().After(deadline) {
+			return rows
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// TestRoleAuthorization_DeniedRequestIsAudited closes the gap where a refused
+// request left no trace at all. Every resource action in the audit log is
+// written on success only, so before this the log could say who changed a
+// child's record but not who tried to and was turned away — the question a
+// breach investigation opens with.
+//
+// It drives the real router so it covers the middleware chain as wired in
+// production, not a hand-built stand-in.
+func TestRoleAuthorization_DeniedRequestIsAudited(t *testing.T) {
+	cleanupDatabase()
+	r, _ := setupFullProductionRouter(t)
+	org := createOrg(t, "Kita Sonnenschein")
+	token := provisionRoleUser(t, r, models.RoleStaff, org.ID)
+
+	// Staff may not delete children. The route is gated by RequirePermission.
+	path := fmt.Sprintf("/api/v1/organizations/%d/children/1", org.ID)
+	req := httptest.NewRequest(http.MethodDelete, path, nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("User-Agent", "IntegrationAgent/1.0")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 for staff deleting a child, got %d: %s", w.Code, w.Body.String())
+	}
+
+	rows := waitForAuditRows(t, models.AuditActionAccessDenied)
+	if len(rows) != 1 {
+		t.Fatalf("expected exactly 1 access_denied row, got %d", len(rows))
+	}
+	row := rows[0]
+
+	if row.Success {
+		t.Error("expected success=false on a denial row")
+	}
+	if row.UserID == nil {
+		t.Fatal("expected the denial row to name the actor")
+	}
+	if row.UserAgent != "IntegrationAgent/1.0" {
+		t.Errorf("expected the user agent to be recorded, got %q", row.UserAgent)
+	}
+	if row.RequestID == "" {
+		t.Error("expected the denial row to carry the request id for correlation")
+	}
+	// Identity-level on purpose: organization_id is an FK, and the denial that
+	// matters most names an org that does not exist. See LogAccessDenied.
+	if row.OrganizationID != nil {
+		t.Errorf("expected organization_id to stay NULL, got %v", *row.OrganizationID)
+	}
+
+	var details map[string]any
+	if err := json.Unmarshal([]byte(row.Details), &details); err != nil {
+		t.Fatalf("details is not JSON (%q): %v", row.Details, err)
+	}
+	if details["method"] != http.MethodDelete {
+		t.Errorf("expected method DELETE in details, got %v", details["method"])
+	}
+	if details["route"] != "/api/v1/organizations/:orgId/children/:childId" {
+		t.Errorf("expected the route pattern in details, got %v", details["route"])
+	}
+	if details["path"] != path {
+		t.Errorf("expected the concrete path in details, got %v", details["path"])
+	}
+	if details["reason"] == "" || details["reason"] == nil {
+		t.Error("expected a refusal reason in details")
+	}
+	if got, ok := details["requested_org_id"].(float64); !ok || uint(got) != org.ID {
+		t.Errorf("expected requested_org_id %d in details, got %v", org.ID, details["requested_org_id"])
+	}
+}
+
+// A denial that comes from a resource the caller cannot even see must still be
+// recorded, and must not be lost to the organization_id foreign key when the
+// org id in the URL does not exist at all — the id-walking case.
+func TestRoleAuthorization_DeniedRequestForUnknownOrgIsAudited(t *testing.T) {
+	cleanupDatabase()
+	r, _ := setupFullProductionRouter(t)
+	org := createOrg(t, "Kita Sonnenschein")
+	token := provisionRoleUser(t, r, models.RoleAdmin, org.ID)
+
+	const missingOrgID = 999999
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/organizations/%d/children", missingOrgID), nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 probing an unknown org, got %d: %s", w.Code, w.Body.String())
+	}
+
+	rows := waitForAuditRows(t, models.AuditActionAccessDenied)
+	if len(rows) != 1 {
+		t.Fatalf("expected the probe to be recorded, got %d rows", len(rows))
+	}
+	var details map[string]any
+	if err := json.Unmarshal([]byte(rows[0].Details), &details); err != nil {
+		t.Fatalf("details is not JSON: %v", err)
+	}
+	if got, ok := details["requested_org_id"].(float64); !ok || uint(got) != missingOrgID {
+		t.Errorf("expected the probed org id %d to be recorded, got %v", missingOrgID, details["requested_org_id"])
+	}
+}
+
+// The query string must not reach the audit row: the child and employee list
+// endpoints take a free-text search, and a denied request would otherwise mint
+// a durable copy of a name the request never successfully returned.
+func TestRoleAuthorization_DeniedRequestDoesNotRecordQueryString(t *testing.T) {
+	cleanupDatabase()
+	r, _ := setupFullProductionRouter(t)
+	org := createOrg(t, "Kita Sonnenschein")
+	token := provisionRoleUser(t, r, models.RoleAdmin, org.ID)
+
+	const secret = "Waldtraud-Testkind"
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/organizations/999999/children?search=%s", secret), nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", w.Code)
+	}
+
+	rows := waitForAuditRows(t, models.AuditActionAccessDenied)
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 denial row, got %d", len(rows))
+	}
+	if strings.Contains(rows[0].Details, secret) {
+		t.Errorf("search term leaked into the audit row: %s", rows[0].Details)
+	}
 }

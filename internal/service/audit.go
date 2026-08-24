@@ -698,6 +698,54 @@ func (s *AuditService) LogPasswordReset(ctx context.Context, actorID uint, actor
 	})
 }
 
+// LogAccessDenied records an authenticated request that was refused with 403.
+//
+// `route` is the Gin route pattern (/api/v1/organizations/:orgId/children) and
+// `path` the concrete path that was asked for. The query string is deliberately
+// NOT recorded: search parameters on the child and employee list endpoints carry
+// names typed by the user, and an audit row is the last place that should
+// acquire a copy of a child's name that no request ever successfully returned.
+//
+// `suppressed` is the number of denials for this actor that the throttle
+// swallowed since the previous recorded one. It is written only when non-zero,
+// so an ordinary refusal stays a plain row and a burst is still visible as a
+// burst rather than silently becoming a single event.
+//
+// OrganizationID is left NULL and the org id from the URL goes into Details as
+// `requested_org_id` instead, which is not the obvious choice and is not a
+// shortcut. audit_logs.organization_id is a foreign key onto organizations, and
+// the single commonest denial worth investigating — someone walking org ids
+// looking for one they can reach — names an organization that does not exist.
+// RequirePermission answers those with 403 rather than 404 on purpose, so that
+// the endpoint is not an existence oracle; writing the requested id into the FK
+// column would make precisely those rows fail to insert. A denial is an
+// identity-level event like login and password rotation, and lands in the
+// superadmin-only global feed with them.
+func (s *AuditService) LogAccessDenied(ctx context.Context, userID *uint, email, method, route, path, code, reason, ipAddress, userAgent string, requestedOrgID *uint, suppressed int) {
+	details := map[string]any{
+		"method": method,
+		"route":  route,
+		"path":   path,
+		"code":   code,
+		"reason": reason,
+	}
+	if requestedOrgID != nil {
+		details["requested_org_id"] = *requestedOrgID
+	}
+	if suppressed > 0 {
+		details["suppressed_since_last"] = suppressed
+	}
+	s.log(ctx, &models.AuditLog{
+		UserID:    userID,
+		UserEmail: email,
+		Action:    models.AuditActionAccessDenied,
+		IPAddress: ipAddress,
+		UserAgent: userAgent,
+		Details:   mustMarshalJSON(details),
+		Success:   false,
+	})
+}
+
 // LogDataExport logs a bulk data export event
 func (s *AuditService) LogDataExport(ctx context.Context, actorID uint, actorEmail, resourceType string, orgID uint, recordCount int, ipAddress string) {
 	s.log(ctx, &models.AuditLog{
@@ -770,6 +818,15 @@ func (s *AuditService) LogResourceImport(ctx context.Context, actorID uint, acto
 // Which viewers get IPFull is a routing question, not a service one: the
 // handlers resolve it from ctxkeys.IsSuperAdmin, which the authorization
 // middleware already populates on every path.
+//
+// Every read that returns audit rows to a caller therefore takes an
+// IPVisibility. There deliberately is no convenience getter without one:
+// GetLogs and GetLogsByUser used to exist, were unrouted, and returned rows
+// straight from the store with the recorded address intact — a fail-open
+// shortcut sitting next to a type whose whole point is to fail closed. Both
+// were redundant with GetLogsFiltered (pass no filters, or only a user id),
+// so they were removed rather than repaired. Add filters there instead of
+// reintroducing a getter that cannot express the redaction.
 type IPVisibility int
 
 const (
@@ -789,20 +846,6 @@ func applyIPVisibility(rows []models.AuditLogResponse, visibility IPVisibility) 
 		rows[i] = rows[i].WithAnonymizedIP()
 	}
 	return rows
-}
-
-// GetLogs returns paginated audit logs
-func (s *AuditService) GetLogs(ctx context.Context, limit, offset int) ([]models.AuditLogResponse, int64, error) {
-	if s == nil || s.store == nil {
-		return nil, 0, nil
-	}
-
-	logs, total, err := s.store.FindAll(ctx, limit, offset)
-	if err != nil {
-		return nil, 0, apperror.InternalWrap(err, "failed to fetch audit logs")
-	}
-
-	return toResponseList(logs, (*models.AuditLog).ToResponse), total, nil
 }
 
 // GetLogsFiltered returns paginated audit logs with optional filters
@@ -851,20 +894,6 @@ func (s *AuditService) GetLogByID(ctx context.Context, id uint, visibility IPVis
 		resp = resp.WithAnonymizedIP()
 	}
 	return &resp, nil
-}
-
-// GetLogsByUser returns audit logs for a specific user
-func (s *AuditService) GetLogsByUser(ctx context.Context, userID uint, limit, offset int) ([]models.AuditLogResponse, int64, error) {
-	if s == nil || s.store == nil {
-		return nil, 0, nil
-	}
-
-	logs, total, err := s.store.FindByUser(ctx, userID, limit, offset)
-	if err != nil {
-		return nil, 0, apperror.InternalWrap(err, "failed to fetch audit logs for user")
-	}
-
-	return toResponseList(logs, (*models.AuditLog).ToResponse), total, nil
 }
 
 // CountRecentFailedLogins counts failed login attempts for an email in the last duration
