@@ -2460,6 +2460,7 @@ export interface components {
       | 'password_reset'
       | 'password_reset_failed'
       | 'audit_log_purged'
+      | 'access_denied'
       | 'password_change'
       | 'password_change_failed'
       | 'factor_enrolled'

@@ -10,6 +10,21 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/models"
 )
 
+// auditOrder is the ordering every audit read uses.
+//
+// The `id DESC` tiebreaker is not decoration. `timestamp` is not unique and
+// collisions are routine rather than theoretical: LogResourceUpdateAcrossOrgs
+// emits one row per org in a tight loop, and the YAML importers emit one row
+// per imported record, so consecutive rows are written microseconds apart and
+// PostgreSQL stores TIMESTAMPTZ at microsecond resolution. Ordering by
+// timestamp alone leaves the order *within* a tie group undefined, and
+// LIMIT/OFFSET paging over an undefined order silently duplicates some rows
+// and skips others whenever a page boundary falls inside a tie group.
+//
+// id is a BIGSERIAL, so it is both unique and consistent with insert order,
+// which makes it the correct second key rather than merely a deterministic one.
+const auditOrder = "timestamp DESC, id DESC"
+
 // AuditStore handles audit log database operations
 type AuditStore struct {
 	db *gorm.DB
@@ -38,7 +53,7 @@ func (s *AuditStore) FindByUser(ctx context.Context, userID uint, limit, offset 
 	}
 
 	if err := DBFromContext(ctx, s.db).Where("user_id = ?", userID).
-		Order("timestamp DESC").
+		Order(auditOrder).
 		Limit(limit).
 		Offset(offset).
 		Find(&logs).Error; err != nil {
@@ -58,7 +73,7 @@ func (s *AuditStore) FindByAction(ctx context.Context, action models.AuditAction
 	}
 
 	if err := DBFromContext(ctx, s.db).Where("action = ?", action).
-		Order("timestamp DESC").
+		Order(auditOrder).
 		Limit(limit).
 		Offset(offset).
 		Find(&logs).Error; err != nil {
@@ -80,7 +95,7 @@ func (s *AuditStore) FindByDateRange(ctx context.Context, from, to time.Time, li
 	}
 
 	if err := DBFromContext(ctx, s.db).Where("timestamp >= ? AND timestamp <= ?", from, to).
-		Order("timestamp DESC").
+		Order(auditOrder).
 		Limit(limit).
 		Offset(offset).
 		Find(&logs).Error; err != nil {
@@ -99,7 +114,7 @@ func (s *AuditStore) FindAll(ctx context.Context, limit, offset int) ([]models.A
 		return nil, 0, err
 	}
 
-	if err := DBFromContext(ctx, s.db).Order("timestamp DESC").
+	if err := DBFromContext(ctx, s.db).Order(auditOrder).
 		Limit(limit).
 		Offset(offset).
 		Find(&logs).Error; err != nil {
@@ -121,7 +136,7 @@ func (s *AuditStore) FindFailedLogins(ctx context.Context, email string, since t
 		query = query.Where("lower(user_email) = lower(?)", email)
 	}
 
-	if err := query.Order("timestamp DESC").Limit(limit).Find(&logs).Error; err != nil {
+	if err := query.Order(auditOrder).Limit(limit).Find(&logs).Error; err != nil {
 		return nil, err
 	}
 
@@ -263,7 +278,7 @@ func (s *AuditStore) findFiltered(ctx context.Context, f auditFilter, limit, off
 	}
 
 	if err := f.apply(DBFromContext(ctx, s.db).Model(&models.AuditLog{})).
-		Order("timestamp DESC").
+		Order(auditOrder).
 		Limit(limit).
 		Offset(offset).
 		Find(&logs).Error; err != nil {

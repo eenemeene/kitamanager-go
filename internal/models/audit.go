@@ -76,6 +76,24 @@ const (
 	// also eventually purged — but the most recent one always exists,
 	// which is the only one needed to ratify the deletion pattern.
 	AuditActionAuditLogPurged AuditAction = "audit_log_purged"
+	// AuditActionAccessDenied records an authenticated request that was
+	// refused with 403. Every other resource action in this list is written
+	// only on success, which left the audit log able to answer "who changed
+	// this?" but not "who tried to and was turned away?" — the question a
+	// breach investigation actually opens with.
+	//
+	// Emitted by middleware.AuditAccessDenials, which wraps the whole
+	// protected route group and therefore covers all four sources of a 403:
+	// the RBAC permission check, the superadmin gate, the service-layer
+	// superadmin guards, and CSRF validation. The refusal reason, the problem
+	// code, the route and the requested org id all go in Details.
+	//
+	// Identity-level: OrganizationID stays NULL, so these are visible on the
+	// superadmin-only global feed rather than in an org's own. That is forced
+	// rather than chosen — see AuditService.LogAccessDenied.
+	//
+	// Volume is bounded per actor — see middleware.denialThrottle.
+	AuditActionAccessDenied AuditAction = "access_denied"
 	// AuditActionPasswordChange records a user rotating their own password.
 	AuditActionPasswordChange AuditAction = "password_change"
 	// AuditActionPasswordChangeFailed records a /me/password attempt that

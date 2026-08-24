@@ -28,9 +28,13 @@ type Deps struct {
 	Factor                *handlers.FactorHandler
 	AuthMiddleware        *middleware.AuthMiddleware
 	AuthzMiddleware       *middleware.AuthorizationMiddleware
-	CSRFMiddleware        *middleware.CSRFMiddleware
-	LoginRateLimiter      *middleware.RateLimiter
-	APIRateLimiter        *middleware.RateLimiter
+	// AccessDenialAuditor records 403s on the protected group. Nil is
+	// honoured as "do not audit denials", which is what the router tests
+	// that build a Deps without an audit service rely on.
+	AccessDenialAuditor middleware.AccessDenialAuditor
+	CSRFMiddleware      *middleware.CSRFMiddleware
+	LoginRateLimiter    *middleware.RateLimiter
+	APIRateLimiter      *middleware.RateLimiter
 }
 
 func Setup(r *gin.Engine, d Deps) {
@@ -75,6 +79,13 @@ func Setup(r *gin.Engine, d Deps) {
 		// Protected endpoints (require authentication and CSRF for cookie-based auth)
 		protected := api.Group("")
 		protected.Use(authMiddleware.RequireAuth())
+		// Immediately inside RequireAuth and outside everything else, so
+		// every 403 raised further down — RBAC, the superadmin gate, the
+		// service-layer superadmin guards, CSRF — passes back out through
+		// it. Outside RequireAuth it would also see 401s, which are
+		// ordinary expired-session traffic and would bury the denials that
+		// mean something.
+		protected.Use(middleware.AuditAccessDenials(d.AccessDenialAuditor))
 		protected.Use(csrfMiddleware.ValidateCSRF())
 		if apiRateLimiter != nil {
 			protected.Use(apiRateLimiter.RateLimitMutations())

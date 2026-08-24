@@ -504,6 +504,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices
 		Export:                handlers.NewExportHandler(svc.employee, svc.child, svc.audit),
 		GovernmentFundingBill: handlers.NewGovernmentFundingBillHandler(svc.governmentFundingBill, svc.audit),
 		AuditLog:              handlers.NewAuditLogHandler(svc.audit),
+		AccessDenialAuditor:   svc.audit,
 		Factor:                handlers.NewFactorHandler(svc.factor),
 		AuthMiddleware:        mw.auth,
 		AuthzMiddleware:       mw.authz,

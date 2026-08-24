@@ -446,112 +446,6 @@ func TestAuditService_LogResourceUpdate(t *testing.T) {
 	}
 }
 
-func TestAuditService_GetLogs(t *testing.T) {
-	db := setupTestDB(t)
-	auditStore := store.NewAuditStore(db)
-	svc := NewAuditService(auditStore)
-	ctx := context.Background()
-
-	// Add multiple logs
-	for i := range 5 {
-		svc.LogLogin(context.Background(), uint(i+1), "user@example.com", "127.0.0.1", "Agent")
-	}
-	svc.Shutdown()
-
-	// Use a read-only service (no channel needed)
-	readSvc := &AuditService{store: store.NewAuditStore(db)}
-
-	// Verify total
-	logs, total, err := readSvc.GetLogs(ctx, 100, 0)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if total != 5 {
-		t.Errorf("expected total 5, got %d", total)
-	}
-	if len(logs) != 5 {
-		t.Errorf("expected 5 logs, got %d", len(logs))
-	}
-
-	// Test pagination - limit 2
-	logs, total, err = readSvc.GetLogs(ctx, 2, 0)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if total != 5 {
-		t.Errorf("expected total 5 with limit, got %d", total)
-	}
-	if len(logs) != 2 {
-		t.Errorf("expected 2 logs with limit, got %d", len(logs))
-	}
-
-	// Test pagination - offset 3
-	logs, total, err = readSvc.GetLogs(ctx, 100, 3)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if total != 5 {
-		t.Errorf("expected total 5 with offset, got %d", total)
-	}
-	if len(logs) != 2 {
-		t.Errorf("expected 2 logs with offset 3, got %d", len(logs))
-	}
-}
-
-func TestAuditService_GetLogsByUser(t *testing.T) {
-	db := setupTestDB(t)
-	auditStore := store.NewAuditStore(db)
-	svc := NewAuditService(auditStore)
-	ctx := context.Background()
-
-	// Log for user 1
-	svc.LogLogin(context.Background(), 1, "user1@example.com", "127.0.0.1", "Agent")
-	svc.LogLogin(context.Background(), 1, "user1@example.com", "127.0.0.1", "Agent")
-
-	// Log for user 2
-	svc.LogLogin(context.Background(), 2, "user2@example.com", "127.0.0.1", "Agent")
-
-	svc.Shutdown()
-
-	readSvc := &AuditService{store: store.NewAuditStore(db)}
-
-	// Filter by user 1
-	logs, total, err := readSvc.GetLogsByUser(ctx, 1, 100, 0)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if total != 2 {
-		t.Errorf("expected total 2 for user 1, got %d", total)
-	}
-	if len(logs) != 2 {
-		t.Errorf("expected 2 logs for user 1, got %d", len(logs))
-	}
-
-	// Filter by user 2
-	logs, total, err = readSvc.GetLogsByUser(ctx, 2, 100, 0)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if total != 1 {
-		t.Errorf("expected total 1 for user 2, got %d", total)
-	}
-	if len(logs) != 1 {
-		t.Errorf("expected 1 log for user 2, got %d", len(logs))
-	}
-
-	// Non-existent user
-	logs, total, err = readSvc.GetLogsByUser(ctx, 999, 100, 0)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if total != 0 {
-		t.Errorf("expected total 0 for non-existent user, got %d", total)
-	}
-	if len(logs) != 0 {
-		t.Errorf("expected 0 logs for non-existent user, got %d", len(logs))
-	}
-}
-
 func TestAuditService_CountRecentFailedLogins(t *testing.T) {
 	db := setupTestDB(t)
 	auditStore := store.NewAuditStore(db)
@@ -695,7 +589,7 @@ func TestAuditService_GetLogByID(t *testing.T) {
 	readSvc := &AuditService{store: store.NewAuditStore(db)}
 
 	// Get all logs to find the ID
-	logs, _, _ := readSvc.GetLogs(ctx, 100, 0)
+	logs, _, _ := readSvc.GetLogsFiltered(ctx, "", nil, nil, nil, 100, 0, IPFull)
 	if len(logs) == 0 {
 		t.Fatal("expected at least one log")
 	}
@@ -966,20 +860,8 @@ func TestAuditService_NilSafety(t *testing.T) {
 	t.Run("nil service", func(t *testing.T) {
 		var svc *AuditService
 
-		// GetLogs returns empty
-		logs, total, err := svc.GetLogs(ctx, 100, 0)
-		if err != nil {
-			t.Fatalf("expected no error, got %v", err)
-		}
-		if logs != nil {
-			t.Errorf("expected nil logs, got %v", logs)
-		}
-		if total != 0 {
-			t.Errorf("expected total 0, got %d", total)
-		}
-
-		// GetLogsByUser returns empty
-		logs, total, err = svc.GetLogsByUser(ctx, 1, 100, 0)
+		// GetLogsFiltered returns empty
+		logs, total, err := svc.GetLogsFiltered(ctx, "", nil, nil, nil, 100, 0, IPAnonymized)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
