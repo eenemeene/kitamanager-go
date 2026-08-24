@@ -146,13 +146,20 @@ func (h *OrganizationHandler) Update(c *gin.Context) {
 		return
 	}
 
+	before, err := h.service.GetByID(c.Request.Context(), id)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	organization, err := h.service.Update(c.Request.Context(), id, req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	auditUpdate(c, h.auditService, "organization", organization.ID, organization.Name)
+	auditUpdateWithChanges(c, h.auditService, "organization", organization.ID, organization.Name,
+		auditChangesOf(before, organization))
 
 	c.JSON(http.StatusOK, organization)
 }
@@ -189,7 +196,7 @@ func (h *OrganizationHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	auditDelete(c, h.auditService, "organization", id, org.Name)
+	auditDeleteWithSnapshot(c, h.auditService, "organization", id, org.Name, auditSnapshot(org))
 
 	c.Status(http.StatusNoContent)
 }

@@ -191,11 +191,19 @@ func (h *UserHandler) Update(c *gin.Context) {
 		return
 	}
 
+	before, err := h.service.GetByID(c.Request.Context(), id, getUserID(c))
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	user, err := h.service.Update(c.Request.Context(), id, req, getUserID(c))
 	if err != nil {
 		respondError(c, err)
 		return
 	}
+
+	changes := auditChangesOf(before, user)
 
 	// Cross-post the user_update audit event to every org the user
 	// belongs to (review finding M4). The /users/:userId route has
@@ -208,10 +216,10 @@ func (h *UserHandler) Update(c *gin.Context) {
 	orgIDs, lookupErr := h.userOrgService.ListMembershipOrgIDs(c.Request.Context(), user.ID)
 	if lookupErr != nil {
 		slog.Warn("failed to fetch user memberships for audit cross-post", "user_id", user.ID, "error", lookupErr)
-		auditUpdate(c, h.auditService, "user", user.ID, user.Email)
+		auditUpdateWithChanges(c, h.auditService, "user", user.ID, user.Email, changes)
 	} else {
 		h.auditService.LogResourceUpdateAcrossOrgs(c.Request.Context(), getUserID(c), getUserEmail(c),
-			"user", user.ID, user.Email, c.ClientIP(), orgIDs)
+			"user", user.ID, user.Email, c.ClientIP(), orgIDs, changes)
 	}
 
 	c.JSON(http.StatusOK, user)

@@ -224,14 +224,26 @@ func TestHandleOrgNestedUpdate_Success(t *testing.T) {
 	}, testNestedReq{Name: "updated"})
 
 	called := false
-	handleOrgNestedUpdate(c, "parentId", "subId", testAuditConfig(t, "test", "item"), func(_ context.Context, nestedID, parentID, orgID uint, req *testNestedReq) (*testNestedResp, error) {
-		called = true
-		if orgID != 1 || parentID != 2 || nestedID != 3 {
-			t.Errorf("IDs = (%d, %d, %d), want (1, 2, 3)", orgID, parentID, nestedID)
-		}
-		return &testNestedResp{ID: nestedID, Name: req.Name}, nil
-	}, func(r *testNestedResp) uint { return r.ID })
+	fetched := false
+	handleOrgNestedUpdate(c, "parentId", "subId", testAuditConfig(t, "test", "item"),
+		func(_ context.Context, nestedID, parentID, orgID uint) (*testNestedResp, error) {
+			fetched = true
+			if orgID != 1 || parentID != 2 || nestedID != 3 {
+				t.Errorf("getFn IDs = (%d, %d, %d), want (1, 2, 3)", orgID, parentID, nestedID)
+			}
+			return &testNestedResp{ID: nestedID, Name: "before"}, nil
+		},
+		func(_ context.Context, nestedID, parentID, orgID uint, req *testNestedReq) (*testNestedResp, error) {
+			called = true
+			if orgID != 1 || parentID != 2 || nestedID != 3 {
+				t.Errorf("IDs = (%d, %d, %d), want (1, 2, 3)", orgID, parentID, nestedID)
+			}
+			return &testNestedResp{ID: nestedID, Name: req.Name}, nil
+		}, func(r *testNestedResp) uint { return r.ID })
 
+	if !fetched {
+		t.Error("getFn was not called, so the audit row cannot carry a diff")
+	}
 	if !called {
 		t.Fatal("updateFn was not called")
 	}
@@ -580,14 +592,26 @@ func TestHandleGlobalNestedUpdate_Success(t *testing.T) {
 	}, testNestedReq{Name: "updated"})
 
 	called := false
-	handleGlobalNestedUpdate(c, "parentId", "subId", testAuditConfig(t, "test", "item"), func(_ context.Context, nestedID, parentID uint, req *testNestedReq) (*testNestedResp, error) {
-		called = true
-		if nestedID != 6 || parentID != 5 {
-			t.Errorf("IDs = (%d, %d), want (6, 5)", nestedID, parentID)
-		}
-		return &testNestedResp{ID: nestedID, Name: req.Name}, nil
-	}, func(r *testNestedResp) uint { return r.ID })
+	fetched := false
+	handleGlobalNestedUpdate(c, "parentId", "subId", testAuditConfig(t, "test", "item"),
+		func(_ context.Context, nestedID, parentID uint) (*testNestedResp, error) {
+			fetched = true
+			if nestedID != 6 || parentID != 5 {
+				t.Errorf("getFn IDs = (%d, %d), want (6, 5)", nestedID, parentID)
+			}
+			return &testNestedResp{ID: nestedID, Name: "before"}, nil
+		},
+		func(_ context.Context, nestedID, parentID uint, req *testNestedReq) (*testNestedResp, error) {
+			called = true
+			if nestedID != 6 || parentID != 5 {
+				t.Errorf("IDs = (%d, %d), want (6, 5)", nestedID, parentID)
+			}
+			return &testNestedResp{ID: nestedID, Name: req.Name}, nil
+		}, func(r *testNestedResp) uint { return r.ID })
 
+	if !fetched {
+		t.Error("getFn was not called, so the audit row cannot carry a diff")
+	}
 	if !called {
 		t.Fatal("updateFn was not called")
 	}

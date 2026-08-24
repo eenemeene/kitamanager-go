@@ -381,7 +381,7 @@ func (h *GovernmentFundingBillHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	auditDelete(c, h.auditService, "government_funding_bill", id, period.FileName)
+	auditDeleteWithSnapshot(c, h.auditService, "government_funding_bill", id, period.FileName, auditSnapshot(period))
 
 	c.Status(http.StatusNoContent)
 }
