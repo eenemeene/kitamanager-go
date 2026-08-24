@@ -88,10 +88,15 @@ func handleOrgCreate[Req any, R any](
 }
 
 // handleOrgUpdate handles updating an org-scoped resource with audit logging.
+//
+// getFn reads the record before the update so the audit row can carry the
+// per-field diff — see handleOrgNestedUpdate for why that extra read is worth
+// paying for.
 func handleOrgUpdate[Req any, R any](
 	c *gin.Context,
 	idParam string,
 	audit auditConfig,
+	getFn func(ctx context.Context, id, orgID uint) (*R, error),
 	updateFn func(ctx context.Context, id, orgID uint, req *Req) (*R, error),
 	getAuditInfo func(*R) (id uint, name string),
 ) {
@@ -105,6 +110,12 @@ func handleOrgUpdate[Req any, R any](
 		return
 	}
 
+	before, err := getFn(c.Request.Context(), resourceID, orgID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	resp, err := updateFn(c.Request.Context(), resourceID, orgID, req)
 	if err != nil {
 		respondError(c, err)
@@ -112,7 +123,7 @@ func handleOrgUpdate[Req any, R any](
 	}
 
 	id, name := getAuditInfo(resp)
-	auditUpdate(c, audit.auditService, audit.resourceType, id, name)
+	auditUpdateWithChanges(c, audit.auditService, audit.resourceType, id, name, auditChangesOf(before, resp))
 
 	c.JSON(http.StatusOK, resp)
 }
@@ -144,7 +155,7 @@ func handleOrgDelete[R any](
 	}
 
 	_, name := getAuditInfo(item)
-	auditDelete(c, audit.auditService, audit.resourceType, resourceID, name)
+	auditDeleteWithSnapshot(c, audit.auditService, audit.resourceType, resourceID, name, auditSnapshot(item))
 
 	c.Status(http.StatusNoContent)
 }

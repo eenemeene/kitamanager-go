@@ -642,7 +642,23 @@ func (s *AuditService) LogResourceUpdateWithChanges(ctx context.Context, actorID
 // of every org the user was a member of. Now an org admin who manages
 // users in their org sees the update in their org-scoped audit feed
 // the moment it happens.
-func (s *AuditService) LogResourceUpdateAcrossOrgs(ctx context.Context, actorID uint, actorEmail, resourceType string, resourceID uint, resourceName, ipAddress string, orgIDs []uint) {
+//
+// `changes` carries the per-field diff, in the same shape and for the same
+// reason as LogResourceUpdateWithChanges. Without it these rows recorded only
+// the resource name — which for a user is the email — so the two edits this
+// endpoint exists to make, changing an account's address and deactivating an
+// account, both landed as "somebody updated this user" with the new email as
+// the only evidence and no way to tell which of the two had happened.
+func (s *AuditService) LogResourceUpdateAcrossOrgs(ctx context.Context, actorID uint, actorEmail, resourceType string, resourceID uint, resourceName, ipAddress string, orgIDs []uint, changes map[string]any) {
+	// Built once and shared by every row so an investigator who pivots from an
+	// org view to the global view cannot see two different accounts of the same
+	// edit.
+	details := map[string]any{"resource_name": resourceName}
+	if len(changes) > 0 {
+		details["changes"] = changes
+	}
+	encoded := mustMarshalJSON(details)
+
 	// De-duplicate so a user that's somehow listed twice in
 	// user_organizations (shouldn't happen, but defence in depth)
 	// doesn't produce duplicate audit rows.
@@ -661,7 +677,7 @@ func (s *AuditService) LogResourceUpdateAcrossOrgs(ctx context.Context, actorID 
 			ResourceID:     &resourceID,
 			OrganizationID: &idCopy,
 			IPAddress:      ipAddress,
-			Details:        mustMarshalJSON(map[string]any{"resource_name": resourceName}),
+			Details:        encoded,
 			Success:        true,
 		})
 	}
@@ -676,7 +692,7 @@ func (s *AuditService) LogResourceUpdateAcrossOrgs(ctx context.Context, actorID 
 		ResourceType: resourceType,
 		ResourceID:   &resourceID,
 		IPAddress:    ipAddress,
-		Details:      mustMarshalJSON(map[string]any{"resource_name": resourceName}),
+		Details:      encoded,
 		Success:      true,
 	})
 }

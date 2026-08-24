@@ -98,7 +98,7 @@ func (h *SectionHandler) Create(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/sections/{sectionId} [put]
 func (h *SectionHandler) Update(c *gin.Context) {
-	handleOrgUpdate(c, "sectionId", h.audit(), h.service.UpdateByIDAndOrg, sectionAuditInfo)
+	handleOrgUpdate(c, "sectionId", h.audit(), h.service.GetByIDAndOrg, h.service.UpdateByIDAndOrg, sectionAuditInfo)
 }
 
 // Delete godoc

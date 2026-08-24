@@ -94,11 +94,18 @@ func handleOrgNestedGet[Resp any](
 }
 
 // handleOrgNestedUpdate handles updating a nested resource with audit logging.
+//
+// getFn reads the record before the update so the audit row can carry the
+// per-field diff. It costs one extra read per update, which is the same price
+// the child and employee handlers already pay for the same reason: without it
+// the row records that a salary table or a funding rate was edited but not what
+// it was edited from, which is unrecoverable once the update has landed.
 func handleOrgNestedUpdate[Req any, Resp any](
 	c *gin.Context,
 	parentParam string,
 	nestedParam string,
 	audit auditConfig,
+	getFn func(context.Context, uint, uint, uint) (*Resp, error),
 	updateFn func(context.Context, uint, uint, uint, *Req) (*Resp, error),
 	getID func(*Resp) uint,
 ) {
@@ -118,13 +125,20 @@ func handleOrgNestedUpdate[Req any, Resp any](
 		return
 	}
 
+	before, err := getFn(c.Request.Context(), nestedID, parentID, orgID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	resp, err := updateFn(c.Request.Context(), nestedID, parentID, orgID, req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	auditUpdate(c, audit.auditService, audit.resourceType, getID(resp), fmt.Sprintf("%s=%d", audit.parentLabel, parentID))
+	auditUpdateWithChanges(c, audit.auditService, audit.resourceType, getID(resp),
+		fmt.Sprintf("%s=%d", audit.parentLabel, parentID), auditChangesOf(before, resp))
 
 	c.JSON(http.StatusOK, resp)
 }
@@ -191,7 +205,7 @@ func handleOrgNestedDeleteWithFetch[Resp any](
 		return
 	}
 
-	auditDelete(c, audit.auditService, audit.resourceType, nestedID, getAuditName(item))
+	auditDeleteWithSnapshot(c, audit.auditService, audit.resourceType, nestedID, getAuditName(item), auditSnapshot(item))
 
 	c.Status(http.StatusNoContent)
 }
@@ -301,12 +315,16 @@ func handleOrgDeepNestedGet[Resp any](
 }
 
 // handleOrgDeepNestedUpdate handles updating a deep nested resource with audit logging.
+//
+// getFn reads the record before the update so the audit row can carry the
+// per-field diff — see handleOrgNestedUpdate.
 func handleOrgDeepNestedUpdate[Req any, Resp any](
 	c *gin.Context,
 	parentParam string,
 	midParam string,
 	nestedParam string,
 	audit auditConfig,
+	getFn func(context.Context, uint, uint, uint, uint) (*Resp, error),
 	updateFn func(context.Context, uint, uint, uint, uint, *Req) (*Resp, error),
 	getID func(*Resp) uint,
 ) {
@@ -332,13 +350,20 @@ func handleOrgDeepNestedUpdate[Req any, Resp any](
 		return
 	}
 
+	before, err := getFn(c.Request.Context(), nestedID, midID, parentID, orgID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	resp, err := updateFn(c.Request.Context(), nestedID, midID, parentID, orgID, req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	auditUpdate(c, audit.auditService, audit.resourceType, getID(resp), fmt.Sprintf("%s=%d", audit.parentLabel, midID))
+	auditUpdateWithChanges(c, audit.auditService, audit.resourceType, getID(resp),
+		fmt.Sprintf("%s=%d", audit.parentLabel, midID), auditChangesOf(before, resp))
 
 	c.JSON(http.StatusOK, resp)
 }
@@ -419,7 +444,7 @@ func handleOrgDeepNestedDeleteWithFetch[Resp any](
 		return
 	}
 
-	auditDelete(c, audit.auditService, audit.resourceType, nestedID, getAuditName(item))
+	auditDeleteWithSnapshot(c, audit.auditService, audit.resourceType, nestedID, getAuditName(item), auditSnapshot(item))
 
 	c.Status(http.StatusNoContent)
 }
@@ -511,11 +536,15 @@ func handleGlobalNestedGet[Resp any](
 }
 
 // handleGlobalNestedUpdate handles updating a nested resource under a global parent.
+//
+// getFn reads the record before the update so the audit row can carry the
+// per-field diff — see handleOrgNestedUpdate.
 func handleGlobalNestedUpdate[Req any, Resp any](
 	c *gin.Context,
 	parentParam string,
 	nestedParam string,
 	audit auditConfig,
+	getFn func(context.Context, uint, uint) (*Resp, error),
 	updateFn func(context.Context, uint, uint, *Req) (*Resp, error),
 	getID func(*Resp) uint,
 ) {
@@ -536,13 +565,20 @@ func handleGlobalNestedUpdate[Req any, Resp any](
 		return
 	}
 
+	before, err := getFn(c.Request.Context(), nestedID, parentID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	resp, err := updateFn(c.Request.Context(), nestedID, parentID, req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	auditUpdate(c, audit.auditService, audit.resourceType, getID(resp), fmt.Sprintf("%s=%d", audit.parentLabel, parentID))
+	auditUpdateWithChanges(c, audit.auditService, audit.resourceType, getID(resp),
+		fmt.Sprintf("%s=%d", audit.parentLabel, parentID), auditChangesOf(before, resp))
 
 	c.JSON(http.StatusOK, resp)
 }
@@ -611,7 +647,7 @@ func handleGlobalNestedDeleteWithFetch[Resp any](
 		return
 	}
 
-	auditDelete(c, audit.auditService, audit.resourceType, nestedID, getAuditName(item))
+	auditDeleteWithSnapshot(c, audit.auditService, audit.resourceType, nestedID, getAuditName(item), auditSnapshot(item))
 
 	c.Status(http.StatusNoContent)
 }
@@ -724,12 +760,16 @@ func handleGlobalDeepNestedGet[Resp any](
 }
 
 // handleGlobalDeepNestedUpdate handles updating a deep nested resource under a global parent.
+//
+// getFn reads the record before the update so the audit row can carry the
+// per-field diff — see handleOrgNestedUpdate.
 func handleGlobalDeepNestedUpdate[Req any, Resp any](
 	c *gin.Context,
 	parentParam string,
 	midParam string,
 	nestedParam string,
 	audit auditConfig,
+	getFn func(context.Context, uint, uint, uint) (*Resp, error),
 	updateFn func(context.Context, uint, uint, uint, *Req) (*Resp, error),
 	getID func(*Resp) uint,
 ) {
@@ -756,13 +796,20 @@ func handleGlobalDeepNestedUpdate[Req any, Resp any](
 		return
 	}
 
+	before, err := getFn(c.Request.Context(), nestedID, midID, parentID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	resp, err := updateFn(c.Request.Context(), nestedID, midID, parentID, req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	auditUpdate(c, audit.auditService, audit.resourceType, getID(resp), fmt.Sprintf("%s=%d", audit.parentLabel, midID))
+	auditUpdateWithChanges(c, audit.auditService, audit.resourceType, getID(resp),
+		fmt.Sprintf("%s=%d", audit.parentLabel, midID), auditChangesOf(before, resp))
 
 	c.JSON(http.StatusOK, resp)
 }
@@ -845,7 +892,7 @@ func handleGlobalDeepNestedDeleteWithFetch[Resp any](
 		return
 	}
 
-	auditDelete(c, audit.auditService, audit.resourceType, nestedID, getAuditName(item))
+	auditDeleteWithSnapshot(c, audit.auditService, audit.resourceType, nestedID, getAuditName(item), auditSnapshot(item))
 
 	c.Status(http.StatusNoContent)
 }

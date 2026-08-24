@@ -170,13 +170,20 @@ func (h *GovernmentFundingHandler) Update(c *gin.Context) {
 		return
 	}
 
+	before, err := h.service.GetByID(c.Request.Context(), id)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
 	funding, err := h.service.Update(c.Request.Context(), id, req)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	auditUpdate(c, h.auditService, "government_funding", funding.ID, funding.Name)
+	auditUpdateWithChanges(c, h.auditService, "government_funding", funding.ID, funding.Name,
+		auditChangesOf(before, funding))
 
 	c.JSON(http.StatusOK, funding)
 }
@@ -214,7 +221,7 @@ func (h *GovernmentFundingHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	auditDelete(c, h.auditService, "government_funding", id, funding.Name)
+	auditDeleteWithSnapshot(c, h.auditService, "government_funding", id, funding.Name, auditSnapshot(funding))
 
 	c.Status(http.StatusNoContent)
 }
@@ -305,6 +312,7 @@ func (h *GovernmentFundingHandler) GetPeriod(c *gin.Context) {
 func (h *GovernmentFundingHandler) UpdatePeriod(c *gin.Context) {
 	handleGlobalNestedUpdate(c, "fundingId", "periodId",
 		auditConfig{h.auditService, "gov_funding_period", "funding"},
+		h.service.GetPeriod,
 		h.service.UpdatePeriod,
 		func(r *models.GovernmentFundingPeriodResponse) uint { return r.ID },
 	)
@@ -425,6 +433,7 @@ func (h *GovernmentFundingHandler) GetProperty(c *gin.Context) {
 func (h *GovernmentFundingHandler) UpdateProperty(c *gin.Context) {
 	handleGlobalDeepNestedUpdate(c, "fundingId", "periodId", "propertyId",
 		auditConfig{h.auditService, "gov_funding_property", "period"},
+		h.service.GetProperty,
 		h.service.UpdateProperty,
 		func(r *models.GovernmentFundingPropertyResponse) uint { return r.ID },
 	)
