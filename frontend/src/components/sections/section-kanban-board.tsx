@@ -329,7 +329,18 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        {/*
+          `relative` is load-bearing, not cosmetic. overflow-x:auto only clips
+          descendants for which this element is in the containing-block chain,
+          and a static element is not one for anything absolutely positioned.
+          The child cards carry sr-only spans, which Tailwind implements as
+          position:absolute — without a positioned ancestor those resolve
+          against the initial containing block, escape this scroller entirely
+          and stretch the document to the width of the whole column strip. On a
+          phone that widens the layout viewport and every page starts scrolling
+          sideways; e2e/horizontal-overflow.spec.ts is the guard.
+        */}
+        <div className="relative flex gap-4 overflow-x-auto pb-4">
           {sections.map((section) => (
             <SectionColumn
               key={section.id}
