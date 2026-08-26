@@ -458,10 +458,17 @@ func setupRouter(cfg *config.Config, db *gorm.DB, s *appStores, svc *appServices
 	r.Use(middleware.UnknownQueryParams(docs.SwaggerInfo.ReadDoc()))
 
 	corsConfig := cors.Config{
-		AllowOrigins:     cfg.CORSAllowOrigins,
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-CSRF-Token"},
-		ExposeHeaders:    []string{"Content-Length", "X-Request-ID"},
+		AllowOrigins: cfg.CORSAllowOrigins,
+		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization", "X-CSRF-Token"},
+		// UnknownQueryParamsHeader is listed because a browser client cannot read
+		// a response header that CORS does not expose, and it is the only signal
+		// a caller gets that the API ignored one of their filters.
+		ExposeHeaders: []string{
+			"Content-Length",
+			"X-Request-ID",
+			middleware.UnknownQueryParamsHeader,
+		},
 		AllowCredentials: cfg.CORSAllowCredentials,
 		MaxAge:           12 * time.Hour,
 	}
