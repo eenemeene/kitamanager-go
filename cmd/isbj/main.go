@@ -15,6 +15,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	// #nosec G703 -- this is a CLI tool whose whole purpose is to open the file
+	// the developer names on the command line; there is no attacker-controlled
+	// path here. The //nolint directive below is golangci-lint's and does not
+	// suppress the standalone gosec hook, which reads #nosec only.
 	f, err := os.Open(filepath.Clean(os.Args[1])) //nolint:gosec // G703: CLI tool intentionally opens user-specified file
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "open: %v\n", err)
