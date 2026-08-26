@@ -14,13 +14,22 @@ package middleware
 // handler annotations. A parameter that reaches here unrecognised is either a
 // client bug or a missing @Param annotation — both worth knowing about.
 //
-// This only ever logs. Rejecting unknown parameters would be a stricter contract
+// This never rejects. Refusing unknown parameters would be a stricter contract
 // than the API promises today, and would break any client that appends its own
 // tracking parameters.
+//
+// It does, however, have to tell the caller. A log line only reaches whoever runs
+// the server, and the person who typed `activeOn` instead of `active_on` is
+// usually not that person: they get 200 OK, a full unfiltered list, and nothing
+// anywhere in the response suggesting their filter was dropped. So the ignored
+// names also go back on the UnknownQueryParamsHeader, which costs a header on
+// the rare malformed request and breaks nothing — a client that does not look at
+// it is exactly as well off as before.
 
 import (
 	"encoding/json"
 	"log/slog"
+	"slices"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -94,8 +103,12 @@ func routeKey(method, path string) string {
 	return method + " " + path
 }
 
-// UnknownQueryParams logs a warning for each request carrying query parameters
-// that its route does not declare.
+// UnknownQueryParamsHeader names the query parameters the API did not recognise
+// and therefore ignored, comma-separated. Absent when everything was understood.
+const UnknownQueryParamsHeader = "X-Unknown-Query-Parameters"
+
+// UnknownQueryParams reports query parameters that a route does not declare, on
+// the response header and in the server log.
 //
 // Pass docs.SwaggerInfo.ReadDoc() — the spec swaggo compiles into the binary.
 func UnknownQueryParams(specJSON string) gin.HandlerFunc {
@@ -105,40 +118,54 @@ func UnknownQueryParams(specJSON string) gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
+		// The header has to be set before the handler writes anything, because
+		// the first write flushes them — hence the check runs up front and only
+		// the log line, which wants the final status, waits for c.Next().
+		unknown := unknownParams(c, declared)
+		if len(unknown) > 0 {
+			c.Header(UnknownQueryParamsHeader, strings.Join(unknown, ", "))
+		}
+
 		c.Next()
 
-		query := c.Request.URL.Query()
-		if len(query) == 0 {
-			return
+		if len(unknown) > 0 {
+			slog.Warn("request sent query parameters the API does not declare; they were ignored",
+				"method", c.Request.Method,
+				"route", c.FullPath(),
+				"unknown_params", unknown,
+				"status", c.Writer.Status(),
+			)
 		}
-
-		// FullPath is the registered pattern (empty for an unmatched route). A
-		// route the spec does not describe cannot be judged — swagger UI, health,
-		// metrics — so it is skipped rather than reported.
-		route := c.FullPath()
-		if route == "" {
-			return
-		}
-		allowed, ok := declared[routeKey(c.Request.Method, route)]
-		if !ok {
-			return
-		}
-
-		var unknown []string
-		for name := range query {
-			if _, fine := allowed[name]; !fine {
-				unknown = append(unknown, name)
-			}
-		}
-		if len(unknown) == 0 {
-			return
-		}
-
-		slog.Warn("request sent query parameters the API does not declare; they were ignored",
-			"method", c.Request.Method,
-			"route", route,
-			"unknown_params", unknown,
-			"status", c.Writer.Status(),
-		)
 	}
+}
+
+// unknownParams returns the request's query parameter names that the route does
+// not declare, sorted so the header and the log line are stable across requests
+// (Go randomises map iteration order).
+func unknownParams(c *gin.Context, declared declaredQueryParams) []string {
+	query := c.Request.URL.Query()
+	if len(query) == 0 {
+		return nil
+	}
+
+	// FullPath is the registered pattern (empty for an unmatched route). A route
+	// the spec does not describe cannot be judged — swagger UI, health, metrics —
+	// so it is skipped rather than reported.
+	route := c.FullPath()
+	if route == "" {
+		return nil
+	}
+	allowed, ok := declared[routeKey(c.Request.Method, route)]
+	if !ok {
+		return nil
+	}
+
+	var unknown []string
+	for name := range query {
+		if _, fine := allowed[name]; !fine {
+			unknown = append(unknown, name)
+		}
+	}
+	slices.Sort(unknown)
+	return unknown
 }

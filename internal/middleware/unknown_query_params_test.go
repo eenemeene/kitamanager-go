@@ -208,3 +208,62 @@ func keys(m map[string]struct{}) []string {
 	}
 	return out
 }
+
+// The caller has to be told, not just the log. These assert the half of the
+// contract the person who typed the parameter can actually see.
+
+func TestUnknownQueryParams_HeaderNamesIgnoredParameters(t *testing.T) {
+	captureLogs(t)
+	r := routerFor(testSpec)
+
+	w := get(r, "/api/v1/organizations/1/children?contract_on=2026-03-01")
+
+	if got := w.Header().Get(UnknownQueryParamsHeader); got != "contract_on" {
+		t.Errorf("%s = %q, want %q", UnknownQueryParamsHeader, got, "contract_on")
+	}
+}
+
+func TestUnknownQueryParams_NoHeaderWhenEverythingIsDeclared(t *testing.T) {
+	captureLogs(t)
+	r := routerFor(testSpec)
+
+	w := get(r, "/api/v1/organizations/1/children?active_on=2026-03-01&page=2")
+
+	if got := w.Header().Get(UnknownQueryParamsHeader); got != "" {
+		t.Errorf("%s = %q, want it absent", UnknownQueryParamsHeader, got)
+	}
+}
+
+// Go randomises map iteration, so without an explicit sort the same request
+// would produce a different header on every call.
+func TestUnknownQueryParams_HeaderIsSorted(t *testing.T) {
+	captureLogs(t)
+	r := routerFor(testSpec)
+
+	w := get(r, "/api/v1/organizations/1/children?zeta=1&alpha=2&contract_on=3")
+
+	want := "alpha, contract_on, zeta"
+	if got := w.Header().Get(UnknownQueryParamsHeader); got != want {
+		t.Errorf("%s = %q, want %q", UnknownQueryParamsHeader, got, want)
+	}
+}
+
+// Headers flush on the response's first write, so a header set after the handler
+// has produced a body never reaches the client. This is the regression guard for
+// computing the set before c.Next() rather than after it.
+func TestUnknownQueryParams_HeaderSurvivesAHandlerThatWritesABody(t *testing.T) {
+	captureLogs(t)
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(UnknownQueryParams(testSpec))
+	r.GET("/api/v1/organizations/:orgId/children", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"data": []string{}})
+	})
+
+	w := get(r, "/api/v1/organizations/1/children?contract_on=2026-03-01")
+
+	if got := w.Header().Get(UnknownQueryParamsHeader); got != "contract_on" {
+		t.Errorf("%s = %q, want %q — the header was set too late to be sent",
+			UnknownQueryParamsHeader, got, "contract_on")
+	}
+}
