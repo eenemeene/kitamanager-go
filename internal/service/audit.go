@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"sync/atomic"
 	"time"
+	"unicode/utf8"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -85,6 +86,29 @@ func (s *AuditService) FallbackCount() int64 {
 		return 0
 	}
 	return s.fallbackCount.Load()
+}
+
+// maxUserAgentLen matches the audit_logs.user_agent column width.
+const maxUserAgentLen = 512
+
+// truncateUserAgent shortens s to fit audit_logs.user_agent without splitting a
+// rune. A byte-wise cut would leave invalid UTF-8 and have Postgres reject the
+// row for a different reason than the one this exists to avoid.
+func truncateUserAgent(s string) string {
+	if len(s) <= maxUserAgentLen {
+		return s
+	}
+	// Walk to the last rune boundary that still fits. Ranging over a string
+	// yields the byte offset of each rune's start, so the last offset that
+	// leaves the whole rune inside the budget is the cut point.
+	cut := 0
+	for i, r := range s {
+		if i+utf8.RuneLen(r) > maxUserAgentLen {
+			break
+		}
+		cut = i + utf8.RuneLen(r)
+	}
+	return s[:cut]
 }
 
 // mustMarshalJSON marshals v to JSON, returning "{}" on error.
@@ -795,7 +819,14 @@ func (s *AuditService) LogDataExport(ctx context.Context, actorID uint, actorEma
 //
 // Pre-fix the importer audit calls used `auditCreate(..., 0, "YAML import")`
 // which discarded every one of these fields. Closes review finding M1.
-func (s *AuditService) LogResourceImport(ctx context.Context, actorID uint, actorEmail, resourceType string, orgID uint, recordCount int, ids []uint, filename, ipAddress string) {
+//
+// orgID is a pointer because not every import is org-scoped: government
+// funding rates are global, and audit_logs.organization_id is a foreign key,
+// so passing a zero there would have made the row fail to insert rather than
+// recording a global import. `extra` carries whatever else a particular
+// importer knows — for funding rates that is how many periods and properties
+// were created, updated and, importantly, deleted.
+func (s *AuditService) LogResourceImport(ctx context.Context, actorID uint, actorEmail, resourceType string, orgID *uint, recordCount int, ids []uint, filename, ipAddress string, extra map[string]any) {
 	const maxIDsInDetails = 1000
 	truncatedIDs := ids
 	idsTruncated := false
@@ -804,20 +835,25 @@ func (s *AuditService) LogResourceImport(ctx context.Context, actorID uint, acto
 		idsTruncated = true
 	}
 	details := map[string]any{
-		"organization_id": orgID,
-		"record_count":    recordCount,
-		"filename":        filename,
-		"ids":             truncatedIDs,
+		"record_count": recordCount,
+		"filename":     filename,
+		"ids":          truncatedIDs,
+	}
+	if orgID != nil {
+		details["organization_id"] = *orgID
 	}
 	if idsTruncated {
 		details["ids_truncated"] = true
+	}
+	for k, v := range extra {
+		details[k] = v
 	}
 	s.log(ctx, &models.AuditLog{
 		UserID:         &actorID,
 		UserEmail:      actorEmail,
 		Action:         models.AuditAction(resourceType + "_import"),
 		ResourceType:   resourceType,
-		OrganizationID: &orgID,
+		OrganizationID: orgID,
 		IPAddress:      ipAddress,
 		Details:        mustMarshalJSON(details),
 		Success:        true,
@@ -983,6 +1019,20 @@ func (s *AuditService) log(ctx context.Context, entry *models.AuditLog) {
 	if entry.IPAddress == "" {
 		entry.IPAddress = middleware.ClientIPFromContext(ctx)
 	}
+	// Same fallback for the user agent. Before this it was set only by the
+	// authentication emitters, so the column answered "which browser signed
+	// in?" but never "which one deleted the record?" — and the resource
+	// emitters have no userAgent argument to pass one through.
+	if entry.UserAgent == "" {
+		entry.UserAgent = middleware.UserAgentFromContext(ctx)
+	}
+	// User-Agent is attacker-controlled and audit_logs.user_agent is
+	// VARCHAR(512). An over-long header would make the INSERT fail, and a
+	// failed INSERT here does not fail the request — it drops the audit row.
+	// So the one thing a client could do to erase its own trail is send a
+	// long header. Truncate instead, on rune boundaries so the stored value
+	// stays valid UTF-8.
+	entry.UserAgent = truncateUserAgent(entry.UserAgent)
 
 	select {
 	case s.logCh <- entry:

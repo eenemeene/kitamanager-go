@@ -11193,6 +11193,11 @@ const docTemplate = `{
                     "type": "string",
                     "format": "date-time"
                 },
+                "user_agent": {
+                    "description": "UserAgent is the client the action was performed with.\n\nNot redacted the way IPAddress is, and the distinction is deliberate: an\naddress says where the actor was, which geolocates to a household, while\nthe user agent says what they used. \"Was this done from the Kita tablet\nor from somebody's phone?\" is a question an org admin investigating a\nsuspicious edit has a legitimate reason to ask.\n\nThe column has been written since the first migration but was absent\nfrom this response, so the value was recorded and never readable.",
+                    "type": "string",
+                    "example": "Mozilla/5.0"
+                },
                 "user_email": {
                     "type": "string",
                     "example": "admin@example.com"

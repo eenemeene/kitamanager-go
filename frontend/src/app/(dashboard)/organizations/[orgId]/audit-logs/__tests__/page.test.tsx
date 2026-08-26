@@ -142,4 +142,90 @@ describe('AuditLogPage', () => {
     // The parsed details JSON should render in the pre block.
     expect(screen.getByText(/"resource_name": "Anna"/)).toBeInTheDocument();
   });
+
+  // An org admin is served the network prefix, never the recorded address. The
+  // API says so with ip_anonymized; the dialog used to ignore the flag and
+  // print the prefix under a plain "IP address" label, so a truncated value was
+  // indistinguishable from an address that happens to end in .0.
+  it('labels a redacted IP as a network prefix and shows the correlation fields', async () => {
+    (apiClient.getAuditLogs as jest.Mock).mockResolvedValueOnce({
+      data: [
+        {
+          ...mockEntries[0],
+          ip_address: '192.168.1.0',
+          ip_anonymized: true,
+          user_agent: 'Mozilla/5.0 (Kita tablet)',
+          request_id: '4b89e4e0-6c37-4e1c-9a78-5d34b2a5f9a1',
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+
+    renderWithProviders(<AuditLogPage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('child_delete').length).toBeGreaterThan(0);
+    });
+    fireEvent.click(screen.getAllByText('child_delete')[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('auditLog.ipAddressAnonymized')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('auditLog.ipAddress')).not.toBeInTheDocument();
+    expect(screen.getByText('Mozilla/5.0 (Kita tablet)')).toBeInTheDocument();
+    expect(screen.getByText('4b89e4e0-6c37-4e1c-9a78-5d34b2a5f9a1')).toBeInTheDocument();
+  });
+
+  it('uses the plain IP label when the viewer sees the recorded address', async () => {
+    (apiClient.getAuditLogs as jest.Mock).mockResolvedValueOnce({
+      data: [{ ...mockEntries[0], ip_address: '203.0.113.7' }],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+
+    renderWithProviders(<AuditLogPage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('child_delete').length).toBeGreaterThan(0);
+    });
+    fireEvent.click(screen.getAllByText('child_delete')[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('auditLog.ipAddress')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('auditLog.ipAddressAnonymized')).not.toBeInTheDocument();
+  });
+
+  // A refused request is an access-control event. Falling through to the
+  // "data change" default would file an attempted intrusion alongside ordinary
+  // editing traffic, which is the one place the categories must not be wrong.
+  it('files a refused request under access control, not data change', async () => {
+    (apiClient.getAuditLogs as jest.Mock).mockResolvedValueOnce({
+      data: [
+        {
+          ...mockEntries[0],
+          action: 'access_denied',
+          resource_type: '',
+          success: false,
+          details: '{"reason":"forbidden"}',
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+
+    renderWithProviders(<AuditLogPage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('access_denied').length).toBeGreaterThan(0);
+    });
+    // The category surfaces as the icon's aria-label rather than as text, which
+    // is also the only form a screen-reader user gets it in.
+    expect(screen.getAllByLabelText('auditLog.categoryAccess').length).toBeGreaterThan(0);
+    expect(screen.queryByLabelText('auditLog.categoryData')).not.toBeInTheDocument();
+  });
 });

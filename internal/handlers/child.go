@@ -521,7 +521,7 @@ func (h *ChildHandler) Import(c *gin.Context) {
 		ids[i] = results[i].ID
 	}
 	h.auditService.LogResourceImport(c.Request.Context(), getUserID(c), getUserEmail(c),
-		"child", orgID, len(results), ids, sanitizeFilename(header.Filename), c.ClientIP())
+		"child", &orgID, len(results), ids, sanitizeFilename(header.Filename), c.ClientIP(), nil)
 
 	c.JSON(http.StatusCreated, results)
 }

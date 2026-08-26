@@ -200,9 +200,20 @@ type AuditLogResponse struct {
 	// rather than the address that was recorded. Absent when the viewer sees
 	// the full value, so a client can tell a truncated address from one that
 	// genuinely ends in .0 instead of guessing.
-	IPAnonymized bool   `json:"ip_anonymized,omitempty" example:"true"`
-	Details      string `json:"details,omitempty" example:"{\"resource_name\":\"John Doe\"}"`
-	Success      bool   `json:"success" example:"true"`
+	IPAnonymized bool `json:"ip_anonymized,omitempty" example:"true"`
+	// UserAgent is the client the action was performed with.
+	//
+	// Not redacted the way IPAddress is, and the distinction is deliberate: an
+	// address says where the actor was, which geolocates to a household, while
+	// the user agent says what they used. "Was this done from the Kita tablet
+	// or from somebody's phone?" is a question an org admin investigating a
+	// suspicious edit has a legitimate reason to ask.
+	//
+	// The column has been written since the first migration but was absent
+	// from this response, so the value was recorded and never readable.
+	UserAgent string `json:"user_agent,omitempty" example:"Mozilla/5.0"`
+	Details   string `json:"details,omitempty" example:"{\"resource_name\":\"John Doe\"}"`
+	Success   bool   `json:"success" example:"true"`
 }
 
 func (a *AuditLog) ToResponse() AuditLogResponse {
@@ -217,6 +228,7 @@ func (a *AuditLog) ToResponse() AuditLogResponse {
 		ResourceID:     a.ResourceID,
 		OrganizationID: a.OrganizationID,
 		IPAddress:      a.IPAddress,
+		UserAgent:      a.UserAgent,
 		Details:        a.Details,
 		Success:        a.Success,
 	}

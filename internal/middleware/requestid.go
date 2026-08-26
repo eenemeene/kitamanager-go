@@ -28,6 +28,15 @@ type requestIDContextKey struct{}
 // (e.g. FactorService.LogFactor*). Closes review finding L3.
 type clientIPContextKey struct{}
 
+// userAgentContextKey is the context.Context key for the request's
+// User-Agent header, stamped by the same middleware and for the same
+// reason as the client IP: AuditService.log() uses it to fill in the
+// field for the many audit emitters that never took a userAgent
+// argument. Before this, user_agent was populated on authentication
+// events only, so an investigator could see which browser signed in
+// but not which one deleted a child's record.
+type userAgentContextKey struct{}
+
 // RequestID returns a middleware that generates a unique request ID for
 // each request. If the incoming request already has an X-Request-ID
 // header, it is reused.
@@ -57,6 +66,7 @@ func RequestID() gin.HandlerFunc {
 		// (L3). c.ClientIP() honours the framework's trusted-proxy
 		// chain and falls back to RemoteAddr.
 		ctx = context.WithValue(ctx, clientIPContextKey{}, c.ClientIP())
+		ctx = context.WithValue(ctx, userAgentContextKey{}, c.Request.UserAgent())
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Next()
@@ -102,4 +112,21 @@ func ClientIPFromContext(ctx context.Context) string {
 // ContextWithRequestIDForTest for the client IP slot.
 func ContextWithClientIPForTest(ctx context.Context, ip string) context.Context {
 	return context.WithValue(ctx, clientIPContextKey{}, ip)
+}
+
+// UserAgentFromContext returns the User-Agent previously stamped by the
+// RequestID middleware, or "" if none is present (non-HTTP callers: seed
+// imports, background jobs, tests that did not route through middleware).
+func UserAgentFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	ua, _ := ctx.Value(userAgentContextKey{}).(string)
+	return ua
+}
+
+// ContextWithUserAgentForTest is the test-only counterpart of
+// ContextWithRequestIDForTest for the user-agent slot.
+func ContextWithUserAgentForTest(ctx context.Context, ua string) context.Context {
+	return context.WithValue(ctx, userAgentContextKey{}, ua)
 }
