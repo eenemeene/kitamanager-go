@@ -175,6 +175,7 @@ export function MonthlyContractChart({ data, occupancy }: MonthlyContractChartPr
       )}
       <ExportableChart filename="children-contracts" className="h-[350px]">
         <ResponsiveLine
+          ariaLabel={t('statistics.monthlyContractsChart')}
           data={chartData}
           margin={{ top: 20, right: 30, bottom: 80, left: 60 }}
           xScale={{ type: 'point' }}

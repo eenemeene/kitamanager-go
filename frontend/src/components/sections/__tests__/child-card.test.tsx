@@ -26,34 +26,30 @@ const mockChild: Child = {
   updated_at: '2024-01-01T00:00:00Z',
 };
 
+// The global next-intl mock returns the key, so asserting on keys is how these
+// tests check that a string goes through the catalogue at all — which is the
+// point here: the card used to render "years" and "M"/"F"/"D" as English
+// literals, in an app whose primary audience is German.
 describe('ChildCard', () => {
   it('renders child full name', () => {
     render(<ChildCard child={mockChild} />);
     expect(screen.getByText('Emma Schmidt')).toBeInTheDocument();
   });
 
-  it('renders gender badge for female', () => {
+  it.each([
+    ['female', 'gender.short.female', 'gender.female'],
+    ['male', 'gender.short.male', 'gender.male'],
+    ['diverse', 'gender.short.diverse', 'gender.diverse'],
+  ] as const)('translates the %s gender badge', (gender, shortKey, longKey) => {
+    render(<ChildCard child={{ ...mockChild, gender }} />);
+    expect(screen.getByText(shortKey)).toBeInTheDocument();
+    // The abbreviation is for width; a screen reader gets the whole word.
+    expect(screen.getByText(longKey)).toHaveClass('sr-only');
+  });
+
+  it('renders the age through the catalogue rather than as English', () => {
     render(<ChildCard child={mockChild} />);
-    expect(screen.getByText('F')).toBeInTheDocument();
-  });
-
-  it('renders gender badge for male', () => {
-    const maleChild: Child = { ...mockChild, gender: 'male' };
-    render(<ChildCard child={maleChild} />);
-    expect(screen.getByText('M')).toBeInTheDocument();
-  });
-
-  it('renders gender badge for diverse', () => {
-    const diverseChild: Child = { ...mockChild, gender: 'diverse' };
-    render(<ChildCard child={diverseChild} />);
-    expect(screen.getByText('D')).toBeInTheDocument();
-  });
-
-  it('renders age from birthdate', () => {
-    // Child born in 2020, so age should be calculated
-    render(<ChildCard child={mockChild} />);
-    // The age text should contain "years"
-    const ageText = screen.getByText(/\d+ years?/);
-    expect(ageText).toBeInTheDocument();
+    expect(screen.getByText('sections.childAge')).toBeInTheDocument();
+    expect(screen.queryByText(/\byears?\b/)).not.toBeInTheDocument();
   });
 });

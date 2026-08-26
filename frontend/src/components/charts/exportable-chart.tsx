@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useCallback, type ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
 import { Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +16,7 @@ interface ExportableChartProps {
  * Pass `className` for the chart height, e.g. `className="h-[350px]"`.
  */
 export function ExportableChart({ children, filename, className }: ExportableChartProps) {
+  const t = useTranslations();
   const ref = useRef<HTMLDivElement>(null);
 
   const handleExport = useCallback(() => {
@@ -96,12 +98,22 @@ export function ExportableChart({ children, filename, className }: ExportableCha
     // wrapper covers all 35 charts at every breakpoint.
     <div ref={ref} data-visual-mask="chart" className={cn('relative', className)}>
       {children}
+      {/*
+        Kept faintly visible rather than revealed on hover. The previous
+        `opacity-0` + `[div:hover>&]` pair meant the control did not exist on a
+        tablet, which is where this app is mostly used: a finger produces no
+        hover, so there was no gesture that could bring it on screen. Keyboard
+        users had the mirror-image problem — tabbing to it moved focus to
+        something still fully transparent.
+      */}
       <button
+        type="button"
         onClick={handleExport}
-        className="bg-background/80 hover:bg-muted absolute top-1 right-1 z-20 rounded-md border p-1.5 opacity-0 transition-opacity hover:opacity-100 [div:hover>&]:opacity-60"
-        title="Export SVG"
+        className="bg-background/80 hover:bg-muted absolute top-1 right-1 z-20 rounded-md border p-1.5 opacity-40 transition-opacity hover:opacity-100 focus-visible:opacity-100"
+        title={t('common.exportSvg')}
+        aria-label={t('common.exportSvg')}
       >
-        <Download className="text-muted-foreground h-3.5 w-3.5" />
+        <Download className="text-muted-foreground h-3.5 w-3.5" aria-hidden="true" />
       </button>
     </div>
   );

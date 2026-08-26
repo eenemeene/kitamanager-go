@@ -1,14 +1,18 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
+  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
+  type Announcements,
   type DragStartEvent,
   type DragEndEvent,
+  type ScreenReaderInstructions,
+  type UniqueIdentifier,
 } from '@dnd-kit/core';
 import { useQuery } from '@tanstack/react-query';
 import { differenceInMonths, parseISO } from 'date-fns';
@@ -24,6 +28,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SectionColumn } from './section-column';
+import { sectionKeyboardCoordinates } from './keyboard-coordinates';
 import { ChildCard } from './child-card';
 import { EmployeeCard } from './employee-card';
 
@@ -56,6 +61,13 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
+    }),
+    // Without this the cards are still tab stops that dnd-kit announces as
+    // draggable — it sets role, tabIndex and aria-roledescription on every one
+    // of them — while space and enter do nothing, which is worse than not
+    // offering the affordance at all.
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sectionKeyboardCoordinates,
     })
   );
 
@@ -126,6 +138,55 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
     }
     return map;
   }, [sections, pedagogicalEmployees]);
+
+  // Screen-reader narration for the drag. dnd-kit ships defaults, but they are
+  // English strings baked into the library, which would leave the one part of
+  // the board a blind user actually hears as the only untranslated part of it.
+  const itemName = useCallback(
+    (id: UniqueIdentifier) => {
+      const key = String(id);
+      if (key.startsWith('child-')) {
+        const child = (children ?? []).find((c) => `child-${c.id}` === key);
+        return child ? `${child.first_name} ${child.last_name}` : key;
+      }
+      const employee = pedagogicalEmployees.find((e) => `employee-${e.id}` === key);
+      return employee ? `${employee.first_name} ${employee.last_name}` : key;
+    },
+    [children, pedagogicalEmployees]
+  );
+
+  const sectionName = useCallback(
+    (id: UniqueIdentifier | undefined) =>
+      allSections.find((s) => String(s.id) === String(id))?.name ?? '',
+    [allSections]
+  );
+
+  const announcements: Announcements = useMemo(
+    () => ({
+      onDragStart: ({ active }) => t('sections.a11yPickedUp', { name: itemName(active.id) }),
+      onDragOver: ({ active, over }) =>
+        over
+          ? t('sections.a11yOverSection', {
+              name: itemName(active.id),
+              section: sectionName(over.id),
+            })
+          : undefined,
+      onDragEnd: ({ active, over }) =>
+        over
+          ? t('sections.a11yDropped', {
+              name: itemName(active.id),
+              section: sectionName(over.id),
+            })
+          : t('sections.a11yCancelled', { name: itemName(active.id) }),
+      onDragCancel: ({ active }) => t('sections.a11yCancelled', { name: itemName(active.id) }),
+    }),
+    [t, itemName, sectionName]
+  );
+
+  const screenReaderInstructions: ScreenReaderInstructions = useMemo(
+    () => ({ draggable: t('sections.a11yInstructions') }),
+    [t]
+  );
 
   const moveChildMutation = useMoveContractMutation<Child>({
     orgId,
@@ -262,7 +323,12 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
           />
         </div>
       </div>
-      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <DndContext
+        sensors={sensors}
+        accessibility={{ announcements, screenReaderInstructions }}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
         <div className="flex gap-4 overflow-x-auto pb-4">
           {sections.map((section) => (
             <SectionColumn

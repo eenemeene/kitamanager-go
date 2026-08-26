@@ -70,7 +70,8 @@
     "total": "Total",
     "openMenu": "Open menu",
     "mainNavigation": "Main navigation",
-    "toggleSubmenu": "Toggle {name} submenu"
+    "toggleSubmenu": "Toggle {name} submenu",
+    "exportSvg": "Export as SVG"
   },
   "pagination": {
     "navigation": "Pagination",
@@ -352,7 +353,8 @@
       "noPayPlanPeriod": "Salary excluded: pay plan {payPlan} has no period covering this date",
       "noPayPlanEntry": "Salary excluded: pay plan has no entry for grade {grade}, step {step}",
       "unusablePayPlanPeriod": "Salary excluded: pay plan {payPlan} has a period with invalid weekly hours"
-    }
+    },
+    "monthlyContractsChart": "Children under contract over time"
   },
   "months": {
     "jan": "Jan",
@@ -445,7 +447,12 @@
     "male": "Male",
     "female": "Female",
     "diverse": "Diverse",
-    "selectGender": "Select Gender"
+    "selectGender": "Select Gender",
+    "short": {
+      "male": "M",
+      "female": "F",
+      "diverse": "D"
+    }
   },
   "addChildFromBill": {
     "title": "Add child from bill",
@@ -847,7 +854,7 @@
     "updateSuccess": "Section updated successfully",
     "unassigned": "Unassigned",
     "childCount": "{count} children",
-    "dragHint": "Drag children and employees between columns to reassign them to sections",
+    "dragHint": "Drag children and employees between columns to reassign them to sections, or focus a card and press Space to move it with the arrow keys.",
     "movedSuccess": "Child moved successfully",
     "movedFailed": "Failed to move child",
     "employeeMovedSuccess": "Employee moved successfully",
@@ -862,7 +869,13 @@
     "ageMismatchWarning": "Age mismatch",
     "ageMismatchDescription": "This child's age is outside the target section's age range.",
     "selectSection": "Select section",
-    "asOfDate": "As of date"
+    "asOfDate": "As of date",
+    "childAge": "{age, plural, one {# year} other {# years}}",
+    "a11yInstructions": "To move a child or employee to another section, press Space or Enter to pick up the card, choose a section with the left and right arrow keys, then press Space or Enter to drop it. Press Escape to cancel.",
+    "a11yPickedUp": "{name} picked up.",
+    "a11yOverSection": "{name} is over section {section}.",
+    "a11yDropped": "{name} dropped into section {section}.",
+    "a11yCancelled": "Moving {name} was cancelled."
   },
   "payPlans": {
     "title": "Pay Plans",
@@ -932,7 +945,10 @@
     "importYaml": "Import YAML",
     "importing": "Importing...",
     "importError": "Failed to import pay plan",
-    "salaryChart": "Salary Over Time"
+    "salaryChart": "Salary Over Time",
+    "emptyTitle": "No pay plans yet",
+    "emptyDescription": "Employee salaries are computed from a pay plan's grade and step. Without one, staff costs stay at zero on the Financials and Forecast pages and the balance overstates what your Kita has left.",
+    "emptyAction": "Create first pay plan"
   },
   "upcomingChildren": {
     "title": "Upcoming Children",
@@ -992,7 +1008,10 @@
     "noEntriesDefined": "No entries defined. Click \"Add Entry\" to get started.",
     "firstEntry": "First Entry",
     "amountMustBePositive": "Amount must be greater than 0",
-    "activeAmount": "Active Amount / Month"
+    "activeAmount": "Active Amount / Month",
+    "emptyTitle": "No budget items yet",
+    "emptyDescription": "Until you add them, the Financials and Forecast pages count only government funding and salaries. Every other cost your Kita carries is missing from the balance, which will look healthier than it is.",
+    "emptyAction": "Create first budget item"
   },
   "attendance": {
     "title": "Attendance",

@@ -1,4 +1,5 @@
 import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import PayPlansPage from '../page';
 import { apiClient } from '@/lib/api/client';
 import { renderWithProviders, createMockPaginatedResponse } from '@/test-utils';
@@ -98,14 +99,40 @@ describe('PayPlansPage', () => {
     expect(screen.getByText('TV-L Brandenburg')).toBeInTheDocument();
   });
 
-  it('shows no results when empty', async () => {
+  // An operator with no pay plans gets the onboarding panel, not a bare "no
+  // results" row: employee salaries are computed from a pay plan, so until one
+  // exists the staff costs on the Financials and Forecast pages are silently
+  // zero and the balance overstates what the Kita has left. "No results" does
+  // not say that; the empty state does.
+  it('shows the onboarding empty state when no pay plans exist', async () => {
     (apiClient.getPayPlans as jest.Mock).mockResolvedValue(mockEmptyResponse);
 
     renderWithProviders(<PayPlansPage />);
 
     await waitFor(() => {
+      expect(screen.getByText('payPlans.emptyTitle')).toBeInTheDocument();
+    });
+    expect(screen.getByText('payPlans.emptyDescription')).toBeInTheDocument();
+    expect(screen.queryByText('common.noResults')).not.toBeInTheDocument();
+  });
+
+  // Once a search is active an empty list means "nothing matched", and the
+  // resolution is to change the search — so the onboarding panel would be both
+  // wrong and in the way.
+  it('falls back to the plain no-results row once a search is active', async () => {
+    (apiClient.getPayPlans as jest.Mock).mockResolvedValue(mockEmptyResponse);
+
+    renderWithProviders(<PayPlansPage />);
+    await waitFor(() => {
+      expect(screen.getByText('payPlans.emptyTitle')).toBeInTheDocument();
+    });
+
+    await userEvent.type(screen.getByLabelText('common.search'), 'nothing matches this');
+
+    await waitFor(() => {
       expect(screen.getByText('common.noResults')).toBeInTheDocument();
     });
+    expect(screen.queryByText('payPlans.emptyTitle')).not.toBeInTheDocument();
   });
 
   // Regression for the "Periods column always shows 0" bug. Before
