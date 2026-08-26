@@ -1,9 +1,14 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -467,5 +472,125 @@ func TestAudit_UserUpdate_RenameDoesNotReportUnchangedFields(t *testing.T) {
 	oldName, newName := auditChangeEntry(t, row, "name")
 	if oldName != "Old Name" || newName != "New Name" {
 		t.Errorf("expected Old Name -> New Name, got %v -> %v", oldName, newName)
+	}
+}
+
+// --- bulk reads and file imports ---
+
+// The pay plan YAML export hands over every grade and step in one file. The
+// child and employee exports already emitted an audit row for a bulk read of
+// personal data; this one, the bulk read of the whole salary table, did not.
+func TestAudit_PayPlanExport_IsRecorded(t *testing.T) {
+	db := setupTestDB(t)
+	org := createTestOrganization(t, db, "Kita Sonnenschein")
+	handler := newPayPlanTestHandler(db)
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/pay-plans/:payPlanId/export", handler.Export)
+
+	planID, _ := seedPayPlanPeriod(t, db, org.ID)
+
+	w := performRequest(r, "GET", fmt.Sprintf("/organizations/%d/pay-plans/%d/export", org.ID, planID), nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("export: %d %s", w.Code, w.Body.String())
+	}
+
+	row := testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditAction("pay_plan_export"),
+		ResourceType: "pay_plan",
+	})
+	details := auditDetails(t, row)
+	if fmt.Sprint(details["record_count"]) != "1" {
+		t.Errorf("expected the exported period count, got %v", details["record_count"])
+	}
+	if fmt.Sprint(details["organization_id"]) != fmt.Sprint(org.ID) {
+		t.Errorf("expected the org on the export row, got %v", details["organization_id"])
+	}
+}
+
+// The funding import wrote a bare government_funding_create or _update row: it
+// recorded that a rate had been created or updated and nothing else — not which
+// file it came from, and not that the import had rewritten forty Fördersätze.
+//
+// properties_deleted is the number worth having. A YAML import is the only path
+// that removes funding properties without anyone pressing delete, and each one
+// is a rate worth tens to hundreds of euros per child per month.
+func TestAudit_GovernmentFundingImport_RecordsFilenameAndCounts(t *testing.T) {
+	db := setupTestDB(t)
+	svc := service.NewGovernmentFundingService(store.NewGovernmentFundingStore(db), store.NewTransactor(db))
+	handler := NewGovernmentFundingHandler(svc, createAuditService(db), importer.NewGovernmentFundingImporter(svc, store.NewTransactor(db)))
+
+	r := setupTestRouter()
+	r.POST("/fundings/import", handler.Import)
+
+	const fundingYAML = `---
+-
+  from: '2023-03-01'
+  to: ''
+  full_time_weekly_hours: 39
+  entries:
+    - age: [0,2]
+      properties:
+        - key: care_type
+          value: ganztag
+          payment: 1668.47
+          requirement: 0.261
+        - key: care_type
+          value: halbtag
+          payment: 1066.64
+          requirement: 0.14
+`
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "berlin-2024.yaml")
+	if err != nil {
+		t.Fatalf("CreateFormFile: %v", err)
+	}
+	if _, err := io.Copy(part, strings.NewReader(fundingYAML)); err != nil {
+		t.Fatalf("io.Copy: %v", err)
+	}
+	writer.Close()
+
+	req, _ := http.NewRequest("POST", "/fundings/import?state=berlin", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("import: %d %s", w.Code, w.Body.String())
+	}
+
+	row := testutil.AssertAuditLog(t, db, testutil.AuditLogQuery{
+		Action:       models.AuditAction("government_funding_import"),
+		ResourceType: "government_funding",
+	})
+	details := auditDetails(t, row)
+
+	if details["filename"] != "berlin-2024.yaml" {
+		t.Errorf("expected the uploaded filename, got %v", details["filename"])
+	}
+	if details["state"] != "berlin" {
+		t.Errorf("expected the state, got %v", details["state"])
+	}
+	if details["created"] != true {
+		t.Errorf("expected created=true for a fresh import, got %v", details["created"])
+	}
+	if fmt.Sprint(details["periods_created"]) != "1" {
+		t.Errorf("expected 1 period created, got %v", details["periods_created"])
+	}
+	if fmt.Sprint(details["properties_created"]) != "2" {
+		t.Errorf("expected 2 properties created, got %v", details["properties_created"])
+	}
+	if fmt.Sprint(details["record_count"]) != "3" {
+		t.Errorf("expected 3 rows touched in total, got %v", details["record_count"])
+	}
+
+	// Global resource: organization_id must stay absent rather than be written
+	// as a zero, which the foreign key would reject.
+	if _, present := details["organization_id"]; present {
+		t.Errorf("expected no organization_id on a global import, got %v", details["organization_id"])
+	}
+	if row.OrganizationID != nil {
+		t.Errorf("expected organization_id NULL on the row, got %v", *row.OrganizationID)
 	}
 }

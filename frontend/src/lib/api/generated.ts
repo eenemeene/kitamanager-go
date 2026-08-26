@@ -2507,6 +2507,20 @@ export interface components {
       success: boolean;
       /** Format: date-time */
       timestamp: string;
+      /**
+       * @description UserAgent is the client the action was performed with.
+       *
+       *     Not redacted the way IPAddress is, and the distinction is deliberate: an
+       *     address says where the actor was, which geolocates to a household, while
+       *     the user agent says what they used. "Was this done from the Kita tablet
+       *     or from somebody's phone?" is a question an org admin investigating a
+       *     suspicious edit has a legitimate reason to ask.
+       *
+       *     The column has been written since the first migration but was absent
+       *     from this response, so the value was recorded and never readable.
+       * @example Mozilla/5.0
+       */
+      user_agent: string;
       /** @example admin@example.com */
       user_email: string;
       /** @example 1 */

@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/eenemeene/kitamanager-go/internal/middleware"
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -1180,5 +1181,105 @@ func TestAuditService_LogAuditLogPurged(t *testing.T) {
 	}
 	if details["older_than"] == "" {
 		t.Error("details.older_than missing")
+	}
+}
+
+// The user agent used to be recorded only by the authentication emitters, so
+// the column answered "which browser signed in?" and never "which one deleted
+// the record?" — the resource emitters have no userAgent argument to pass.
+func TestAuditService_log_FillsUserAgentFromContext(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewAuditService(store.NewAuditStore(db))
+
+	ctx := middleware.ContextWithUserAgentForTest(context.Background(), "Mozilla/5.0 (Kita tablet)")
+	svc.LogResourceDelete(ctx, 1, "admin@example.com", "child", 42, "Anna", "", nil)
+	svc.Shutdown()
+
+	var rows []models.AuditLog
+	if err := db.Where("action = ?", models.AuditActionChildDelete).Find(&rows).Error; err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(rows))
+	}
+	if rows[0].UserAgent != "Mozilla/5.0 (Kita tablet)" {
+		t.Errorf("expected the user agent to be filled from the context, got %q", rows[0].UserAgent)
+	}
+}
+
+// An explicitly supplied user agent must win; the authentication emitters pass
+// one and it is the same value, but the precedence has to be the caller's.
+func TestAuditService_log_ExplicitUserAgentWinsOverContext(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewAuditService(store.NewAuditStore(db))
+
+	ctx := middleware.ContextWithUserAgentForTest(context.Background(), "from-context")
+	svc.LogLogin(ctx, 1, "admin@example.com", "127.0.0.1", "explicit")
+	svc.Shutdown()
+
+	var rows []models.AuditLog
+	if err := db.Where("action = ?", models.AuditActionLogin).Find(&rows).Error; err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	if len(rows) != 1 || rows[0].UserAgent != "explicit" {
+		t.Errorf("expected the explicit user agent to survive, got %+v", rows)
+	}
+}
+
+// audit_logs.user_agent is VARCHAR(512) and the header is attacker-controlled.
+// An over-long value would make the INSERT fail, and a failed INSERT here does
+// not fail the request — it drops the audit row. So without truncation the one
+// thing a client could do to erase its own trail is send a long header.
+func TestAuditService_log_OverLongUserAgentIsTruncatedNotDropped(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewAuditService(store.NewAuditStore(db))
+
+	huge := strings.Repeat("A", 4096)
+	ctx := middleware.ContextWithUserAgentForTest(context.Background(), huge)
+	svc.LogResourceDelete(ctx, 1, "admin@example.com", "child", 42, "Anna", "", nil)
+	svc.Shutdown()
+
+	var rows []models.AuditLog
+	if err := db.Where("action = ?", models.AuditActionChildDelete).Find(&rows).Error; err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("the row must survive an over-long user agent, got %d rows", len(rows))
+	}
+	if len(rows[0].UserAgent) != maxUserAgentLen {
+		t.Errorf("expected the user agent truncated to %d bytes, got %d", maxUserAgentLen, len(rows[0].UserAgent))
+	}
+}
+
+// Truncation must not split a rune, or the stored value stops being valid UTF-8
+// and Postgres rejects the insert for a different reason than the one fixed.
+func TestTruncateUserAgent_DoesNotSplitARune(t *testing.T) {
+	// "€" is three bytes and 512 is not a multiple of three, so the budget
+	// lands inside a rune: 170 runes fit in 510 bytes and the 171st would
+	// overrun. A two-byte rune would divide 512 evenly and never exercise the
+	// case this function exists for.
+	s := strings.Repeat("€", 400)
+	got := truncateUserAgent(s)
+
+	if len(got) > maxUserAgentLen {
+		t.Errorf("expected at most %d bytes, got %d", maxUserAgentLen, len(got))
+	}
+	if !utf8.ValidString(got) {
+		t.Error("truncation produced invalid UTF-8")
+	}
+	if want := 510; len(got) != want {
+		t.Errorf("expected the cut to fall back to the rune boundary at %d, got %d", want, len(got))
+	}
+	if utf8.RuneCountInString(got) != 170 {
+		t.Errorf("expected 170 whole runes, got %d", utf8.RuneCountInString(got))
+	}
+}
+
+func TestTruncateUserAgent_ShortStringUntouched(t *testing.T) {
+	if got := truncateUserAgent("Mozilla/5.0"); got != "Mozilla/5.0" {
+		t.Errorf("expected the value untouched, got %q", got)
+	}
+	if got := truncateUserAgent(""); got != "" {
+		t.Errorf("expected empty to stay empty, got %q", got)
 	}
 }

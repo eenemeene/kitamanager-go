@@ -1157,7 +1157,7 @@
   "auditLog": {
     "showDetails": "Show details for this entry",
     "title": "Audit Log",
-    "description": "Recent changes in this organization. Login and password events are not shown here — they remain visible only to system administrators.",
+    "description": "Recent changes in this organization. Sign-in, password and refused-access events are not shown here — they remain visible only to system administrators.",
     "from": "From",
     "to": "To",
     "action": "Action",
@@ -1171,6 +1171,9 @@
     "detailTitle": "Event details",
     "details": "Details",
     "ipAddress": "IP address",
+    "ipAddressAnonymized": "IP address (network only)",
+    "userAgent": "Client",
+    "requestId": "Request ID",
     "success": "Success",
     "failed": "Failed",
     "categoryAuth": "Authentication",

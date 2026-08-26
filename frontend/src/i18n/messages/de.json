@@ -1157,7 +1157,7 @@
   "auditLog": {
     "showDetails": "Details zu diesem Eintrag anzeigen",
     "title": "Protokoll",
-    "description": "Aktuelle Änderungen in dieser Organisation. Anmelde- und Passwortereignisse werden hier nicht angezeigt — sie bleiben ausschließlich den Systemadministratoren vorbehalten.",
+    "description": "Aktuelle Änderungen in dieser Organisation. Ereignisse zu Anmeldung, Passwort und abgelehnten Zugriffen werden hier nicht angezeigt — sie bleiben ausschließlich den Systemadministratoren vorbehalten.",
     "from": "Von",
     "to": "Bis",
     "action": "Aktion",
@@ -1171,6 +1171,9 @@
     "detailTitle": "Ereignisdetails",
     "details": "Details",
     "ipAddress": "IP-Adresse",
+    "ipAddressAnonymized": "IP-Adresse (nur Netzbereich)",
+    "userAgent": "Client",
+    "requestId": "Anfrage-ID",
     "success": "Erfolg",
     "failed": "Fehlgeschlagen",
     "categoryAuth": "Authentifizierung",

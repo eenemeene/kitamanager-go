@@ -520,7 +520,7 @@ func (h *EmployeeHandler) Import(c *gin.Context) {
 		ids[i] = results[i].ID
 	}
 	h.auditService.LogResourceImport(c.Request.Context(), getUserID(c), getUserEmail(c),
-		"employee", orgID, len(results), ids, sanitizeFilename(header.Filename), c.ClientIP())
+		"employee", &orgID, len(results), ids, sanitizeFilename(header.Filename), c.ClientIP(), nil)
 
 	c.JSON(http.StatusCreated, results)
 }

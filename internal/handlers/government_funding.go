@@ -487,7 +487,7 @@ func (h *GovernmentFundingHandler) Import(c *gin.Context) {
 		return
 	}
 
-	fileBytes, ok := readUploadFile(c)
+	fileBytes, header, ok := readUploadFileWithHeader(c)
 	if !ok {
 		return
 	}
@@ -504,11 +504,34 @@ func (h *GovernmentFundingHandler) Import(c *gin.Context) {
 		return
 	}
 
+	// One `government_funding_import` row rather than a bare create/update,
+	// matching the child and employee importers. The old row recorded that a
+	// funding rate had been created or updated and nothing else: not which
+	// file it came from, and not that the import had rewritten forty
+	// Fördersätze and deleted three. `created` keeps the distinction the
+	// create/update actions used to carry.
+	//
+	// PropertiesDeleted is the number worth having. A YAML import is the only
+	// path that removes funding properties without anyone pressing delete, and
+	// each one is a rate worth tens to hundreds of euros per child per month.
+	touched := result.PeriodsCreated + result.PeriodsUpdated +
+		result.PropertiesCreated + result.PropertiesUpdated + result.PropertiesDeleted
+	h.auditService.LogResourceImport(c.Request.Context(), getUserID(c), getUserEmail(c),
+		"government_funding", nil, touched, []uint{resp.ID},
+		sanitizeFilename(header.Filename), c.ClientIP(), map[string]any{
+			"created":            result.Created,
+			"state":              state,
+			"resource_name":      resp.Name,
+			"periods_created":    result.PeriodsCreated,
+			"periods_updated":    result.PeriodsUpdated,
+			"properties_created": result.PropertiesCreated,
+			"properties_updated": result.PropertiesUpdated,
+			"properties_deleted": result.PropertiesDeleted,
+		})
+
 	if result.Created {
-		auditCreate(c, h.auditService, "government_funding", resp.ID, resp.Name)
 		c.JSON(http.StatusCreated, resp)
 	} else {
-		auditUpdate(c, h.auditService, "government_funding", resp.ID, resp.Name)
 		c.JSON(http.StatusOK, resp)
 	}
 }

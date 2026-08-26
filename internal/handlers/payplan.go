@@ -495,6 +495,16 @@ func (h *PayPlanHandler) Export(c *gin.Context) {
 		return
 	}
 
+	// A pay plan export is a bulk read of the whole salary table, which is
+	// what the child and employee exports already emit LogDataExport for.
+	// This one did not, so the one endpoint that hands over every grade and
+	// step in one file was the one bulk read that left no trace.
+	//
+	// The record count is the number of periods: entries hang off periods, so
+	// that is the unit the export is measured in.
+	h.auditService.LogDataExport(c.Request.Context(), getUserID(c), getUserEmail(c),
+		"pay_plan", orgID, len(payplan.Periods), c.ClientIP())
+
 	// safeAttachmentFilename strips everything outside [a-z0-9_-] before
 	// embedding payplan.Name into the Content-Disposition header. Without
 	// this an attacker who can rename a pay plan could inject quotes or

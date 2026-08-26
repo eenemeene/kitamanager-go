@@ -39,23 +39,37 @@ const PAGE_LIMIT = 20;
 // render an icon and tighten filtering.
 type Category = 'auth' | 'authz' | 'data' | 'export';
 
+// Anything not matched here falls through to 'data', so a security event that
+// is not listed gets labelled as a data change. That is the wrong way round to
+// be wrong: the whole point of the categories is to let someone scanning the
+// log pick the authentication and access events out of the ordinary editing
+// traffic. Prefix matching on the MFA and factor families rather than listing
+// each action keeps a newly added one from silently landing in 'data'.
 function categoryOf(action: string): Category {
   if (
     action === 'login' ||
     action === 'login_failed' ||
     action === 'logout' ||
+    action === 'login_mfa_required' ||
+    action === 'session_revoked' ||
     action === 'password_change' ||
     action === 'password_change_failed' ||
-    action === 'password_reset'
+    action === 'password_reset' ||
+    action === 'password_reset_failed' ||
+    action === 'backup_codes_regenerated' ||
+    action.startsWith('mfa_') ||
+    action.startsWith('factor_')
   ) {
     return 'auth';
   }
   if (
+    action === 'access_denied' ||
     action === 'role_change' ||
     action === 'user_add_to_org' ||
     action === 'user_remove_from_org' ||
     action === 'superadmin_grant' ||
-    action === 'superadmin_revoke'
+    action === 'superadmin_revoke' ||
+    action === 'superadmin_change_failed'
   ) {
     return 'authz';
   }
@@ -385,7 +399,26 @@ function AuditDetailDialog({ entry, onClose }: AuditDetailDialogProps) {
               />
             )}
             {entry.ip_address && (
-              <DetailRow label={t('auditLog.ipAddress')} value={entry.ip_address} />
+              // The label changes rather than the value: org admins are served
+              // the network prefix, not the recorded address, and an unlabelled
+              // "192.168.1.0" reads as an address that happens to end in .0.
+              // ip_anonymized exists on the API precisely so the client does not
+              // have to guess which of the two it is holding.
+              <DetailRow
+                label={
+                  entry.ip_anonymized ? t('auditLog.ipAddressAnonymized') : t('auditLog.ipAddress')
+                }
+                value={entry.ip_address}
+              />
+            )}
+            {entry.user_agent && (
+              <DetailRow label={t('auditLog.userAgent')} value={entry.user_agent} />
+            )}
+            {entry.request_id && (
+              // The correlation key between this row, the other audit rows
+              // written by the same request, and the server logs. It was stored
+              // from migration 000013 onward and shown nowhere.
+              <DetailRow label={t('auditLog.requestId')} value={entry.request_id} />
             )}
             {entry.details && (
               <div className="pt-2">
