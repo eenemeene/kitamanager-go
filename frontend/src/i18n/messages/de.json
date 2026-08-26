@@ -70,7 +70,8 @@
     "total": "Gesamt",
     "openMenu": "Menü öffnen",
     "mainNavigation": "Hauptnavigation",
-    "toggleSubmenu": "Untermenü {name} umschalten"
+    "toggleSubmenu": "Untermenü {name} umschalten",
+    "exportSvg": "Als SVG exportieren"
   },
   "pagination": {
     "navigation": "Seitennavigation",
@@ -352,7 +353,8 @@
       "noPayPlanPeriod": "Gehalt ausgeschlossen: Entgelttabelle {payPlan} hat keinen Zeitraum, der dieses Datum abdeckt",
       "noPayPlanEntry": "Gehalt ausgeschlossen: Die Entgelttabelle hat keinen Eintrag für Entgeltgruppe {grade}, Stufe {step}",
       "unusablePayPlanPeriod": "Gehalt ausgeschlossen: Der Zeitraum der Entgelttabelle {payPlan} hat ungültige Wochenstunden"
-    }
+    },
+    "monthlyContractsChart": "Kinder mit Vertrag im Zeitverlauf"
   },
   "months": {
     "jan": "Jan",
@@ -445,7 +447,12 @@
     "male": "Männlich",
     "female": "Weiblich",
     "diverse": "Divers",
-    "selectGender": "Geschlecht auswählen"
+    "selectGender": "Geschlecht auswählen",
+    "short": {
+      "male": "m",
+      "female": "w",
+      "diverse": "d"
+    }
   },
   "addChildFromBill": {
     "title": "Kind aus Abrechnung anlegen",
@@ -847,7 +854,7 @@
     "updateSuccess": "Bereich erfolgreich aktualisiert",
     "unassigned": "Nicht zugeordnet",
     "childCount": "{count} Kinder",
-    "dragHint": "Kinder und Mitarbeiter zwischen Spalten ziehen, um sie Bereichen zuzuordnen",
+    "dragHint": "Kinder und Mitarbeiter zwischen Spalten ziehen, um sie Bereichen zuzuordnen, oder eine Karte fokussieren und mit Leertaste und Pfeiltasten verschieben.",
     "movedSuccess": "Kind erfolgreich verschoben",
     "movedFailed": "Kind konnte nicht verschoben werden",
     "employeeMovedSuccess": "Mitarbeiter erfolgreich verschoben",
@@ -862,7 +869,13 @@
     "ageMismatchWarning": "Altersabweichung",
     "ageMismatchDescription": "Das Alter dieses Kindes liegt außerhalb des Altersbereichs des Zielbereichs.",
     "selectSection": "Bereich auswählen",
-    "asOfDate": "Stichtag"
+    "asOfDate": "Stichtag",
+    "childAge": "{age, plural, one {# Jahr} other {# Jahre}}",
+    "a11yInstructions": "Um ein Kind oder einen Mitarbeiter einem anderen Bereich zuzuordnen, die Karte mit Leertaste oder Eingabetaste aufnehmen, mit den Pfeiltasten nach links und rechts einen Bereich auswählen und mit Leertaste oder Eingabetaste ablegen. Mit Escape abbrechen.",
+    "a11yPickedUp": "{name} aufgenommen.",
+    "a11yOverSection": "{name} befindet sich über Bereich {section}.",
+    "a11yDropped": "{name} in Bereich {section} abgelegt.",
+    "a11yCancelled": "Verschieben von {name} abgebrochen."
   },
   "payPlans": {
     "title": "Entgelttabellen",
@@ -932,7 +945,10 @@
     "importYaml": "YAML Import",
     "importing": "Wird importiert…",
     "importError": "Fehler beim Importieren der Entgelttabelle",
-    "salaryChart": "Gehaltsentwicklung"
+    "salaryChart": "Gehaltsentwicklung",
+    "emptyTitle": "Noch keine Entgelttabellen",
+    "emptyDescription": "Mitarbeitergehälter werden aus Entgeltgruppe und Stufe einer Entgelttabelle berechnet. Ohne sie bleiben die Personalkosten auf den Finanz- und Prognose-Seiten bei null, und der Saldo weist mehr aus, als tatsächlich verfügbar ist.",
+    "emptyAction": "Erste Entgelttabelle anlegen"
   },
   "upcomingChildren": {
     "title": "Bevorstehende Aufnahmen",
@@ -992,7 +1008,10 @@
     "noEntriesDefined": "Keine Einträge definiert. Klicken Sie auf „Eintrag hinzufügen“, um zu beginnen.",
     "firstEntry": "Erster Eintrag",
     "amountMustBePositive": "Betrag muss größer als 0 sein",
-    "activeAmount": "Aktiver Betrag / Monat"
+    "activeAmount": "Aktiver Betrag / Monat",
+    "emptyTitle": "Noch keine Budgetposten",
+    "emptyDescription": "Solange keine erfasst sind, berücksichtigen die Finanz- und Prognose-Seiten nur Förderung und Gehälter. Alle übrigen Kosten Ihrer Kita fehlen im Saldo, der dadurch besser aussieht, als er ist.",
+    "emptyAction": "Ersten Budgetposten anlegen"
   },
   "attendance": {
     "title": "Anwesenheit",

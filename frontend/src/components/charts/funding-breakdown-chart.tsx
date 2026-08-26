@@ -89,52 +89,57 @@ export function FundingBreakdownChart({ data }: FundingBreakdownChartProps) {
 
   return (
     <ExportableChart filename="funding-breakdown" className="h-[350px]">
-      <ResponsivePie
-        data={pieData}
-        margin={{ top: 30, right: 120, bottom: 30, left: 120 }}
-        innerRadius={0.5}
-        padAngle={1}
-        cornerRadius={3}
-        activeOuterRadiusOffset={6}
-        colors={{ datum: 'data.color' }}
-        arcLinkLabel="label"
-        arcLinkLabelsSkipAngle={10}
-        arcLinkLabelsTextColor="hsl(var(--foreground))"
-        arcLinkLabelsThickness={2}
-        arcLinkLabelsColor={{ from: 'color' }}
-        arcLabelsSkipAngle={10}
-        arcLabelsTextColor="white"
-        arcLabel={(d) => formatPct(d.value, total)}
-        tooltip={({ datum }) => (
-          <div
-            style={{
-              background: 'hsl(var(--background))',
-              color: 'hsl(var(--foreground))',
-              border: '1px solid hsl(var(--border))',
-              borderRadius: '6px',
-              padding: '9px 12px',
-              fontSize: 13,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: '50%',
-                  background: datum.color,
-                  display: 'inline-block',
-                }}
-              />
-              <strong>{datum.label}</strong>
+      {/* @nivo/pie takes no ariaLabel, so the name lives on a wrapper.
+          It sits inside ExportableChart rather than on it, to keep the
+          export button out of the image’s subtree. */}
+      <div role="img" aria-label={t('statistics.fundingBreakdown')} className="h-full w-full">
+        <ResponsivePie
+          data={pieData}
+          margin={{ top: 30, right: 120, bottom: 30, left: 120 }}
+          innerRadius={0.5}
+          padAngle={1}
+          cornerRadius={3}
+          activeOuterRadiusOffset={6}
+          colors={{ datum: 'data.color' }}
+          arcLinkLabel="label"
+          arcLinkLabelsSkipAngle={10}
+          arcLinkLabelsTextColor="hsl(var(--foreground))"
+          arcLinkLabelsThickness={2}
+          arcLinkLabelsColor={{ from: 'color' }}
+          arcLabelsSkipAngle={10}
+          arcLabelsTextColor="white"
+          arcLabel={(d) => formatPct(d.value, total)}
+          tooltip={({ datum }) => (
+            <div
+              style={{
+                background: 'hsl(var(--background))',
+                color: 'hsl(var(--foreground))',
+                border: '1px solid hsl(var(--border))',
+                borderRadius: '6px',
+                padding: '9px 12px',
+                fontSize: 13,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: '50%',
+                    background: datum.color,
+                    display: 'inline-block',
+                  }}
+                />
+                <strong>{datum.label}</strong>
+              </div>
+              <div style={{ marginTop: 4 }}>
+                {formatEur(datum.value * 100)} ({formatPct(datum.value, total)})
+              </div>
             </div>
-            <div style={{ marginTop: 4 }}>
-              {formatEur(datum.value * 100)} ({formatPct(datum.value, total)})
-            </div>
-          </div>
-        )}
-        theme={chartTheme}
-      />
+          )}
+          theme={chartTheme}
+        />
+      </div>
     </ExportableChart>
   );
 }

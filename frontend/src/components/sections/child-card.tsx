@@ -1,6 +1,7 @@
 'use client';
 
 import { useDraggable } from '@dnd-kit/core';
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -12,6 +13,7 @@ export interface ChildCardProps {
 }
 
 export function ChildCard({ child }: ChildCardProps) {
+  const t = useTranslations();
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `child-${child.id}`,
     data: { child, type: 'child' },
@@ -19,6 +21,8 @@ export function ChildCard({ child }: ChildCardProps) {
 
   const age = calculateAge(child.birthdate);
   const fullName = `${child.first_name} ${child.last_name}`;
+  const genderKey =
+    child.gender === 'male' ? 'male' : child.gender === 'female' ? 'female' : 'diverse';
 
   return (
     <Card
@@ -30,13 +34,13 @@ export function ChildCard({ child }: ChildCardProps) {
       <CardContent className="p-3">
         <div className="flex items-center justify-between gap-2">
           <span className="truncate text-sm font-medium">{fullName}</span>
-          <Badge variant="outline" className="shrink-0 text-xs">
-            {child.gender === 'male' ? 'M' : child.gender === 'female' ? 'F' : 'D'}
+          <Badge variant="outline" className="shrink-0 text-xs" title={t(`gender.${genderKey}`)}>
+            {/* The badge is one letter for width; a screen reader gets the word. */}
+            <span aria-hidden="true">{t(`gender.short.${genderKey}`)}</span>
+            <span className="sr-only">{t(`gender.${genderKey}`)}</span>
           </Badge>
         </div>
-        <p className="text-muted-foreground mt-1 text-xs">
-          {age} {age === 1 ? 'year' : 'years'}
-        </p>
+        <p className="text-muted-foreground mt-1 text-xs">{t('sections.childAge', { age })}</p>
       </CardContent>
     </Card>
   );

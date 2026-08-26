@@ -4,7 +4,7 @@ import { useMemo, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Upload } from 'lucide-react';
+import { Plus, Table2, Upload } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,7 @@ import {
   DeleteConfirmDialog,
   CrudFormDialog,
   QueryError,
+  EmptyState,
   Column,
 } from '@/components/crud';
 import { Pagination } from '@/components/ui/pagination';
@@ -99,6 +100,14 @@ export default function PayPlansPage() {
     []
   );
 
+  // The onboarding panel, not the "no results" row: it appears only when the
+  // resource is genuinely unused, never when a search just failed to match.
+  // Both of these feed the Financials and Forecast figures, so an operator who
+  // never creates any gets plausible-looking numbers that quietly omit a whole
+  // category of cost — which is what the panel exists to say.
+  const showEmptyState =
+    !crud.list.isLoading && !crud.list.searchInput && crud.list.paginatedData?.total === 0;
+
   return (
     <div className="space-y-6">
       <CrudPageHeader
@@ -138,24 +147,40 @@ export default function PayPlansPage() {
             onChange={crud.list.setSearchInput}
           />
           <QueryError error={crud.list.error} onRetry={crud.list.refetch} />
-          <ResourceTable
-            items={crud.list.items}
-            columns={columns}
-            getItemKey={(payPlan) => payPlan.id}
-            isLoading={crud.list.isLoading}
-            onView={handleView}
-            onEdit={crud.dialogs.handleEdit}
-            onDelete={crud.dialogs.handleDelete}
-          />
-          {crud.list.paginatedData && (
-            <Pagination
-              page={crud.list.paginatedData.page}
-              totalPages={crud.list.paginatedData.total_pages}
-              total={crud.list.paginatedData.total}
-              limit={crud.list.paginatedData.limit}
-              onPageChange={crud.list.setPage}
-              isLoading={crud.list.isLoading}
+          {showEmptyState ? (
+            <EmptyState
+              icon={Table2}
+              title="payPlans.emptyTitle"
+              description="payPlans.emptyDescription"
+              action={
+                <Button onClick={crud.dialogs.handleCreate}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t('payPlans.emptyAction')}
+                </Button>
+              }
             />
+          ) : (
+            <>
+              <ResourceTable
+                items={crud.list.items}
+                columns={columns}
+                getItemKey={(payPlan) => payPlan.id}
+                isLoading={crud.list.isLoading}
+                onView={handleView}
+                onEdit={crud.dialogs.handleEdit}
+                onDelete={crud.dialogs.handleDelete}
+              />
+              {crud.list.paginatedData && (
+                <Pagination
+                  page={crud.list.paginatedData.page}
+                  totalPages={crud.list.paginatedData.total_pages}
+                  total={crud.list.paginatedData.total}
+                  limit={crud.list.paginatedData.limit}
+                  onPageChange={crud.list.setPage}
+                  isLoading={crud.list.isLoading}
+                />
+              )}
+            </>
           )}
         </CardContent>
       </Card>
