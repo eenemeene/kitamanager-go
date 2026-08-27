@@ -854,7 +854,7 @@
     "updateSuccess": "Bereich erfolgreich aktualisiert",
     "unassigned": "Nicht zugeordnet",
     "childCount": "{count} Kinder",
-    "dragHint": "Kinder und Mitarbeiter zwischen Spalten ziehen, um sie Bereichen zuzuordnen",
+    "dragHint": "Kinder und Mitarbeiter zwischen Spalten ziehen, um sie Bereichen zuzuordnen, oder eine Karte fokussieren und mit Leertaste und Pfeiltasten verschieben.",
     "movedSuccess": "Kind erfolgreich verschoben",
     "movedFailed": "Kind konnte nicht verschoben werden",
     "employeeMovedSuccess": "Mitarbeiter erfolgreich verschoben",
