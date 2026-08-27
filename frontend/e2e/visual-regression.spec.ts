@@ -38,6 +38,23 @@ function dynamicMasks(page: Page): Locator[] {
  * positions. It looked like nondeterministic data and was not.
  */
 async function chartsReady(page: Page) {
+  // Wait for the loading placeholders to clear before counting anything.
+  //
+  // A chart is not in the DOM until two separate things have happened: its
+  // react-query data has arrived, and its `next/dynamic` chunk has loaded. Until
+  // then the page renders a Skeleton where the chart will go. `count()` samples
+  // the DOM once, so called before that point it returns 0, the loop below runs
+  // zero times, and this function returns having waited for nothing — no error,
+  // no timeout, just a silent no-op.
+  //
+  // That is how statistics-staffing came to have a baseline with a grey box
+  // where its chart belongs: the shot was taken while the Skeleton was still up.
+  // It is the same layout bug this function was written for, because the
+  // Skeleton (h-[300px]) and the chart that replaces it are different heights,
+  // so everything below moves. Whichever state the screenshot happened to catch
+  // became the committed reference.
+  await expect(page.locator('[data-slot="skeleton"]')).toHaveCount(0, { timeout: 20000 });
+
   const charts = page.locator('[data-visual-mask="chart"]');
   const count = await charts.count();
   for (let i = 0; i < count; i++) {
