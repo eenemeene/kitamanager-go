@@ -854,7 +854,7 @@
     "updateSuccess": "Section updated successfully",
     "unassigned": "Unassigned",
     "childCount": "{count} children",
-    "dragHint": "Drag children and employees between columns to reassign them to sections",
+    "dragHint": "Drag children and employees between columns to reassign them to sections, or focus a card and press Space to move it with the arrow keys.",
     "movedSuccess": "Child moved successfully",
     "movedFailed": "Failed to move child",
     "employeeMovedSuccess": "Employee moved successfully",
