@@ -314,9 +314,15 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
           <Label htmlFor="kanban-as-of-date" className="text-sm">
             {t('sections.asOfDate')}
           </Label>
+          {/*
+            Masked because it defaults to today. Without this the committed
+            baseline holds whatever date it was generated on and diverges from
+            every later run — the rule in .claude/rules/frontend-ui.md.
+          */}
           <Input
             id="kanban-as-of-date"
             type="date"
+            data-visual-mask="date"
             value={asOfDate}
             onChange={(e) => setAsOfDate(e.target.value || todayBerlinString())}
             className="w-auto"

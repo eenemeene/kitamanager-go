@@ -283,36 +283,100 @@ web-test-e2e-demo: frontend/node_modules
 # `next dev` paints a dev-mode issues badge that lands inside the mobile
 # viewport, and regenerating there commits the badge as the expected appearance
 # of the page. This builds and serves production the way CI does, on its own
-# port and its own dist directory so a running `make dev` is left alone, against
-# an API on its own port because the running one only allows :3000 as an origin.
+# port and its own dist directory so a running `make dev` is left alone.
+#
+# It also does not use the development database, which is the harder half of
+# the same lesson. CI gets an empty Postgres container per job and the API
+# seeds it on boot, so CI's data is always freshly seeded. A dev database is
+# the opposite: `SeedTestData` returns early once "Kita Sonnenschein" exists
+# (internal/seed/seed.go), so it seeds once and never again, while every manual
+# click, every ISBJ upload and every local e2e run writes to it permanently.
+# Worse, the seed anchors its dates to `time.Now()` at seeding time, so a
+# database seeded months ago holds children whose ages were computed then,
+# while CI's are always relative to today. The gap widens on its own with
+# nobody touching anything.
+#
+# A baseline generated against that database encodes one developer's accumulated
+# state as the reference every future CI run is compared to. So this starts its
+# own throwaway Postgres, lets the API seed it from empty exactly as CI does,
+# and destroys it afterwards. Nothing here reads .env — the seed admin in a dev
+# .env is not necessarily the one the e2e helpers log in as.
 #
 # Verified before writing anything: the existing baselines are re-run first, and
 # if this machine renders differently from the runner they fail here rather than
 # in CI, on a PR, after the new PNGs are already committed.
 #
-# Needs Postgres and a seeded database — the same one `make dev` uses is fine.
-# Review the diff before committing: `git diff --stat` should list only the
-# pages you meant to change.
-web-visual-baselines: frontend/node_modules
+# Review the diff before committing: `git status --short` on the snapshots
+# directory should list only the pages you meant to change. If a page you did
+# not touch shows up, stop — something other than your change moved.
+BASELINE_DB_IMAGE := postgres:18-alpine
+BASELINE_DB_NAME := kitamanager-baseline-db
+BASELINE_DB_PORT := 55432
+BASELINE_API_PORT := 8081
+BASELINE_WEB_PORT := 3100
+
+web-visual-baselines: frontend/node_modules api-build
+	@command -v docker >/dev/null || { echo "docker is needed for the throwaway database"; exit 1; }
 	@command -v openssl >/dev/null || { echo "openssl needed for throwaway keys"; exit 1; }
-	@echo "==> starting an isolated API on :8081"
-	@set -a; . ./.env; set +a; 	SERVER_PORT=8081 CORS_ALLOW_ORIGINS=http://localhost:3100 	CSRF_HMAC_KEY=$$(openssl rand -hex 32) TOTP_ENCRYPTION_KEY=$$(openssl rand -hex 32) 	  ./bin/kitamanager-api > /tmp/kitamanager-baseline-api.log 2>&1 & echo $$! > /tmp/kitamanager-baseline-api.pid
-	@sleep 5
+	@$(MAKE) --no-print-directory web-visual-baselines-stop
+	@echo "==> starting a throwaway Postgres on :$(BASELINE_DB_PORT)"
+	@docker run -d --name $(BASELINE_DB_NAME) \
+	  -e POSTGRES_USER=kitamanager -e POSTGRES_PASSWORD=kitamanager -e POSTGRES_DB=kitamanager \
+	  -p 127.0.0.1:$(BASELINE_DB_PORT):5432 $(BASELINE_DB_IMAGE) >/dev/null
+	@printf '    waiting for postgres'; \
+	for i in $$(seq 1 60); do \
+	  if docker exec $(BASELINE_DB_NAME) pg_isready -U kitamanager -q 2>/dev/null; then echo " ready"; break; fi; \
+	  if [ $$i -eq 60 ]; then echo " timed out"; exit 1; fi; \
+	  printf '.'; sleep 1; \
+	done
+	@echo "==> starting an isolated API on :$(BASELINE_API_PORT), which seeds the empty database"
+	@DB_HOST=127.0.0.1 DB_PORT=$(BASELINE_DB_PORT) DB_USER=kitamanager DB_PASSWORD=kitamanager \
+	 DB_NAME=kitamanager DB_SSLMODE=disable SERVER_PORT=$(BASELINE_API_PORT) \
+	 CORS_ALLOW_ORIGINS=http://localhost:$(BASELINE_WEB_PORT) CORS_ALLOW_CREDENTIALS=true \
+	 CSRF_HMAC_KEY=$$(openssl rand -hex 32) TOTP_ENCRYPTION_KEY=$$(openssl rand -hex 32) \
+	 SECURE_COOKIES=false WEBAUTHN_RP_ID=localhost WEBAUTHN_RP_NAME="KitaManager baseline" \
+	 WEBAUTHN_ORIGINS="http://localhost:$(BASELINE_WEB_PORT)" \
+	 SEED_ADMIN_EMAIL=superadmin@example.com SEED_ADMIN_PASSWORD=supersecret \
+	 SEED_ADMIN_NAME="Super Admin" SEED_RBAC_POLICIES=true SEED_TEST_DATA=true \
+	 GOVERNMENT_FUNDING_SEED_PATH=configs/government-fundings/berlin.yaml \
+	 GOVERNMENT_FUNDING_SEED_STATE=berlin \
+	 LOGIN_RATE_LIMIT_PER_MINUTE=0 API_RATE_LIMIT_PER_MINUTE=0 \
+	 ./bin/kitamanager-api > /tmp/kitamanager-baseline-api.log 2>&1 & echo $$! > /tmp/kitamanager-baseline-api.pid
+	@printf '    waiting for the API to finish seeding'; \
+	for i in $$(seq 1 90); do \
+	  if curl -sf http://localhost:$(BASELINE_API_PORT)/api/v1/health >/dev/null 2>&1; then echo " ready"; break; fi; \
+	  if [ $$i -eq 90 ]; then echo " timed out - see /tmp/kitamanager-baseline-api.log"; exit 1; fi; \
+	  printf '.'; sleep 1; \
+	done
 	@echo "==> building the frontend the way CI does"
-	cd frontend && NEXT_DIST_DIR=.next-baseline BACKEND_URL=http://localhost:8081 npx next build
-	cd frontend && NEXT_DIST_DIR=.next-baseline BACKEND_URL=http://localhost:8081 	  npx next start -p 3100 > /tmp/kitamanager-baseline-web.log 2>&1 & echo $$! > /tmp/kitamanager-baseline-web.pid
-	@sleep 8
+	cd frontend && NEXT_DIST_DIR=.next-baseline BACKEND_URL=http://localhost:$(BASELINE_API_PORT) npx next build
+	@cd frontend && NEXT_DIST_DIR=.next-baseline BACKEND_URL=http://localhost:$(BASELINE_API_PORT) \
+	  npx next start -p $(BASELINE_WEB_PORT) > /tmp/kitamanager-baseline-web.log 2>&1 & echo $$! > /tmp/kitamanager-baseline-web.pid
+	@printf '    waiting for the frontend'; \
+	for i in $$(seq 1 60); do \
+	  if curl -sf http://localhost:$(BASELINE_WEB_PORT) >/dev/null 2>&1; then echo " ready"; break; fi; \
+	  if grep -q EADDRINUSE /tmp/kitamanager-baseline-web.log 2>/dev/null; then \
+	    echo " port $(BASELINE_WEB_PORT) is already held by something else"; exit 1; fi; \
+	  if [ $$i -eq 60 ]; then echo " timed out - see /tmp/kitamanager-baseline-web.log"; exit 1; fi; \
+	  printf '.'; sleep 1; \
+	done
 	@echo "==> checking this machine renders like the runner (existing baselines must pass)"
-	@cd frontend && CI=true BASE_URL=http://localhost:3100 	  npx playwright test visual-regression --reporter=line || 	  echo "   ^ failures above are the pages that will be rewritten"
+	@cd frontend && CI=true BASE_URL=http://localhost:$(BASELINE_WEB_PORT) \
+	  npx playwright test visual-regression --reporter=line || \
+	  echo "   ^ failures above are the pages that will be rewritten"
 	@echo "==> writing baselines"
-	cd frontend && CI=true BASE_URL=http://localhost:3100 	  npx playwright test visual-regression --update-snapshots --reporter=line
+	cd frontend && CI=true BASE_URL=http://localhost:$(BASELINE_WEB_PORT) \
+	  npx playwright test visual-regression --update-snapshots --reporter=line
 	@$(MAKE) --no-print-directory web-visual-baselines-stop
 	@echo "==> done. Review with: git status --short frontend/e2e/visual-regression.spec.ts-snapshots/"
 
 # Stop whatever web-visual-baselines started. Safe to run on its own if a run
-# was interrupted and left the ports held.
+# was interrupted and left the ports held or the database container running.
 web-visual-baselines-stop:
-	@for f in /tmp/kitamanager-baseline-api.pid /tmp/kitamanager-baseline-web.pid; do 	  [ -f $$f ] && kill $$(cat $$f) 2>/dev/null; rm -f $$f; 	done; true
+	@for f in /tmp/kitamanager-baseline-api.pid /tmp/kitamanager-baseline-web.pid; do \
+	  [ -f $$f ] && kill $$(cat $$f) 2>/dev/null; rm -f $$f; \
+	done; true
+	@docker rm -f $(BASELINE_DB_NAME) >/dev/null 2>&1 || true
 	@rm -rf frontend/.next-baseline
 
 # Install Playwright browsers
