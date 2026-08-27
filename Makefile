@@ -318,19 +318,30 @@ BASELINE_WEB_PORT := 3100
 web-visual-baselines: frontend/node_modules api-build
 	@command -v docker >/dev/null || { echo "docker is needed for the throwaway database"; exit 1; }
 	@command -v openssl >/dev/null || { echo "openssl needed for throwaway keys"; exit 1; }
-	@$(MAKE) --no-print-directory web-visual-baselines-stop
-	@echo "==> starting a throwaway Postgres on :$(BASELINE_DB_PORT)"
-	@docker run -d --name $(BASELINE_DB_NAME) \
+	@for p in $(BASELINE_DB_PORT) $(BASELINE_API_PORT) $(BASELINE_WEB_PORT); do \
+	  if command -v ss >/dev/null 2>&1 && ss -ltn 2>/dev/null | grep -q ":$$p "; then \
+	    echo "port $$p is already in use, so this run would not be measuring what you think."; \
+	    echo "A server already answering there is indistinguishable from the one this target"; \
+	    echo "starts, and the baselines would be written from whatever build it is serving."; \
+	    echo "Usually it is a leftover from an interrupted run:"; \
+	    echo "    make web-visual-baselines-stop"; \
+	    exit 1; \
+	  fi; \
+	done
+	@trap '$(MAKE) --no-print-directory web-visual-baselines-stop' EXIT INT TERM; \
+	set -e; \
+	echo "==> starting a throwaway Postgres on :$(BASELINE_DB_PORT)"; \
+	docker run -d --name $(BASELINE_DB_NAME) \
 	  -e POSTGRES_USER=kitamanager -e POSTGRES_PASSWORD=kitamanager -e POSTGRES_DB=kitamanager \
-	  -p 127.0.0.1:$(BASELINE_DB_PORT):5432 $(BASELINE_DB_IMAGE) >/dev/null
-	@printf '    waiting for postgres'; \
+	  -p 127.0.0.1:$(BASELINE_DB_PORT):5432 $(BASELINE_DB_IMAGE) >/dev/null; \
+	printf '    waiting for postgres'; \
 	for i in $$(seq 1 60); do \
 	  if docker exec $(BASELINE_DB_NAME) pg_isready -U kitamanager -q 2>/dev/null; then echo " ready"; break; fi; \
 	  if [ $$i -eq 60 ]; then echo " timed out"; exit 1; fi; \
 	  printf '.'; sleep 1; \
-	done
-	@echo "==> starting an isolated API on :$(BASELINE_API_PORT), which seeds the empty database"
-	@DB_HOST=127.0.0.1 DB_PORT=$(BASELINE_DB_PORT) DB_USER=kitamanager DB_PASSWORD=kitamanager \
+	done; \
+	echo "==> starting an isolated API on :$(BASELINE_API_PORT), which seeds the empty database"; \
+	DB_HOST=127.0.0.1 DB_PORT=$(BASELINE_DB_PORT) DB_USER=kitamanager DB_PASSWORD=kitamanager \
 	 DB_NAME=kitamanager DB_SSLMODE=disable SERVER_PORT=$(BASELINE_API_PORT) \
 	 CORS_ALLOW_ORIGINS=http://localhost:$(BASELINE_WEB_PORT) CORS_ALLOW_CREDENTIALS=true \
 	 CSRF_HMAC_KEY=$$(openssl rand -hex 32) TOTP_ENCRYPTION_KEY=$$(openssl rand -hex 32) \
@@ -341,34 +352,37 @@ web-visual-baselines: frontend/node_modules api-build
 	 GOVERNMENT_FUNDING_SEED_PATH=configs/government-fundings/berlin.yaml \
 	 GOVERNMENT_FUNDING_SEED_STATE=berlin \
 	 LOGIN_RATE_LIMIT_PER_MINUTE=0 API_RATE_LIMIT_PER_MINUTE=0 \
-	 ./bin/kitamanager-api > /tmp/kitamanager-baseline-api.log 2>&1 & echo $$! > /tmp/kitamanager-baseline-api.pid
-	@printf '    waiting for the API to finish seeding'; \
+	 ./bin/kitamanager-api > /tmp/kitamanager-baseline-api.log 2>&1 & \
+	echo $$! > /tmp/kitamanager-baseline-api.pid; \
+	printf '    waiting for the API to finish seeding'; \
 	for i in $$(seq 1 90); do \
-	  if curl -sf http://localhost:$(BASELINE_API_PORT)/api/v1/health >/dev/null 2>&1; then echo " ready"; break; fi; \
+	  if grep -q "Test data seeding completed\|Test organization already exists" /tmp/kitamanager-baseline-api.log 2>/dev/null; then echo " ready"; break; fi; \
+	  if ! kill -0 $$(cat /tmp/kitamanager-baseline-api.pid) 2>/dev/null; then \
+	    echo " the API exited - see /tmp/kitamanager-baseline-api.log"; exit 1; fi; \
 	  if [ $$i -eq 90 ]; then echo " timed out - see /tmp/kitamanager-baseline-api.log"; exit 1; fi; \
 	  printf '.'; sleep 1; \
-	done
-	@echo "==> building the frontend the way CI does"
-	cd frontend && NEXT_DIST_DIR=.next-baseline BACKEND_URL=http://localhost:$(BASELINE_API_PORT) npx next build
-	@cd frontend && NEXT_DIST_DIR=.next-baseline BACKEND_URL=http://localhost:$(BASELINE_API_PORT) \
-	  npx next start -p $(BASELINE_WEB_PORT) > /tmp/kitamanager-baseline-web.log 2>&1 & echo $$! > /tmp/kitamanager-baseline-web.pid
-	@printf '    waiting for the frontend'; \
+	done; \
+	echo "==> building the frontend the way CI does"; \
+	(cd frontend && NEXT_DIST_DIR=.next-baseline BACKEND_URL=http://localhost:$(BASELINE_API_PORT) npx next build); \
+	(cd frontend && NEXT_DIST_DIR=.next-baseline BACKEND_URL=http://localhost:$(BASELINE_API_PORT) \
+	  npx next start -p $(BASELINE_WEB_PORT) > /tmp/kitamanager-baseline-web.log 2>&1 & \
+	  echo $$! > /tmp/kitamanager-baseline-web.pid); \
+	printf '    waiting for the frontend'; \
 	for i in $$(seq 1 60); do \
-	  if curl -sf http://localhost:$(BASELINE_WEB_PORT) >/dev/null 2>&1; then echo " ready"; break; fi; \
 	  if grep -q EADDRINUSE /tmp/kitamanager-baseline-web.log 2>/dev/null; then \
-	    echo " port $(BASELINE_WEB_PORT) is already held by something else"; exit 1; fi; \
+	    echo " port $(BASELINE_WEB_PORT) was taken between the pre-flight check and now"; exit 1; fi; \
+	  if curl -sf http://localhost:$(BASELINE_WEB_PORT) >/dev/null 2>&1; then echo " ready"; break; fi; \
 	  if [ $$i -eq 60 ]; then echo " timed out - see /tmp/kitamanager-baseline-web.log"; exit 1; fi; \
 	  printf '.'; sleep 1; \
-	done
-	@echo "==> checking this machine renders like the runner (existing baselines must pass)"
-	@cd frontend && CI=true BASE_URL=http://localhost:$(BASELINE_WEB_PORT) \
-	  npx playwright test visual-regression --reporter=line || \
-	  echo "   ^ failures above are the pages that will be rewritten"
-	@echo "==> writing baselines"
-	cd frontend && CI=true BASE_URL=http://localhost:$(BASELINE_WEB_PORT) \
-	  npx playwright test visual-regression --update-snapshots --reporter=line
-	@$(MAKE) --no-print-directory web-visual-baselines-stop
-	@echo "==> done. Review with: git status --short frontend/e2e/visual-regression.spec.ts-snapshots/"
+	done; \
+	echo "==> checking this machine renders like the runner (existing baselines must pass)"; \
+	(cd frontend && CI=true BASE_URL=http://localhost:$(BASELINE_WEB_PORT) \
+	  npx playwright test visual-regression --reporter=line) || \
+	  echo "   ^ failures above are the pages that will be rewritten"; \
+	echo "==> writing baselines"; \
+	(cd frontend && CI=true BASE_URL=http://localhost:$(BASELINE_WEB_PORT) \
+	  npx playwright test visual-regression --update-snapshots --reporter=line); \
+	echo "==> done. Review with: git status --short frontend/e2e/visual-regression.spec.ts-snapshots/"
 
 # Stop whatever web-visual-baselines started. Safe to run on its own if a run
 # was interrupted and left the ports held or the database container running.
