@@ -386,9 +386,24 @@ web-visual-baselines: frontend/node_modules api-build
 
 # Stop whatever web-visual-baselines started. Safe to run on its own if a run
 # was interrupted and left the ports held or the database container running.
+#
+# Killing the recorded pids is not enough. `npx next start` is a wrapper that
+# spawns the real next-server as a child, and $! records the wrapper, so
+# killing it orphans a server that goes on holding :3100 — which the next run
+# then refuses to start against, or worse, would have baselined from. Observed
+# repeatedly: a next-server still up an hour after the run that spawned it
+# finished. So the ports are cleared by whoever actually holds them.
+#
+# These ports belong to this target. Anything else listening on them already
+# fails the pre-flight check, so taking them is consistent with refusing to
+# share them.
 web-visual-baselines-stop:
 	@for f in /tmp/kitamanager-baseline-api.pid /tmp/kitamanager-baseline-web.pid; do \
 	  [ -f $$f ] && kill $$(cat $$f) 2>/dev/null; rm -f $$f; \
+	done; true
+	@command -v ss >/dev/null 2>&1 && for p in $(BASELINE_API_PORT) $(BASELINE_WEB_PORT); do \
+	  pids=$$(ss -ltnp 2>/dev/null | grep ":$$p " | grep -oE 'pid=[0-9]+' | cut -d= -f2 | sort -u); \
+	  if [ -n "$$pids" ]; then kill $$pids 2>/dev/null; fi; \
 	done; true
 	@docker rm -f $(BASELINE_DB_NAME) >/dev/null 2>&1 || true
 	@rm -rf frontend/.next-baseline
