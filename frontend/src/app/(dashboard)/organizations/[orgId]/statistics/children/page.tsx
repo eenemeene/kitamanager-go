@@ -8,6 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChartErrorBoundary } from '@/components/charts/chart-error-boundary';
 import { StatisticsPageHeader } from '@/components/statistics/statistics-page-header';
+import { MonthlyContractTable } from '@/components/charts/monthly-contract-table';
+import { AgeDistributionTable } from '@/components/charts/age-distribution-table';
+import { ContractPropertiesTable } from '@/components/charts/contract-properties-table';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 
@@ -86,6 +89,24 @@ export default function ChildrenStatisticsPage() {
         </CardContent>
       </Card>
 
+      {/*
+        Each chart is followed by the same data as a table. A nivo chart is an
+        svg with role="img" and a label: it says what it is and not what it
+        says. The occupancy, staffing and financials pages already pair their
+        charts this way; this page had no such path, so its figures existed
+        only as a picture.
+      */}
+      {staffingHours && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('statistics.monthlyContractsTable')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <MonthlyContractTable data={staffingHours} occupancy={occupancy} />
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Age Distribution */}
         <Card>
@@ -122,6 +143,28 @@ export default function ChildrenStatisticsPage() {
             )}
           </CardContent>
         </Card>
+
+        {ageDistribution && (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('statistics.ageDistributionTable')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AgeDistributionTable data={ageDistribution} />
+            </CardContent>
+          </Card>
+        )}
+
+        {contractProperties && (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('statistics.contractPropertiesTable')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ContractPropertiesTable data={contractProperties} />
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

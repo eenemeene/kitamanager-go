@@ -354,7 +354,13 @@
       "noPayPlanEntry": "Gehalt ausgeschlossen: Die Entgelttabelle hat keinen Eintrag für Entgeltgruppe {grade}, Stufe {step}",
       "unusablePayPlanPeriod": "Gehalt ausgeschlossen: Der Zeitraum der Entgelttabelle {payPlan} hat ungültige Wochenstunden"
     },
-    "monthlyContractsChart": "Kinder mit Vertrag im Zeitverlauf"
+    "monthlyContractsChart": "Kinder mit Vertrag im Zeitverlauf",
+    "month": "Monat",
+    "property": "Eigenschaft",
+    "share": "Anteil",
+    "monthlyContractsTable": "Kinder mit Vertrag (Daten)",
+    "ageDistributionTable": "Altersverteilung (Daten)",
+    "contractPropertiesTable": "Vertragseigenschaften (Daten)"
   },
   "months": {
     "jan": "Jan",
