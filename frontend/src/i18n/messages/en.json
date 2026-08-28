@@ -354,7 +354,13 @@
       "noPayPlanEntry": "Salary excluded: pay plan has no entry for grade {grade}, step {step}",
       "unusablePayPlanPeriod": "Salary excluded: pay plan {payPlan} has a period with invalid weekly hours"
     },
-    "monthlyContractsChart": "Children under contract over time"
+    "monthlyContractsChart": "Children under contract over time",
+    "month": "Month",
+    "property": "Property",
+    "share": "Share",
+    "monthlyContractsTable": "Children under contract (data)",
+    "ageDistributionTable": "Age distribution (data)",
+    "contractPropertiesTable": "Contract properties (data)"
   },
   "months": {
     "jan": "Jan",
