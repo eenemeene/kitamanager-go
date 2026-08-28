@@ -28,7 +28,11 @@ export function KitaYearStepper({ value, onChange }: KitaYearStepperProps) {
         <ChevronLeft className="h-4 w-4" />
       </Button>
 
-      <span className="min-w-[80px] text-center text-sm font-medium">{label}</span>
+      {/* The label is today's Kita year, so a committed screenshot would
+          otherwise hold the year it was taken in. */}
+      <span data-visual-mask="date" className="min-w-[80px] text-center text-sm font-medium">
+        {label}
+      </span>
 
       <Button
         variant="outline"
