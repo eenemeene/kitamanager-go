@@ -497,7 +497,7 @@ export function FundingComparisonChart({
               symbolShape: 'circle',
             },
           ]}
-          role="application"
+          role="img"
           ariaLabel={t('fundingActualVsCalculated')}
           theme={chartTheme}
         />

@@ -182,7 +182,7 @@ export function SectionStaffingChart({ data }: SectionStaffingChartProps) {
               symbolShape: 'circle',
             },
           ]}
-          role="application"
+          role="img"
           ariaLabel={t('statistics.sectionStaffing')}
           theme={chartTheme}
         />

@@ -207,7 +207,7 @@ test.describe('Visual Regression - Dashboard', () => {
 
     await shoot(page, 'statistics-financials.png', {
       maxDiffPixelRatio: 0.01,
-      mask: [...dynamicMasks(page), page.locator('[role="application"]')],
+      mask: dynamicMasks(page),
     });
   });
 });
@@ -361,7 +361,7 @@ test.describe('Visual Regression - Operations', () => {
 
     await shoot(page, 'dashboard.png', {
       maxDiffPixelRatio: 0.02,
-      mask: [...dynamicMasks(page), page.locator('[role="application"]')],
+      mask: dynamicMasks(page),
     });
   });
 
@@ -434,7 +434,7 @@ test.describe('Visual Regression - Operations', () => {
 
     await shoot(page, 'statistics-staffing.png', {
       maxDiffPixelRatio: 0.02,
-      mask: [...dynamicMasks(page), page.locator('[role="application"]')],
+      mask: dynamicMasks(page),
     });
   });
 });

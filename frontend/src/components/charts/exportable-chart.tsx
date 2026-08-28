@@ -92,10 +92,14 @@ export function ExportableChart({ children, filename, className }: ExportableCha
     // Every chart here redraws from data derived from today, and SVG carries
     // sub-pixel anti-aliasing jitter between runs on top of that, so no chart
     // can be part of a pixel comparison. The tests used to mask
-    // `[role="application"]`, which is nivo's own attribute -- it is absent at
-    // the mobile breakpoint, so the entire staffing chart was compared there and
-    // failed on data that legitimately differs. One attribute on the shared
+    // `[role="application"]`, the role the charts passed to nivo -- it is absent
+    // at the mobile breakpoint, so the entire staffing chart was compared there
+    // and failed on data that legitimately differs. One attribute on the shared
     // wrapper covers all 35 charts at every breakpoint.
+    //
+    // Masking by role is gone entirely now: the charts declare role="img", which
+    // is what a non-interactive graphic should be, and every one of them sits
+    // inside this wrapper, so `dynamicMasks` already reaches all of them.
     <div ref={ref} data-visual-mask="chart" className={cn('relative', className)}>
       {children}
       {/*
