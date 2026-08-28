@@ -77,7 +77,7 @@ export function AgeDistributionChart({ data }: AgeDistributionChartProps) {
               symbolShape: 'circle',
             },
           ]}
-          role="application"
+          role="img"
           ariaLabel={t('statistics.ageDistribution')}
           theme={{
             axis: {

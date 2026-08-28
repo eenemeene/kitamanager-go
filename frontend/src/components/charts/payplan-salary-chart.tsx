@@ -125,6 +125,7 @@ export function PayPlanSalaryChart({ periods }: PayPlanSalaryChartProps) {
       </div>
       <ExportableChart filename={`payplan-salary-step-${selectedStep}`} className="h-[600px]">
         <ResponsiveBar
+          role="img"
           ariaLabel={t('payPlans.salaryChart')}
           data={barData}
           keys={activeGrades}

@@ -358,7 +358,7 @@ export function FinancialSummaryChart({ data }: FinancialSummaryChartProps) {
               symbolShape: 'circle',
             },
           ]}
-          role="application"
+          role="img"
           ariaLabel={t('statistics.financialSummary')}
           theme={chartTheme}
         />

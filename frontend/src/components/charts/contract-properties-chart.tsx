@@ -53,7 +53,7 @@ export function ContractPropertiesChart({ data }: ContractPropertiesChartProps) 
           labelSkipWidth={12}
           labelSkipHeight={12}
           labelTextColor={{ from: 'color', modifiers: [['brighter', 3]] }}
-          role="application"
+          role="img"
           ariaLabel={t('statistics.contractProperties')}
           theme={{
             axis: {

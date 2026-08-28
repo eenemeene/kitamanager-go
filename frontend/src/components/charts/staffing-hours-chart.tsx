@@ -187,6 +187,7 @@ export function StaffingHoursChart({ data }: StaffingHoursChartProps) {
   return (
     <ExportableChart filename="staffing-hours" className="h-[350px]">
       <ResponsiveLine
+        role="img"
         ariaLabel={t('statistics.staffingHours')}
         data={chartData}
         margin={{ top: 20, right: 60, bottom: 80, left: 60 }}
