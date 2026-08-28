@@ -239,14 +239,14 @@ export default function GovernmentFundingBillsPage() {
           <div className="flex flex-wrap gap-4">
             <div className="bg-success/10 border-success/30 flex items-center gap-2 rounded-md border px-4 py-2">
               <CheckCircle2 className="text-success h-4 w-4" />
-              <span className="text-sm font-medium">
+              <span data-visual-mask="stat" className="text-sm font-medium">
                 {t('summaryMatch', { count: summary.matchCount })}
               </span>
             </div>
             {summary.differenceCount > 0 && (
               <div className="bg-destructive/10 border-destructive/30 flex items-center gap-2 rounded-md border px-4 py-2">
                 <XCircle className="text-destructive h-4 w-4" />
-                <span className="text-sm font-medium">
+                <span data-visual-mask="stat" className="text-sm font-medium">
                   {t('summaryDifference', { count: summary.differenceCount })}
                 </span>
               </div>
@@ -254,6 +254,7 @@ export default function GovernmentFundingBillsPage() {
             <div className="flex items-center gap-2 rounded-md border px-4 py-2">
               <span className="text-muted-foreground text-sm">{t('summaryTotal')}:</span>
               <span
+                data-visual-mask="currency"
                 className={`text-sm font-semibold ${summary.totalDifference >= 0 ? 'text-success' : 'text-destructive'}`}
               >
                 {fmt.currency(summary.totalDifference)}
@@ -266,8 +267,10 @@ export default function GovernmentFundingBillsPage() {
         <Card>
           <CardHeader>
             <CardTitle>
-              {t('title')}{' '}
-              {tStats('kitaYear', { year: `${kitaYear}/${String(kitaYear + 1).slice(2)}` })}
+              {t('title')} {/* the Kita year defaults to the current one */}
+              <span data-visual-mask="date">
+                {tStats('kitaYear', { year: `${kitaYear}/${String(kitaYear + 1).slice(2)}` })}
+              </span>
             </CardTitle>
           </CardHeader>
           <CardContent>

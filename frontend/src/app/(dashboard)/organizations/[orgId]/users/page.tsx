@@ -270,7 +270,9 @@ export default function UsersPage() {
     baseColumns.push({
       key: 'lastLogin',
       header: 'users.lastLogin',
-      render: (user) => fmt.date(user.last_login),
+      // Masked for visual regression: for the account the suite logs in
+      // with, this is the current run's timestamp.
+      render: (user) => <span data-visual-mask="date">{fmt.date(user.last_login)}</span>,
     });
 
     return baseColumns;

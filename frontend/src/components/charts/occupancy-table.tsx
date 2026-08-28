@@ -78,7 +78,11 @@ export function OccupancyTable({ data }: OccupancyTableProps) {
               {t('careType')}
             </TableHead>
             {months.map((m) => (
-              <TableHead key={m} className="min-w-[50px] px-1 py-1 text-center">
+              <TableHead
+                key={m}
+                data-visual-mask="date"
+                className="min-w-[50px] px-1 py-1 text-center"
+              >
                 {formatMonthHeader(m)}
               </TableHead>
             ))}
@@ -110,7 +114,11 @@ export function OccupancyTable({ data }: OccupancyTableProps) {
                   {row.careTypeLabel}
                 </TableCell>
                 {row.values.map((val, i) => (
-                  <TableCell key={months[i]} className="px-1 py-1 text-center tabular-nums">
+                  <TableCell
+                    key={months[i]}
+                    data-visual-mask="stat"
+                    className="px-1 py-1 text-center tabular-nums"
+                  >
                     {val || '\u2013'}
                   </TableCell>
                 ))}
@@ -124,7 +132,11 @@ export function OccupancyTable({ data }: OccupancyTableProps) {
               {t('total')}
             </TableCell>
             {totalValues.map((val, i) => (
-              <TableCell key={months[i]} className="px-1 py-1 text-center tabular-nums">
+              <TableCell
+                key={months[i]}
+                data-visual-mask="stat"
+                className="px-1 py-1 text-center tabular-nums"
+              >
                 {val || '\u2013'}
               </TableCell>
             ))}

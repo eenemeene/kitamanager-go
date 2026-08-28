@@ -437,4 +437,95 @@ test.describe('Visual Regression - Operations', () => {
       mask: dynamicMasks(page),
     });
   });
+
+  // The six surfaces below had no snapshot at all. statistics/children is the
+  // reason the gap was noticed: three charts and, since the tables landed,
+  // three more cards, on a page CI never looked at.
+  //
+  // What each of these can catch is layout, not data. Everything derived from
+  // today carries data-visual-mask, so what is compared is the page's chrome:
+  // headers, filters, table structure, the columns that hold labels rather
+  // than figures.
+  //
+  // Adjacent masks merge into one region rather than staying per-element, so
+  // where a whole block of cells is masked its internal geometry is not under
+  // test either. That is worth knowing before trusting one of these to catch a
+  // column-width change — see the occupancy note below for the page where it
+  // matters most.
+
+  test('statistics children page', async ({ page }) => {
+    await page.goto(`/organizations/${orgId}/statistics/children`);
+    await page.waitForLoadState('load');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10000 });
+
+    await chartsReady(page);
+
+    await shoot(page, 'statistics-children.png', {
+      maxDiffPixelRatio: 0.02,
+      mask: dynamicMasks(page),
+    });
+  });
+
+  // The weakest of these six, deliberately kept. Every cell is a count for a
+  // month, so the matrix masks into one block and its internal geometry is not
+  // compared at all. What is left is the page header, the section filter, and
+  // the two sticky left columns — where the care-type labels wrap, which is
+  // the part of this page that has actually broken before. A narrow test on a
+  // page that had none beats nothing, as long as nobody reads it as coverage
+  // of the matrix.
+  test('statistics occupancy page', async ({ page }) => {
+    await page.goto(`/organizations/${orgId}/statistics/occupancy`);
+    await page.waitForLoadState('load');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('table').first()).toBeVisible({ timeout: 10000 });
+
+    await shoot(page, 'statistics-occupancy.png', {
+      maxDiffPixelRatio: 0.02,
+      mask: dynamicMasks(page),
+    });
+  });
+
+  test('funding bills list', async ({ page }) => {
+    await page.goto(`/organizations/${orgId}/government-funding-bills`);
+    await page.waitForLoadState('load');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10000 });
+
+    await shoot(page, 'funding-bills-list.png', {
+      maxDiffPixelRatio: 0.02,
+      mask: dynamicMasks(page),
+    });
+  });
+
+  test('pay plans list', async ({ page }) => {
+    await page.goto(`/organizations/${orgId}/payplans`);
+    await page.waitForLoadState('load');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10000 });
+
+    await shoot(page, 'pay-plans-list.png', {
+      maxDiffPixelRatio: 0.02,
+      mask: dynamicMasks(page),
+    });
+  });
+
+  test('funding rates list', async ({ page }) => {
+    await page.goto('/government-funding-rates');
+    await page.waitForLoadState('load');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10000 });
+
+    await shoot(page, 'funding-rates-list.png', {
+      maxDiffPixelRatio: 0.02,
+      mask: dynamicMasks(page),
+    });
+  });
+
+  test('users list', async ({ page }) => {
+    await page.goto(`/organizations/${orgId}/users`);
+    await page.waitForLoadState('load');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10000 });
+
+    await shoot(page, 'users-list.png', {
+      maxDiffPixelRatio: 0.02,
+      mask: dynamicMasks(page),
+    });
+  });
 });
