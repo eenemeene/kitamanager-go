@@ -485,16 +485,20 @@ test.describe('Visual Regression - Operations', () => {
     });
   });
 
-  test('funding bills list', async ({ page }) => {
-    await page.goto(`/organizations/${orgId}/government-funding-bills`);
-    await page.waitForLoadState('load');
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10000 });
-
-    await shoot(page, 'funding-bills-list.png', {
-      maxDiffPixelRatio: 0.02,
-      mask: dynamicMasks(page),
-    });
-  });
+  // No snapshot for the funding-bills list, deliberately.
+  //
+  // It had one and it expired in three days. Every value in that table is
+  // derived from seeding time — the billing month, the totals, the file names —
+  // so masking them looked like the fix, and it is not enough. The seeded ISBJ
+  // periods move with the calendar, so the number of rows that fall inside the
+  // current Kita year changes too. A mask hides a cell's content; it cannot hide
+  // a row appearing. The table grows, the card grows, the pixels move.
+  //
+  // A baseline that has to be regenerated every month is worse than none: it
+  // goes red on its own, people learn to wave it through, and under auto-merge
+  // it stalls dependabot PRs with nobody watching. The masks stay on the page —
+  // they are accurate about what is volatile, and the Kita-year stepper's mask
+  // is shared with anything else that grows one.
 
   test('pay plans list', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/payplans`);
