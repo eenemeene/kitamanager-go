@@ -315,11 +315,18 @@ export default function GovernmentFundingBillsPage() {
                     const comp = comparisonByBillId.get(item.id);
                     return (
                       <TableRow key={item.id} className={rowStatusClass(item.id)}>
-                        <TableCell>
+                        {/*
+                          Masked: the seeded ISBJ periods are generated relative
+                          to seeding time, so every row's month moves with the
+                          calendar. Crossing a month boundary rewrote all six
+                          rows and expired this page's baseline three days after
+                          it was taken.
+                        */}
+                        <TableCell data-visual-mask="date">
                           {fmt.monthYear(item.from, { month: 'long', year: 'numeric' })}
                         </TableCell>
                         <TableCell>{item.facility_name}</TableCell>
-                        <TableCell className="hidden md:table-cell">
+                        <TableCell data-visual-mask="currency" className="hidden md:table-cell">
                           {fmt.currency(item.facility_total)}
                         </TableCell>
                         {comparisonLoading ? (
@@ -336,7 +343,7 @@ export default function GovernmentFundingBillsPage() {
                           </>
                         ) : comp ? (
                           <>
-                            <TableCell className="hidden md:table-cell">
+                            <TableCell data-visual-mask="currency" className="hidden md:table-cell">
                               {comp.correction_total ? (
                                 <span className="text-info">
                                   {fmt.currency(comp.correction_total)}
@@ -345,10 +352,10 @@ export default function GovernmentFundingBillsPage() {
                                 '\u2014'
                               )}
                             </TableCell>
-                            <TableCell className="hidden md:table-cell">
+                            <TableCell data-visual-mask="currency" className="hidden md:table-cell">
                               {fmt.currency(comp.calculated_total)}
                             </TableCell>
-                            <TableCell className="hidden md:table-cell">
+                            <TableCell data-visual-mask="currency" className="hidden md:table-cell">
                               <span
                                 className={
                                   comp.difference < 0 ? 'text-destructive' : 'text-success'
@@ -371,7 +378,8 @@ export default function GovernmentFundingBillsPage() {
                             </TableCell>
                           </>
                         )}
-                        <TableCell className="hidden text-sm md:table-cell">
+                        {/* The seeded file names carry the period they cover. */}
+                        <TableCell data-visual-mask="date" className="hidden text-sm md:table-cell">
                           {item.file_name}
                         </TableCell>
                         <TableCell className="text-right">
