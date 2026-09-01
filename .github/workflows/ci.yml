@@ -483,13 +483,16 @@ jobs:
           CORS_ALLOW_CREDENTIALS=true \
           GOVERNMENT_FUNDING_SEED_PATH=configs/government-fundings/berlin.yaml \
           GOVERNMENT_FUNDING_SEED_STATE=berlin \
-          ./bin/kitamanager-api &
+          ./bin/kitamanager-api > /tmp/kitamanager-api.log 2>&1 &
           API_PID=$!
           # Wait for API to be ready with retry loop
           for i in {1..30}; do
             # Check if process is still running
             if ! kill -0 $API_PID 2>/dev/null; then
               echo "API process died"
+              # Its output goes to a file now, so print it here or a startup
+              # failure would be less legible than it was before the redirect.
+              cat /tmp/kitamanager-api.log || true
               exit 1
             fi
             # Try the health check
@@ -532,6 +535,30 @@ jobs:
         env:
           BASE_URL: http://localhost:3000
           CI: true
+
+      # What the API said, when a shard fails.
+      #
+      # It used to inherit the start step's stdout, and that step exits as soon
+      # as the health check passes, so every request logged during the tests
+      # went to a descriptor nobody reads. The job output contained no API lines
+      # at all.
+      #
+      # That is not merely untidy: it makes a whole class of failure
+      # undiagnosable. On 2026-08-29 an attendance test failed waiting for a
+      # success toast, which means the API refused the update — and the reason
+      # was gone. The client saw a missing element, the server's account of why
+      # was discarded, and the shard's blob report expired before anyone looked.
+      # The refusal could not be explained even in principle.
+      #
+      # Non-2xx first, because that is the line worth reading, then the tail for
+      # context around it.
+      - name: API server log
+        if: ${{ failure() }}
+        run: |
+          echo "=== non-2xx responses ==="
+          grep -E 'status=[45][0-9][0-9]' /tmp/kitamanager-api.log || echo "(none)"
+          echo "=== last 300 lines ==="
+          tail -n 300 /tmp/kitamanager-api.log || true
 
       # The shard's blob, which is an intermediate: the e2e-report job merges all
       # six into one HTML report. Kept briefly and only for that.
