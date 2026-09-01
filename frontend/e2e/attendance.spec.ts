@@ -381,6 +381,27 @@ test.describe('Attendance Editable Times', () => {
   });
 
   test('edit check-in time and save via Enter', async ({ page }) => {
+    // Record why a save failed, rather than only that it did.
+    //
+    // This test failed once on CI waiting for the success toast, which reports
+    // as "element(s) not found" and says nothing about the cause. The frontend
+    // toasts destructively when the API refuses, so a missing success toast
+    // means either a refusal or a slow one, and those want different fixes.
+    // Capturing the response bodies makes the next occurrence diagnosable
+    // instead of another unexplained rerun. The root cause of that failure is
+    // still unknown: it was not reproducible locally, including under extra
+    // parallelism, and the only server-side rejection needs a check-out time
+    // this test never sets.
+    const refusals: string[] = [];
+    page.on('response', async (response) => {
+      if (response.url().includes('/attendance') && !response.ok()) {
+        const body = await response.text().catch(() => '<unreadable>');
+        refusals.push(
+          `${response.request().method()} ${response.status()} ${response.url()} ${body.slice(0, 300)}`
+        );
+      }
+    });
+
     const row = page.getByRole('row').filter({ hasText: childFirstName });
 
     // Check-in
@@ -407,10 +428,16 @@ test.describe('Attendance Editable Times', () => {
     await timeInput.fill('08:30');
     await timeInput.press('Enter');
 
-    // Should show "Attendance updated" toast (confirms save succeeded)
-    await expect(page.getByText('Attendance updated', { exact: true })).toBeVisible({
-      timeout: 10000,
-    });
+    // Wait for whichever toast arrives, so a refusal fails as a refusal rather
+    // than as a missing element.
+    const saved = page.getByText('Attendance updated', { exact: true });
+    const refused = page.getByText(/failed to save/i);
+    await expect(saved.or(refused).first()).toBeVisible({ timeout: 10000 });
+    expect(
+      refusals,
+      `the API refused the check-in update; edited to 08:30 at ${new Date().toISOString()}`
+    ).toEqual([]);
+    await expect(saved).toBeVisible({ timeout: 10000 });
 
     // Input should be gone, replaced by a time button again
     await expect(timeInput).toBeHidden({ timeout: 5000 });
