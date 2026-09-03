@@ -5,6 +5,8 @@ import {
   getGovernmentFundingsViaApi,
   getPayPlansViaApi,
   resetBerlinFundingFromConfig,
+  createTestOrg,
+  deleteTestOrg,
 } from './utils/test-helpers';
 
 // Ensure English locale for consistent text rendering
@@ -485,20 +487,82 @@ test.describe('Visual Regression - Operations', () => {
     });
   });
 
-  // No snapshot for the funding-bills list, deliberately.
+  // The funding-bills list, on data the test owns.
   //
-  // It had one and it expired in three days. Every value in that table is
-  // derived from seeding time — the billing month, the totals, the file names —
-  // so masking them looked like the fix, and it is not enough. The seeded ISBJ
-  // periods move with the calendar, so the number of rows that fall inside the
-  // current Kita year changes too. A mask hides a cell's content; it cannot hide
-  // a row appearing. The table grows, the card grows, the pixels move.
+  // The first attempt at this pointed at the seeded organisation and expired in
+  // three days. Every value in that table comes from seeding time, and the
+  // seeded ISBJ periods move with the calendar, so masking the cells was not
+  // enough: the number of rows inside the current Kita year changed too, and a
+  // mask hides a cell's content, never a row appearing.
   //
-  // A baseline that has to be regenerated every month is worse than none: it
-  // goes red on its own, people learn to wave it through, and under auto-merge
-  // it stalls dependabot PRs with nobody watching. The masks stay on the page —
-  // they are accurate about what is volatile, and the Kita-year stepper's mask
-  // is shared with anything else that grows one.
+  // So nothing here is seeded. The test makes its own organisation, uploads the
+  // parser's own anonymised fixture — billing period 11-25, fixed forever — and
+  // pins the Kita year through the URL. One row, one month, one set of amounts,
+  // the same in ten years. That in turn is why the cells are no longer masked:
+  // the figures are fixture constants now, so this compares the bill data
+  // rather than magenta rectangles.
+  test.describe('funding bills list', () => {
+    let billsOrgId: number;
+
+    test.beforeAll(async ({ browser }) => {
+      const page = await browser.newPage();
+      await login(page);
+      billsOrgId = (await createTestOrg(page, 'BillsVisual')).orgId;
+      await page.goto(`/organizations/${billsOrgId}/government-funding-bills`);
+      await page.waitForLoadState('load');
+      await page
+        .locator('input[type="file"]')
+        .setInputFiles('../internal/isbj/testdata/Abrechnung_11-25_0770_anonymized.xlsx');
+      await page.getByRole('button', { name: /^upload$/i }).click();
+      // The row only exists once the upload round-trips.
+      await expect(page.getByText(/Kita|Sonnenschein/).first()).toBeVisible({ timeout: 20000 });
+      await page.close();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const page = await browser.newPage();
+      await login(page);
+      await deleteTestOrg(page, billsOrgId).catch(() => {});
+      await page.close();
+    });
+
+    test('funding bills list', async ({ page }) => {
+      // The Kita year has to reach the server, not just the component. Before
+      // this page took from/to, it fetched an unfiltered page and narrowed it in
+      // the browser, which silently lost any bill past the hundredth.
+      const listRequests: string[] = [];
+      page.on('request', (request) => {
+        const url = request.url();
+        if (url.includes('/government-funding-bills?')) listRequests.push(url);
+      });
+
+      // 11-25 is November 2025, which falls in the Kita year starting 2025.
+      await page.goto(`/organizations/${billsOrgId}/government-funding-bills?kitaYear=2025`);
+      await page.waitForLoadState('load');
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10000 });
+
+      // The comparison columns arrive from a second request and render
+      // Skeletons until it lands; screenshotting through that would catch the
+      // placeholders at whatever height they happened to have.
+      await expect(page.locator('[data-slot="skeleton"]')).toHaveCount(0, { timeout: 20000 });
+
+      expect(
+        listRequests.some((u) => u.includes('from=2025-08-01') && u.includes('to=2026-07-31')),
+        `the listing must be filtered server-side; requests seen: ${listRequests.join(', ')}`
+      ).toBe(true);
+
+      await shoot(page, 'funding-bills-list.png', {
+        maxDiffPixelRatio: 0.02,
+        // The org selector as well, only here. createTestOrg suffixes the name
+        // with a millisecond timestamp to dodge the unique constraint on
+        // organizations.name, so the one string on this page the test cannot
+        // make deterministic is the name of the organisation it just made.
+        // Every other snapshot uses the seeded "Kita Sonnenschein" and needs no
+        // such mask.
+        mask: [...dynamicMasks(page), page.locator('[data-testid="org-selector"]')],
+      });
+    });
+  });
 
   test('pay plans list', async ({ page }) => {
     await page.goto(`/organizations/${orgId}/payplans`);
