@@ -56,9 +56,15 @@ export function OrgSelector() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" className="w-full justify-between" data-testid="org-selector">
-          <span className="flex items-center">
-            <Building2 className="mr-2 h-4 w-4" />
-            <span className="truncate">
+          {/*
+            min-w-0 on both, or the truncate below never fires: a flex item
+            defaults to min-width:auto and will not shrink under its content, so
+            a long organisation name overflowed the button instead of
+            ellipsising. Only visible once a name is longer than the sidebar.
+          */}
+          <span className="flex min-w-0 items-center">
+            <Building2 className="mr-2 h-4 w-4 shrink-0" />
+            <span className="min-w-0 truncate">
               {selectedOrg ? selectedOrg.name : t('organizations.selectOrg')}
             </span>
           </span>
