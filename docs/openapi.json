@@ -15108,6 +15108,22 @@
                         }
                     },
                     {
+                        "description": "Only bills whose period starts on or after this date (YYYY-MM-DD). May be used without 'to'.",
+                        "in": "query",
+                        "name": "from",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Only bills whose period starts on or before this date (YYYY-MM-DD). May be used without 'from'. When both are given the span may not exceed 72 months.",
+                        "in": "query",
+                        "name": "to",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
                         "description": "Page number",
                         "in": "query",
                         "name": "page",

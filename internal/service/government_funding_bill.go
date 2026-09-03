@@ -696,8 +696,8 @@ func (s *GovernmentFundingBillService) autoDiscoverVouchers(ctx context.Context,
 }
 
 // List returns a paginated list of bill periods for an organization.
-func (s *GovernmentFundingBillService) List(ctx context.Context, orgID uint, search string, limit, offset int) ([]models.GovernmentFundingBillPeriodListResponse, int64, error) {
-	periods, total, err := s.billPeriodStore.FindByOrganization(ctx, orgID, search, limit, offset)
+func (s *GovernmentFundingBillService) List(ctx context.Context, orgID uint, search string, dateRange store.BillPeriodDateRange, limit, offset int) ([]models.GovernmentFundingBillPeriodListResponse, int64, error) {
+	periods, total, err := s.billPeriodStore.FindByOrganization(ctx, orgID, search, dateRange, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
