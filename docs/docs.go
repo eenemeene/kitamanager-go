@@ -6746,6 +6746,18 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "Only bills whose period starts on or after this date (YYYY-MM-DD). May be used without 'to'.",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only bills whose period starts on or before this date (YYYY-MM-DD). May be used without 'from'. When both are given the span may not exceed 72 months.",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "default": 1,
                         "description": "Page number",

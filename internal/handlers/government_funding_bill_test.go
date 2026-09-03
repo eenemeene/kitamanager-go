@@ -1566,3 +1566,97 @@ func TestGovernmentFundingBillHandler_List_Search_BillChildren(t *testing.T) {
 		}
 	})
 }
+
+// The handler's own wiring of from/to, which neither the store nor the service
+// test reaches: swapping the two bounds here would leave both of those green.
+func TestGovernmentFundingBillHandler_ListDateRange(t *testing.T) {
+	db := setupTestDB(t)
+	r, _ := setupBillRouter(db)
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "User", "billrange@example.com", "password")
+
+	// Bills for January through April 2025.
+	for m := time.Month(1); m <= 4; m++ {
+		createBillPeriodInDB(t, db, org.ID, user.ID, "Kita", m)
+	}
+
+	type listResponse struct {
+		Data  []models.GovernmentFundingBillPeriodListResponse `json:"data"`
+		Total int64                                            `json:"total"`
+	}
+
+	t.Run("narrows to the range, inclusive at both ends", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf(
+			"/organizations/%d/government-funding-bills?from=2025-02-01&to=2025-03-01", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var response listResponse
+		parseResponse(t, w, &response)
+		if len(response.Data) != 2 {
+			t.Errorf("expected 2 items (February and March), got %d", len(response.Data))
+		}
+		// The count drives pagination and the HATEOAS links, so a range that
+		// narrowed the rows but not the total would advertise a different set
+		// than it returned.
+		if response.Total != 2 {
+			t.Errorf("expected total 2, got %d — the range must narrow the count too", response.Total)
+		}
+	})
+
+	// The shared parser allows a one-sided range, unlike /compare. This is what
+	// distinguishes "from is the lower bound" from "from and to got swapped".
+	t.Run("accepts from without to", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf(
+			"/organizations/%d/government-funding-bills?from=2025-03-01", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var response listResponse
+		parseResponse(t, w, &response)
+		if response.Total != 2 {
+			t.Errorf("expected total 2 (March and April), got %d", response.Total)
+		}
+	})
+
+	t.Run("accepts to without from", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf(
+			"/organizations/%d/government-funding-bills?to=2025-02-01", org.ID), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var response listResponse
+		parseResponse(t, w, &response)
+		if response.Total != 2 {
+			t.Errorf("expected total 2 (January and February), got %d", response.Total)
+		}
+	})
+
+	t.Run("rejects an inverted range", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf(
+			"/organizations/%d/government-funding-bills?from=2025-04-01&to=2025-01-01", org.ID), nil)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("rejects an unparseable date", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf(
+			"/organizations/%d/government-funding-bills?from=not-a-date&to=2025-04-01", org.ID), nil)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	// Omitting both has to keep the previous behaviour, since the parameters
+	// were added to an endpoint that already had callers.
+	t.Run("no range returns everything", func(t *testing.T) {
+		w := performRequest(r, "GET", fmt.Sprintf(
+			"/organizations/%d/government-funding-bills", org.ID), nil)
+		var response listResponse
+		parseResponse(t, w, &response)
+		if response.Total != 4 {
+			t.Errorf("expected total 4, got %d", response.Total)
+		}
+	})
+}

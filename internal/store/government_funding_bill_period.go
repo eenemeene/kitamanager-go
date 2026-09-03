@@ -36,7 +36,31 @@ func (s *GovernmentFundingBillPeriodStore) FindByID(ctx context.Context, id uint
 	return &period, nil
 }
 
-func (s *GovernmentFundingBillPeriodStore) FindByOrganization(ctx context.Context, orgID uint, search string, limit, offset int) ([]models.GovernmentFundingBillPeriod, int64, error) {
+// BillPeriodDateRange narrows a listing to bills whose period starts inside it.
+// Both ends are inclusive, and nil means unbounded on that side.
+type BillPeriodDateRange struct {
+	From *time.Time
+	To   *time.Time
+}
+
+// applyTo adds the range predicate, if any, to a query.
+func (r BillPeriodDateRange) applyTo(q *gorm.DB) *gorm.DB {
+	if r.From != nil {
+		q = q.Where("from_date >= ?", *r.From)
+	}
+	if r.To != nil {
+		q = q.Where("from_date <= ?", *r.To)
+	}
+	return q
+}
+
+// FindByOrganization lists an organization's bill periods, newest first.
+//
+// The date range is applied here rather than by the caller because the result
+// is paginated: filtering a page after the database returned it drops the bills
+// that matched but landed on another page. The Kita-year filter on the bills
+// page used to do exactly that, over `limit: 100`.
+func (s *GovernmentFundingBillPeriodStore) FindByOrganization(ctx context.Context, orgID uint, search string, dateRange BillPeriodDateRange, limit, offset int) ([]models.GovernmentFundingBillPeriod, int64, error) {
 	var periods []models.GovernmentFundingBillPeriod
 	var total int64
 
@@ -44,6 +68,7 @@ func (s *GovernmentFundingBillPeriodStore) FindByOrganization(ctx context.Contex
 	if search != "" {
 		query = query.Scopes(BillPeriodSearch(search))
 	}
+	query = dateRange.applyTo(query)
 
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -53,6 +78,7 @@ func (s *GovernmentFundingBillPeriodStore) FindByOrganization(ctx context.Contex
 	if search != "" {
 		dataQuery = dataQuery.Scopes(BillPeriodSearch(search))
 	}
+	dataQuery = dateRange.applyTo(dataQuery)
 
 	if err := dataQuery.Order("from_date DESC").Limit(limit).Offset(offset).Find(&periods).Error; err != nil {
 		return nil, 0, err

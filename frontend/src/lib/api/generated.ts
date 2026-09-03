@@ -11108,6 +11108,10 @@ export interface operations {
       query?: {
         /** @description Search by facility name, child name or voucher number (case-insensitive substring) */
         search?: string;
+        /** @description Only bills whose period starts on or after this date (YYYY-MM-DD). May be used without 'to'. */
+        from?: string;
+        /** @description Only bills whose period starts on or before this date (YYYY-MM-DD). May be used without 'from'. When both are given the span may not exceed 72 months. */
+        to?: string;
         /** @description Page number */
         page?: number;
         /** @description Items per page */

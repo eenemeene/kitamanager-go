@@ -10,6 +10,7 @@ import (
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
+	"github.com/eenemeene/kitamanager-go/internal/store"
 )
 
 // GovernmentFundingBillHandler handles government funding bill endpoints.
@@ -77,6 +78,8 @@ func (h *GovernmentFundingBillHandler) UploadISBJ(c *gin.Context) {
 // @Security BearerAuth
 // @Param orgId path int true "Organization ID"
 // @Param search query string false "Search by facility name, child name or voucher number (case-insensitive substring)"
+// @Param from query string false "Only bills whose period starts on or after this date (YYYY-MM-DD). May be used without 'to'."
+// @Param to query string false "Only bills whose period starts on or before this date (YYYY-MM-DD). May be used without 'from'. When both are given the span may not exceed 72 months."
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20) maximum(100)
 // @Success 200 {object} models.PaginatedResponse[models.GovernmentFundingBillPeriodListResponse]
@@ -99,7 +102,17 @@ func (h *GovernmentFundingBillHandler) List(c *gin.Context) {
 		return
 	}
 
-	items, total, err := h.service.List(c.Request.Context(), orgID, search, params.Limit, params.Offset())
+	// from/to via the shared helper, as the audit-log and statistics listings do.
+	// Deliberately not /compare's stricter both-or-neither rule: that endpoint
+	// computes over a window and needs one, whereas "every bill since March" is
+	// a reasonable thing to ask a listing for. The helper still rejects an
+	// inverted range and caps the span.
+	from, to, ok := parseOptionalDatePair(c)
+	if !ok {
+		return
+	}
+
+	items, total, err := h.service.List(c.Request.Context(), orgID, search, store.BillPeriodDateRange{From: from, To: to}, params.Limit, params.Offset())
 	if err != nil {
 		respondError(c, err)
 		return

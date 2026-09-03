@@ -216,7 +216,7 @@ func TestGovernmentFundingBillPeriodStore_FindByOrganization(t *testing.T) {
 	}
 
 	t.Run("returns only org1 periods", func(t *testing.T) {
-		periods, total, err := s.FindByOrganization(ctx, org1.ID, "", 10, 0)
+		periods, total, err := s.FindByOrganization(ctx, org1.ID, "", BillPeriodDateRange{}, 10, 0)
 		if err != nil {
 			t.Fatalf("FindByOrganization() error = %v", err)
 		}
@@ -229,7 +229,7 @@ func TestGovernmentFundingBillPeriodStore_FindByOrganization(t *testing.T) {
 	})
 
 	t.Run("returns only org2 periods", func(t *testing.T) {
-		periods, total, err := s.FindByOrganization(ctx, org2.ID, "", 10, 0)
+		periods, total, err := s.FindByOrganization(ctx, org2.ID, "", BillPeriodDateRange{}, 10, 0)
 		if err != nil {
 			t.Fatalf("FindByOrganization() error = %v", err)
 		}
@@ -242,7 +242,7 @@ func TestGovernmentFundingBillPeriodStore_FindByOrganization(t *testing.T) {
 	})
 
 	t.Run("pagination limit", func(t *testing.T) {
-		periods, total, err := s.FindByOrganization(ctx, org1.ID, "", 2, 0)
+		periods, total, err := s.FindByOrganization(ctx, org1.ID, "", BillPeriodDateRange{}, 2, 0)
 		if err != nil {
 			t.Fatalf("FindByOrganization() error = %v", err)
 		}
@@ -255,7 +255,7 @@ func TestGovernmentFundingBillPeriodStore_FindByOrganization(t *testing.T) {
 	})
 
 	t.Run("pagination offset", func(t *testing.T) {
-		periods, total, err := s.FindByOrganization(ctx, org1.ID, "", 10, 2)
+		periods, total, err := s.FindByOrganization(ctx, org1.ID, "", BillPeriodDateRange{}, 10, 2)
 		if err != nil {
 			t.Fatalf("FindByOrganization() error = %v", err)
 		}
@@ -268,7 +268,7 @@ func TestGovernmentFundingBillPeriodStore_FindByOrganization(t *testing.T) {
 	})
 
 	t.Run("ordered by from_date descending", func(t *testing.T) {
-		periods, _, err := s.FindByOrganization(ctx, org1.ID, "", 10, 0)
+		periods, _, err := s.FindByOrganization(ctx, org1.ID, "", BillPeriodDateRange{}, 10, 0)
 		if err != nil {
 			t.Fatalf("FindByOrganization() error = %v", err)
 		}
@@ -280,7 +280,7 @@ func TestGovernmentFundingBillPeriodStore_FindByOrganization(t *testing.T) {
 	})
 
 	t.Run("empty for unknown org", func(t *testing.T) {
-		periods, total, err := s.FindByOrganization(ctx, 99999, "", 10, 0)
+		periods, total, err := s.FindByOrganization(ctx, 99999, "", BillPeriodDateRange{}, 10, 0)
 		if err != nil {
 			t.Fatalf("FindByOrganization() error = %v", err)
 		}
@@ -999,6 +999,76 @@ func TestGovernmentFundingBillPeriodStore_FindChildEntriesByOrgAndVoucherNumbers
 			if r.BillTo == nil {
 				t.Error("expected BillTo to be set")
 			}
+		}
+	})
+}
+
+// The date range has to reach the database, because the result is paginated:
+// a caller filtering a page after the fact loses the rows that matched but
+// landed on another page. That is what the bills page used to do, over a
+// hard-coded limit of 100.
+func TestGovernmentFundingBillPeriodStore_FindByOrganizationDateRange(t *testing.T) {
+	db := setupTestDB(t)
+	ctx := context.Background()
+	s := NewGovernmentFundingBillPeriodStore(db)
+
+	org := createTestOrganization(t, db, "Range Org")
+	user := createTestUser(t, db, "Range User", "billrange@example.com")
+
+	// One bill per month, July through October 2025.
+	for _, m := range []time.Month{time.July, time.August, time.September, time.October} {
+		to := time.Date(2025, m+1, 0, 0, 0, 0, 0, time.UTC)
+		p := &models.GovernmentFundingBillPeriod{
+			OrganizationID: org.ID,
+			Period:         models.Period{From: time.Date(2025, m, 1, 0, 0, 0, 0, time.UTC), To: &to},
+			FileName:       fmt.Sprintf("Abrechnung_%02d-25.xlsx", int(m)),
+			FileSha256:     fmt.Sprintf("rangehash_%02d", int(m)),
+			FacilityName:   "Kita Sonnenschein",
+			CreatedBy:      &user.ID,
+		}
+		if err := s.Create(ctx, p); err != nil {
+			t.Fatalf("setup: Create() error = %v", err)
+		}
+	}
+
+	aug1 := time.Date(2025, time.August, 1, 0, 0, 0, 0, time.UTC)
+	sep30 := time.Date(2025, time.September, 30, 0, 0, 0, 0, time.UTC)
+
+	t.Run("both bounds inclusive", func(t *testing.T) {
+		periods, total, err := s.FindByOrganization(ctx, org.ID, "",
+			BillPeriodDateRange{From: &aug1, To: &sep30}, 10, 0)
+		if err != nil {
+			t.Fatalf("FindByOrganization() error = %v", err)
+		}
+		if len(periods) != 2 {
+			t.Errorf("got %d periods, want 2 (August and September)", len(periods))
+		}
+		// The count is what pagination and the HATEOAS links are built from. A
+		// range that narrows the rows but not the total would describe a
+		// different set than it returns.
+		if total != 2 {
+			t.Errorf("total = %d, want 2 - the range must narrow the count too", total)
+		}
+	})
+
+	t.Run("open ended on one side", func(t *testing.T) {
+		periods, _, err := s.FindByOrganization(ctx, org.ID, "",
+			BillPeriodDateRange{From: &sep30}, 10, 0)
+		if err != nil {
+			t.Fatalf("FindByOrganization() error = %v", err)
+		}
+		if len(periods) != 1 {
+			t.Errorf("got %d periods, want 1 (October); September starts before the bound", len(periods))
+		}
+	})
+
+	t.Run("no range returns everything", func(t *testing.T) {
+		_, total, err := s.FindByOrganization(ctx, org.ID, "", BillPeriodDateRange{}, 10, 0)
+		if err != nil {
+			t.Fatalf("FindByOrganization() error = %v", err)
+		}
+		if total != 4 {
+			t.Errorf("total = %d, want 4", total)
 		}
 	})
 }
