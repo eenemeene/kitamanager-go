@@ -3,8 +3,14 @@ import GovernmentFundingBillsPage from '../page';
 import { apiClient } from '@/lib/api/client';
 import { renderWithProviders, createMockPaginatedResponse } from '@/test-utils';
 
+// The page reads the Kita year from the URL, so the router hooks it uses have
+// to be here too — this file-level mock replaces the one in jest.setup.js
+// wholesale rather than extending it.
 jest.mock('next/navigation', () => ({
   useParams: () => ({ orgId: '1' }),
+  usePathname: () => '/organizations/1/government-funding-bills',
+  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ replace: jest.fn(), push: jest.fn() }),
 }));
 
 jest.mock('next-intl', () => ({

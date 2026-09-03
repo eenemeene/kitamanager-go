@@ -1318,11 +1318,15 @@ class ApiClient {
 
   async getGovernmentFundingBillPeriods(
     orgId: number,
-    params: PaginationParams & { search?: string } = {}
+    params: PaginationParams & { search?: string; from?: string; to?: string } = {}
   ): Promise<PaginatedResponse<GovernmentFundingBillPeriodListItem>> {
-    const { page = 1, limit = DEFAULT_PAGE_SIZE, search } = params;
+    const { page = 1, limit = DEFAULT_PAGE_SIZE, search, from, to } = params;
     const qs = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (search) qs.set('search', search);
+    // Same from/to the compare endpoint takes, so one range on screen is one
+    // range on the wire for both calls.
+    if (from) qs.set('from', from);
+    if (to) qs.set('to', to);
     const response = await this.client.get<PaginatedResponse<GovernmentFundingBillPeriodListItem>>(
       `/organizations/${orgId}/government-funding-bills?${qs.toString()}`
     );

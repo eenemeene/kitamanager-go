@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState, useRef } from 'react';
+import { useCallback, useMemo, useState, useRef } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { usePathname, useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Upload, Trash2, Eye, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
@@ -44,11 +44,24 @@ import { QueryError } from '@/components/crud/query-error';
 import { SearchInput } from '@/components/ui/search-input';
 import { useFormatters } from '@/hooks/use-formatters';
 
-/** Return the kita-year start year for a given date string (YYYY-MM-DD).
- *  Kita year runs Aug 1 – Jul 31. e.g. 2025-08-01 → 2025, 2026-03-01 → 2025 */
-function kitaYearForDate(dateStr: string): number {
-  const d = new Date(dateStr);
-  return d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1;
+/** The Kita year (Aug 1 – Jul 31) that a date falls in, as its start year. */
+function kitaYearForDate(date: Date): number {
+  return date.getMonth() >= 7 ? date.getFullYear() : date.getFullYear() - 1;
+}
+
+/**
+ * The Kita year to show, from `?kitaYear=`, falling back to the current one.
+ *
+ * Anything unparseable or implausible falls back rather than erroring: this is
+ * a URL a person can edit, and a typo should show them the default year, not a
+ * broken page. The bounds are deliberately loose — wide enough for any real
+ * archive, tight enough that `?kitaYear=99999999` cannot reach the API.
+ */
+function parseKitaYearParam(raw: string | null, fallback: number): number {
+  if (raw === null) return fallback;
+  const year = Number(raw);
+  if (!Number.isInteger(year) || year < 1990 || year > 2200) return fallback;
+  return year;
 }
 
 export default function GovernmentFundingBillsPage() {
@@ -70,10 +83,29 @@ export default function GovernmentFundingBillsPage() {
   const [searchInput, setSearchInput] = useState('');
   const search = useDebouncedValue(searchInput, 300);
 
-  // Kita year filter — default to current kita year
-  const now = new Date();
-  const currentKitaYear = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
-  const [kitaYear, setKitaYear] = useState(currentKitaYear);
+  // The Kita year lives in the URL, so a filtered view can be linked to and
+  // reloaded. It used to be component state, which also meant a test could not
+  // pin it to a fixed year without clicking the stepper a date-dependent number
+  // of times.
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentKitaYear = kitaYearForDate(new Date());
+  const kitaYear = parseKitaYearParam(searchParams.get('kitaYear'), currentKitaYear);
+
+  const setKitaYear = useCallback(
+    (year: number) => {
+      const next = new URLSearchParams(searchParams.toString());
+      next.set('kitaYear', String(year));
+      // replace, not push: stepping through years is a filter adjustment, and
+      // pushing would bury the page the user arrived from under one entry per
+      // click.
+      router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+    },
+    [router, pathname, searchParams]
+  );
+
+  // One range, derived once, sent to both requests below.
   const kitaYearFrom = `${kitaYear}-08-01`;
   const kitaYearTo = `${kitaYear + 1}-07-31`;
 
@@ -83,16 +115,25 @@ export default function GovernmentFundingBillsPage() {
     error: queryError,
     refetch,
   } = useQuery({
-    queryKey: queryKeys.governmentFundingBillPeriods.list(orgId, 1, search || undefined),
+    queryKey: queryKeys.governmentFundingBillPeriods.listInRange(
+      orgId,
+      kitaYearFrom,
+      kitaYearTo,
+      search || undefined
+    ),
     queryFn: () =>
-      apiClient.getGovernmentFundingBillPeriods(orgId, { limit: 100, search: search || undefined }),
+      apiClient.getGovernmentFundingBillPeriods(orgId, {
+        limit: 100,
+        search: search || undefined,
+        from: kitaYearFrom,
+        to: kitaYearTo,
+      }),
   });
 
-  // Server already filtered by search; client narrows to the selected kita year.
-  const filteredItems = useMemo(() => {
-    const all = billPeriods?.data ?? [];
-    return all.filter((item) => kitaYearForDate(item.from) === kitaYear);
-  }, [billPeriods, kitaYear]);
+  // No client-side narrowing. The list is paginated, so filtering a page after
+  // the server returned it drops bills that matched but landed on another page
+  // — with the limit below, every bill past the hundredth.
+  const filteredItems = billPeriods?.data ?? [];
 
   // Fetch comparison data for the entire kita year range in one call
   const { data: comparison, isLoading: comparisonLoading } = useQuery({
@@ -239,14 +280,14 @@ export default function GovernmentFundingBillsPage() {
           <div className="flex flex-wrap gap-4">
             <div className="bg-success/10 border-success/30 flex items-center gap-2 rounded-md border px-4 py-2">
               <CheckCircle2 className="text-success h-4 w-4" />
-              <span data-visual-mask="stat" className="text-sm font-medium">
+              <span className="text-sm font-medium">
                 {t('summaryMatch', { count: summary.matchCount })}
               </span>
             </div>
             {summary.differenceCount > 0 && (
               <div className="bg-destructive/10 border-destructive/30 flex items-center gap-2 rounded-md border px-4 py-2">
                 <XCircle className="text-destructive h-4 w-4" />
-                <span data-visual-mask="stat" className="text-sm font-medium">
+                <span className="text-sm font-medium">
                   {t('summaryDifference', { count: summary.differenceCount })}
                 </span>
               </div>
@@ -254,7 +295,6 @@ export default function GovernmentFundingBillsPage() {
             <div className="flex items-center gap-2 rounded-md border px-4 py-2">
               <span className="text-muted-foreground text-sm">{t('summaryTotal')}:</span>
               <span
-                data-visual-mask="currency"
                 className={`text-sm font-semibold ${summary.totalDifference >= 0 ? 'text-success' : 'text-destructive'}`}
               >
                 {fmt.currency(summary.totalDifference)}
@@ -268,7 +308,7 @@ export default function GovernmentFundingBillsPage() {
           <CardHeader>
             <CardTitle>
               {t('title')} {/* the Kita year defaults to the current one */}
-              <span data-visual-mask="date">
+              <span>
                 {tStats('kitaYear', { year: `${kitaYear}/${String(kitaYear + 1).slice(2)}` })}
               </span>
             </CardTitle>
@@ -315,18 +355,11 @@ export default function GovernmentFundingBillsPage() {
                     const comp = comparisonByBillId.get(item.id);
                     return (
                       <TableRow key={item.id} className={rowStatusClass(item.id)}>
-                        {/*
-                          Masked: the seeded ISBJ periods are generated relative
-                          to seeding time, so every row's month moves with the
-                          calendar. Crossing a month boundary rewrote all six
-                          rows and expired this page's baseline three days after
-                          it was taken.
-                        */}
-                        <TableCell data-visual-mask="date">
+                        <TableCell>
                           {fmt.monthYear(item.from, { month: 'long', year: 'numeric' })}
                         </TableCell>
                         <TableCell>{item.facility_name}</TableCell>
-                        <TableCell data-visual-mask="currency" className="hidden md:table-cell">
+                        <TableCell className="hidden md:table-cell">
                           {fmt.currency(item.facility_total)}
                         </TableCell>
                         {comparisonLoading ? (
@@ -343,7 +376,7 @@ export default function GovernmentFundingBillsPage() {
                           </>
                         ) : comp ? (
                           <>
-                            <TableCell data-visual-mask="currency" className="hidden md:table-cell">
+                            <TableCell className="hidden md:table-cell">
                               {comp.correction_total ? (
                                 <span className="text-info">
                                   {fmt.currency(comp.correction_total)}
@@ -352,10 +385,10 @@ export default function GovernmentFundingBillsPage() {
                                 '\u2014'
                               )}
                             </TableCell>
-                            <TableCell data-visual-mask="currency" className="hidden md:table-cell">
+                            <TableCell className="hidden md:table-cell">
                               {fmt.currency(comp.calculated_total)}
                             </TableCell>
-                            <TableCell data-visual-mask="currency" className="hidden md:table-cell">
+                            <TableCell className="hidden md:table-cell">
                               <span
                                 className={
                                   comp.difference < 0 ? 'text-destructive' : 'text-success'
@@ -378,8 +411,7 @@ export default function GovernmentFundingBillsPage() {
                             </TableCell>
                           </>
                         )}
-                        {/* The seeded file names carry the period they cover. */}
-                        <TableCell data-visual-mask="date" className="hidden text-sm md:table-cell">
+                        <TableCell className="hidden text-sm md:table-cell">
                           {item.file_name}
                         </TableCell>
                         <TableCell className="text-right">
