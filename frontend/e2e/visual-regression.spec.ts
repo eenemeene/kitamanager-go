@@ -7,6 +7,8 @@ import {
   resetBerlinFundingFromConfig,
   createTestOrg,
   deleteTestOrg,
+  createChildViaApi,
+  createChildContractViaApi,
 } from './utils/test-helpers';
 
 // Ensure English locale for consistent text rendering
@@ -468,22 +470,87 @@ test.describe('Visual Regression - Operations', () => {
     });
   });
 
-  // The weakest of these six, deliberately kept. Every cell is a count for a
-  // month, so the matrix masks into one block and its internal geometry is not
-  // compared at all. What is left is the page header, the section filter, and
-  // the two sticky left columns — where the care-type labels wrap, which is
-  // the part of this page that has actually broken before. A narrow test on a
-  // page that had none beats nothing, as long as nobody reads it as coverage
-  // of the matrix.
-  test('statistics occupancy page', async ({ page }) => {
-    await page.goto(`/organizations/${orgId}/statistics/occupancy`);
-    await page.waitForLoadState('load');
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('table').first()).toBeVisible({ timeout: 10000 });
+  // The occupancy matrix, on data the test owns.
+  //
+  // This was the weakest of the six pages when they were added: every column is
+  // a month and every cell a count for one, so against seeded data the whole
+  // matrix had to be masked and the snapshot compared little more than the page
+  // header. Worse, the window itself moved — the endpoint defaults to twelve
+  // months back and six ahead of the server's today.
+  //
+  // Both halves are fixed here. The organisation is created by the test and its
+  // children have fixed birthdates on contracts that start at a fixed date, and
+  // the window is pinned through the query string. A child's age on a fixed
+  // date is a fixed number, so which age-group row it lands in stops moving —
+  // which is what makes the counts comparable rather than maskable.
+  test.describe('statistics occupancy page', () => {
+    let occOrgId: number;
+    let occSectionId: number;
 
-    await shoot(page, 'statistics-occupancy.png', {
-      maxDiffPixelRatio: 0.02,
-      mask: dynamicMasks(page),
+    test.beforeAll(async ({ browser }) => {
+      const page = await browser.newPage();
+      await login(page);
+      const created = await createTestOrg(page, 'OccupancyVisual');
+      occOrgId = created.orgId;
+      occSectionId = created.sectionId;
+      // Three birthdates that land in three different age groups and stay
+      // there for the whole pinned window — 1, 2 and 4 years old at both ends
+      // of it — so the matrix has three populated rows and none of them moves
+      // between columns.
+      //
+      // All three predate 2024-01-01, which is where createChildWithContractViaApi
+      // starts the contract. The API rejects a contract beginning before the
+      // child was born, and rightly: a later birthdate here fails with
+      // "contract start date cannot be before birthdate".
+      // Contracts carry a care type. Without one the children are counted in
+      // the Total row and land in no age-group/care-type cell at all, which is
+      // how the first attempt at this produced a matrix of nothing but dashes.
+      for (const [name, birthdate, careType] of [
+        ['Mila', '2023-12-01', 'ganztag'],
+        ['Jonas', '2023-06-01', 'halbtag'],
+        ['Lena', '2021-05-05', 'ganztag'],
+      ] as const) {
+        const child = await createChildViaApi(page, occOrgId, {
+          first_name: name,
+          last_name: 'Beispiel',
+          gender: 'female',
+          birthdate,
+        });
+        await createChildContractViaApi(page, occOrgId, child.id, {
+          from: '2024-01-01T00:00:00Z',
+          section_id: occSectionId,
+          properties: { care_type: careType },
+        });
+      }
+      await page.close();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const page = await browser.newPage();
+      await login(page);
+      await deleteTestOrg(page, occOrgId).catch(() => {});
+      await page.close();
+    });
+
+    test('statistics occupancy page', async ({ page }) => {
+      // A three-month window keeps the matrix narrow enough to read, and the
+      // contracts the helper creates start in 2024, so all three children are
+      // enrolled throughout it.
+      await page.goto(
+        `/organizations/${occOrgId}/statistics/occupancy?from=2025-09-01&to=2025-11-30`
+      );
+      await page.waitForLoadState('load');
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('table').first()).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('[data-slot="skeleton"]')).toHaveCount(0, { timeout: 20000 });
+
+      await shoot(page, 'statistics-occupancy.png', {
+        maxDiffPixelRatio: 0.02,
+        // As with the bills page: the only string here the test cannot make
+        // deterministic is the name of the organisation it just created, which
+        // createTestOrg suffixes with a millisecond timestamp.
+        mask: [...dynamicMasks(page), page.locator('[data-testid="org-selector"]')],
+      });
     });
   });
 
