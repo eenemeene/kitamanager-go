@@ -8,7 +8,20 @@ on:
 
 env:
   GO_VERSION: '1.26.6'
-  MIN_COVERAGE: 35
+  # The floor the API suites must clear. Measured coverage is 70.6% and has
+  # been for every run sampled, because Go coverage is deterministic for
+  # identical code — there is no noise band to leave room for.
+  #
+  # It sat at 35 for long enough that it stopped meaning anything: coverage
+  # could have halved without CI noticing, which is the opposite of what a
+  # gate is for. 68 keeps a couple of points of headroom so that adding a
+  # modest untested path does not block unrelated work, while deleting a
+  # package's tests still trips it.
+  #
+  # Raise this when coverage rises. Never lower it to make a red build green
+  # — that converts the one number protecting the suites into a record of the
+  # worst it has ever been.
+  MIN_COVERAGE: 68
   # Disable the testcontainers Ryuk reaper. The unit suites start one
   # Postgres container per package (internal/testutil); `go test ./...`
   # runs those binaries in parallel, and the Ryuk handshake intermittently
@@ -98,7 +111,18 @@ jobs:
 
       - name: Check coverage threshold
         run: |
-          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          set -euo pipefail
+          COVERAGE=$(go tool cover -func=coverage.out | awk '/^total:/ {print $3}' | sed 's/%//')
+          # A figure that will not parse has to fail the step. `(( ))` treats an
+          # empty string as false, so the previous version passed the gate
+          # whenever the measurement itself broke - a missing coverage.out, a
+          # changed `go tool cover` format, a `grep total` that matched
+          # something else. A gate that goes quiet exactly when it cannot see is
+          # worse than no gate, because it still looks green.
+          if ! [[ "$COVERAGE" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+            echo "could not read a coverage figure from coverage.out (got: '${COVERAGE}')"
+            exit 1
+          fi
           echo "Total coverage: ${COVERAGE}%"
           if (( $(echo "$COVERAGE < ${{ env.MIN_COVERAGE }}" | bc -l) )); then
             echo "Coverage ${COVERAGE}% is below minimum threshold of ${{ env.MIN_COVERAGE }}%"
