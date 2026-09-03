@@ -72,6 +72,12 @@ export const queryKeys = {
       ['governmentFundingBillPeriods', orgId, 'compareLatest'] as const,
     compareRange: (orgId: number, from: string, to: string) =>
       ['governmentFundingBillPeriods', orgId, 'compareRange', from, to] as const,
+    // The range is part of the key because it is now part of the request: the
+    // server filters the listing, so two ranges are two different results.
+    listInRange: (orgId: number, from: string, to: string, search?: string) =>
+      search
+        ? (['governmentFundingBillPeriods', orgId, 'list', from, to, search] as const)
+        : (['governmentFundingBillPeriods', orgId, 'list', from, to] as const),
     unmatchedChildren: (orgId: number) =>
       ['governmentFundingBillPeriods', orgId, 'unmatchedChildren'] as const,
   },
