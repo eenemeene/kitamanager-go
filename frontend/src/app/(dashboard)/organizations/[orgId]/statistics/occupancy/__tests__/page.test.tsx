@@ -3,8 +3,12 @@ import OccupancyPage from '../page';
 import { apiClient } from '@/lib/api/client';
 import { renderWithProviders, createMockPaginatedResponse } from '@/test-utils';
 
+// The page reads its window from the query string, so useSearchParams has to
+// be here too — a file-level mock replaces the one in jest.setup.js wholesale
+// rather than extending it.
 jest.mock('next/navigation', () => ({
   useParams: () => ({ orgId: '1' }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 jest.mock('next-intl', () => ({

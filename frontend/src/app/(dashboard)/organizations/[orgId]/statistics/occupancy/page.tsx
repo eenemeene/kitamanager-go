@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,11 +14,29 @@ import { queryKeys } from '@/lib/api/queryKeys';
 import { LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
 import { OccupancyTable } from '@/components/charts/occupancy-table';
 
+/** A YYYY-MM-DD search parameter, or undefined if it is absent or malformed. */
+function dateParam(raw: string | null): string | undefined {
+  if (raw === null) return undefined;
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : undefined;
+}
+
 export default function OccupancyPage() {
   const params = useParams();
   const orgId = Number(params.orgId);
   const t = useTranslations();
+  const searchParams = useSearchParams();
   const [selectedSectionId, setSelectedSectionId] = useState<number | undefined>(undefined);
+
+  // The window is normally the server's default — twelve months back, six
+  // ahead — which moves with the calendar. from/to override it, using the same
+  // names the endpoint already takes, so a particular window can be linked to
+  // and reloaded. Omitting them keeps the previous behaviour exactly.
+  //
+  // There is no control for this on screen yet; the parameters exist so the
+  // window can be addressed at all. That is what lets a test compare this
+  // matrix, whose every column is a month and every cell a count for one.
+  const from = dateParam(searchParams.get('from'));
+  const to = dateParam(searchParams.get('to'));
 
   const { data: sections } = useQuery({
     queryKey: queryKeys.sections.list(orgId),
@@ -27,8 +45,8 @@ export default function OccupancyPage() {
   });
 
   const { data: occupancy, isLoading } = useQuery({
-    queryKey: queryKeys.statistics.occupancy(orgId, selectedSectionId),
-    queryFn: () => apiClient.getOccupancy(orgId, { sectionId: selectedSectionId }),
+    queryKey: queryKeys.statistics.occupancy(orgId, selectedSectionId, from, to),
+    queryFn: () => apiClient.getOccupancy(orgId, { sectionId: selectedSectionId, from, to }),
     enabled: !!orgId,
   });
 
