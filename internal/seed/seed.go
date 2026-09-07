@@ -514,6 +514,27 @@ type childCohort struct {
 //
 //nolint:gosec,cyclop // math/rand is fine for test data; complexity is inherent
 func seedChildren(db *gorm.DB, childService *service.ChildService, orgID uint, sections []*models.Section) ([]seededChild, error) {
+	// Dates here are offsets from now, on purpose. This is the seed's one
+	// genuinely load-bearing decision, and it reads like an oversight, so:
+	//
+	// The cohorts below are labelled Currently active, Alumni and Future, and
+	// they only mean that relative to today. Freeze them and the labels rot —
+	// the "future" children quietly become active, and the demo data stops
+	// demonstrating what it was written to demonstrate.
+	//
+	// Freezing them would not buy determinism either, which is the usual reason
+	// somebody reaches for it. The application asks the real clock for ages
+	// (which age-group row a child occupies), for active_on=today (the default
+	// filter on every list), for the current Kita year, and for the statistics
+	// window. A child with a fixed birthdate still slides between age groups as
+	// the months pass. You would need fixed data *and* a pinnable today, and
+	// models.SetNow is an in-process seam for Go tests — pinning a running
+	// server's clock means shipping a switch that makes it lie about the date,
+	// in a product that computes funding entitlements from dates.
+	//
+	// Tests that need determinism own their data and pin the *view* instead,
+	// through a URL parameter: ?kitaYear= on the bills page, ?from=&to= on
+	// occupancy. Neither depends on when it runs. Do that rather than this.
 	now := time.Now()
 	nest, nestfluechter, grosse := sections[0], sections[1], sections[2]
 
@@ -680,6 +701,8 @@ func seedISBJBillingData(db *gorm.DB, fundingStore *store.GovernmentFundingStore
 		return 0, fmt.Errorf("loading Berlin funding: %w", err)
 	}
 
+	// Relative on purpose; see the note in seedChildren. Six months of bills
+	// ending last month is only "recent billing history" if now moves.
 	now := time.Now()
 	billCount := 0
 	for monthsAgo := 6; monthsAgo >= 1; monthsAgo-- {
@@ -871,6 +894,7 @@ type empContractDef struct {
 //
 //nolint:cyclop // complexity is inherent in realistic test data definition
 func seedEmployees(db *gorm.DB, orgID uint, namedSections []*models.Section, defaultSection *models.Section, payPlanID uint, minijobPayPlanID uint) (int, int, error) {
+	// Relative on purpose; see the note in seedChildren.
 	now := time.Now()
 	currentKitaYear := kitaYearStartFor(now)
 
