@@ -446,7 +446,8 @@
     "exportYaml": "Export YAML",
     "importYaml": "Import YAML",
     "importing": "Importing...",
-    "importError": "Failed to import employees"
+    "importError": "Failed to import employees",
+    "importSuccess": "{count, plural, =1 {1 employee imported} other {# employees imported}}"
   },
   "gender": {
     "label": "Gender",
@@ -544,7 +545,8 @@
     "exportYaml": "Export YAML",
     "importYaml": "Import YAML",
     "importing": "Importing...",
-    "importError": "Failed to import children"
+    "importError": "Failed to import children",
+    "importSuccess": "{count, plural, =1 {1 child imported} other {# children imported}}"
   },
   "users": {
     "title": "Users",
@@ -629,7 +631,8 @@
     "contractStartPlaceholder": "Contract start date",
     "contractEndPlaceholder": "Contract end date",
     "from": "From",
-    "to": "To"
+    "to": "To",
+    "overlapsActiveContract": "These dates overlap the contract above. End it, or choose a period outside it."
   },
   "validation": {
     "required": "This field is required",

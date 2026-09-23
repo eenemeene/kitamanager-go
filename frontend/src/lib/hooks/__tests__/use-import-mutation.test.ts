@@ -13,6 +13,19 @@ jest.mock('@/lib/utils/show-error-toast', () => ({
   showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
 }));
 
+// The global next-intl mock in jest.setup.js drops the interpolation values, so
+// a message and the count it was given would look identical. This one keeps
+// them, which is the whole subject of the success-message test below.
+jest.mock('next-intl', () => ({
+  useTranslations: () => {
+    const t = (key: string, values?: Record<string, unknown>) =>
+      values === undefined ? key : `${key}|${JSON.stringify(values)}`;
+    t.has = () => false;
+    return t;
+  },
+  useLocale: () => 'en',
+}));
+
 describe('useImportMutation', () => {
   let queryClient: QueryClient;
   let wrapper: ReturnType<typeof createHookWrapper>;
@@ -30,7 +43,7 @@ describe('useImportMutation', () => {
   });
 
   it('invalidates all provided query keys on success', async () => {
-    const importFn = jest.fn().mockResolvedValue({});
+    const importFn = jest.fn().mockResolvedValue([{ id: 1 }]);
     const childrenKey = ['children', 1];
     const statisticsKey = ['statistics', 1];
 
@@ -39,7 +52,7 @@ describe('useImportMutation', () => {
         useImportMutation({
           importFn,
           invalidateQueryKeys: [childrenKey, statisticsKey],
-          resourceNameKey: 'children.title',
+          successMessageKey: 'children.importSuccess',
           errorMessageKey: 'children.importError',
         }),
       { wrapper }
@@ -67,7 +80,7 @@ describe('useImportMutation', () => {
         useImportMutation({
           importFn,
           invalidateQueryKeys: [['children', 1]],
-          resourceNameKey: 'children.title',
+          successMessageKey: 'children.importSuccess',
           errorMessageKey: 'children.importError',
         }),
       { wrapper }
@@ -101,7 +114,7 @@ describe('useImportMutation', () => {
         useImportMutation({
           importFn: jest.fn(),
           invalidateQueryKeys: [['children', 1]],
-          resourceNameKey: 'children.title',
+          successMessageKey: 'children.importSuccess',
           errorMessageKey: 'children.importError',
         }),
       { wrapper }
@@ -124,7 +137,7 @@ describe('useImportMutation', () => {
         useImportMutation({
           importFn: jest.fn(),
           invalidateQueryKeys: [['children', 1]],
-          resourceNameKey: 'children.title',
+          successMessageKey: 'children.importSuccess',
           errorMessageKey: 'children.importError',
         }),
       { wrapper }
@@ -134,14 +147,14 @@ describe('useImportMutation', () => {
   });
 
   it('handleFileChange fires the mutation with the picked file and resets the input', async () => {
-    const importFn = jest.fn().mockResolvedValue({});
+    const importFn = jest.fn().mockResolvedValue([{ id: 1 }]);
 
     const { result } = renderHook(
       () =>
         useImportMutation({
           importFn,
           invalidateQueryKeys: [['children', 1]],
-          resourceNameKey: 'children.title',
+          successMessageKey: 'children.importSuccess',
           errorMessageKey: 'children.importError',
         }),
       { wrapper }
@@ -171,6 +184,40 @@ describe('useImportMutation', () => {
     expect(target.value).toBe('');
   });
 
+  // Both importers upsert on name and birthdate, so a file re-imported to
+  // update rows that already exist creates nothing. The message therefore
+  // counts what the import settled and calls it an import -- announcing a
+  // creation named an operation that had not occurred.
+  it('reports how many rows the import settled, not a creation', async () => {
+    const importFn = jest.fn().mockResolvedValue([{ id: 1 }, { id: 2 }, { id: 3 }]);
+
+    const { result } = renderHook(
+      () =>
+        useImportMutation({
+          importFn,
+          invalidateQueryKeys: [['children', 1]],
+          successMessageKey: 'children.importSuccess',
+          errorMessageKey: 'children.importError',
+        }),
+      { wrapper }
+    );
+
+    act(() => {
+      result.current.mutation.mutate(new File(['payload'], 'kids.yaml', { type: 'text/yaml' }));
+    });
+
+    await waitFor(() => {
+      expect(result.current.mutation.isSuccess).toBe(true);
+    });
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'common.success',
+        description: 'children.importSuccess|{"count":3}',
+      })
+    );
+  });
+
   it('handleFileChange is a no-op when no file is selected', () => {
     const importFn = jest.fn();
 
@@ -179,7 +226,7 @@ describe('useImportMutation', () => {
         useImportMutation({
           importFn,
           invalidateQueryKeys: [['children', 1]],
-          resourceNameKey: 'children.title',
+          successMessageKey: 'children.importSuccess',
           errorMessageKey: 'children.importError',
         }),
       { wrapper }

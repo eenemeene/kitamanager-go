@@ -53,14 +53,13 @@ test.afterAll(async ({ browser }) => {
 });
 
 /**
- * Seeds one employee with an active contract and leaves the list filtered down
- * to it, so the returned row is the only one the assertions can match.
+ * Creates one employee with an active contract and opens the employees list.
  *
  * The list filters by `active_on=today`, which is why the contract is not
  * optional: an employee without one is created successfully and then does not
  * appear.
  */
-async function seedAndFind(page: Page, prefix: string) {
+async function seedEmployee(page: Page, prefix: string) {
   const firstName = uniqueName(prefix);
   const employee = await createEmployeeWithContractViaApi(page, orgId, {
     first_name: firstName,
@@ -71,12 +70,22 @@ async function seedAndFind(page: Page, prefix: string) {
 
   await page.goto(`/organizations/${orgId}/employees`);
   await page.waitForLoadState('load');
+  return { employee, firstName };
+}
 
-  // The search box is debounced, and the export buttons carry whatever the
-  // filters held at the moment they were clicked. Seeing the row is therefore
-  // not enough to know the search has landed -- with one employee in the
-  // organization the row is there either way -- so wait for the request that
-  // actually carries it.
+/**
+ * Seeds an employee and narrows the list to it, so the returned row is the only
+ * one the assertions can match.
+ *
+ * The wait is on the request rather than on the row: the search box is
+ * debounced, and with one employee in the organization the row is on screen
+ * either way, so seeing it proves nothing about whether the filter has landed.
+ * The one test that cares about that gap drives the box itself instead of
+ * calling this.
+ */
+async function seedAndFind(page: Page, prefix: string) {
+  const { employee, firstName } = await seedEmployee(page, prefix);
+
   const filtered = page.waitForResponse(
     (resp) => resp.url().includes('/employees?') && resp.url().includes('search=')
   );
@@ -163,7 +172,7 @@ test.describe('Employee row actions', () => {
     }
   });
 
-  test('add contract with the end-current box cleared is refused as an overlap', async ({
+  test('add contract with the end-current box cleared is stopped before it is sent', async ({
     page,
   }) => {
     skipWithoutRowActions(test, page, 'Add Contract');
@@ -176,23 +185,32 @@ test.describe('Employee row actions', () => {
       await expect(dialog).toBeVisible({ timeout: 5000 });
 
       // Clearing the box asks for a plain second contract instead of an
-      // amendment. The active one runs open-ended, so any second contract
-      // overlaps it — the server refuses, and the refusal has to reach the user
-      // with the dialog still holding what they typed.
+      // amendment. The active one runs open-ended and the dialog prefills
+      // tomorrow, so the request would always be refused as an overlap -- the
+      // form says so itself rather than spending a round trip to find out.
+      let posted = false;
+      page.on('request', (req) => {
+        if (req.url().includes('/contracts') && req.method() === 'POST') posted = true;
+      });
+
       await page.locator('#endCurrentContract').uncheck();
-      await expect(page.locator('#endCurrentContract')).not.toBeChecked();
+      await expect(dialog.getByTestId('overlap-warning')).toBeVisible();
 
-      const responsePromise = page.waitForResponse(
-        (resp) =>
-          resp.url().includes(`/employees/${employee.id}/contracts`) &&
-          resp.request().method() === 'POST'
-      );
-      await page.getByRole('button', { name: /save/i }).click();
+      const save = dialog.getByRole('button', { name: /save/i });
+      await expect(save).toBeDisabled();
 
-      expect((await responsePromise).status()).toBe(409);
-      await expect(dialog).toBeVisible();
-      await expect(page.getByText(/overlap/i).first()).toBeVisible({ timeout: 10000 });
+      // Backfilling a period that ends before the active contract began is the
+      // one thing unticking the box is good for, so the guard has to let it go.
+      await page.locator('#from').fill('2020-01-01');
+      await page.locator('#to').fill('2023-12-31');
+      await expect(dialog.getByTestId('overlap-warning')).toHaveCount(0);
+      await expect(save).toBeEnabled();
 
+      // And back again, so a re-armed overlap is caught rather than latched off.
+      await page.locator('#to').fill('');
+      await expect(save).toBeDisabled();
+
+      expect(posted).toBe(false);
       await page.goto(`/organizations/${orgId}/employees/${employee.id}/contracts`);
       await page.waitForLoadState('load');
       await expect(page.locator('tbody tr')).toHaveCount(1, { timeout: 10000 });
@@ -371,6 +389,25 @@ test.describe('Employee list export and import', () => {
     }
   });
 
+  test('export Excel carries a search typed but not yet debounced', async ({ page }) => {
+    const { employee, firstName } = await seedEmployee(page, 'RaceBtn');
+    try {
+      // Deliberately no wait between typing and clicking. The list is still
+      // showing everyone at this point, and the export used to go out unfiltered
+      // with it -- type a name, click inside the 300ms debounce window, receive
+      // a spreadsheet of the whole Kita. The button reads the box, so the file
+      // is the one person the user asked for.
+      const downloadPromise = page.waitForEvent('download');
+      await page.getByRole('textbox', { name: /search/i }).fill(firstName);
+      await page.getByRole('button', { name: /export excel/i }).click();
+      const download = await downloadPromise;
+
+      expect(new URL(download.url()).searchParams.get('search')).toBe(firstName);
+    } finally {
+      await deleteEmployeeViaApi(page, orgId, employee.id);
+    }
+  });
+
   test('export YAML downloads the employees file', async ({ page }) => {
     const { employee } = await seedAndFind(page, 'YamlBtn');
     try {
@@ -411,7 +448,10 @@ test.describe('Employee list export and import', () => {
         buffer: Buffer.from(exported, 'utf8'),
       });
 
-      await expect(page.getByText(/employees created successfully/i).first()).toBeVisible({
+      // What happened, not what was asked for: this file creates nothing, it
+      // updates the row it was exported from, and the message has to count
+      // rather than announce a creation.
+      await expect(page.getByText(/\d+ employees? imported/i).first()).toBeVisible({
         timeout: 15000,
       });
 

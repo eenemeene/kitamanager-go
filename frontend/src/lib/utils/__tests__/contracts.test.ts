@@ -1,6 +1,7 @@
 import {
   classifySchoolOverrun,
   compareDates,
+  periodsOverlap,
   getActiveContract,
   getContractStatus,
   getCurrentContract,
@@ -618,5 +619,45 @@ describe('classifySchoolOverrun', () => {
     jest.setSystemTime(new Date('2026-09-01'));
     expect(classifySchoolOverrun(null, schoolEnd)).toBeNull();
     expect(classifySchoolOverrun(undefined, schoolEnd)).toBeNull();
+  });
+});
+
+describe('periodsOverlap', () => {
+  const active = { from: '2024-01-01', to: null };
+
+  it('treats a missing end date as running forever', () => {
+    // The case the contract dialogs actually face: an ongoing contract, and a
+    // second one asked for at any later date. There is no date after the start
+    // of an open-ended period that does not overlap it.
+    expect(periodsOverlap({ from: '2030-01-01', to: null }, active)).toBe(true);
+    expect(periodsOverlap({ from: '2024-01-01', to: '2024-01-01' }, active)).toBe(true);
+  });
+
+  it('lets a period that ends before the other begins through', () => {
+    // Backfilling an earlier contract is the one thing unticking the box is
+    // good for, so it must not be blocked.
+    expect(periodsOverlap({ from: '2020-01-01', to: '2023-12-31' }, active)).toBe(false);
+  });
+
+  it('counts a shared boundary day as an overlap', () => {
+    // Same rule as the server's exclusion constraint: the ends are inclusive
+    // days, so touching on one date is a collision, not adjacency.
+    expect(periodsOverlap({ from: '2020-01-01', to: '2024-01-01' }, active)).toBe(true);
+    expect(
+      periodsOverlap({ from: '2023-06-01', to: '2023-12-31' }, { from: '2024-01-01', to: null })
+    ).toBe(false);
+  });
+
+  it('handles a closed period on both sides', () => {
+    const closed = { from: '2024-01-01', to: '2024-06-30' };
+    expect(periodsOverlap({ from: '2024-07-01', to: null }, closed)).toBe(false);
+    expect(periodsOverlap({ from: '2024-06-30', to: null }, closed)).toBe(true);
+  });
+
+  it('claims no overlap for an unparseable start date', () => {
+    // An empty start is the required-field validation's problem. Answering
+    // "overlaps" here would block the form on a message about the wrong thing.
+    expect(periodsOverlap({ from: '', to: null }, active)).toBe(false);
+    expect(periodsOverlap(active, { from: '', to: null })).toBe(false);
   });
 });

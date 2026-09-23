@@ -74,7 +74,7 @@ export default function ChildrenPage() {
   } = useImportMutation({
     importFn: (file) => apiClient.importChildren(orgId, file),
     invalidateQueryKeys: [queryKeys.children.all(orgId), queryKeys.statistics.all(orgId)],
-    resourceNameKey: 'children.title',
+    successMessageKey: 'children.importSuccess',
     errorMessageKey: 'children.importError',
   });
 
@@ -397,8 +397,13 @@ export default function ChildrenPage() {
             variant="outline"
             onClick={() => {
               window.open(
+                // `searchInput`, not the debounced `search`: this exports what the
+                // box says, and the box is what the user just typed. Reading the
+                // debounced value meant that typing a name and clicking Export
+                // inside the 300ms window silently exported the whole Kita
+                // instead of the one person on screen.
                 apiClient.getChildrenExportUrl(orgId, {
-                  search: search || undefined,
+                  search: searchInput || undefined,
                   section_id: sectionFilter ? String(sectionFilter) : undefined,
                   active_on: activeOnDate,
                 })
