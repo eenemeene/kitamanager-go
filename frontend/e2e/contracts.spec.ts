@@ -11,6 +11,7 @@ import {
   deleteChildViaApi,
   deleteEmployeeViaApi,
   createChildContractViaApi,
+  createChildWithContractViaApi,
   createEmployeeContractViaApi,
   getSectionsViaApi,
   getPayPlansViaApi,
@@ -283,6 +284,67 @@ test.describe('Child Contract Workflow - create child, add contract, move sectio
       await expect(contractRows).toHaveCount(2, { timeout: 10000 });
 
       await expect(page.getByText(/Full-Time/i).first()).toBeVisible();
+    } finally {
+      await deleteChildViaApi(page, orgId, child.id);
+    }
+  });
+
+  test('unticking "end current contract" stops an overlapping second contract before it is sent', async ({
+    page,
+  }) => {
+    skipWithoutRowActions(test, page, 'Add Contract');
+
+    const childName = uniqueName('ChildOverlap');
+    const child = await createChildWithContractViaApi(page, orgId, {
+      first_name: childName,
+      last_name: 'Guard',
+      gender: 'female',
+      // Early enough that the backfill below is not refused for starting before
+      // the child was born, which is a different guard in the same dialog.
+      birthdate: '2019-03-15',
+    });
+
+    try {
+      await page.goto(`/organizations/${orgId}/children`);
+      await page.waitForLoadState('load');
+      await page.getByPlaceholder(/Search/i).fill(childName);
+      await expect(page.getByText(childName)).toBeVisible({ timeout: 10000 });
+
+      const childRow = page.getByRole('row').filter({ hasText: childName });
+      await childRow.getByRole('button', { name: /Add Contract/i }).click();
+
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible({ timeout: 5000 });
+      await expect(page.getByText(/has an active contract/i)).toBeVisible({ timeout: 5000 });
+
+      let posted = false;
+      page.on('request', (req) => {
+        if (req.url().includes('/contracts') && req.method() === 'POST') posted = true;
+      });
+
+      // Unticked, the dialog asks for a plain second contract beside the
+      // open-ended active one, which the server refuses as an overlap. The form
+      // says so where the two controls that resolve it are, rather than spending
+      // a round trip to come back 409.
+      await page.locator('#endCurrentContract').uncheck();
+      await expect(dialog.getByTestId('overlap-warning')).toBeVisible();
+
+      const save = dialog.getByRole('button', { name: /Save/i });
+      await expect(save).toBeDisabled();
+
+      // Backfilling a period that ends before the active contract began is the
+      // one thing unticking the box is good for, so the guard has to let it go.
+      await page.locator('#from').fill('2020-01-01');
+      await page.locator('#to').fill('2023-12-31');
+      await expect(dialog.getByTestId('overlap-warning')).toHaveCount(0);
+      await expect(save).toBeEnabled();
+
+      // And back again, so a re-armed overlap is caught rather than latched off:
+      // no end date makes the backfill run forever, over the active contract.
+      await page.locator('#to').fill('');
+      await expect(save).toBeDisabled();
+
+      expect(posted).toBe(false);
     } finally {
       await deleteChildViaApi(page, orgId, child.id);
     }
