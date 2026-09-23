@@ -1,0 +1,40 @@
+# Vulnerabilities govulncheck reports that this repository has consciously
+# accepted, one OSV id per line. Consumed by scripts/govulncheck.sh.
+#
+# An entry here suppresses a REAL finding. Nothing in this file means "false
+# positive" — if a finding is wrong, the fix is a report to the Go vulnerability
+# database, not a line here. Every entry states what the exposure is, what
+# bounds it, and what has to happen for the line to be deleted.
+#
+# Format: the id, then any number of indented justification lines.
+
+GO-2026-6452
+  Panic via negative shared-string index in github.com/xuri/excelize.
+  Reproduced against v2.11.0, the latest release, by
+  internal/isbj/parse_malformed_test.go — this is a true positive.
+
+  The GitHub advisory (GHSA-fx5j-qcqg-grpf) records
+  "first_patched_version: 2.11.0" and is wrong: PR qax-os/excelize#2331 added
+  the negative bounds check to xlsxC.getValueFrom but not to
+  File.getFromStringItem (rows.go:359), which still tests only the upper
+  bound. The Go vulnerability database is the accurate one — it lists no fixed
+  version. Upstream master as of 2026-09-23 does not fix it either.
+
+  Exposure: an authenticated user holding GovernmentFundingBills:Create in an
+  organization uploads a workbook whose sharedStrings.xml exceeds
+  UnzipXMLSizeLimit (25 MB) and whose cell carries t="s" with a negative <v>.
+
+  Bounded by: internal/isbj now recovers the panic at the package boundary and
+  returns an ordinary error, which the service layer already maps to a 400.
+  gin.CustomRecovery (cmd/api/main.go) is the second net. No unauthenticated
+  path reaches the parser, and nothing is disclosed — the failure mode was a
+  panic, not a memory read.
+
+  Why suppressed rather than fixed: govulncheck is a static call-graph
+  analysis. It flags the call to GetRows, and recovering the panic does not
+  remove that call. There is no version to upgrade to and no way to parse
+  xlsx without GetRows, so the finding cannot be cleared by any change here.
+
+  Delete this entry when excelize releases a version that bounds-checks
+  getFromStringItem. scripts/govulncheck.sh warns once the finding stops
+  appearing, which is the signal that the release has landed.

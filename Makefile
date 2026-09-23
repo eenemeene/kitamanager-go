@@ -134,6 +134,12 @@ api-run:
 api-lint:
 	golangci-lint run ./...
 
+# govulncheck, gated by .govulncheck-allow. See scripts/govulncheck.sh for why
+# the gate exists: govulncheck has no ignore mechanism, so one unfixable
+# upstream advisory otherwise reddens every commit and every PR indefinitely.
+api-vulncheck:
+	scripts/govulncheck.sh
+
 # Run all API tests (unit, integration, contract - requires database)
 api-test-all: api-test-unit api-test-integration api-test-contract
 
