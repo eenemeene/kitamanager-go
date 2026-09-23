@@ -361,11 +361,16 @@ export async function getPayPlansViaApi(
  */
 export async function getEmployeesViaApi(
   page: Page,
-  orgId: number
+  orgId: number,
+  options?: { search?: string }
 ): Promise<Array<{ id: number; first_name: string; last_name: string }>> {
+  const qs = new URLSearchParams({ limit: '100' });
+  if (options?.search) {
+    qs.set('search', options.search);
+  }
   const data = await apiRequest<{
     data: Array<{ id: number; first_name: string; last_name: string }>;
-  }>(page, 'GET', `/api/v1/organizations/${orgId}/employees?limit=100`);
+  }>(page, 'GET', `/api/v1/organizations/${orgId}/employees?${qs.toString()}`);
   if (!Array.isArray(data.data)) {
     throw new Error(`getEmployeesViaApi: response missing data array for org ${orgId}`);
   }
