@@ -234,25 +234,72 @@ func enforceWorkbookLimits(f *excelize.File) error {
 	return nil
 }
 
-func OpenSenatsabrechnung(dateiname string) (*excelize.File, error) {
-	f, err := excelize.OpenFile(dateiname, xlsxOpenOptions())
-	if err != nil {
+// recoverMalformedWorkbook turns a panic raised anywhere inside excelize into
+// an ordinary error on the named return values.
+//
+// Uploaded workbooks are untrusted input, and excelize's habit on a malformed
+// one is to panic rather than return an error. GO-2026-6452 is a live example
+// with no fixed release: a cell typed as a shared string whose index is
+// negative reaches an unguarded slice index in getFromStringItem. The guarded
+// path in getValueFrom was fixed in v2.11.0, but the streaming path was not,
+// and it is the one we take — excelize streams the shared-string table to a
+// temp file once it exceeds UnzipXMLSizeLimit, which xlsxOpenOptions sets to
+// 25 MB. isbj/parse_malformed_test.go builds exactly that workbook.
+//
+// gin.CustomRecovery would turn the panic into a 500. Catching it at the
+// package boundary makes it a 400 with a message instead, and keeps a future
+// non-HTTP caller — a CLI import, a background worker — from dying outright on
+// a file a Kita uploaded.
+//
+// This does not clear the govulncheck finding, which is a static call-graph
+// analysis: we still call GetRows. See .govulncheck-allow.
+func recoverMalformedWorkbook(err *error) {
+	if r := recover(); r != nil {
+		*err = fmt.Errorf("malformed spreadsheet: %v", r)
+	}
+}
+
+func OpenSenatsabrechnung(dateiname string) (f *excelize.File, err error) {
+	// Deferred first, so it runs last: recoverMalformedWorkbook has already
+	// turned any panic into an error by the time this sees it, and f may
+	// still hold excelize's open handle and temp files.
+	defer func() {
+		if err != nil && f != nil {
+			_ = f.Close()
+			f = nil
+		}
+	}()
+	defer recoverMalformedWorkbook(&err)
+
+	if f, err = excelize.OpenFile(dateiname, xlsxOpenOptions()); err != nil {
 		return nil, err
 	}
-	if err := enforceWorkbookLimits(f); err != nil {
-		_ = f.Close()
-		return nil, err
+	// Returns f rather than nil so the cleanup above closes it exactly once;
+	// the caller still receives nil, because that defer clears it.
+	if err = enforceWorkbookLimits(f); err != nil {
+		return f, err
 	}
 	return f, nil
 }
 
 // ParseFromReader parses a Senatsabrechnung from an io.Reader (e.g., HTTP upload body).
-func ParseFromReader(r io.Reader) (*SenatsabrechnungOutput, error) {
-	f, err := excelize.OpenReader(r, xlsxOpenOptions())
-	if err != nil {
+func ParseFromReader(r io.Reader) (out *SenatsabrechnungOutput, err error) {
+	var f *excelize.File
+	// Same ordering as above, and deferred before OpenReader because that
+	// call can panic on a malformed archive too.
+	defer func() {
+		if f != nil {
+			_ = f.Close()
+		}
+		if err != nil {
+			out = nil
+		}
+	}()
+	defer recoverMalformedWorkbook(&err)
+
+	if f, err = excelize.OpenReader(r, xlsxOpenOptions()); err != nil {
 		return nil, fmt.Errorf("opening excel from reader: %w", err)
 	}
-	defer func() { _ = f.Close() }()
 
 	if err := enforceWorkbookLimits(f); err != nil {
 		return nil, err
