@@ -27,6 +27,7 @@ import type { EmployeeContractFormData } from '@/lib/schemas';
 import { FormErrorSummary } from '@/components/forms/form-error-summary';
 import type { InvalidParam } from '@/lib/api/problem';
 import { useFormatters } from '@/hooks/use-formatters';
+import { periodsOverlap } from '@/lib/utils/contracts';
 
 interface ActiveContractInfo {
   contract: EmployeeContract;
@@ -73,6 +74,18 @@ export function EmployeeContractDialog({
   const t = useTranslations();
 
   const fmt = useFormatters();
+
+  // Leaving the box unticked asks for a plain second contract beside the active
+  // one. The server refuses any that overlaps, and with an open-ended active
+  // contract the date this dialog prefills always does -- so the choice as
+  // offered led straight into a 409 that only arrived after a round trip.
+  // Saying so here keeps the refusal in the form, next to the two controls that
+  // resolve it: tick the box, or move the dates outside the active period.
+  const overlapsActiveContract =
+    !!activeContractInfo &&
+    !activeContractInfo.endCurrentContract &&
+    periodsOverlap({ from: watch('from'), to: watch('to') || null }, activeContractInfo.contract);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
@@ -123,6 +136,14 @@ export function EmployeeContractDialog({
                     {t('contracts.endCurrentContract')}
                   </label>
                 </div>
+                {/* No `role="alert"` of its own: the surrounding Alert is
+                    already a live region, and nesting a second one inside it
+                    announces twice and makes `getByRole('alert')` ambiguous. */}
+                {overlapsActiveContract && (
+                  <p data-testid="overlap-warning" className="text-destructive text-sm">
+                    {t('contracts.overlapsActiveContract')}
+                  </p>
+                )}
               </AlertDescription>
             </Alert>
           )}
@@ -262,7 +283,7 @@ export function EmployeeContractDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {t('common.cancel')}
             </Button>
-            <Button type="submit" disabled={isSaving}>
+            <Button type="submit" disabled={isSaving || overlapsActiveContract}>
               {t('common.save')}
             </Button>
           </DialogFooter>

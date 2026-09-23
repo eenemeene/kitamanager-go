@@ -29,7 +29,12 @@ import { useFundingAttributes } from '@/lib/hooks/use-funding-attributes';
 import { childContractSchema, type ChildContractFormData } from '@/lib/schemas';
 import { formatDateForInput, toLocalDateString } from '@/lib/utils/formatting';
 import { propertiesToLabelKeys } from '@/lib/utils/contract-properties';
-import { getActiveContract, isDateBefore, todayBerlinDate } from '@/lib/utils/contracts';
+import {
+  getActiveContract,
+  isDateBefore,
+  periodsOverlap,
+  todayBerlinDate,
+} from '@/lib/utils/contracts';
 import { suggestContractEnd } from '@/lib/utils/school-enrollment';
 import type { Child, Section, ContractProperties } from '@/lib/api/types';
 import { validationTiming } from '@/lib/forms/validation-timing';
@@ -104,6 +109,15 @@ export function ChildContractCreateDialog({
   );
 
   const activeContract = child ? getActiveContract(child.contracts) : null;
+
+  // Same guard as the employee dialog: unticking the box asks for a plain
+  // second contract, and the server refuses any that overlaps the active one.
+  // Reported here rather than as a 409 toast, beside the two controls that fix
+  // it.
+  const overlapsActiveContract =
+    !!activeContract &&
+    !endCurrentContract &&
+    periodsOverlap({ from: contractFromDate, to: contractToDate || null }, activeContract);
 
   // Track whether default funding properties have been applied for this dialog
   // session, so a fresh defaultProperties reference can't re-trigger a reset.
@@ -229,6 +243,14 @@ export function ChildContractCreateDialog({
                     {t('contracts.endCurrentContract')}
                   </label>
                 </div>
+                {/* No `role="alert"` of its own: the surrounding Alert is
+                    already a live region, and nesting a second one inside it
+                    announces twice and makes `getByRole('alert')` ambiguous. */}
+                {overlapsActiveContract && (
+                  <p data-testid="overlap-warning" className="text-destructive text-sm">
+                    {t('contracts.overlapsActiveContract')}
+                  </p>
+                )}
               </AlertDescription>
             </Alert>
           )}
@@ -298,7 +320,7 @@ export function ChildContractCreateDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {t('common.cancel')}
             </Button>
-            <Button type="submit" disabled={isSaving}>
+            <Button type="submit" disabled={isSaving || overlapsActiveContract}>
               {t('common.save')}
             </Button>
           </DialogFooter>

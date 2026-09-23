@@ -446,7 +446,8 @@
     "exportYaml": "YAML Export",
     "importYaml": "YAML Import",
     "importing": "Wird importiert…",
-    "importError": "Fehler beim Importieren der Mitarbeiter"
+    "importError": "Fehler beim Importieren der Mitarbeiter",
+    "importSuccess": "{count, plural, =1 {1 Mitarbeiter importiert} other {# Mitarbeiter importiert}}"
   },
   "gender": {
     "label": "Geschlecht",
@@ -544,7 +545,8 @@
     "exportYaml": "YAML Export",
     "importYaml": "YAML Import",
     "importing": "Wird importiert…",
-    "importError": "Fehler beim Importieren der Kinder"
+    "importError": "Fehler beim Importieren der Kinder",
+    "importSuccess": "{count, plural, =1 {1 Kind importiert} other {# Kinder importiert}}"
   },
   "users": {
     "title": "Benutzer",
@@ -629,7 +631,8 @@
     "contractStartPlaceholder": "Vertragsbeginn",
     "contractEndPlaceholder": "Vertragsende",
     "from": "Von",
-    "to": "Bis"
+    "to": "Bis",
+    "overlapsActiveContract": "Dieser Zeitraum überschneidet sich mit dem Vertrag oben. Beenden Sie ihn, oder wählen Sie einen Zeitraum außerhalb."
   },
   "validation": {
     "required": "Dieses Feld ist erforderlich",

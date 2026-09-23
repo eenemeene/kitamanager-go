@@ -71,7 +71,7 @@ export default function EmployeesPage() {
   } = useImportMutation({
     importFn: (file) => apiClient.importEmployees(orgId, file),
     invalidateQueryKeys: [queryKeys.employees.all(orgId), queryKeys.statistics.all(orgId)],
-    resourceNameKey: 'employees.title',
+    successMessageKey: 'employees.importSuccess',
     errorMessageKey: 'employees.importError',
   });
 
@@ -378,8 +378,13 @@ export default function EmployeesPage() {
             variant="outline"
             onClick={() => {
               window.open(
+                // `searchInput`, not the debounced `search`: this exports what the
+                // box says, and the box is what the user just typed. Reading the
+                // debounced value meant that typing a name and clicking Export
+                // inside the 300ms window silently exported the whole Kita
+                // instead of the one person on screen.
                 apiClient.getEmployeesExportUrl(orgId, {
-                  search: search || undefined,
+                  search: searchInput || undefined,
                   staff_category: staffCategoryFilter || undefined,
                   active_on: toLocalDateString(activeOn),
                 })

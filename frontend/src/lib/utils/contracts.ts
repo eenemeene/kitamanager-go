@@ -187,3 +187,29 @@ export function compareDates(a: string, b: string): number {
 export function isDateBefore(a: string, b: string): boolean {
   return toUTCDate(a) < toUTCDate(b);
 }
+
+/**
+ * Do two contract periods cover any calendar day in common?
+ *
+ * Both ends are inclusive days, and a missing `to` means the period never ends
+ * — so an open-ended contract overlaps everything starting on or after its
+ * `from`. That is the same rule the server's exclusion constraint applies, which
+ * is the point: the dialogs use this to stop a submission the database is going
+ * to refuse anyway, instead of spending a round trip to find out.
+ *
+ * A period whose `from` does not parse is not claimed to overlap anything. An
+ * empty start date is the required-field validation's business, and answering
+ * "yes, overlaps" for it would block the form on a message about the wrong
+ * problem.
+ */
+export function periodsOverlap(
+  a: { from: string; to?: string | null },
+  b: { from: string; to?: string | null }
+): boolean {
+  const aFrom = toUTCDate(a.from);
+  const bFrom = toUTCDate(b.from);
+  if (Number.isNaN(aFrom) || Number.isNaN(bFrom)) return false;
+  const aTo = a.to ? toUTCDate(a.to) : Infinity;
+  const bTo = b.to ? toUTCDate(b.to) : Infinity;
+  return aFrom <= bTo && bFrom <= aTo;
+}
