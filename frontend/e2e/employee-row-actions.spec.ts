@@ -18,7 +18,8 @@ import { skipWithoutRowActions } from './utils/viewport';
  * The row renders four buttons — contract history, add contract, edit, delete —
  * and the toolbar three more that act on the employees already in the list:
  * export Excel (which carries the list's own search and filters), export YAML,
- * import YAML. This file drives all seven.
+ * import YAML. This file drives all seven, plus the staff-category filter that
+ * decides which employees the row actions are reachable for at all.
  *
  * `employees.spec.ts` already drives edit-and-save and delete-and-confirm as the
  * list's CRUD arc, so those two happy paths are not repeated here. What this file
@@ -302,7 +303,10 @@ test.describe('Employee row actions', () => {
   });
 
   test('confirming the delete removes the employee', async ({ page }) => {
-    const { employee, firstName, row } = await seedAndFind(page, 'DelConfirmed');
+    // No `finally` cleanup here, unlike every other test in this file: the point
+    // of this one is that the employee is gone, and a second delete would 404 and
+    // fail the teardown rather than the test.
+    const { firstName, row } = await seedAndFind(page, 'DelConfirmed');
     await row.getByRole('button', { name: /^delete$/i }).click();
 
     const confirm = page.getByRole('alertdialog');
@@ -314,9 +318,31 @@ test.describe('Employee row actions', () => {
 
     const stored = await getEmployeesViaApi(page, orgId, { search: firstName });
     expect(stored).toHaveLength(0);
-    // No cleanup: the point of the test is that the employee is gone. A second
-    // delete would 404 and fail the teardown, not the test.
-    expect(employee.id).toBeGreaterThan(0);
+  });
+
+  test('the staff-category filter narrows the list to matching employees', async ({ page }) => {
+    const { employee, firstName } = await seedAndFind(page, 'CatFilter');
+    try {
+      const filter = page.getByRole('combobox', { name: /filter by category/i });
+
+      // The seeded contract is qualified, so the other two categories have to
+      // hide it and its own has to bring it back. Asserting only that the right
+      // category shows it would pass against a filter that never filtered.
+      await filter.click();
+      await page.getByRole('option', { name: /supplementary staff/i }).click();
+      await expect(page.getByText(/no results found/i)).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(firstName)).toHaveCount(0);
+
+      await filter.click();
+      await page.getByRole('option', { name: /qualified staff/i }).click();
+      await expect(page.getByText(firstName)).toBeVisible({ timeout: 10000 });
+
+      await filter.click();
+      await page.getByRole('option', { name: /^all$/i }).click();
+      await expect(page.getByText(firstName)).toBeVisible({ timeout: 10000 });
+    } finally {
+      await deleteEmployeeViaApi(page, orgId, employee.id);
+    }
   });
 });
 
@@ -367,16 +393,13 @@ test.describe('Employee list export and import', () => {
       // guaranteed to be in whatever shape the importer expects, and it makes
       // the two endpoints assert against each other rather than against a
       // fixture that goes stale when the schema moves.
-      const exported = await page.evaluate(
-        async (id) => {
-          const resp = await fetch(`/api/v1/organizations/${id}/employees/export/yaml`, {
-            credentials: 'same-origin',
-          });
-          if (!resp.ok) throw new Error(`export failed: ${resp.status}`);
-          return resp.text();
-        },
-        orgId
-      );
+      const exported = await page.evaluate(async (id) => {
+        const resp = await fetch(`/api/v1/organizations/${id}/employees/export/yaml`, {
+          credentials: 'same-origin',
+        });
+        if (!resp.ok) throw new Error(`export failed: ${resp.status}`);
+        return resp.text();
+      }, orgId);
       expect(exported).toContain(firstName);
 
       const chooserPromise = page.waitForEvent('filechooser');
