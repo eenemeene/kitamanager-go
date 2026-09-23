@@ -351,30 +351,10 @@ func SeedTestData(cfg *config.Config, db *gorm.DB, imp *importer.GovernmentFundi
 	if err := db.Create(payPeriod).Error; err != nil {
 		return err
 	}
-	payEntries := []struct {
-		grade        string
-		step         int
-		amount       int
-		stepMinYears *int
-	}{
-		{"S8a", 1, 314847, intPtr(0)}, {"S8a", 2, 329947, intPtr(1)}, {"S8a", 3, 350089, intPtr(3)},
-		{"S8a", 4, 365134, intPtr(6)}, {"S8a", 5, 385229, intPtr(10)}, {"S8a", 6, 398317, intPtr(15)},
-		{"S8b", 1, 339902, intPtr(0)}, {"S8b", 2, 354655, intPtr(1)}, {"S8b", 3, 370125, intPtr(3)},
-		{"S8b", 4, 385592, intPtr(6)}, {"S8b", 5, 401058, intPtr(10)}, {"S8b", 6, 416526, intPtr(15)},
-		{"S4", 1, 267400, intPtr(0)}, {"S4", 2, 282700, intPtr(1)}, {"S4", 3, 298000, intPtr(3)},
-		{"S4", 4, 313300, intPtr(6)}, {"S4", 5, 328600, intPtr(10)}, {"S4", 6, 343900, intPtr(15)},
-		{"S9", 1, 344800, intPtr(0)}, {"S9", 2, 360100, intPtr(1)}, {"S9", 3, 385200, intPtr(3)},
-		{"S9", 4, 400500, intPtr(6)}, {"S9", 5, 420700, intPtr(10)}, {"S9", 6, 435000, intPtr(15)},
-	}
-	for _, e := range payEntries {
-		entry := &models.PayPlanEntry{
-			PeriodID:      payPeriod.ID,
-			Grade:         e.grade,
-			Step:          e.step,
-			MonthlyAmount: e.amount,
-			StepMinYears:  e.stepMinYears,
-		}
-		if err := db.Create(entry).Error; err != nil {
+	payEntries := tvoedSuEEntries()
+	for _, entry := range payEntries {
+		entry.PeriodID = payPeriod.ID
+		if err := db.Create(&entry).Error; err != nil {
 			return err
 		}
 	}
@@ -872,11 +852,40 @@ func buildBillPeriod(orgID uint, billDate time.Time, fundingPeriod *models.Gover
 	}
 }
 
-// empDef defines an employee and their contract history.
+// tvoedSuEEntries is the TVöD-SuE ladder the demo Kita pays on: four grades,
+// six steps each, with StepMinYears carrying the 0/1/3/6/10/15-year rule that
+// drives the step-promotion page. Split out of seedOrganization so the
+// employee table can be checked against the same ladder the seeder writes,
+// rather than a copy of it that can drift.
+func tvoedSuEEntries() []models.PayPlanEntry {
+	e := func(grade string, step, amount, minYears int) models.PayPlanEntry {
+		return models.PayPlanEntry{
+			Grade:         grade,
+			Step:          step,
+			MonthlyAmount: amount,
+			StepMinYears:  intPtr(minYears),
+		}
+	}
+	return []models.PayPlanEntry{
+		e("S8a", 1, 314847, 0), e("S8a", 2, 329947, 1), e("S8a", 3, 350089, 3),
+		e("S8a", 4, 365134, 6), e("S8a", 5, 385229, 10), e("S8a", 6, 398317, 15),
+		e("S8b", 1, 339902, 0), e("S8b", 2, 354655, 1), e("S8b", 3, 370125, 3),
+		e("S8b", 4, 385592, 6), e("S8b", 5, 401058, 10), e("S8b", 6, 416526, 15),
+		e("S4", 1, 267400, 0), e("S4", 2, 282700, 1), e("S4", 3, 298000, 3),
+		e("S4", 4, 313300, 6), e("S4", 5, 328600, 10), e("S4", 6, 343900, 15),
+		e("S9", 1, 344800, 0), e("S9", 2, 360100, 1), e("S9", 3, 385200, 3),
+		e("S9", 4, 400500, 6), e("S9", 5, 420700, 10), e("S9", 6, 435000, 15),
+	}
+}
+
+// empDef defines an employee and their contract history. ageYears is an age
+// rather than a birth year for the same reason the contracts are offsets:
+// a frozen year ages the whole staff a year every year, and a Kita seeded
+// with nobody under fifty stops looking like a Kita.
 type empDef struct {
 	firstName string
 	lastName  string
-	birthYear int
+	ageYears  int
 	contracts []empContractDef
 }
 
@@ -890,105 +899,127 @@ type empContractDef struct {
 	sectionIdx    int // 0=Nest, 1=Nestflüchter, 2=Große, -1=default
 }
 
-// seedEmployees creates ~20 employees proportional to a ~60-child Kita.
+// employeeDefs is the demo Kita's staff: ~20 employees proportional to a
+// ~60-child Kita, as of the given date.
 //
-//nolint:cyclop // complexity is inherent in realistic test data definition
-func seedEmployees(db *gorm.DB, orgID uint, namedSections []*models.Section, defaultSection *models.Section, payPlanID uint, minijobPayPlanID uint) (int, int, error) {
-	// Relative on purpose; see the note in seedChildren.
-	now := time.Now()
+// Tenures are offsets from today, for the reason spelled out in seedChildren,
+// plus one specific to this table: the step-promotion page is driven entirely
+// by years of service against PayPlanEntry.StepMinYears. Fixed start dates
+// make that page drift — everyone creeps up the ladder as real time passes,
+// so an employee seeded as comfortably mid-step eventually shows up as due,
+// and nothing ever bumps their step to clear it. Offsets hold each employee
+// at the tenure they were written to have, so the page shows the same three
+// promotions whenever you seed.
+func employeeDefs(now time.Time) []empDef {
 	currentKitaYear := kitaYearStartFor(now)
 
-	d := func(year, month, day int) time.Time {
-		return time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
+	// ago returns a contract start that many years and months back, snapped to
+	// the 1st — Kita contracts start on the 1st of a month.
+	ago := func(years, months int) time.Time {
+		return firstOfMonth(now.AddDate(-years, -months, 0))
 	}
-	tp := func(t time.Time) *time.Time { return &t }
+	// until ends a contract on the last day of the month before start, either
+	// because the next contract begins then or because the employee left.
+	until := func(start time.Time) *time.Time {
+		end := start.AddDate(0, 0, -1)
+		return &end
+	}
 
-	employees := []empDef{
+	// TVöD-SuE steps unlock at 0/1/3/6/10/15 years (see the pay plan above).
+	// Most rows sit at the step their tenure earns; the three marked "due"
+	// sit one below it, and a few sit above it because prior experience was
+	// credited on hire, which is both realistic and what keeps the page from
+	// being a list of everyone.
+	return []empDef{
 		// ===== Nest section (3 active) =====
-		{"Anna", "Müller", 1988, []empContractDef{
-			{"qualified", "S8a", 4, 39, d(2020, 3, 1), nil, 0},
+		{"Anna", "Müller", 38, []empContractDef{
+			{"qualified", "S8a", 4, 39, ago(6, 8), nil, 0},
 		}},
-		{"Thomas", "Schmidt", 1995, []empContractDef{
-			{"qualified", "S8a", 2, 39, d(2023, 8, 1), nil, 0},
+		{"Thomas", "Schmidt", 31, []empContractDef{
+			{"qualified", "S8a", 2, 39, ago(3, 2), nil, 0}, // due: 3 years → step 3
 		}},
-		{"Maria", "Weber", 1990, []empContractDef{
-			{"supplementary", "S4", 3, 39, d(2022, 1, 15), nil, 0},
+		{"Maria", "Weber", 36, []empContractDef{
+			{"supplementary", "S4", 3, 39, ago(4, 8), nil, 0},
 		}},
 
 		// ===== Nestflüchter section (4 active) =====
-		{"Stefan", "Meyer", 1980, []empContractDef{
-			{"qualified", "S8a", 5, 39, d(2018, 8, 1), nil, 1},
+		{"Stefan", "Meyer", 46, []empContractDef{
+			{"qualified", "S8a", 5, 39, ago(8, 2), nil, 1}, // hired above the ladder
 		}},
-		{"Sabine", "Wagner", 1991, []empContractDef{
-			{"qualified", "S8a", 3, 39, d(2022, 8, 1), nil, 1},
+		{"Sabine", "Wagner", 35, []empContractDef{
+			{"qualified", "S8a", 3, 39, ago(4, 2), nil, 1},
 		}},
-		{"Martin", "Becker", 1993, []empContractDef{
-			{"qualified", "S8b", 2, 39, d(2023, 9, 1), nil, 1},
+		{"Martin", "Becker", 33, []empContractDef{
+			{"qualified", "S8b", 2, 39, ago(3, 1), nil, 1}, // due: 3 years → step 3
 		}},
-		{"Petra", "Schulz", 1986, []empContractDef{
-			{"supplementary", "S4", 2, 25, d(2024, 2, 1), nil, 1},
+		{"Petra", "Schulz", 40, []empContractDef{
+			{"supplementary", "S4", 2, 25, ago(2, 8), nil, 1},
 		}},
 
 		// ===== Große section (6 active) =====
-		{"Andreas", "Hoffmann", 1975, []empContractDef{
-			{"qualified", "S8a", 6, 39, d(2015, 8, 1), nil, 2},
+		{"Andreas", "Hoffmann", 51, []empContractDef{
+			{"qualified", "S8a", 6, 39, ago(11, 2), nil, 2}, // hired above the ladder
 		}},
-		{"Claudia", "Koch", 1989, []empContractDef{
-			{"qualified", "S8a", 3, 39, d(2021, 3, 1), nil, 2},
+		{"Claudia", "Koch", 37, []empContractDef{
+			{"qualified", "S8a", 3, 39, ago(5, 7), nil, 2},
 		}},
-		{"Susanne", "Braun", 1987, []empContractDef{
-			{"qualified", "S9", 3, 39, d(2021, 8, 1), nil, 2},
+		{"Susanne", "Braun", 39, []empContractDef{
+			{"qualified", "S9", 3, 39, ago(5, 2), nil, 2},
 		}},
-		{"Christian", "Schröder", 1985, []empContractDef{
-			{"supplementary", "S4", 4, 39, d(2020, 1, 1), nil, 2},
+		{"Christian", "Schröder", 41, []empContractDef{
+			{"supplementary", "S4", 4, 39, ago(6, 9), nil, 2},
 		}},
-		{"Markus", "Schmitt", 1991, []empContractDef{
-			{"qualified", "S8a", 3, 39, d(2022, 3, 1), nil, 2},
+		{"Markus", "Schmitt", 35, []empContractDef{
+			{"qualified", "S8a", 3, 39, ago(4, 7), nil, 2},
 		}},
 		// Deputy/coordinator
-		{"Katrin", "Klein", 1982, []empContractDef{
-			{"qualified", "S9", 5, 39, d(2016, 8, 1), nil, 2},
+		{"Katrin", "Klein", 44, []empContractDef{
+			{"qualified", "S9", 5, 39, ago(10, 2), nil, 2},
 		}},
 
 		// ===== Cross-section / support (3 active) =====
-		{"Birgit", "Wolf", 1978, []empContractDef{
-			{"non_pedagogical", "S4", 3, 20, d(2022, 4, 1), nil, -1},
+		{"Birgit", "Wolf", 48, []empContractDef{
+			{"non_pedagogical", "S4", 3, 20, ago(4, 6), nil, -1},
 		}},
-		{"Inge", "Schwarz", 1970, []empContractDef{
-			{"non_pedagogical", "S4", 5, 20, d(2018, 1, 1), nil, -1},
+		// Part-time, so her promotion exercises the pro-rata + employer
+		// contribution arithmetic rather than a straight table lookup.
+		{"Inge", "Schwarz", 56, []empContractDef{
+			{"non_pedagogical", "S4", 4, 20, ago(10, 9), nil, -1}, // due: 10 years → step 5
 		}},
-		{"Gisela", "Peters", 1965, []empContractDef{
-			{"non_pedagogical", "Minijob", 1, 10, d(2023, 4, 1), nil, -1},
+		{"Gisela", "Peters", 61, []empContractDef{
+			{"non_pedagogical", "Minijob", 1, 10, ago(3, 5), nil, -1},
 		}},
 
 		// ===== Former employees =====
-		{"Jürgen", "Lang", 1983, []empContractDef{
-			{"qualified", "S8a", 3, 39, d(2019, 2, 1), tp(d(2022, 7, 31)), 1},
-			{"qualified", "S8a", 4, 39, d(2022, 8, 1), tp(d(2025, 1, 31)), 2},
+		{"Jürgen", "Lang", 43, []empContractDef{
+			{"qualified", "S8a", 3, 39, ago(7, 7), until(ago(4, 1)), 1},
+			{"qualified", "S8a", 4, 39, ago(4, 1), until(ago(1, 8)), 2},
 		}},
-		{"Wolfgang", "Krüger", 1990, []empContractDef{
-			{"qualified", "S8b", 2, 39, d(2021, 8, 1), tp(d(2024, 7, 31)), 0},
+		{"Wolfgang", "Krüger", 36, []empContractDef{
+			{"qualified", "S8b", 2, 39, ago(5, 1), until(ago(2, 2)), 0},
 		}},
-		{"Renate", "Meier", 1963, []empContractDef{
-			{"qualified", "S8a", 6, 39, d(2010, 8, 1), tp(d(2023, 7, 31)), 2},
+		{"Renate", "Meier", 63, []empContractDef{
+			{"qualified", "S8a", 6, 39, ago(16, 1), until(ago(3, 2)), 2},
 		}},
 
 		// ===== Upcoming employees =====
-		{"Lena", "Hofmann", 1999, []empContractDef{
-			{"qualified", "S8a", 1, 39, now.AddDate(0, 1, 0), nil, 0},
+		{"Lena", "Hofmann", 27, []empContractDef{
+			{"qualified", "S8a", 1, 39, firstOfMonth(now.AddDate(0, 1, 0)), nil, 0},
 		}},
-		{"Sophie", "Lehmann", 1998, []empContractDef{
-			{"qualified", "S8a", 1, 39,
-				time.Date(currentKitaYear.Year()+1, time.August, 1, 0, 0, 0, 0, time.UTC),
-				nil, 2},
+		{"Sophie", "Lehmann", 28, []empContractDef{
+			{"qualified", "S8a", 1, 39, currentKitaYear.AddDate(1, 0, 0), nil, 2},
 		}},
 	}
+}
 
+// seedEmployees creates ~20 employees proportional to a ~60-child Kita.
+func seedEmployees(db *gorm.DB, orgID uint, namedSections []*models.Section, defaultSection *models.Section, payPlanID uint, minijobPayPlanID uint) (int, int, error) {
+	now := time.Now()
 	empCount := 0
 	contractCount := 0
 
-	for _, e := range employees {
-		birthdate := time.Date(e.birthYear, time.Month(3+randInt(9)), 1+randInt(28), 0, 0, 0, 0, time.UTC)
+	for _, e := range employeeDefs(now) {
+		birthdate := time.Date(now.Year()-e.ageYears, time.Month(3+randInt(9)), 1+randInt(28), 0, 0, 0, 0, time.UTC)
 		emp := models.Employee{
 			Person: models.Person{
 				OrganizationID: orgID,
