@@ -1956,6 +1956,7 @@ export interface paths {
      *     Salary costs use pay plan entries pro-rated by weekly hours. Employer costs apply the period's contribution rate.
      *     Operating costs sum active cost entries for the organization.
      *     Each data point includes optional breakdowns: funding_details (per funding property), budget_item_details (per budget item), and salary_details (per staff category).
+     *     Financials are organization-wide: unlike the other statistics endpoints this one takes no section_id, because fixed budget items (rent, garden, insurance) belong to the house rather than to a Bereich and cannot be attributed to one without an allocation key. Supplying section_id is rejected rather than ignored.
      */
     get: operations['getOrganizationsByOrgIdStatisticsFinancials'];
     put?: never;
@@ -13373,8 +13374,6 @@ export interface operations {
         from?: string;
         /** @description End date (YYYY-MM-DD), defaults to 6 months ahead */
         to?: string;
-        /** @description Filter by section ID */
-        section_id?: number;
       };
       header?: never;
       path: {

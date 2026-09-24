@@ -9269,7 +9269,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns monthly data points with income (government funding), expenses (salaries, employer costs, operating costs), and balance.\nIncome is calculated from children's contract properties matched against government funding.\nSalary costs use pay plan entries pro-rated by weekly hours. Employer costs apply the period's contribution rate.\nOperating costs sum active cost entries for the organization.\nEach data point includes optional breakdowns: funding_details (per funding property), budget_item_details (per budget item), and salary_details (per staff category).",
+                "description": "Returns monthly data points with income (government funding), expenses (salaries, employer costs, operating costs), and balance.\nIncome is calculated from children's contract properties matched against government funding.\nSalary costs use pay plan entries pro-rated by weekly hours. Employer costs apply the period's contribution rate.\nOperating costs sum active cost entries for the organization.\nEach data point includes optional breakdowns: funding_details (per funding property), budget_item_details (per budget item), and salary_details (per staff category).\nFinancials are organization-wide: unlike the other statistics endpoints this one takes no section_id, because fixed budget items (rent, garden, insurance) belong to the house rather than to a Bereich and cannot be attributed to one without an allocation key. Supplying section_id is rejected rather than ignored.",
                 "consumes": [
                     "application/json"
                 ],
@@ -9298,12 +9298,6 @@ const docTemplate = `{
                         "type": "string",
                         "description": "End date (YYYY-MM-DD), defaults to 6 months ahead",
                         "name": "to",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Filter by section ID",
-                        "name": "section_id",
                         "in": "query"
                     }
                 ],

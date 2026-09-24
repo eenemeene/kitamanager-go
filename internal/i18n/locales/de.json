@@ -174,6 +174,7 @@
   "section.name_exists_this": "Ein Bereich mit diesem Namen existiert bereits in dieser Organisation",
   "section.not_found_in_organization": "Bereich {{.SectionID}} wurde in dieser Organisation nicht gefunden",
   "section.wrong_organization": "Der Bereich gehört nicht zu dieser Organisation",
+  "statistics.financials_no_section_filter": "section_id wird für Finanzen nicht unterstützt; Finanzen gelten organisationsweit",
   "statistics.pay_plan_period_invalid_weekly_hours": "Der Zeitraum der Entgelttabelle hat ungültige Wochenstunden ({{.WeeklyHours}}) und kann nicht für eine Gehaltsschätzung verwendet werden",
   "user.already_member": "Der Benutzer ist bereits Mitglied dieser Organisation",
   "user.invalid_role": "Ungültige Rolle: zulässig sind admin, manager oder member",
