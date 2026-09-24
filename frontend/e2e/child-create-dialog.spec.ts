@@ -66,6 +66,13 @@ test.describe('Create Child dialog', () => {
     await page.getByLabel(/start date/i).fill(over.contractFrom ?? '2024-01-01');
     await dialog.getByRole('combobox', { name: /section/i }).click();
     await page.getByRole('option').first().click();
+    // The funding configuration names care_type in its required_keys, so a
+    // contract without one is refused. Picked here in the shared "fill a valid
+    // form" helper rather than in the happy-path test alone: the error-path
+    // tests below assert a refusal, and without a care type they would keep
+    // passing for the wrong reason -- reporting a missing property where they
+    // mean to be testing the birthdate rule.
+    await dialog.getByRole('button', { name: 'ganztag', exact: true }).click();
     return firstName;
   }
 
