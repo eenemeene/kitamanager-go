@@ -80,6 +80,12 @@ export function BudgetTable({ data }: BudgetTableProps) {
     const sum = {
       fundingIncome: 0,
       actualFunding: null as number | null,
+      // How many of the rows contributed to actualFunding. The calculated
+      // column totals every month in the range; the actual column can only
+      // total the months whose bill has been uploaded. Without this count the
+      // two sit side by side in the Jahressumme row inviting a subtraction
+      // that spans different numbers of months.
+      actualMonths: 0,
       incomeItemValues: incomeItems.map(() => 0),
       totalIncome: 0,
       salaries: 0,
@@ -91,6 +97,7 @@ export function BudgetTable({ data }: BudgetTableProps) {
       sum.fundingIncome += row.fundingIncome;
       if (row.actualFunding != null) {
         sum.actualFunding = (sum.actualFunding ?? 0) + row.actualFunding;
+        sum.actualMonths += 1;
       }
       for (let i = 0; i < incomeItems.length; i++) {
         sum.incomeItemValues[i] += row.incomeItemValues[i];
@@ -221,6 +228,14 @@ export function BudgetTable({ data }: BudgetTableProps) {
               {hasActualFunding && (
                 <TableCell className="text-right tabular-nums">
                   {totals.actualFunding != null ? currencyCell(totals.actualFunding) : '\u2013'}
+                  {totals.actualFunding != null && totals.actualMonths < rows.length && (
+                    <div
+                      data-visual-mask="stat"
+                      className="text-muted-foreground text-xs font-normal"
+                    >
+                      {totals.actualMonths}/{rows.length} {t('fundingMonthsCovered')}
+                    </div>
+                  )}
                 </TableCell>
               )}
               {totals.incomeItemValues.map((val, i) => (

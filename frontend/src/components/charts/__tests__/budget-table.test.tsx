@@ -220,3 +220,52 @@ describe('BudgetTable', () => {
     expect(screen.getByText('annualTotal')).toBeInTheDocument();
   });
 });
+
+describe('BudgetTable annual total coverage', () => {
+  // A month is "billed" when actual_funding is present at all -- a bill
+  // totalling zero is still a bill, and the API only omits the field when no
+  // bill exists. The shared makeDataPoint helper defaults it to 0, so a month
+  // that must read as unbilled has to clear it explicitly.
+  const unbilled = (date: string) => makeDataPoint(date, { actual_funding: undefined });
+
+  // The calculated column totals every month in the range; the actual column
+  // can only total the months whose bill was uploaded. Side by side in one row
+  // under adjacent headers they invite a subtraction that spans different
+  // numbers of months, so the actual cell says how many it covers.
+  it('annotates the annual actual total when bills cover only some months', () => {
+    const data: FinancialResponse = {
+      data_points: [
+        makeDataPoint('2026-01-01', { actual_funding: 490000, actual_funding_regular: 490000 }),
+        unbilled('2026-02-01'),
+        unbilled('2026-03-01'),
+      ],
+      warnings: [],
+    };
+    const { container } = renderWithProviders(<BudgetTable data={data} />);
+    const totalRow = container.querySelectorAll('tbody tr')[3];
+    expect(totalRow?.textContent).toContain('1/3');
+    expect(totalRow?.textContent).toContain('fundingMonthsCovered');
+  });
+
+  it('omits the annotation when every month in the range has a bill', () => {
+    const data: FinancialResponse = {
+      data_points: [
+        makeDataPoint('2026-01-01', { actual_funding: 490000, actual_funding_regular: 490000 }),
+        makeDataPoint('2026-02-01', { actual_funding: 500000, actual_funding_regular: 500000 }),
+      ],
+      warnings: [],
+    };
+    const { container } = renderWithProviders(<BudgetTable data={data} />);
+    expect(container.textContent).not.toContain('fundingMonthsCovered');
+  });
+
+  it('shows no actual column at all when no month has a bill', () => {
+    const data: FinancialResponse = {
+      data_points: [unbilled('2026-01-01'), unbilled('2026-02-01')],
+      warnings: [],
+    };
+    const { container } = renderWithProviders(<BudgetTable data={data} />);
+    expect(container.textContent).not.toContain('fundingActualSub');
+    expect(container.textContent).not.toContain('fundingMonthsCovered');
+  });
+});

@@ -10,7 +10,7 @@ import { BudgetTable } from '@/components/charts/budget-table';
 import type { FundingComparisonResponse, FundingComparisonSummary } from '@/lib/api/types';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
-import { toLocalDateString } from '@/lib/utils/formatting';
+import { buildKitaYearCompareWindows } from '@/lib/utils/kita-year';
 import {
   type ReportMonth,
   formatReportMonthLong,
@@ -91,37 +91,15 @@ export function FinancialsReportSection({ orgId, reportMonth }: Props) {
     enabled: !!orgId,
   });
 
-  // compareWindows / compareResults / compareData / compareSummaries:
-  // chunk the bill-month range from the financials response into
-  // 12-month slices for the actual-vs-calculated comparison.
+  // compareWindows / compareResults / compareData / compareSummaries: one
+  // window per Kita year, matching how the comparison table groups its rows.
+  // Shared with the dashboard page so the printed report and the screen ask
+  // the API for the same ranges.
   const compareWindows = useMemo(() => {
-    const dps = financials?.data_points;
-    if (!dps?.length) return [];
-    const billMonths: string[] = dps
+    const billMonths: string[] = (financials?.data_points ?? [])
       .filter((dp): dp is typeof dp & { date: string } => dp.actual_funding != null && !!dp.date)
       .map((dp) => dp.date);
-    if (billMonths.length === 0) return [];
-    const first = billMonths[0]!;
-    const last = billMonths[billMonths.length - 1]!;
-    const windows: { from: string; to: string }[] = [];
-    let wFrom: string = first;
-    while (wFrom <= last) {
-      // Parse as local midnight and format with toLocalDateString so the
-      // month arithmetic round-trips on the same calendar date. The old
-      // `new Date(wFrom)` (parsed as UTC) + `.toISOString().slice(0,10)`
-      // (formatted as UTC) mixed zones and shifted the date by a day in
-      // behind-UTC locales.
-      const fromDate = new Date(`${wFrom}T00:00:00`);
-      const toDate = new Date(fromDate);
-      toDate.setMonth(toDate.getMonth() + 11);
-      const wToStr = toLocalDateString(toDate);
-      const wTo = wToStr > last ? last : wToStr;
-      windows.push({ from: wFrom, to: wTo });
-      const nextDate = new Date(fromDate);
-      nextDate.setMonth(nextDate.getMonth() + 12);
-      wFrom = toLocalDateString(nextDate);
-    }
-    return windows;
+    return buildKitaYearCompareWindows(billMonths);
   }, [financials]);
 
   const compareResults = useQueries({
@@ -150,8 +128,7 @@ export function FinancialsReportSection({ orgId, reportMonth }: Props) {
     for (let i = 0; i < compareResults.length; i++) {
       const result = compareResults[i];
       if (result.data?.summary && compareWindows[i]) {
-        const w = compareWindows[i];
-        map.set(`${w.from}:${w.to}`, result.data.summary);
+        map.set(compareWindows[i]!.kitaYear, result.data.summary);
       }
     }
     return map.size > 0 ? map : undefined;

@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { useFormatters } from '@/hooks/use-formatters';
 import type { Locale } from '@/i18n/config';
 import { formatMonthYear } from '@/lib/utils/formatting';
+import { kitaYearLabel } from '@/lib/utils/kita-year';
 
 /** Minimal props used by custom Nivo layers — avoids complex generic constraints. */
 interface ChartLayerProps {
@@ -17,16 +18,12 @@ export interface KitaYearBand {
   endIdx: number;
 }
 
-/** Returns the Kita year label for a given date (Aug–Jul). e.g. August 2024 → "24/25" */
-export function kitaYearLabel(dateStr: string): string {
-  const date = new Date(dateStr + 'T00:00:00');
-  const month = date.getMonth(); // 0-indexed
-  const year = date.getFullYear();
-  const startYear = month >= 7 ? year : year - 1; // Aug (7) starts a new Kita year
-  const sy = String(startYear).slice(2);
-  const ey = String(startYear + 1).slice(2);
-  return `${sy}/${ey}`;
-}
+/**
+ * Re-exported so the chart modules keep a single import site for it. The
+ * definition lives in lib/utils/kita-year.ts, next to the window builder that
+ * has to cut on exactly the same boundary.
+ */
+export { kitaYearLabel };
 
 /** Groups consecutive data point indices by their Kita year */
 export function buildKitaYearBands(dates: string[]): KitaYearBand[] {
