@@ -24,14 +24,28 @@ func (GovernmentFunding) TableName() string {
 // Periods within the same government funding must not overlap - this is enforced at the service layer.
 // A period with nil To date is considered ongoing (extends indefinitely into the future).
 type GovernmentFundingPeriod struct {
-	ID                  uint                        `gorm:"primaryKey" json:"id" example:"1"`
-	GovernmentFundingID uint                        `gorm:"not null;index" json:"government_funding_id" example:"1"`
-	Period                                          // From, To (embedded)
-	FullTimeWeeklyHours float64                     `gorm:"not null" json:"full_time_weekly_hours" example:"39.0"`
-	Comment             string                      `gorm:"size:1000" json:"comment,omitempty" example:"Funding period 2023/2024"`
-	CreatedAt           time.Time                   `json:"created_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
-	UpdatedAt           time.Time                   `json:"updated_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
-	Properties          []GovernmentFundingProperty `gorm:"foreignKey:PeriodID;constraint:OnDelete:CASCADE" json:"properties,omitempty"`
+	ID                  uint    `gorm:"primaryKey" json:"id" example:"1"`
+	GovernmentFundingID uint    `gorm:"not null;index" json:"government_funding_id" example:"1"`
+	Period                      // From, To (embedded)
+	FullTimeWeeklyHours float64 `gorm:"not null" json:"full_time_weekly_hours" example:"39.0"`
+	Comment             string  `gorm:"size:1000" json:"comment,omitempty" example:"Funding period 2023/2024"`
+	// RequiredKeys names the contract property keys a child contract must carry
+	// to be valid in this period, e.g. ["care_type"].
+	//
+	// Declared by the funding configuration rather than by the code, because the
+	// key names are the configuration's own vocabulary: "care_type" is the
+	// string Berlin uses, and a Bundesland that calls its base rate something
+	// else would otherwise be validated against another state's word. It sits on
+	// the period, not the property, because required-ness is a property of the
+	// KEY -- Berlin spreads care_type over 4 values x 3 age bands x 15 periods,
+	// and 180 independently-settable flags can disagree with each other.
+	//
+	// Empty means this period requires nothing, which is what every period did
+	// before the concept existed.
+	RequiredKeys []string                    `gorm:"serializer:json;not null;default:'[]'" json:"required_keys,omitempty" example:"care_type"`
+	CreatedAt    time.Time                   `json:"created_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
+	UpdatedAt    time.Time                   `json:"updated_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
+	Properties   []GovernmentFundingProperty `gorm:"foreignKey:PeriodID;constraint:OnDelete:CASCADE" json:"properties,omitempty"`
 }
 
 // TableName specifies the table name for GORM
@@ -111,6 +125,9 @@ type GovernmentFundingPeriodCreateRequest struct {
 	To                  *time.Time `json:"to" format:"date-time" example:"2024-02-29"`
 	FullTimeWeeklyHours float64    `json:"full_time_weekly_hours" binding:"required,gt=0" example:"39.0"`
 	Comment             string     `json:"comment" binding:"max=1000" example:"Funding period 2023/2024"`
+	// RequiredKeys names the contract property keys a child contract must carry
+	// to be valid in this period. See GovernmentFundingPeriod.RequiredKeys.
+	RequiredKeys []string `json:"required_keys,omitempty" example:"care_type"`
 }
 
 // GovernmentFundingPeriodUpdateRequest represents the request body for updating a government funding period.
@@ -119,6 +136,8 @@ type GovernmentFundingPeriodUpdateRequest struct {
 	To                  *time.Time `json:"to" format:"date-time" example:"2024-02-29"`
 	FullTimeWeeklyHours *float64   `json:"full_time_weekly_hours" binding:"omitempty,gt=0" example:"39.0"`
 	Comment             *string    `json:"comment" binding:"omitempty,max=1000" example:"Updated comment"`
+	// RequiredKeys replaces the period's required keys wholesale when present.
+	RequiredKeys *[]string `json:"required_keys,omitempty" example:"care_type"`
 }
 
 // GovernmentFundingPropertyCreateRequest represents the request body for creating a government funding property.
@@ -180,8 +199,13 @@ type GovernmentFundingPeriodResponse struct {
 	To                  *time.Time `json:"to" format:"date-time" example:"2024-02-29"`
 	FullTimeWeeklyHours float64    `json:"full_time_weekly_hours" example:"39.0"`
 	Comment             string     `json:"comment,omitempty" example:"Funding period 2023/2024"`
-	CreatedAt           time.Time  `json:"created_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
-	UpdatedAt           time.Time  `json:"updated_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
+	// RequiredKeys names the contract property keys a child contract must carry
+	// in this period. Carried in the response so the contract form can require
+	// them without naming any of them itself -- the key names belong to the
+	// configuration, and differ by Bundesland and by period.
+	RequiredKeys []string  `json:"required_keys,omitempty" example:"care_type"`
+	CreatedAt    time.Time `json:"created_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
+	UpdatedAt    time.Time `json:"updated_at" format:"date-time" example:"2024-01-15T10:30:00Z"`
 }
 
 func (p *GovernmentFundingPeriod) ToResponse() GovernmentFundingPeriodResponse {
@@ -192,6 +216,7 @@ func (p *GovernmentFundingPeriod) ToResponse() GovernmentFundingPeriodResponse {
 		To:                  p.To,
 		FullTimeWeeklyHours: p.FullTimeWeeklyHours,
 		Comment:             p.Comment,
+		RequiredKeys:        p.RequiredKeys,
 		CreatedAt:           p.CreatedAt,
 		UpdatedAt:           p.UpdatedAt,
 	}

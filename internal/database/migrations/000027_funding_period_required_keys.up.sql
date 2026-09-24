@@ -1,0 +1,39 @@
+-- Which contract property keys a child contract must carry, declared by the
+-- funding configuration that owns the vocabulary.
+--
+-- Contract properties have never been validated. The API accepted, with 201,
+-- every one of these against the live Berlin config:
+--
+--   {"care_type": ["ganztag","halbtag"]}  -> paid BOTH rates: 1043.32 + 832.45
+--                                            - 23.00 = 1852.77 EUR/month, of
+--                                            which 832.45 is invented
+--   {"care_type": "ganztagg"}             -> matched nothing -> -23.00 EUR
+--   {"care_type": "Ganztag"}              -> matched nothing -> -23.00 EUR
+--   {}                                    -> matched nothing -> -23.00 EUR
+--
+-- All four land on a silently wrong number for a child worth ~1926 EUR. The
+-- first three are catchable by checking the value against the config. The
+-- fourth -- a missing key -- is not, because nothing anywhere says which keys
+-- matter.
+--
+-- It cannot be hardcoded. "care_type" is the string Berlin happens to use; the
+-- funding YAML is per-Bundesland and the key names come from it, so a state
+-- that calls its base rate something else would be validated against a word
+-- from another state's vocabulary.
+--
+-- It belongs on the period rather than on the property, for two reasons.
+-- Required-ness is a property of the KEY, and Berlin spreads one key across 4
+-- values x 3 age bands x 15 periods = 180 rows that would each carry a
+-- redundant flag free to disagree with its neighbours. And a period is already
+-- the unit over which the rest of the funding vocabulary changes, so declaring
+-- it here makes validation vary by Bundesland AND by date with no code change.
+--
+-- jsonb rather than text[] to match how the codebase already stores small
+-- string collections (gorm:"serializer:json", as on contract properties).
+--
+-- Defaults to an empty list, so every existing period keeps validating nothing
+-- and no data becomes retroactively invalid. Berlin opts in by way of
+-- configs/government-fundings/berlin.yaml declaring required_keys.
+
+ALTER TABLE government_funding_periods
+    ADD COLUMN IF NOT EXISTS required_keys JSONB NOT NULL DEFAULT '[]'::jsonb;

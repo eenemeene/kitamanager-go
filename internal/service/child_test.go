@@ -1137,7 +1137,6 @@ func TestChildService_CalculateFunding_NoMatchingAgeProperty(t *testing.T) {
 
 func TestChildService_CalculateFunding_PartialAttributeMatch(t *testing.T) {
 	db := setupTestDB(t)
-	svc := createChildService(db)
 	statsSvc := createStatisticsService(db)
 	ctx := context.Background()
 
@@ -1154,12 +1153,17 @@ func TestChildService_CalculateFunding_PartialAttributeMatch(t *testing.T) {
 	child.Birthdate = time.Date(2022, 1, 15, 0, 0, 0, 0, time.UTC)
 	db.Save(child)
 
+	// Inserted directly rather than through CreateContract, which now refuses a
+	// key the funding configuration does not declare. This test is about the
+	// READ path -- what the calculator does with a property that matches
+	// nothing -- and that question still has an answer for every contract
+	// stored before validation existed. Going through the write path would test
+	// the write path instead, and (because the error was discarded) left
+	// result.Children empty and this test panicking on an index rather than
+	// failing on an assertion.
 	fromDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
-	_, _ = svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
-		SectionID:  1,
-		From:       fromDate,
-		Properties: models.ContractProperties{"care_type": "ganztag", "unknown_key": "xyz"}, // unknown_key doesn't match any funding property
-	})
+	createTestChildContract(t, db, child.ID, fromDate, nil, 1,
+		models.ContractProperties{"care_type": "ganztag", "unknown_key": "xyz"})
 
 	refDate := time.Date(2025, 1, 27, 0, 0, 0, 0, time.UTC)
 	result, err := statsSvc.CalculateFunding(ctx, org.ID, refDate)
@@ -3510,12 +3514,22 @@ func setupAutoApplyFunding(t *testing.T, db *gorm.DB) *models.GovernmentFundingP
 	period := createTestFundingPeriod(t, db, funding.ID,
 		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0)
 
-	// Regular property (NOT auto-applied)
+	// Regular properties (NOT auto-applied). Two care types, because contract
+	// properties are now checked against what the configuration declares: a test
+	// that changes a contract from one care type to another needs both to exist
+	// here, and before validation an undeclared value simply went through and
+	// earned nothing.
 	createTestFundingProperty(t, db, period.ID, "care_type", "ganztag", 100000, 0, 7)
+	createTestFundingProperty(t, db, period.ID, "care_type", "halbtag", 60000, 0, 7)
 
-	// Auto-apply property
+	// Auto-apply property, plus a second value under the same key. The second
+	// one is what makes "an explicit value is not overwritten by the default"
+	// testable at all: with only one declared value, an explicit setting and the
+	// auto-applied one are the same string and the merge branch under test never
+	// runs.
 	prop := createTestFundingProperty(t, db, period.ID, "parent", "meals", -2300, 0, 7)
 	db.Model(prop).Update("apply_to_all_contracts", true)
+	createTestFundingProperty(t, db, period.ID, "parent", "no_meals", 0, 0, 7)
 
 	return period
 }
@@ -3564,15 +3578,18 @@ func TestChildService_CreateContract_AutoApplyNoOverwrite(t *testing.T) {
 	contract, err := svc.CreateContract(ctx, child.ID, org.ID, &models.ChildContractCreateRequest{
 		SectionID:  section.ID,
 		From:       from,
-		Properties: models.ContractProperties{"care_type": "ganztag", "parent": "custom_value"},
+		Properties: models.ContractProperties{"care_type": "ganztag", "parent": "no_meals"},
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	// Explicit parent value must NOT be overwritten by auto-apply
-	if contract.Properties["parent"] != "custom_value" {
-		t.Errorf("parent = %v, want custom_value (explicit should win over auto-apply)", contract.Properties["parent"])
+	// Explicit parent value must NOT be overwritten by auto-apply. The value has
+	// to be one the configuration declares -- an invented one is refused now --
+	// but it still has to differ from the auto-applied "meals", or the assertion
+	// would hold whether or not the merge respected it.
+	if contract.Properties["parent"] != "no_meals" {
+		t.Errorf("parent = %v, want no_meals (explicit should win over auto-apply)", contract.Properties["parent"])
 	}
 }
 

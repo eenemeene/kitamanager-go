@@ -65,6 +65,13 @@ test.describe('Children', () => {
     await dialog.getByRole('combobox', { name: /section/i }).click();
     await page.getByRole('option').first().click();
 
+    // Pick a care type. The funding configuration names care_type in its
+    // required_keys, so a contract without one is refused -- a child saved
+    // without it earned the parent meal deduction alone, which is the whole
+    // reason the field is required. The suggestions are buttons labelled with
+    // the configured value.
+    await dialog.getByRole('button', { name: 'ganztag', exact: true }).click();
+
     // Capture the API response
     const responsePromise = page.waitForResponse(
       (resp) => resp.url().includes('/children') && resp.request().method() === 'POST'

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"maps"
 	"strconv"
 
@@ -77,6 +78,12 @@ func (s *StatisticsService) GetForecast(ctx context.Context, orgID uint, req *mo
 
 	ds, err := s.loadDataSet(ctx, orgID, rangeStart, rangeEnd, req.SectionID)
 	if err != nil {
+		return nil, err
+	}
+
+	// Hypothetical contracts get the same completion and the same checks a real
+	// one gets; see completeAndValidateOverlayContracts.
+	if err := completeAndValidateOverlayContracts(req, ds.FundingPeriods); err != nil {
 		return nil, err
 	}
 
@@ -509,4 +516,55 @@ func filterSlice[T any](s []T, keep func(T) bool) []T {
 		}
 	}
 	return result
+}
+
+// completeAndValidateOverlayContracts gives every hypothetical child contract
+// the same treatment a real one gets on its way into the database: the
+// auto-apply funding properties are merged in, and the result is checked
+// against the funding period that covers it.
+//
+// # Why the merge is here and not only the validation
+//
+// ForecastChildContractInput.ToModel copies Properties verbatim, and
+// forecast-children-tab.tsx reads only fundingAttributes and attributesByKey
+// from useFundingAttributes -- never defaultProperties. So a child added in the
+// forecast never received the parent meal deduction that every real contract
+// carries, and was modelled 23 EUR per month too generously. Ten modelled
+// children is 230 EUR/month of surplus that does not exist, in the screen
+// people use to decide whether they can afford to hire.
+//
+// Validating without merging would have been worse than leaving it alone:
+// {"care_type": "ganztag"} would pass, and still model 23 EUR too high.
+//
+// # Anchoring
+//
+// Per contract, at its own From -- not at the request's range. A scenario whose
+// contracts straddle a funding period boundary has each judged against the
+// vocabulary that applied when it starts, which is the same rule
+// CreateContract and AmendContract follow.
+//
+// A contract dated where no configuration reaches gets no defaults and no
+// checks, because there is no vocabulary to check against.
+func completeAndValidateOverlayContracts(req *models.ForecastRequest, periods []models.GovernmentFundingPeriod) error {
+	complete := func(c *models.ForecastChildContractInput, pathFormat string, args ...any) error {
+		period := findPeriodForDate(periods, c.From)
+		c.Properties = c.Properties.MergeDefaults(autoApplyProperties(period))
+		return validateContractProperties(c.Properties, period, fmt.Sprintf(pathFormat, args...))
+	}
+
+	for i := range req.AddChildren {
+		for j := range req.AddChildren[i].Contracts {
+			if err := complete(&req.AddChildren[i].Contracts[j],
+				"add_children[%d].contracts[%d].", i, j); err != nil {
+				return err
+			}
+		}
+	}
+	for i := range req.AddChildContracts {
+		if err := complete(&req.AddChildContracts[i],
+			"add_child_contracts[%d].", i); err != nil {
+			return err
+		}
+	}
+	return nil
 }
