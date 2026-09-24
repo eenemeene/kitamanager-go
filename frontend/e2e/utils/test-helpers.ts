@@ -268,12 +268,17 @@ export async function createChildContractViaApi(
     properties?: Record<string, string>;
   }
 ): Promise<{ id: number }> {
-  return apiRequest(
-    page,
-    'POST',
-    `/api/v1/organizations/${orgId}/children/${childId}/contracts`,
-    data
-  );
+  return apiRequest(page, 'POST', `/api/v1/organizations/${orgId}/children/${childId}/contracts`, {
+    // A care type is required, because the seeded berlin funding configuration
+    // names care_type in its required_keys -- a contract without one would earn
+    // the parent meal deduction alone and is now refused. Defaulted rather than
+    // written at each of the eighteen call sites: specs about timelines,
+    // sections and attendance are not about care types, and spelling one out
+    // there would suggest it mattered to what they assert. A spec that does
+    // care passes its own.
+    properties: { care_type: 'ganztag' },
+    ...data,
+  });
 }
 
 /**

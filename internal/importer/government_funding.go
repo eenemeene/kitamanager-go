@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"math"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -203,6 +204,7 @@ func (i *GovernmentFundingImporter) createPeriodWithProperties(ctx context.Conte
 		From:                from,
 		To:                  to,
 		FullTimeWeeklyHours: yp.FullTimeWeeklyHours,
+		RequiredKeys:        yp.RequiredKeys,
 		Comment:             strings.TrimSpace(yp.Comment),
 	})
 	if err != nil {
@@ -238,12 +240,23 @@ func (i *GovernmentFundingImporter) updatePeriodIfChanged(ctx context.Context, f
 	if existing.Comment != comment {
 		periodChanged = true
 	}
+	// The YAML is the source of truth for the vocabulary, so a key removed from
+	// the file has to be removed from the period -- comparing as sets would let
+	// a deletion survive an import.
+	requiredKeys := yp.RequiredKeys
+	if requiredKeys == nil {
+		requiredKeys = []string{}
+	}
+	if !slices.Equal(existing.RequiredKeys, requiredKeys) {
+		periodChanged = true
+	}
 
 	if periodChanged {
 		_, err := i.service.UpdatePeriod(ctx, existing.ID, fundingID, &models.GovernmentFundingPeriodUpdateRequest{
 			To:                  to,
 			FullTimeWeeklyHours: &yp.FullTimeWeeklyHours,
 			Comment:             &comment,
+			RequiredKeys:        &requiredKeys,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to update period (from %s): %w", yp.From, err)

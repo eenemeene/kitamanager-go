@@ -124,6 +124,17 @@ func EnglishReason(rule, param string) string {
 		return "must be greater than 0"
 	case "mismatch":
 		return "must match " + param
+	case "one_of":
+		// The permitted values come from the organization's funding
+		// configuration, so they are carried in param rather than written here:
+		// they differ by Bundesland and by funding period.
+		return "must be one of: " + param
+	case "not_one_of":
+		return "is not one of: " + param
+	case "unknown_key":
+		return "is not a property this funding configuration defines"
+	case "single_value":
+		return "must carry exactly one value, got: " + param
 	default:
 		return "is invalid"
 	}

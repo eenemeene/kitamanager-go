@@ -15,6 +15,8 @@ A YAML file is a list of **funding configurations**. Each configuration represen
 - to: ''                       # empty = open-ended
   from: '2026-08-01'           # ISO date
   full_time_weekly_hours: 39   # what counts as full-time
+  required_keys:               # property keys every contract must carry
+    - care_type
   comment: 'Anlage 1a Nr. XXXIX - Aufschlag für Praxisunterstützungssystem (45€ pro Kind/Jahr) inklusive'
   entries:
     - age: [0, 8]              # min/max age in years
@@ -72,3 +74,28 @@ Each entry within a configuration is a list of **property** rates that apply to 
 The funding YAML uses **decimal EUR** for `payment` so a hand-edited file is readable. On import (`POST /api/v1/government-funding-rates/import` and the `GOVERNMENT_FUNDING_SEED_PATH` startup loader), the value is converted to integer cents and stored as such — `int(math.Round(eur * 100))`. Every internal calculation, every API response, and every database column is in **cents**. Round-trip exporting back to YAML re-emits decimal EUR.
 
 For why the storage layer is cents (and the floating-point trap that motivates it), see [Why money is stored as cents](../../../explanation/why-money-is-stored-as-cents/).
+
+## Required properties (`required_keys`)
+
+`required_keys` names the contract property keys a child contract must carry in
+this period. If one is missing the contract is refused on create, update, amend
+and import.
+
+The list sits on the **period**, not on the individual property. Whether a key
+is required is a property of the *key*: Berlin spreads `care_type` over 4 values
+× 3 age bands × 15 periods, and 180 independently-settable flags could disagree
+with one another. On the period the rule also varies by Bundesland and by date
+for free — a period that requires an additional key from 2027 changes validation
+with no code change.
+
+A period with no `required_keys` requires nothing, which is how every period
+behaved before the field existed.
+
+Every key/value that *is* set is additionally checked to be declared in this
+period and to carry exactly **one** value. A typo, a differing capitalisation,
+or a list of two care types is refused — each was previously accepted and
+produced a silently wrong funding figure.
+
+**Age is deliberately not checked** here: a care type valid for a three-year-old
+is not valid at nine, and the child ages during the contract's life. Existence
+in the period is what is checked.

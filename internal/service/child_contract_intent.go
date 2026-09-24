@@ -92,7 +92,11 @@ func (s *ChildService) CorrectContract(ctx context.Context, contractID, childID,
 	// to a contract whose section was corrected would break the promise that an
 	// omitted field is untouched.
 	if req.Properties.Set || req.From.Set {
-		contract.Properties = contract.Properties.MergeDefaults(s.getAutoApplyProperties(ctx, orgID, contract.From))
+		period := s.fundingPeriodForDate(ctx, orgID, contract.From)
+		contract.Properties = contract.Properties.MergeDefaults(autoApplyProperties(period))
+		if err := validateContractProperties(contract.Properties, period, ""); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := validateContractDatesAfterBirthdate(contract.From, contract.To, child.Birthdate); err != nil {
@@ -162,8 +166,13 @@ func (s *ChildService) AmendContract(ctx context.Context, contractID, childID, o
 	}
 
 	// Anchored at the seam, not at today: a change backdated across a funding
-	// period boundary has to pick up the properties that applied back then.
-	successor.Properties = successor.Properties.MergeDefaults(s.getAutoApplyProperties(ctx, orgID, seam))
+	// period boundary has to pick up the properties that applied back then --
+	// and be judged against that period's vocabulary rather than today's.
+	seamPeriod := s.fundingPeriodForDate(ctx, orgID, seam)
+	successor.Properties = successor.Properties.MergeDefaults(autoApplyProperties(seamPeriod))
+	if err := validateContractProperties(successor.Properties, seamPeriod, ""); err != nil {
+		return nil, err
+	}
 
 	if err := validateContractDatesAfterBirthdate(successor.From, successor.To, child.Birthdate); err != nil {
 		return nil, err

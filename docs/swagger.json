@@ -14128,6 +14128,16 @@
                         "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.GovernmentFundingProperty"
                     }
                 },
+                "required_keys": {
+                    "description": "RequiredKeys names the contract property keys a child contract must carry\nto be valid in this period, e.g. [\"care_type\"].\n\nDeclared by the funding configuration rather than by the code, because the\nkey names are the configuration's own vocabulary: \"care_type\" is the\nstring Berlin uses, and a Bundesland that calls its base rate something\nelse would otherwise be validated against another state's word. It sits on\nthe period, not the property, because required-ness is a property of the\nKEY -- Berlin spreads care_type over 4 values x 3 age bands x 15 periods,\nand 180 independently-settable flags can disagree with each other.\n\nEmpty means this period requires nothing, which is what every period did\nbefore the concept existed.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "care_type"
+                    ]
+                },
                 "to": {
                     "type": "string",
                     "format": "date-time"
@@ -14159,6 +14169,16 @@
                 "full_time_weekly_hours": {
                     "type": "number",
                     "example": 39
+                },
+                "required_keys": {
+                    "description": "RequiredKeys names the contract property keys a child contract must carry\nto be valid in this period. See GovernmentFundingPeriod.RequiredKeys.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "care_type"
+                    ]
                 },
                 "to": {
                     "type": "string",
@@ -14196,6 +14216,16 @@
                     "type": "integer",
                     "example": 1
                 },
+                "required_keys": {
+                    "description": "RequiredKeys names the contract property keys a child contract must carry\nin this period. Carried in the response so the contract form can require\nthem without naming any of them itself -- the key names belong to the\nconfiguration, and differ by Bundesland and by period.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "care_type"
+                    ]
+                },
                 "to": {
                     "type": "string",
                     "format": "date-time",
@@ -14224,6 +14254,16 @@
                 "full_time_weekly_hours": {
                     "type": "number",
                     "example": 39
+                },
+                "required_keys": {
+                    "description": "RequiredKeys replaces the period's required keys wholesale when present.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "care_type"
+                    ]
                 },
                 "to": {
                     "type": "string",

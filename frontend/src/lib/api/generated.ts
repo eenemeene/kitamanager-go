@@ -4074,6 +4074,25 @@ export interface components {
       /** @example 1 */
       id: number;
       properties?: components['schemas']['GovernmentFundingProperty'][];
+      /**
+       * @description RequiredKeys names the contract property keys a child contract must carry
+       *     to be valid in this period, e.g. ["care_type"].
+       *
+       *     Declared by the funding configuration rather than by the code, because the
+       *     key names are the configuration's own vocabulary: "care_type" is the
+       *     string Berlin uses, and a Bundesland that calls its base rate something
+       *     else would otherwise be validated against another state's word. It sits on
+       *     the period, not the property, because required-ness is a property of the
+       *     KEY -- Berlin spreads care_type over 4 values x 3 age bands x 15 periods,
+       *     and 180 independently-settable flags can disagree with each other.
+       *
+       *     Empty means this period requires nothing, which is what every period did
+       *     before the concept existed.
+       * @example [
+       *       "care_type"
+       *     ]
+       */
+      required_keys?: string[];
       /** Format: date-time */
       to: string;
       /**
@@ -4092,6 +4111,14 @@ export interface components {
       from: string;
       /** @example 39 */
       full_time_weekly_hours: number;
+      /**
+       * @description RequiredKeys names the contract property keys a child contract must carry
+       *     to be valid in this period. See GovernmentFundingPeriod.RequiredKeys.
+       * @example [
+       *       "care_type"
+       *     ]
+       */
+      required_keys?: string[];
       /**
        * Format: date-time
        * @example 2024-02-29
@@ -4118,6 +4145,16 @@ export interface components {
       /** @example 1 */
       id: number;
       /**
+       * @description RequiredKeys names the contract property keys a child contract must carry
+       *     in this period. Carried in the response so the contract form can require
+       *     them without naming any of them itself -- the key names belong to the
+       *     configuration, and differ by Bundesland and by period.
+       * @example [
+       *       "care_type"
+       *     ]
+       */
+      required_keys?: string[];
+      /**
        * Format: date-time
        * @example 2024-02-29
        */
@@ -4138,6 +4175,13 @@ export interface components {
       from?: string;
       /** @example 39 */
       full_time_weekly_hours?: number;
+      /**
+       * @description RequiredKeys replaces the period's required keys wholesale when present.
+       * @example [
+       *       "care_type"
+       *     ]
+       */
+      required_keys?: string[];
       /**
        * Format: date-time
        * @example 2024-02-29

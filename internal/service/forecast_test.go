@@ -917,21 +917,50 @@ func TestGetForecast_ChildWithUnmatchedCareType(t *testing.T) {
 		},
 	}
 
-	result, err := svc.GetForecast(ctx, td.org.ID, req)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+	// The overlay no longer accepts it. A property the funding configuration
+	// does not declare produced a child who counted towards headcount and
+	// per-child costs while earning nothing, so it is refused at the boundary
+	// rather than modelled. The calculator behaviour this test used to assert
+	// still governs contracts stored before validation existed, and is covered
+	// at that level by TestCalculateStaffingHours_UnmatchedCareTypeAddsNoRequirement.
+	if _, err := svc.GetForecast(ctx, td.org.ID, req); err == nil {
+		t.Fatal("expected an unmatched care_type to be refused")
+	} else if !strings.Contains(err.Error(), "add_children[0].contracts[0].properties.care_type") {
+		t.Errorf("error should name the offending contract; got %v", err)
 	}
+	_ = baseResult
+}
 
-	// Child count increases by 1
-	dp := result.StaffingHours.DataPoints[0]
-	baseDp := baseResult.StaffingHours.DataPoints[0]
-	if dp.ChildCount != baseDp.ChildCount+1 {
-		t.Errorf("child_count=%d, expected baseline+1=%d", dp.ChildCount, baseDp.ChildCount+1)
+// The calculator's own handling of a property the configuration does not
+// declare. Unreachable through the API now that contracts are validated on the
+// way in, but every contract stored before that is still read by this code, so
+// the behaviour has to stay pinned: the child counts as enrolled and adds no
+// staffing requirement.
+func TestCalculateStaffingHours_UnmatchedCareTypeAddsNoRequirement(t *testing.T) {
+	i := func(v int) *int { return &v }
+	periods := []models.GovernmentFundingPeriod{{
+		ID:                  1,
+		Period:              models.Period{From: time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC)},
+		FullTimeWeeklyHours: 39,
+		Properties: []models.GovernmentFundingProperty{
+			{Key: "care_type", Value: "ganztag", Payment: 100000, Requirement: 0.25, MinAge: i(0), MaxAge: i(6)},
+		},
+	}}
+	month := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	kids := []models.Child{{
+		Person: models.Person{ID: 1, Birthdate: time.Date(2022, 6, 1, 0, 0, 0, 0, time.UTC)},
+		Contracts: []models.ChildContract{{ID: 1, ChildID: 1, BaseContract: models.BaseContract{
+			Period:     models.Period{From: time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC)},
+			Properties: models.ContractProperties{"care_type": "halbtag"},
+		}}},
+	}}
+
+	dp := calculateStaffingHours(kids, nil, periods, month, month)[0]
+	if dp.ChildCount != 1 {
+		t.Errorf("an unmatched care_type still means an enrolled child; child_count=%d", dp.ChildCount)
 	}
-
-	// Required hours unchanged (halbtag has no matching funding, so 0 requirement added)
-	if !almostEqual(dp.RequiredHours, baseDp.RequiredHours, 0.01) {
-		t.Errorf("required_hours=%v, expected baseline %v (unmatched care_type adds 0)", dp.RequiredHours, baseDp.RequiredHours)
+	if dp.RequiredHours != 0 {
+		t.Errorf("an unmatched care_type carries no requirement; required_hours=%v", dp.RequiredHours)
 	}
 }
 
@@ -2284,5 +2313,145 @@ func TestSectionAttributableBudgetItems(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// --- Overlay contract properties -------------------------------------------
+//
+// A hypothetical contract gets the same completion and the same checks a real
+// one does. See completeAndValidateOverlayContracts.
+
+// addMealDeduction gives the fixture an apply_to_all property, so the tests
+// below can tell "merged the defaults" from "did nothing".
+func addMealDeduction(t *testing.T, db *gorm.DB, td forecastTestData) {
+	t.Helper()
+	createTestFundingPropertyFull(t, db, td.fundingPeriod.ID,
+		"parent", "meals", "Elternessen", -2300, 0, 0, 8)
+	db.Model(&models.GovernmentFundingProperty{}).
+		Where("period_id = ? AND key = ?", td.fundingPeriod.ID, "parent").
+		Update("apply_to_all_contracts", true)
+}
+
+func oneChildOverlay(td forecastTestData, props models.ContractProperties) []models.ForecastChildInput {
+	return []models.ForecastChildInput{{
+		FirstName: "Scenario", LastName: "Child", Gender: "female",
+		Birthdate: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
+		Contracts: []models.ForecastChildContractInput{{
+			From:       time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC),
+			SectionID:  td.section.ID,
+			Properties: props,
+		}},
+	}}
+}
+
+// The bug this pass exists for: ToModel copies properties verbatim, so a
+// modelled child never carried the deduction every real contract does and was
+// worth 23 EUR/month more than the child it was standing in for.
+func TestGetForecast_OverlayChildGetsAutoAppliedProperties(t *testing.T) {
+	svc, td, db := setupForecastTestDataWithDB(t)
+	addMealDeduction(t, db, td)
+	ctx := context.Background()
+
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from
+
+	base, err := svc.GetForecast(ctx, td.org.ID, &models.ForecastRequest{From: &from, To: &to})
+	if err != nil {
+		t.Fatalf("baseline: %v", err)
+	}
+	scenario, err := svc.GetForecast(ctx, td.org.ID, &models.ForecastRequest{
+		From: &from, To: &to,
+		AddChildren: oneChildOverlay(td, models.ContractProperties{"care_type": "ganztag"}),
+	})
+	if err != nil {
+		t.Fatalf("scenario: %v", err)
+	}
+
+	delta := scenario.Financials.DataPoints[0].FundingIncome - base.Financials.DataPoints[0].FundingIncome
+	// 1000.00 EUR ganztag less the 23.00 EUR deduction, exactly what a real
+	// contract for the same child would earn.
+	if want := 100000 - 2300; delta != want {
+		t.Errorf("modelled child is worth %d, a real one earns %d -- the auto-applied deduction was not merged", delta, want)
+	}
+}
+
+func TestGetForecast_OverlayRejectsPropertyTheConfigDoesNotDeclare(t *testing.T) {
+	svc, td := setupForecastTestData(t)
+	ctx := context.Background()
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from
+
+	_, err := svc.GetForecast(ctx, td.org.ID, &models.ForecastRequest{
+		From: &from, To: &to,
+		AddChildren: oneChildOverlay(td, models.ContractProperties{"care_type": "ganztagg"}),
+	})
+	if err == nil {
+		t.Fatal("expected rejection")
+	}
+	if !strings.Contains(err.Error(), "add_children[0].contracts[0].properties.care_type") {
+		t.Errorf("error must name which hypothetical contract is wrong; got %v", err)
+	}
+}
+
+func TestGetForecast_OverlayRejectsMultipleValuesForOneKey(t *testing.T) {
+	svc, td := setupForecastTestData(t)
+	ctx := context.Background()
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from
+
+	_, err := svc.GetForecast(ctx, td.org.ID, &models.ForecastRequest{
+		From: &from, To: &to,
+		AddChildContracts: []models.ForecastChildContractInput{{
+			ChildID:    td.child1.ID,
+			From:       time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC),
+			SectionID:  td.section.ID,
+			Properties: models.ContractProperties{"care_type": []any{"ganztag", "ganztag"}},
+		}},
+	})
+	if err == nil {
+		t.Fatal("expected rejection")
+	}
+	if !strings.Contains(err.Error(), "add_child_contracts[0].properties.care_type") {
+		t.Errorf("error must name the standalone contract path; got %v", err)
+	}
+}
+
+// A period that requires nothing accepts a contract that sets nothing -- the
+// rule follows the configuration, here as everywhere else.
+func TestGetForecast_OverlayAcceptsEmptyPropertiesWhenNothingIsRequired(t *testing.T) {
+	svc, td := setupForecastTestData(t)
+	ctx := context.Background()
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from
+
+	if _, err := svc.GetForecast(ctx, td.org.ID, &models.ForecastRequest{
+		From: &from, To: &to,
+		AddChildren: oneChildOverlay(td, nil),
+	}); err != nil {
+		t.Fatalf("fixture period declares no required_keys, so this must be accepted: %v", err)
+	}
+}
+
+// A contract dated where no configuration reaches has no vocabulary to be
+// judged against, so it is left alone rather than refused.
+func TestGetForecast_OverlayContractOutsideEveryPeriodIsNotChecked(t *testing.T) {
+	svc, td := setupForecastTestData(t)
+	ctx := context.Background()
+	from := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from
+
+	if _, err := svc.GetForecast(ctx, td.org.ID, &models.ForecastRequest{
+		From: &from, To: &to,
+		AddChildren: []models.ForecastChildInput{{
+			FirstName: "Before", LastName: "Config", Gender: "male",
+			Birthdate: time.Date(2017, 1, 1, 0, 0, 0, 0, time.UTC),
+			Contracts: []models.ForecastChildContractInput{{
+				From:       time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC),
+				SectionID:  td.section.ID,
+				Properties: models.ContractProperties{"anything": "at all"},
+			}},
+		}},
+	}); err != nil {
+		t.Fatalf("no configuration covers 2019, so nothing can be checked: %v", err)
 	}
 }

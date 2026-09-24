@@ -250,6 +250,7 @@ func (s *GovernmentFundingService) CreatePeriod(ctx context.Context, governmentF
 			Period:              models.Period{From: req.From, To: req.To},
 			FullTimeWeeklyHours: req.FullTimeWeeklyHours,
 			Comment:             strings.TrimSpace(req.Comment),
+			RequiredKeys:        normalizeRequiredKeys(req.RequiredKeys),
 		}
 
 		if err := s.store.CreatePeriod(txCtx, period); err != nil {
@@ -314,6 +315,9 @@ func (s *GovernmentFundingService) UpdatePeriod(ctx context.Context, periodID, f
 		period.To = newTo
 		if req.FullTimeWeeklyHours != nil {
 			period.FullTimeWeeklyHours = *req.FullTimeWeeklyHours
+		}
+		if req.RequiredKeys != nil {
+			period.RequiredKeys = normalizeRequiredKeys(*req.RequiredKeys)
 		}
 		if req.Comment != nil {
 			period.Comment = strings.TrimSpace(*req.Comment)
@@ -483,4 +487,21 @@ func (s *GovernmentFundingService) DeleteProperty(ctx context.Context, propertyI
 		return apperror.InternalWrap(err, "failed to delete property")
 	}
 	return nil
+}
+
+// normalizeRequiredKeys trims, drops blanks and de-duplicates the declared keys,
+// and returns a non-nil empty slice rather than nil so the column stores `[]`
+// and "declares nothing" is not confused with "was never written".
+func normalizeRequiredKeys(keys []string) []string {
+	out := make([]string, 0, len(keys))
+	seen := make(map[string]bool, len(keys))
+	for _, k := range keys {
+		k = strings.TrimSpace(k)
+		if k == "" || seen[k] {
+			continue
+		}
+		seen[k] = true
+		out = append(out, k)
+	}
+	return out
 }

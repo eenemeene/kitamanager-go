@@ -102,9 +102,15 @@ func (s *ChildService) CreateContract(ctx context.Context, childID, orgID uint, 
 		return nil, err
 	}
 
-	// Merge auto-apply funding properties (e.g. parent meals) into contract
-	defaults := s.getAutoApplyProperties(ctx, orgID, req.From)
-	properties := req.Properties.MergeDefaults(defaults)
+	// Merge auto-apply funding properties (e.g. parent meals) into contract,
+	// then check the result against the same period. Validating the merged map
+	// rather than the request is deliberate: it is what gets stored, and what
+	// the funding calculation will later read.
+	period := s.fundingPeriodForDate(ctx, orgID, req.From)
+	properties := req.Properties.MergeDefaults(autoApplyProperties(period))
+	if err := validateContractProperties(properties, period, ""); err != nil {
+		return nil, err
+	}
 
 	contract := &models.ChildContract{
 		ChildID: childID,
@@ -185,11 +191,13 @@ func (s *ChildService) DeleteContract(ctx context.Context, contractID, childID, 
 	return nil
 }
 
-// getAutoApplyProperties returns properties marked with ApplyToAllContracts from the
-// government funding period active on the given date for the organization's state.
-// These are merged into every child contract so that universal funding items (e.g. meals)
-// are always included in funding calculations without manual selection.
-func (s *ChildService) getAutoApplyProperties(ctx context.Context, orgID uint, date time.Time) models.ContractProperties {
+// fundingPeriodForDate returns the funding period in force for the organization
+// on the given date, or nil when the state has no configuration covering it.
+//
+// Split out from getAutoApplyProperties because the same period answers two
+// questions -- which properties to auto-apply, and which the contract is allowed
+// to carry -- and loading it twice for one write would be a wasted round trip.
+func (s *ChildService) fundingPeriodForDate(ctx context.Context, orgID uint, date time.Time) *models.GovernmentFundingPeriod {
 	org, err := s.orgStore.FindByID(ctx, orgID)
 	if err != nil || org.State == "" {
 		return nil
@@ -200,11 +208,16 @@ func (s *ChildService) getAutoApplyProperties(ctx context.Context, orgID uint, d
 		return nil
 	}
 
-	period := findPeriodForDate(funding.Periods, date)
+	return findPeriodForDate(funding.Periods, date)
+}
+
+// autoApplyProperties returns the properties a period marks ApplyToAllContracts.
+// These are merged into every child contract so that universal funding items
+// (e.g. meals) are always included without manual selection.
+func autoApplyProperties(period *models.GovernmentFundingPeriod) models.ContractProperties {
 	if period == nil {
 		return nil
 	}
-
 	defaults := make(models.ContractProperties)
 	for _, prop := range period.Properties {
 		if prop.ApplyToAllContracts {
@@ -214,7 +227,6 @@ func (s *ChildService) getAutoApplyProperties(ctx context.Context, orgID uint, d
 	if len(defaults) == 0 {
 		return nil
 	}
-
-	slog.Debug("auto-apply properties", "orgID", orgID, "date", date, "defaults", defaults)
+	slog.Debug("auto-apply properties", "period_id", period.ID, "defaults", defaults)
 	return defaults
 }
