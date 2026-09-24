@@ -246,6 +246,8 @@
     "budgetExpensesTooltip": "Nicht-personelle Ausgaben aus den Haushaltsposten (z. B. Miete, Verpflegung, Materialien). Konfigurierbar unter „Haushalt“.",
     "fundingBreakdown": "Einnahmen-Aufschlüsselung",
     "fundingBreakdownDescription": "Einnahmen des aktuellen Monats nach Quelle",
+    "fundingBreakdownNet": "Für diesen Monat stehen nur Abzüge zu Buche: {amount}",
+    "fundingBreakdownReconcile": "Summe der Anteile {gross} − {deductions} {deducted} = {net}",
     "expenseBreakdown": "Ausgaben-Aufschlüsselung",
     "expenseBreakdownDescription": "Ausgaben des aktuellen Monats nach Kategorie",
     "occupancyMatrix": "Belegungsmatrix",
