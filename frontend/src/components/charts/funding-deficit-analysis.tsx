@@ -162,7 +162,13 @@ export function FundingDeficitAnalysis({
                               {issue.description}
                             </TableCell>
                             <TableCell className="text-muted-foreground text-right text-xs tabular-nums">
-                              {formatEur(issue.amount_per_month ?? 0)} &times; {issue.month_count}m
+                              {/* amount_per_month is total/months in integer cents,
+                                  so it does not multiply back: -1000 over three
+                                  months is -333, and -333 x 3 is -999. Marked as
+                                  a mean so the row stops implying an identity it
+                                  cannot satisfy. */}
+                              &#8709; {formatEur(issue.amount_per_month ?? 0)} &middot;{' '}
+                              {t('deficitIssueMonths', { count: issue.month_count ?? 0 })}
                             </TableCell>
                             <TableCell
                               className={cn(

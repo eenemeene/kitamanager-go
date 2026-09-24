@@ -227,7 +227,7 @@
     "cumulativeBalance": "Cumulative Balance",
     "monthlyChange": "(monthly)",
     "deficitSince": "Deficit start",
-    "deficitConsecutive": "Currently in deficit for {count} consecutive {count, plural, one {month} other {months}}",
+    "deficitConsecutive": "Currently {count} consecutive {count, plural, one {month} other {months}} in deficit (current Kita year)",
     "employerCostsTooltip": "Employer social security contributions (percentage from pay plan)",
     "totalIncome": "Total Income",
     "totalIncomeTooltip": "Sum of funding income and budget income for the current month.",
@@ -283,6 +283,7 @@
     "deficitIssueChild": "Child",
     "deficitIssueDescription": "Issue",
     "deficitIssuePerMonth": "Per Month",
+    "deficitIssueMonths": "{count, plural, one {# month} other {# months}}",
     "deficitIssueAmount": "Total Impact",
     "deficitCategory_rate_difference": "Rate Differences",
     "deficitCategory_property_mismatch": "Property Mismatches",
@@ -310,6 +311,8 @@
     "staffingAvailable": "Available",
     "staffingBalancePercent": "Balance %",
     "staffCount": "Staff",
+    "staffingTotalPedagogical": "of which pedagogical",
+    "staffingTotalAll": "Total (all employees)",
     "average": "Average",
     "employeeStaffingHoursGrid": "Employee Hours Grid",
     "employeeName": "Employee",
@@ -355,7 +358,9 @@
       "missingPayPlan": "Salary excluded: contract references unknown pay plan {payPlan}",
       "noPayPlanPeriod": "Salary excluded: pay plan {payPlan} has no period covering this date",
       "noPayPlanEntry": "Salary excluded: pay plan has no entry for grade {grade}, step {step}",
-      "unusablePayPlanPeriod": "Salary excluded: pay plan {payPlan} has a period with invalid weekly hours"
+      "unusablePayPlanPeriod": "Salary excluded: pay plan {payPlan} has a period with invalid weekly hours",
+      "budgetItemsLoadFailed": "Budget items could not be loaded; the expense breakdown excludes operating costs.",
+      "fundingBillsLoadFailed": "Actual government funding bills could not be loaded; the reported actuals may be incomplete."
     },
     "monthlyContractsChart": "Children under contract over time",
     "month": "Month",
@@ -462,7 +467,8 @@
       "male": "M",
       "female": "F",
       "diverse": "D"
-    }
+    },
+    "unknown": "Not specified"
   },
   "addChildFromBill": {
     "title": "Add child from bill",

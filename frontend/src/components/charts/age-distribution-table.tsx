@@ -34,6 +34,14 @@ export function AgeDistributionTable({ data }: AgeDistributionTableProps) {
   const ageLabel = (raw: string) =>
     raw.includes('+') ? t('statistics.ageSixPlus') : t('statistics.ageYears', { age: raw });
 
+  // Shown only when it would carry something: for data where every gender is
+  // one of the three, the column is noise. When it is not, its absence made the
+  // gender columns fail to sum to the Total beside them.
+  const hasUnknown = useMemo(
+    () => data.distribution.some((b) => (b.unknown_count ?? 0) > 0),
+    [data.distribution]
+  );
+
   const totals = useMemo(
     () =>
       data.distribution.reduce(
@@ -41,9 +49,10 @@ export function AgeDistributionTable({ data }: AgeDistributionTableProps) {
           male: acc.male + (b.male_count ?? 0),
           female: acc.female + (b.female_count ?? 0),
           diverse: acc.diverse + (b.diverse_count ?? 0),
+          unknown: acc.unknown + (b.unknown_count ?? 0),
           all: acc.all + (b.count ?? 0),
         }),
-        { male: 0, female: 0, diverse: 0, all: 0 }
+        { male: 0, female: 0, diverse: 0, unknown: 0, all: 0 }
       ),
     [data.distribution]
   );
@@ -57,6 +66,7 @@ export function AgeDistributionTable({ data }: AgeDistributionTableProps) {
           <TableHead className="text-right">{t('gender.male')}</TableHead>
           <TableHead className="text-right">{t('gender.female')}</TableHead>
           <TableHead className="text-right">{t('gender.diverse')}</TableHead>
+          {hasUnknown && <TableHead className="text-right">{t('gender.unknown')}</TableHead>}
           <TableHead className="text-right">{t('statistics.total')}</TableHead>
         </TableRow>
       </TableHeader>
@@ -67,6 +77,9 @@ export function AgeDistributionTable({ data }: AgeDistributionTableProps) {
             <TableCell className="text-right">{bucket.male_count ?? 0}</TableCell>
             <TableCell className="text-right">{bucket.female_count ?? 0}</TableCell>
             <TableCell className="text-right">{bucket.diverse_count ?? 0}</TableCell>
+            {hasUnknown && (
+              <TableCell className="text-right">{bucket.unknown_count ?? 0}</TableCell>
+            )}
             <TableCell className="text-right font-medium">{bucket.count ?? 0}</TableCell>
           </TableRow>
         ))}
@@ -75,6 +88,7 @@ export function AgeDistributionTable({ data }: AgeDistributionTableProps) {
           <TableCell className="text-right font-medium">{totals.male}</TableCell>
           <TableCell className="text-right font-medium">{totals.female}</TableCell>
           <TableCell className="text-right font-medium">{totals.diverse}</TableCell>
+          {hasUnknown && <TableCell className="text-right font-medium">{totals.unknown}</TableCell>}
           <TableCell className="text-right font-medium">{totals.all}</TableCell>
         </TableRow>
       </TableBody>

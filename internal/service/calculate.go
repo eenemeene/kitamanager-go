@@ -441,29 +441,27 @@ func calculateFinancials(
 		var budgetItemDetails []models.FinancialBudgetItemDetail
 		for i := range budgetItems {
 			item := &budgetItems[i]
-			for j := range item.Entries {
-				entry := &item.Entries[j]
-				if entry.IsActiveOn(date) {
-					unit := entry.AmountCents
-					amount := unit
-					if item.PerChild {
-						amount = unit * childCount
-					}
-					if item.Category == string(models.BudgetItemCategoryIncome) {
-						budgetIncome += amount
-					} else {
-						budgetExpenses += amount
-					}
-					budgetItemDetails = append(budgetItemDetails, models.FinancialBudgetItemDetail{
-						Name:            item.Name,
-						Category:        item.Category,
-						AmountCents:     amount,
-						PerChild:        item.PerChild,
-						UnitAmountCents: unit,
-					})
-					break // only first active entry per item
-				}
+			entry := pickActiveBudgetEntry(item.Entries, date)
+			if entry == nil {
+				continue
 			}
+			unit := entry.AmountCents
+			amount := unit
+			if item.PerChild {
+				amount = unit * childCount
+			}
+			if item.Category == string(models.BudgetItemCategoryIncome) {
+				budgetIncome += amount
+			} else {
+				budgetExpenses += amount
+			}
+			budgetItemDetails = append(budgetItemDetails, models.FinancialBudgetItemDetail{
+				Name:            item.Name,
+				Category:        item.Category,
+				AmountCents:     amount,
+				PerChild:        item.PerChild,
+				UnitAmountCents: unit,
+			})
 		}
 
 		dp.FundingIncome = fundingIncome
@@ -483,6 +481,30 @@ func calculateFinancials(
 	}
 
 	return dataPoints, warnings
+}
+
+// pickActiveBudgetEntry returns the budget item entry in force on date.
+//
+// Migration 000016's GIST exclusion constraint means at most one entry can
+// cover any date, so on well-formed data every candidate implementation agrees.
+// The previous "first active entry in slice order, then break" did not: should
+// that constraint ever be dropped or bypassed, which amount applied depended on
+// the order GORM returned the rows. Latest From wins, ties broken by highest
+// ID, matching pickActiveChildContract and pickActiveEmployeeContract -- three
+// pickers that answer the same shape of question should not answer it three
+// different ways.
+func pickActiveBudgetEntry(entries []models.BudgetItemEntry, date time.Time) *models.BudgetItemEntry {
+	var best *models.BudgetItemEntry
+	for i := range entries {
+		e := &entries[i]
+		if !e.IsActiveOn(date) {
+			continue
+		}
+		if best == nil || e.From.After(best.From) || (e.From.Equal(best.From) && e.ID > best.ID) {
+			best = e
+		}
+	}
+	return best
 }
 
 // calculateStaffingHours computes monthly required vs available staffing
@@ -737,6 +759,11 @@ func calculateAgeDistribution(
 					bucket.FemaleCount++
 				case string(models.GenderDiverse):
 					bucket.DiverseCount++
+				default:
+					// Anything the enum does not cover. Counting it keeps
+					// count == male + female + diverse + unknown, which is what
+					// lets the chart and the table be checked against the total.
+					bucket.UnknownCount++
 				}
 				break
 			}

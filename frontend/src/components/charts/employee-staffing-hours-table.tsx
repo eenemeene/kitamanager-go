@@ -61,15 +61,29 @@ export function EmployeeStaffingHoursTable({ data }: EmployeeStaffingHoursTableP
   const dates = useMemo(() => data.dates ?? [], [data.dates]);
   const employees = useMemo(() => data.employees ?? [], [data.employees]);
 
-  const totals = useMemo(() => {
+  const sumHours = (rows: typeof employees) => {
     const sums = new Array<number>(dates.length).fill(0);
-    for (const emp of employees) {
+    for (const emp of rows) {
       for (let i = 0; i < dates.length; i++) {
         sums[i] += emp.monthly_hours?.[i] ?? 0;
       }
     }
     return sums;
-  }, [dates, employees]);
+  };
+
+  const totals = useMemo(() => sumHours(employees), [dates, employees]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // This grid lists every employee; the "Verfügbar" row on the staffing table
+  // above counts only pedagogical staff, because that is what the
+  // Personalschlüssel is measured against. The two sat on one page as 493 and
+  // 543 hours with nothing saying why they differed. Reporting both here makes
+  // the relationship visible instead of leaving the reader to guess which
+  // number answers their question.
+  const pedagogicalTotals = useMemo(
+    () => sumHours(employees.filter((e) => e.staff_category !== 'non_pedagogical')),
+    [dates, employees] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const hasNonPedagogical = employees.some((e) => e.staff_category === 'non_pedagogical');
 
   const averages = useMemo(() => {
     return employees.map((emp) => {
@@ -158,10 +172,29 @@ export function EmployeeStaffingHoursTable({ data }: EmployeeStaffingHoursTableP
             );
           })}
 
+          {/* Pedagogical subtotal: the figure the staffing table's "available"
+              row reports, so the two can be reconciled on sight. Only shown
+              when some employee is non-pedagogical, since otherwise it repeats
+              the total exactly. */}
+          {hasNonPedagogical && (
+            <TableRow className="border-t-2">
+              <TableCell className="bg-background sticky left-0 z-10 font-medium">
+                {t('staffingTotalPedagogical')}
+              </TableCell>
+              {pedagogicalTotals.map((val, i) => (
+                <Fragment key={dates[i]}>
+                  {i > 0 && <DiffCell prev={pedagogicalTotals[i - 1]} curr={val} />}
+                  <TableCell className="text-right tabular-nums">{formatHours(val)}</TableCell>
+                </Fragment>
+              ))}
+              <TableCell className="text-right tabular-nums" />
+            </TableRow>
+          )}
+
           {/* Total row */}
-          <TableRow className="border-t-2">
+          <TableRow className={hasNonPedagogical ? '' : 'border-t-2'}>
             <TableCell className="bg-background sticky left-0 z-10 font-bold">
-              {t('total')}
+              {hasNonPedagogical ? t('staffingTotalAll') : t('total')}
             </TableCell>
             {totals.map((val, i) => (
               <Fragment key={dates[i]}>

@@ -12,9 +12,15 @@ interface AgeDistributionChartProps {
 export function AgeDistributionChart({ data }: AgeDistributionChartProps) {
   const t = useTranslations();
 
+  // Children whose gender is none of the three were counted in the total but
+  // drawn in no segment, so the bars added up to less than the caption above
+  // them. The segment only appears when there are such children, which for
+  // clean data is never.
+  const hasUnknown = data.distribution.some((b) => (b.unknown_count ?? 0) > 0);
+
   const chartData = data.distribution.map((bucket) => {
     const ageLabel = bucket.age_label ?? '';
-    return {
+    const row: Record<string, string | number> = {
       age: ageLabel.includes('+')
         ? t('statistics.ageSixPlus')
         : t('statistics.ageYears', { age: ageLabel }),
@@ -22,9 +28,15 @@ export function AgeDistributionChart({ data }: AgeDistributionChartProps) {
       [t('gender.female')]: bucket.female_count ?? 0,
       [t('gender.diverse')]: bucket.diverse_count ?? 0,
     };
+    if (hasUnknown) {
+      row[t('gender.unknown')] = bucket.unknown_count ?? 0;
+    }
+    return row;
   });
 
-  const keys = [t('gender.male'), t('gender.female'), t('gender.diverse')];
+  const keys = hasUnknown
+    ? [t('gender.male'), t('gender.female'), t('gender.diverse'), t('gender.unknown')]
+    : [t('gender.male'), t('gender.female'), t('gender.diverse')];
 
   return (
     <div className="space-y-4">
@@ -39,7 +51,7 @@ export function AgeDistributionChart({ data }: AgeDistributionChartProps) {
           margin={{ top: 20, right: 130, bottom: 50, left: 60 }}
           padding={0.3}
           groupMode="stacked"
-          colors={['#3b82f6', '#ec4899', '#8b5cf6']}
+          colors={['#3b82f6', '#ec4899', '#8b5cf6', '#94a3b8']}
           borderColor={{ from: 'color', modifiers: [['darker', 1.6]] }}
           axisTop={null}
           axisRight={null}

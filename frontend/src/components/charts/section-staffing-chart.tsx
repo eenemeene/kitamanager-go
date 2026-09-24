@@ -27,7 +27,9 @@ export interface SectionStaffingChartRow {
 
 /** Compute the symmetric domain max (with ~10% padding, floor at 10%). */
 export function computeSymmetricDomainMax(percentages: number[]): number {
-  const rawMax = Math.max(10, ...percentages.map(Math.abs));
+  // A section with no requirement contributes NaN, which would make the whole
+  // domain NaN and the axis vanish.
+  const rawMax = Math.max(10, ...percentages.filter(Number.isFinite).map(Math.abs));
   return Math.ceil(rawMax * 1.1);
 }
 
@@ -36,7 +38,8 @@ export function computeSymmetricDomainMax(percentages: number[]): number {
  * percentage math and rounding rules are unit-tested without rendering.
  *
  * Edge cases handled:
- *  - `required === 0` → percentage is 0 (avoids Infinity)
+ *  - `required === 0` → percentage is NaN: a section with no requirement has no
+ *    ratio to report, and 0 would claim it is exactly staffed
  *  - rounding hours to whole numbers for the y-axis tick formatter
  *  - rounding percentages to 0.1% so labels read +12.3% / -7.5%
  */
@@ -46,7 +49,7 @@ export function buildSectionStaffingRows(
 ): SectionStaffingChartRow[] {
   return data.map((d) => {
     const pct =
-      d.required > 0 ? Math.round(((d.available - d.required) / d.required) * 1000) / 10 : 0;
+      d.required > 0 ? Math.round(((d.available - d.required) / d.required) * 1000) / 10 : NaN;
     return {
       section: d.sectionName,
       [balanceKey]: pct,
@@ -85,7 +88,9 @@ export function SectionStaffingChart({ data }: SectionStaffingChartProps) {
           )}
           enableGridY={true}
           enableLabel={true}
-          label={({ value }) => `${(value ?? 0) > 0 ? '+' : ''}${value}%`}
+          label={({ value }) =>
+            Number.isFinite(value) ? `${(value ?? 0) > 0 ? '+' : ''}${value}%` : '\u2013'
+          }
           labelSkipWidth={20}
           labelTextColor="#fff"
           axisTop={null}

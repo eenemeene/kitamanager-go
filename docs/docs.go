@@ -11049,6 +11049,11 @@ const docTemplate = `{
                 "min_age": {
                     "type": "integer",
                     "example": 3
+                },
+                "unknown_count": {
+                    "description": "UnknownCount holds children whose gender is none of the three. Count was\nincremented for them while no gender bucket was, so the stacked bars added\nup to less than the total printed above them and the table's gender\ncolumns did not sum to its own Total column. The column is NOT NULL but\ncarries no CHECK, so a row written around the service validation lands\nhere rather than disappearing.",
+                    "type": "integer",
+                    "example": 0
                 }
             }
         },

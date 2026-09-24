@@ -7467,3 +7467,125 @@ func TestBuildComparisonSummary_CorrectionOnlyChildNotCounted(t *testing.T) {
 		}
 	}
 }
+
+// newBillSummaryService builds the service the billing-summary tests exercise.
+func newBillSummaryService(db *gorm.DB) *GovernmentFundingBillService {
+	return NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
+	)
+}
+
+// Amending a contract closes the old one at To = yesterday and opens the
+// successor at From = today, so on any day but the first of a month both cover
+// that month. Summing each contract's span counted it twice, and amending is
+// the ordinary way to change a care type -- the error grew with every amendment
+// a child had ever had.
+func TestChildrenBillingSummary_ContractMonths_AmendmentMonthCountedOnce(t *testing.T) {
+	db := setupTestDB(t)
+	svc := newBillSummaryService(db)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "billsummary_amend@example.com", "password")
+	ctx := context.Background()
+
+	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
+	period := createTestFundingPeriod(t, db, funding.ID, time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0)
+	createTestFundingProperty(t, db, period.ID, "care_type", "ganztag", 120000, -1, -1)
+
+	// Jan 1 - Mar 14, then Mar 15 onward: the seam falls mid-March, so March is
+	// covered by both. Four calendar months are touched: Jan, Feb, Mar, Apr.
+	seamEnd := time.Date(2025, 3, 14, 0, 0, 0, 0, time.UTC)
+	child, _ := createChildWithVoucher(t, db, "Amended", "Child", org.ID, section.ID, "GB-AMEND-001",
+		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), &seamEnd,
+		models.ContractProperties{"care_type": "ganztag"})
+
+	successorEnd := time.Date(2025, 4, 30, 0, 0, 0, 0, time.UTC)
+	if err := db.Create(&models.ChildContract{
+		ChildID: child.ID,
+		BaseContract: models.BaseContract{
+			Period:     models.Period{From: time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC), To: &successorEnd},
+			SectionID:  section.ID,
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+		},
+	}).Error; err != nil {
+		t.Fatalf("setup: successor contract: %v", err)
+	}
+
+	// The summary only reports children that appear in at least one bill, so
+	// one is needed for the child to be in the result at all.
+	createBillFixture(t, db, org.ID, user.ID, 2025, time.January, []models.GovernmentFundingBillChild{
+		{VoucherNumber: "GB-AMEND-001", ChildName: "Child, Amended", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 120000}}},
+	})
+
+	result, err := svc.ChildrenBillingSummary(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result.Children) != 1 {
+		t.Fatalf("expected 1 child, got %d", len(result.Children))
+	}
+	// Jan, Feb, Mar, Apr. Summing the spans gives 3 + 2 = 5, counting March twice.
+	if got := result.Children[0].ContractMonths; got != 4 {
+		t.Errorf("contract_months = %d, want 4 (Jan-Apr, March covered by both contracts but counted once)", got)
+	}
+}
+
+// A child can hold more than one voucher -- Berlin reissues a Gutschein on a
+// deferral or a district change -- and both can appear in one bill. Counting
+// bills per voucher and adding them up counted that bill twice.
+func TestChildrenBillingSummary_BillCount_TwoVouchersInOneBill(t *testing.T) {
+	db := setupTestDB(t)
+	svc := newBillSummaryService(db)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	user := createTestUser(t, db, "User", "billsummary_twovouchers@example.com", "password")
+	ctx := context.Background()
+
+	funding := createTestGovernmentFunding(t, db, "Berlin Funding")
+	period := createTestFundingPeriod(t, db, funding.ID, time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil, 39.0)
+	createTestFundingProperty(t, db, period.ID, "care_type", "ganztag", 120000, -1, -1)
+
+	oldVoucher, newVoucher := "GB-REISSUE-OLD", "GB-REISSUE-NEW"
+	child, _ := createChildWithVoucher(t, db, "Reissued", "Voucher", org.ID, section.ID, oldVoucher,
+		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), nil,
+		models.ContractProperties{"care_type": "ganztag"})
+
+	if err := db.Create(&models.ChildVoucher{
+		ChildID: child.ID, VoucherNumber: newVoucher,
+		FirstSeen: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+	}).Error; err != nil {
+		t.Fatalf("setup: second voucher: %v", err)
+	}
+
+	// One bill listing the child under both vouchers.
+	createBillFixture(t, db, org.ID, user.ID, 2025, time.January, []models.GovernmentFundingBillChild{
+		{VoucherNumber: oldVoucher, ChildName: "Voucher, Reissued", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 60000}}},
+		{VoucherNumber: newVoucher, ChildName: "Voucher, Reissued", BirthDate: "01.20", District: 1,
+			Payments: []models.GovernmentFundingBillPayment{{Key: "care_type", Value: "ganztag", Amount: 60000}}},
+	})
+
+	result, err := svc.ChildrenBillingSummary(ctx, org.ID)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result.Children) != 1 {
+		t.Fatalf("expected 1 child, got %d", len(result.Children))
+	}
+	entry := result.Children[0]
+	if entry.BillCount != 1 {
+		t.Errorf("bill_count = %d, want 1 (one bill, listed under two of the child's vouchers)", entry.BillCount)
+	}
+	// Amounts still add across vouchers: each voucher's payment rows are its own.
+	if entry.TotalBilled != 120000 {
+		t.Errorf("total_billed = %d, want 120000 (both vouchers' rows belong to this child)", entry.TotalBilled)
+	}
+}

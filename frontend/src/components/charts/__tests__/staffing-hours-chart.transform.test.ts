@@ -20,27 +20,36 @@ function makeDp(overrides: Partial<DataPoint> = {}): DataPoint {
 }
 
 describe('computeBalancePercentages', () => {
-  describe('division-by-zero guard', () => {
-    it('returns 0 when required_hours is 0 (does not divide)', () => {
-      // The chart's bar layer renders these as +0% with no bar — but if
-      // we returned Infinity here, the d3-scale domain would blow up
-      // and Nivo would render an empty chart. Critical correctness
-      // boundary.
+  describe('no requirement means no ratio', () => {
+    // These returned 0 and the table beside the chart returned a dash, both
+    // written in 4fd044f0 -- one commit, two answers to the same question,
+    // because that commit was pinning behaviour rather than choosing it.
+    //
+    // The dash is the true one. (available - required) / required is undefined
+    // at required = 0, and 0% positively asserts "exactly staffed" for a month
+    // with staff on shift and no children. Infinity must still never reach the
+    // d3 scale, which is what the original guard was really protecting; NaN is
+    // filtered before the domain is computed and skipped when drawing.
+    it('returns NaN when required_hours is 0 (does not divide)', () => {
       const res = computeBalancePercentages([makeDp({ required_hours: 0, available_hours: 100 })]);
-      expect(res).toEqual([0]);
+      expect(res).toHaveLength(1);
+      expect(Number.isFinite(res[0])).toBe(false);
     });
 
-    it('returns 0 when required_hours is undefined (older payload)', () => {
-      // Generated TS has these optional pre-spec-fix; runtime payload
-      // may still drop them. The `?? 0` chain MUST be wired in both
-      // legs so we never feed Infinity into the scale.
+    it('returns NaN when required_hours is undefined (older payload)', () => {
       const dp = { date: '2025-01-01' } as DataPoint;
-      expect(computeBalancePercentages([dp])).toEqual([0]);
+      expect(Number.isFinite(computeBalancePercentages([dp])[0])).toBe(false);
     });
 
-    it('returns 0 when both required and available are undefined', () => {
+    it('returns NaN when both required and available are undefined', () => {
       const dp = { date: '2025-01-01' } as DataPoint;
-      expect(computeBalancePercentages([dp])).toEqual([0]);
+      expect(Number.isFinite(computeBalancePercentages([dp])[0])).toBe(false);
+    });
+
+    it('never returns Infinity, which is what would break the scale', () => {
+      const res = computeBalancePercentages([makeDp({ required_hours: 0, available_hours: 999 })]);
+      expect(res[0]).not.toBe(Infinity);
+      expect(res[0]).not.toBe(-Infinity);
     });
   });
 

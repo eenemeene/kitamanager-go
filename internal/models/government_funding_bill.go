@@ -307,6 +307,11 @@ type VoucherBilledTotal struct {
 type BillDateVoucher struct {
 	VoucherNumber string    `gorm:"column:voucher_number"`
 	BillFrom      time.Time `format:"date-time" gorm:"column:bill_from"`
+	// BillID identifies the bill this voucher appeared in. Needed because a
+	// child can hold more than one voucher -- Berlin reissues a Gutschein on a
+	// deferral or a district change -- and both can appear in the same bill.
+	// Counting bills per voucher and adding them up then counts that bill twice.
+	BillID uint `gorm:"column:bill_id"`
 }
 
 // ChildBillingSummaryEntry represents the billing summary for one child.

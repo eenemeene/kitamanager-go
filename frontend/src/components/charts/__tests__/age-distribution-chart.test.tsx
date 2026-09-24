@@ -32,6 +32,7 @@ describe('AgeDistributionChart', () => {
         male_count: 2,
         female_count: 2,
         diverse_count: 1,
+        unknown_count: 0,
       },
       {
         age_label: '1',
@@ -41,6 +42,7 @@ describe('AgeDistributionChart', () => {
         male_count: 4,
         female_count: 3,
         diverse_count: 1,
+        unknown_count: 0,
       },
       {
         age_label: '2',
@@ -50,6 +52,7 @@ describe('AgeDistributionChart', () => {
         male_count: 5,
         female_count: 4,
         diverse_count: 1,
+        unknown_count: 0,
       },
       {
         age_label: '3',
@@ -59,6 +62,7 @@ describe('AgeDistributionChart', () => {
         male_count: 6,
         female_count: 5,
         diverse_count: 1,
+        unknown_count: 0,
       },
       {
         age_label: '4',
@@ -68,6 +72,7 @@ describe('AgeDistributionChart', () => {
         male_count: 4,
         female_count: 4,
         diverse_count: 1,
+        unknown_count: 0,
       },
       {
         age_label: '5',
@@ -77,6 +82,7 @@ describe('AgeDistributionChart', () => {
         male_count: 3,
         female_count: 3,
         diverse_count: 1,
+        unknown_count: 0,
       },
       {
         age_label: '6+',
@@ -86,6 +92,7 @@ describe('AgeDistributionChart', () => {
         male_count: 2,
         female_count: 2,
         diverse_count: 0,
+        unknown_count: 0,
       },
     ],
     total_count: 55,

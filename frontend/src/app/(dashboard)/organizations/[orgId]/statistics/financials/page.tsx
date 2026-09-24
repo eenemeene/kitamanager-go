@@ -16,6 +16,7 @@ import { BudgetTable } from '@/components/charts/budget-table';
 import { YearStepper } from '@/components/ui/year-stepper';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
+import { todayBerlinString } from '@/lib/utils/contracts';
 import { getCurrentMonthStart } from '@/lib/utils/formatting';
 import { buildKitaYearCompareWindows } from '@/lib/utils/kita-year';
 
@@ -54,7 +55,7 @@ export default function FinancialsPage() {
   const params = useParams();
   const orgId = Number(params.orgId);
   const t = useTranslations();
-  const [budgetYear, setBudgetYear] = useState(new Date().getFullYear());
+  const [budgetYear, setBudgetYear] = useState(Number(todayBerlinString().slice(0, 4)));
 
   const budgetFrom = `${budgetYear}-01-01`;
   const budgetTo = `${budgetYear}-12-01`;

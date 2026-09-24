@@ -86,6 +86,13 @@ function renderWarning(t: ReturnType<typeof useTranslations>, w: CalculationWarn
       );
     case 'unusable_pay_plan_period':
       return t('unusablePayPlanPeriod', { payPlan: w.payplan_id ?? '?' }) + empPart + datePart;
+    // Loading failures carry no entity, so no employee or date suffix. Without
+    // these two cases they fell through to `default` and rendered the backend's
+    // raw English message to a German-primary audience.
+    case 'budget_items_load_failed':
+      return t('budgetItemsLoadFailed');
+    case 'funding_bills_load_failed':
+      return t('fundingBillsLoadFailed');
     default:
       return w.message + empPart + datePart;
   }

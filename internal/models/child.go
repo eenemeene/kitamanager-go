@@ -203,4 +203,11 @@ type AgeDistributionBucket struct {
 	MaleCount    int    `json:"male_count" example:"6"`
 	FemaleCount  int    `json:"female_count" example:"5"`
 	DiverseCount int    `json:"diverse_count" example:"1"`
+	// UnknownCount holds children whose gender is none of the three. Count was
+	// incremented for them while no gender bucket was, so the stacked bars added
+	// up to less than the total printed above them and the table's gender
+	// columns did not sum to its own Total column. The column is NOT NULL but
+	// carries no CHECK, so a row written around the service validation lands
+	// here rather than disappearing.
+	UnknownCount int `json:"unknown_count" example:"0"`
 }
