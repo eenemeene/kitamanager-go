@@ -246,6 +246,8 @@
     "budgetExpensesTooltip": "Non-staff expenses from budget items (e.g. rent, catering, materials). Configurable under \"Budget\".",
     "fundingBreakdown": "Income Breakdown",
     "fundingBreakdownDescription": "Current month income by source",
+    "fundingBreakdownNet": "This month consists of deductions only: {amount}",
+    "fundingBreakdownReconcile": "Slices total {gross} − {deductions} {deducted} = {net}",
     "expenseBreakdown": "Expense Breakdown",
     "expenseBreakdownDescription": "Current month expenses by category",
     "occupancyMatrix": "Occupancy Matrix",

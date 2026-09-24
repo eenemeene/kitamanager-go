@@ -1,6 +1,10 @@
 jest.mock('@nivo/pie', () => ({ ResponsivePie: () => null }));
 
-import { buildFundingSlices, FUNDING_BREAKDOWN_COLORS } from '../funding-breakdown-chart';
+import {
+  buildFundingDeductions,
+  buildFundingSlices,
+  FUNDING_BREAKDOWN_COLORS,
+} from '../funding-breakdown-chart';
 import type {
   FinancialBudgetItemDetail,
   FinancialDataPoint,
@@ -237,5 +241,96 @@ describe('buildFundingSlices', () => {
       };
       expect(buildFundingSlices(dp)[0]?.value).toBe(1668.47);
     });
+  });
+});
+
+describe('buildFundingDeductions', () => {
+  it('returns nothing when no funding detail is negative', () => {
+    const dp = {
+      ...baseDp,
+      funding_details: [makeFunding({ amount_cents: 249491 })],
+    };
+    expect(buildFundingDeductions(dp)).toEqual([]);
+  });
+
+  // The Berlin parent meal contribution carries apply_to_all_contracts, so it
+  // is on every child's contract -- the single reason this branch exists.
+  it('picks up a negative funding detail and keeps its sign', () => {
+    const dp = {
+      ...baseDp,
+      funding_details: [
+        makeFunding({ amount_cents: 249491 }),
+        makeFunding({ key: 'parent', value: 'meals', label: 'Elternessen', amount_cents: -115000 }),
+      ],
+    };
+    const deductions = buildFundingDeductions(dp);
+    expect(deductions).toHaveLength(1);
+    expect(deductions[0]!.label).toBe('Elternessen');
+    expect(deductions[0]!.value).toBe(-1150);
+  });
+
+  // Budget item amounts are non-negative by construction -- the create and
+  // update DTOs both carry binding:"required,min=0" and the model says "cents,
+  // always positive" -- so a deduction can only come from funding details.
+  it('does not look at budget items', () => {
+    const dp = {
+      ...baseDp,
+      budget_item_details: [makeBudget({ amount_cents: -5000 })],
+    };
+    expect(buildFundingDeductions(dp)).toEqual([]);
+  });
+});
+
+// The invariant the chart exists to respect. The slices are what the pie draws
+// and what its percentages are shares of; the income the rest of the page
+// reports is that total less the deductions a pie cannot render. If these ever
+// stop reconciling, the chart is contradicting the summary card beside it.
+describe('slices and deductions reconcile to total_income', () => {
+  const cases: { name: string; dp: FinancialDataPoint }[] = [
+    {
+      name: 'funding only',
+      dp: {
+        ...baseDp,
+        funding_details: [makeFunding({ amount_cents: 249491 })],
+        funding_income: 249491,
+        budget_income: 0,
+        total_income: 249491,
+      },
+    },
+    {
+      // The shape measured on the seeded organisation for September 2026.
+      name: 'funding with the universal meal deduction, plus budget income',
+      dp: {
+        ...baseDp,
+        funding_details: [
+          makeFunding({ value: 'ganztag', amount_cents: 3288785 }),
+          makeFunding({ value: 'halbtag', amount_cents: 1194444 }),
+          makeFunding({ value: 'teilzeit', amount_cents: 2008099 }),
+          makeFunding({ key: 'integration', value: 'integration a', amount_cents: 3130218 }),
+          makeFunding({ key: 'ndh', value: 'ndh', amount_cents: 259800 }),
+          makeFunding({ key: 'parent', value: 'meals', amount_cents: -115000 }),
+        ],
+        budget_item_details: [makeBudget({ category: 'income', amount_cents: 450000 })],
+        funding_income: 9766346,
+        budget_income: 450000,
+        total_income: 10216346,
+      },
+    },
+    {
+      name: 'deductions only',
+      dp: {
+        ...baseDp,
+        funding_details: [makeFunding({ key: 'parent', value: 'meals', amount_cents: -2300 })],
+        funding_income: -2300,
+        budget_income: 0,
+        total_income: -2300,
+      },
+    },
+  ];
+
+  it.each(cases)('$name', ({ dp }) => {
+    const sliceCents = buildFundingSlices(dp).reduce((sum, s) => sum + s.value, 0) * 100;
+    const deductionCents = buildFundingDeductions(dp).reduce((sum, d) => sum + d.value, 0) * 100;
+    expect(Math.round(sliceCents + deductionCents)).toBe(dp.total_income);
   });
 });
