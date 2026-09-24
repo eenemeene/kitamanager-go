@@ -16,7 +16,8 @@ import { BudgetTable } from '@/components/charts/budget-table';
 import { YearStepper } from '@/components/ui/year-stepper';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
-import { getCurrentMonthStart, toLocalDateString } from '@/lib/utils/formatting';
+import { getCurrentMonthStart } from '@/lib/utils/formatting';
+import { buildKitaYearCompareWindows } from '@/lib/utils/kita-year';
 
 const FinancialsChart = dynamic(
   () => import('@/components/charts/financials-bar-chart').then((mod) => mod.FinancialsChart),
@@ -70,38 +71,15 @@ export default function FinancialsPage() {
     enabled: !!orgId,
   });
 
-  // Derive date range from financials data for compare queries (12-month windows)
+  // One compare window per Kita year, cut on the same Aug-Jul boundary the
+  // comparison table groups by, so a year's summary is looked up by its label
+  // instead of by whichever 12-month block happened to overlap it most.
   const compareWindows = useMemo(() => {
-    const dps = financials?.data_points;
-    if (!dps?.length) return [];
-    // Only include months that have actual bills
-    const billMonths = dps
+    const billMonths = (financials?.data_points ?? [])
       .filter((dp) => dp.actual_funding != null)
       .map((dp) => dp.date)
       .filter((d): d is string => d !== undefined);
-    if (billMonths.length === 0) return [];
-    const first = billMonths[0]!;
-    const last = billMonths[billMonths.length - 1]!;
-    // Split into 12-month windows
-    const windows: { from: string; to: string }[] = [];
-    let wFrom: string = first;
-    while (wFrom <= last) {
-      // Parse as local midnight and format with toLocalDateString so the
-      // month arithmetic round-trips on the same calendar date. The old
-      // `new Date(wFrom)` (parsed as UTC) + `.toISOString().slice(0,10)`
-      // (formatted as UTC) mixed zones and shifted the date by a day in
-      // behind-UTC locales.
-      const fromDate = new Date(`${wFrom}T00:00:00`);
-      const toDate = new Date(fromDate);
-      toDate.setMonth(toDate.getMonth() + 11);
-      const wToStr = toLocalDateString(toDate);
-      const wTo = wToStr > last ? last : wToStr;
-      windows.push({ from: wFrom, to: wTo });
-      const nextDate = new Date(fromDate);
-      nextDate.setMonth(nextDate.getMonth() + 12);
-      wFrom = toLocalDateString(nextDate);
-    }
-    return windows;
+    return buildKitaYearCompareWindows(billMonths);
   }, [financials]);
 
   const compareResults = useQueries({
@@ -130,8 +108,7 @@ export default function FinancialsPage() {
     for (let i = 0; i < compareResults.length; i++) {
       const result = compareResults[i];
       if (result.data?.summary && compareWindows[i]) {
-        const w = compareWindows[i];
-        map.set(`${w.from}:${w.to}`, result.data.summary);
+        map.set(compareWindows[i]!.kitaYear, result.data.summary);
       }
     }
     return map.size > 0 ? map : undefined;

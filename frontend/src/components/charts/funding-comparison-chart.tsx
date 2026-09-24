@@ -40,6 +40,128 @@ interface FundingComparisonChartProps {
 
 type BandScale = ((v: string) => number | undefined) & { bandwidth(): number };
 
+/** One month's row in the Kita-year breakdown. */
+export interface KitaYearMonthRow {
+  date: string;
+  calculated: number;
+  regular: number | null;
+  correction: number | null;
+  /**
+   * Regular minus calculated. Corrections are deliberately left out here: a
+   * correction pays for a PRIOR month (models.RowTypeCorrection), so folding it
+   * into a month's own difference would make that month look over- or underpaid
+   * for a reason that has nothing to do with it.
+   */
+  difference: number | null;
+  billOnlyCount: number | null;
+  billOnlyAmount: number | null;
+  calcOnlyCount: number | null;
+  calcOnlyAmount: number | null;
+}
+
+/** One Kita year's row in the breakdown, with its months. */
+export interface KitaYearSummaryRow {
+  label: string;
+  /** Calculated funding across every month in the requested range. */
+  calculatedTotal: number;
+  /**
+   * Calculated funding across only the months that have a bill. This is the
+   * figure `difference` is built from, and therefore the one the table shows,
+   * so a reader can subtract the cells in front of them and arrive at the
+   * number printed beside them. `calculatedTotal` is still displayed, as a
+   * sub-line, whenever the two differ.
+   */
+  calculatedWithBill: number;
+  regular: number;
+  correction: number;
+  /**
+   * (regular + correction) - calculatedWithBill: the net position after
+   * retroactive adjustments, which is the question a year row answers. The
+   * month rows answer a different one and use a different formula; see
+   * KitaYearMonthRow.difference.
+   */
+  difference: number;
+  actualMonths: number;
+  totalMonths: number;
+  hasBills: boolean;
+  complete: boolean;
+  months: KitaYearMonthRow[];
+}
+
+/**
+ * Groups financial data points into one row per Kita year, with the month rows
+ * nested under each.
+ *
+ * Pure and exported so the arithmetic can be pinned without rendering Nivo,
+ * matching buildFundingSlices / buildExpenseSlices elsewhere in this folder.
+ */
+export function buildKitaYearSummary(
+  dataPoints: FinancialResponse['data_points'],
+  compareData?: Map<string, FundingComparisonResponse>
+): KitaYearSummaryRow[] {
+  const map = new Map<
+    string,
+    {
+      calculatedTotal: number;
+      calculatedWithBill: number;
+      regular: number;
+      correction: number;
+      actualMonths: number;
+      totalMonths: number;
+      months: KitaYearMonthRow[];
+    }
+  >();
+  for (const dp of dataPoints) {
+    const dpDate = dp.date ?? '';
+    const dpFundingIncome = dp.funding_income ?? 0;
+    const ky = kitaYearLabel(dpDate);
+    const entry = map.get(ky) ?? {
+      calculatedTotal: 0,
+      calculatedWithBill: 0,
+      regular: 0,
+      correction: 0,
+      actualMonths: 0,
+      totalMonths: 0,
+      months: [],
+    };
+    entry.totalMonths += 1;
+    entry.calculatedTotal += dpFundingIncome;
+    const hasActual = dp.actual_funding != null;
+    if (hasActual) {
+      entry.calculatedWithBill += dpFundingIncome;
+      entry.regular += dp.actual_funding_regular ?? 0;
+      entry.correction += dp.actual_funding_correction ?? 0;
+      entry.actualMonths += 1;
+    }
+    const comp = compareData?.get(dpDate);
+    entry.months.push({
+      date: dpDate,
+      calculated: dpFundingIncome,
+      regular: dp.actual_funding_regular ?? null,
+      correction: dp.actual_funding_correction ?? null,
+      difference: hasActual ? (dp.actual_funding_regular ?? 0) - dpFundingIncome : null,
+      billOnlyCount: comp?.bill_only_count ?? null,
+      billOnlyAmount: comp?.bill_only_amount ?? null,
+      calcOnlyCount: comp?.calc_only_count ?? null,
+      calcOnlyAmount: comp?.calc_only_amount ?? null,
+    });
+    map.set(ky, entry);
+  }
+  return Array.from(map.entries()).map(([label, v]) => ({
+    label,
+    calculatedTotal: v.calculatedTotal,
+    calculatedWithBill: v.calculatedWithBill,
+    regular: v.regular,
+    correction: v.correction,
+    difference: v.regular + v.correction - v.calculatedWithBill,
+    actualMonths: v.actualMonths,
+    totalMonths: v.totalMonths,
+    hasBills: v.actualMonths > 0,
+    complete: v.actualMonths === v.totalMonths,
+    months: v.months,
+  }));
+}
+
 export function FundingComparisonChart({
   data,
   compareData,
@@ -227,98 +349,25 @@ export function FundingComparisonChart({
     });
   };
 
-  // Per-Kita-year summary with monthly detail
-  const kitaYearSummary = useMemo(() => {
-    const map = new Map<
-      string,
-      {
-        calculatedTotal: number;
-        calculatedWithBill: number;
-        regular: number;
-        correction: number;
-        actualMonths: number;
-        totalMonths: number;
-        months: {
-          date: string;
-          calculated: number;
-          regular: number | null;
-          correction: number | null;
-          difference: number | null;
-          billOnlyCount: number | null;
-          billOnlyAmount: number | null;
-          calcOnlyCount: number | null;
-          calcOnlyAmount: number | null;
-        }[];
-      }
-    >();
-    for (const dp of data.data_points) {
-      const dpDate = dp.date ?? '';
-      const dpFundingIncome = dp.funding_income ?? 0;
-      const ky = kitaYearLabel(dpDate);
-      const entry = map.get(ky) ?? {
-        calculatedTotal: 0,
-        calculatedWithBill: 0,
-        regular: 0,
-        correction: 0,
-        actualMonths: 0,
-        totalMonths: 0,
-        months: [],
-      };
-      entry.totalMonths += 1;
-      entry.calculatedTotal += dpFundingIncome;
-      const hasActual = dp.actual_funding != null;
-      if (hasActual) {
-        entry.calculatedWithBill += dpFundingIncome;
-        entry.regular += dp.actual_funding_regular ?? 0;
-        entry.correction += dp.actual_funding_correction ?? 0;
-        entry.actualMonths += 1;
-      }
-      const comp = compareData?.get(dpDate);
-      entry.months.push({
-        date: dpDate,
-        calculated: dpFundingIncome,
-        regular: dp.actual_funding_regular ?? null,
-        correction: dp.actual_funding_correction ?? null,
-        difference: hasActual ? (dp.actual_funding_regular ?? 0) - dpFundingIncome : null,
-        billOnlyCount: comp?.bill_only_count ?? null,
-        billOnlyAmount: comp?.bill_only_amount ?? null,
-        calcOnlyCount: comp?.calc_only_count ?? null,
-        calcOnlyAmount: comp?.calc_only_amount ?? null,
-      });
-      map.set(ky, entry);
-    }
-    return Array.from(map.entries()).map(([label, v]) => ({
-      label,
-      calculatedTotal: v.calculatedTotal,
-      calculatedWithBill: v.calculatedWithBill,
-      regular: v.regular,
-      correction: v.correction,
-      difference: v.regular + v.correction - v.calculatedWithBill,
-      actualMonths: v.actualMonths,
-      totalMonths: v.totalMonths,
-      hasBills: v.actualMonths > 0,
-      complete: v.actualMonths === v.totalMonths,
-      months: v.months,
-    }));
-  }, [data, compareData]);
+  const kitaYearSummary = useMemo(
+    () => buildKitaYearSummary(data.data_points, compareData),
+    [data, compareData]
+  );
 
-  // Match each Kita year to the best-overlapping compare summary window
+  // Each Kita year has exactly one compare window (buildKitaYearCompareWindows
+  // cuts on the same Aug-Jul boundary this table groups by), so the summary is
+  // looked up by the year's own label. The previous "which window overlaps
+  // most" search existed because windows were 12-month blocks counted from the
+  // first billed month, which straddled Kita years unless that month happened
+  // to be an August -- and a straddling window meant a year's deficit analysis
+  // could be computed partly over the next year's months.
   const kitaYearDeficitMap = useMemo(() => {
-    if (!compareSummaries) return new Map<string, FundingComparisonSummary>();
     const result = new Map<string, FundingComparisonSummary>();
+    if (!compareSummaries) return result;
     for (const row of kitaYearSummary) {
       if (!row.hasBills) continue;
-      let bestKey: string | undefined;
-      let bestOverlap = 0;
-      for (const [key] of compareSummaries) {
-        const [wFrom, wTo] = key.split(':');
-        const overlap = row.months.filter((m) => m.date >= wFrom && m.date <= wTo).length;
-        if (overlap > bestOverlap) {
-          bestOverlap = overlap;
-          bestKey = key;
-        }
-      }
-      if (bestKey) result.set(row.label, compareSummaries.get(bestKey)!);
+      const summary = compareSummaries.get(row.label);
+      if (summary) result.set(row.label, summary);
     }
     return result;
   }, [compareSummaries, kitaYearSummary]);
@@ -560,8 +609,29 @@ export function FundingComparisonChart({
                             )}
                           </div>
                         </TableCell>
+                        {/* The figure the Difference is actually built from.
+                            Showing the full-range total here instead made the
+                            row unreadable: with six of twelve months billed,
+                            Calculated covered twelve months while Difference
+                            covered six, so subtracting the cells on screen gave
+                            a number hundreds of thousands of euros away from the
+                            one printed beside them. The full-range total is
+                            still worth having, so it stays as a sub-line
+                            whenever the two differ. */}
                         <TableCell className="text-right tabular-nums">
-                          {formatEur(row.calculatedTotal)}
+                          {row.hasBills
+                            ? formatEur(row.calculatedWithBill)
+                            : formatEur(row.calculatedTotal)}
+                          {row.hasBills && !row.complete && (
+                            <div
+                              data-visual-mask="currency"
+                              className="text-muted-foreground text-xs font-normal"
+                            >
+                              {t('fundingCalculatedFullYear', {
+                                amount: formatEur(row.calculatedTotal),
+                              })}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
                           {row.hasBills ? formatEur(row.regular) : '\u2014'}

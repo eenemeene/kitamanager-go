@@ -110,3 +110,55 @@ describe('FundingComparisonChart', () => {
     expect(headerHTML).toContain('fundingDifference');
   });
 });
+
+// B1: the Kita-year row must be reproducible from the cells it shows. The
+// Calculated cell therefore carries the bill-months figure the Difference is
+// built from, with the full-range total demoted to a sub-line.
+describe('FundingComparisonChart Kita year row basis', () => {
+  const partiallyBilled: FinancialResponse = {
+    data_points: [
+      makeDataPoint({
+        date: '2025-08-01',
+        funding_income: 100000,
+        actual_funding: 110000,
+        actual_funding_regular: 110000,
+        actual_funding_correction: 0,
+      }),
+      makeDataPoint({
+        date: '2025-09-01',
+        funding_income: 900000,
+        actual_funding: undefined,
+        actual_funding_regular: undefined,
+        actual_funding_correction: undefined,
+      }),
+    ],
+    warnings: [],
+  };
+
+  it('shows the full-range total as a sub-line when the year is only partly billed', () => {
+    const { container } = renderWithProviders(<FundingComparisonChart data={partiallyBilled} />);
+    expect(container.textContent).toContain('fundingCalculatedFullYear');
+  });
+
+  it('omits the sub-line when every month of the year is billed', () => {
+    const fullyBilled: FinancialResponse = {
+      data_points: [
+        makeDataPoint({
+          date: '2025-08-01',
+          funding_income: 100000,
+          actual_funding: 110000,
+          actual_funding_regular: 110000,
+          actual_funding_correction: 0,
+        }),
+      ],
+      warnings: [],
+    };
+    const { container } = renderWithProviders(<FundingComparisonChart data={fullyBilled} />);
+    expect(container.textContent).not.toContain('fundingCalculatedFullYear');
+  });
+
+  it('omits the sub-line when the year has no bills at all', () => {
+    const { container } = renderWithProviders(<FundingComparisonChart data={dataWithoutActual} />);
+    expect(container.textContent).not.toContain('fundingCalculatedFullYear');
+  });
+});
