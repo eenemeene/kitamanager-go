@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/eenemeene/kitamanager-go/internal/models"
@@ -335,5 +336,75 @@ func TestStatisticsHandler_GetFinancials_WithQueryParams(t *testing.T) {
 	// With custom from/to spanning 4 months (Jun, Jul, Aug, Sep), expect 4 data points
 	if len(response.DataPoints) != 4 {
 		t.Errorf("expected 4 data points, got %d", len(response.DataPoints))
+	}
+}
+
+// Financials are organization-wide. section_id was accepted here once and
+// produced a figure that charged every fixed budget item in full to each
+// section; the parameter is gone from the documented API and an explicit
+// rejection keeps a caller who still sends it from quietly receiving
+// organization-wide numbers under a section heading.
+func TestStatisticsHandler_GetFinancials_RejectsSectionID(t *testing.T) {
+	db := setupTestDB(t)
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+
+	svc := createStatisticsService(db)
+	handler := NewStatisticsHandler(svc)
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/statistics/financials", handler.GetFinancials)
+
+	w := performRequest(r, "GET", fmt.Sprintf(
+		"/organizations/%d/statistics/financials?from=2024-01-01&to=2024-03-01&section_id=1", org.ID), nil)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for section_id on financials, got %d: %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "section_id") {
+		t.Errorf("error body should name the rejected parameter; got %s", w.Body.String())
+	}
+}
+
+// The rejection must key on the parameter being present, not on it parsing —
+// a caller sending garbage deserves the same "not supported" answer rather
+// than a misleading "must be a positive integer".
+func TestStatisticsHandler_GetFinancials_RejectsNonNumericSectionID(t *testing.T) {
+	db := setupTestDB(t)
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+
+	svc := createStatisticsService(db)
+	handler := NewStatisticsHandler(svc)
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/statistics/financials", handler.GetFinancials)
+
+	w := performRequest(r, "GET", fmt.Sprintf(
+		"/organizations/%d/statistics/financials?section_id=abc", org.ID), nil)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "not supported") {
+		t.Errorf("expected the not-supported message, got %s", w.Body.String())
+	}
+}
+
+// An empty section_id= is indistinguishable from omitting it, and rejecting
+// it would break a caller that builds query strings from optional fields.
+func TestStatisticsHandler_GetFinancials_EmptySectionIDIsIgnored(t *testing.T) {
+	db := setupTestDB(t)
+	org := createTestOrganization(t, db, "Test Org")
+	db.Model(org).Update("state", "berlin")
+
+	svc := createStatisticsService(db)
+	handler := NewStatisticsHandler(svc)
+
+	r := setupTestRouter()
+	r.GET("/organizations/:orgId/statistics/financials", handler.GetFinancials)
+
+	w := performRequest(r, "GET", fmt.Sprintf(
+		"/organizations/%d/statistics/financials?from=2024-01-01&to=2024-03-01&section_id=", org.ID), nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 for an empty section_id, got %d: %s", w.Code, w.Body.String())
 	}
 }

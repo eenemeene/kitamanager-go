@@ -1161,6 +1161,17 @@ class ApiClient {
     return this.getStatistic<StaffingHoursResponse>(orgId, 'staffing-hours', opts);
   }
 
+  /**
+   * Financials are organization-wide.
+   *
+   * `opts` deliberately omits `sectionId`, unlike every other caller of
+   * `getStatistic`. Fixed budget items (rent, garden, insurance) belong to the
+   * house rather than to a Bereich, so a section-scoped figure charged each of
+   * them in full to every section. The backend now rejects `section_id` here
+   * with a 400 — widening this type would only turn a compile error into a
+   * runtime one. A real section-level P&L needs an allocation key and is a
+   * feature to design (Bereichs-Umlage), not a filter to re-add.
+   */
   async getFinancials(
     orgId: number,
     opts?: { from?: string; to?: string }

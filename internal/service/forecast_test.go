@@ -1343,7 +1343,7 @@ func TestGetFinancials_RangeTooWide_Rejected(t *testing.T) {
 	from := time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2100, 12, 31, 0, 0, 0, 0, time.UTC)
 
-	_, err := svc.GetFinancials(ctx, td.org.ID, &from, &to, nil)
+	_, err := svc.GetFinancials(ctx, td.org.ID, &from, &to)
 	if err == nil {
 		t.Fatal("expected BadRequest from GetFinancials, got nil")
 	}
@@ -2095,4 +2095,194 @@ func (c *countingPayPlanStore) FindByIDsWithPeriods(ctx context.Context, ids []u
 		}
 	}
 	return c.PayPlanStorer.FindByIDsWithPeriods(ctx, ids)
+}
+
+// --- Section-scoped budget items ---------------------------------------
+//
+// A section-scoped forecast used to charge every FIXED budget item in full to
+// the section, so N sections reported N times the organization's operating
+// costs between them and a section with no children still carried the whole
+// house's rent. Per-child items are attributable and must keep scaling with
+// the section's child count; fixed items are not and are excluded. See
+// sectionAttributableBudgetItems.
+
+// createSecondSectionWithChild seeds a second Bereich holding one child, so a
+// section-scoped run has something to exclude and something to keep.
+func createSecondSectionWithChild(t *testing.T, db *gorm.DB, td forecastTestData) *models.Section {
+	t.Helper()
+	other := createTestSection(t, db, "Other Bereich", td.org.ID, false)
+	child := createTestChild(t, db, "Child", "Three", td.org.ID)
+	createTestChildContract(t, db, child.ID,
+		time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC), nil, other.ID,
+		models.ContractProperties{"care_type": "ganztag"})
+	return other
+}
+
+func TestGetForecast_SectionScoped_ExcludesFixedBudgetItems(t *testing.T) {
+	svc, td, db := setupForecastTestDataWithDB(t)
+	ctx := context.Background()
+
+	// A fixed, org-wide operating cost that belongs to no Bereich.
+	fixed := createTestBudgetItem(t, db, "Garten", td.org.ID, "expense", false)
+	createTestBudgetItemEntry(t, db, fixed.ID,
+		time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC), nil, 100000, "Fixed")
+
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	orgWide, err := svc.GetForecast(ctx, td.org.ID, &models.ForecastRequest{From: &from, To: &to})
+	if err != nil {
+		t.Fatalf("org-wide forecast: %v", err)
+	}
+	scopeTo := td.section.ID
+	scoped, err := svc.GetForecast(ctx, td.org.ID, &models.ForecastRequest{From: &from, To: &to, SectionID: &scopeTo})
+	if err != nil {
+		t.Fatalf("section-scoped forecast: %v", err)
+	}
+
+	orgDP := orgWide.Financials.DataPoints[0]
+	secDP := scoped.Financials.DataPoints[0]
+
+	if orgDP.BudgetExpenses != 100000 {
+		t.Fatalf("setup: org-wide run should carry the fixed cost, got %d", orgDP.BudgetExpenses)
+	}
+	if secDP.BudgetExpenses != 0 {
+		t.Errorf("section-scoped run must not charge the org's fixed budget item to one Bereich; got %d", secDP.BudgetExpenses)
+	}
+	for _, d := range secDP.BudgetItemDetails {
+		if d.Name == "Garten" {
+			t.Errorf("fixed item %q leaked into the section-scoped breakdown", d.Name)
+		}
+	}
+}
+
+func TestGetForecast_SectionScoped_PerChildBudgetItemScalesWithSection(t *testing.T) {
+	svc, td, db := setupForecastTestDataWithDB(t)
+	ctx := context.Background()
+
+	// Fixtures put child1+child2 in td.section; this adds a third child elsewhere.
+	createSecondSectionWithChild(t, db, td)
+
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	orgWide, err := svc.GetForecast(ctx, td.org.ID, &models.ForecastRequest{From: &from, To: &to})
+	if err != nil {
+		t.Fatalf("org-wide forecast: %v", err)
+	}
+	scopeTo := td.section.ID
+	scoped, err := svc.GetForecast(ctx, td.org.ID, &models.ForecastRequest{From: &from, To: &to, SectionID: &scopeTo})
+	if err != nil {
+		t.Fatalf("section-scoped forecast: %v", err)
+	}
+
+	orgDP := orgWide.Financials.DataPoints[0]
+	secDP := scoped.Financials.DataPoints[0]
+
+	if orgDP.ChildCount != 3 || secDP.ChildCount != 2 {
+		t.Fatalf("setup: expected 3 children org-wide and 2 in the section, got %d and %d", orgDP.ChildCount, secDP.ChildCount)
+	}
+	// Elternbeiträge: 500.00 EUR per child.
+	if orgDP.BudgetIncome != 150000 {
+		t.Errorf("org-wide per-child income should cover 3 children, got %d", orgDP.BudgetIncome)
+	}
+	if secDP.BudgetIncome != 100000 {
+		t.Errorf("section-scoped per-child income should cover the section's 2 children, got %d", secDP.BudgetIncome)
+	}
+}
+
+// The exclusion is safe precisely because a fixed cost is identical in the
+// baseline and the scenario, so it cancels in the delta the forecast UI
+// actually reports. If this ever stops holding, excluding fixed items would
+// start changing an answer someone acts on.
+func TestGetForecast_SectionScoped_FixedCostCancelsInScenarioDelta(t *testing.T) {
+	svc, td, db := setupForecastTestDataWithDB(t)
+	ctx := context.Background()
+
+	fixed := createTestBudgetItem(t, db, "Garten", td.org.ID, "expense", false)
+	createTestBudgetItemEntry(t, db, fixed.ID,
+		time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC), nil, 100000, "Fixed")
+
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	scopeTo := td.section.ID
+	contractFrom := time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC)
+
+	addOneChild := []models.ForecastChildInput{{
+		FirstName: "Scenario", LastName: "Child", Gender: "female",
+		Birthdate: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
+		Contracts: []models.ForecastChildContractInput{{
+			From:       contractFrom,
+			SectionID:  scopeTo,
+			Properties: models.ContractProperties{"care_type": "ganztag"},
+		}},
+	}}
+
+	// Section-scoped pair (fixed cost excluded from both runs).
+	baseScoped, err := svc.GetForecast(ctx, td.org.ID, &models.ForecastRequest{From: &from, To: &to, SectionID: &scopeTo})
+	if err != nil {
+		t.Fatalf("scoped baseline: %v", err)
+	}
+	scenScoped, err := svc.GetForecast(ctx, td.org.ID, &models.ForecastRequest{From: &from, To: &to, SectionID: &scopeTo, AddChildren: addOneChild})
+	if err != nil {
+		t.Fatalf("scoped scenario: %v", err)
+	}
+
+	// Org-wide pair (fixed cost present in both runs).
+	baseOrg, err := svc.GetForecast(ctx, td.org.ID, &models.ForecastRequest{From: &from, To: &to})
+	if err != nil {
+		t.Fatalf("org baseline: %v", err)
+	}
+	scenOrg, err := svc.GetForecast(ctx, td.org.ID, &models.ForecastRequest{From: &from, To: &to, AddChildren: addOneChild})
+	if err != nil {
+		t.Fatalf("org scenario: %v", err)
+	}
+
+	scopedDelta := scenScoped.Financials.DataPoints[0].Balance - baseScoped.Financials.DataPoints[0].Balance
+	orgDelta := scenOrg.Financials.DataPoints[0].Balance - baseOrg.Financials.DataPoints[0].Balance
+
+	if scopedDelta != orgDelta {
+		t.Errorf("adding the same child must move the balance by the same amount whether or not fixed costs are in the run: scoped %d, org-wide %d", scopedDelta, orgDelta)
+	}
+	if scopedDelta == 0 {
+		t.Error("setup: adding a funded child should move the balance")
+	}
+}
+
+func TestSectionAttributableBudgetItems(t *testing.T) {
+	perChild := models.BudgetItem{ID: 1, Name: "Elternbeiträge", Category: "income", PerChild: true}
+	fixedExpense := models.BudgetItem{ID: 2, Name: "Garten", Category: "expense", PerChild: false}
+	fixedIncome := models.BudgetItem{ID: 3, Name: "Spenden", Category: "income", PerChild: false}
+
+	tests := []struct {
+		name string
+		in   []models.BudgetItem
+		want []uint
+	}{
+		{"nil stays nil", nil, nil},
+		{"empty stays empty", []models.BudgetItem{}, nil},
+		{"per-child kept", []models.BudgetItem{perChild}, []uint{1}},
+		{"fixed expense dropped", []models.BudgetItem{fixedExpense}, nil},
+		// Category is irrelevant: a fixed income item is no more attributable
+		// to one Bereich than a fixed cost is.
+		{"fixed income dropped", []models.BudgetItem{fixedIncome}, nil},
+		{"mixed", []models.BudgetItem{perChild, fixedExpense, fixedIncome}, []uint{1}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := sectionAttributableBudgetItems(tt.in)
+			var ids []uint
+			for _, it := range got {
+				ids = append(ids, it.ID)
+			}
+			if len(ids) != len(tt.want) {
+				t.Fatalf("got ids %v, want %v", ids, tt.want)
+			}
+			for i := range ids {
+				if ids[i] != tt.want[i] {
+					t.Fatalf("got ids %v, want %v", ids, tt.want)
+				}
+			}
+		})
+	}
 }

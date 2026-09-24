@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/eenemeene/kitamanager-go/internal/apperror"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/service"
 )
@@ -255,6 +256,7 @@ func (h *StatisticsHandler) GetFunding(c *gin.Context) {
 // @Description Salary costs use pay plan entries pro-rated by weekly hours. Employer costs apply the period's contribution rate.
 // @Description Operating costs sum active cost entries for the organization.
 // @Description Each data point includes optional breakdowns: funding_details (per funding property), budget_item_details (per budget item), and salary_details (per staff category).
+// @Description Financials are organization-wide: unlike the other statistics endpoints this one takes no section_id, because fixed budget items (rent, garden, insurance) belong to the house rather than to a Bereich and cannot be attributed to one without an allocation key. Supplying section_id is rejected rather than ignored.
 // @Tags statistics
 // @Accept json
 // @Produce json
@@ -262,7 +264,6 @@ func (h *StatisticsHandler) GetFunding(c *gin.Context) {
 // @Param orgId path int true "Organization ID"
 // @Param from query string false "Start date (YYYY-MM-DD), defaults to 12 months ago"
 // @Param to query string false "End date (YYYY-MM-DD), defaults to 6 months ahead"
-// @Param section_id query int false "Filter by section ID"
 // @Success 200 {object} models.FinancialResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
@@ -274,17 +275,23 @@ func (h *StatisticsHandler) GetFinancials(c *gin.Context) {
 		return
 	}
 
+	// section_id used to be accepted here and produced a number nobody could
+	// act on (see service.GetFinancials). Rejecting is deliberate: silently
+	// ignoring it would hand a caller who still sends it organization-wide
+	// figures under a section heading, which is the same class of quiet
+	// wrongness the parameter was removed for.
+	if c.Query("section_id") != "" {
+		respondError(c, apperror.BadRequest(
+			"section_id is not supported for financials; financials are organization-wide"))
+		return
+	}
+
 	from, to, ok := parseOptionalDatePair(c)
 	if !ok {
 		return
 	}
 
-	sectionID, ok := parseOptionalUint(c, "section_id")
-	if !ok {
-		return
-	}
-
-	result, err := h.service.GetFinancials(c.Request.Context(), orgID, from, to, sectionID)
+	result, err := h.service.GetFinancials(c.Request.Context(), orgID, from, to)
 	if err != nil {
 		respondError(c, err)
 		return

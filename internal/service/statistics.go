@@ -223,7 +223,32 @@ func (s *StatisticsService) GetEmployeeStaffingHours(ctx context.Context, orgID 
 }
 
 // GetFinancials calculates monthly financial data points (income, expenses, balance)
-func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from, to *time.Time, sectionID *uint) (*models.FinancialResponse, error) {
+// for the whole organization.
+//
+// # Why there is no section filter
+//
+// Every other statistics endpoint takes a section_id, and this one used to as
+// well. It produced a number nobody could act on. Children, employee contracts
+// and per-child budget items all carry a section and scope cleanly; fixed
+// budget items (rent, the garden, insurance) carry none, because they belong
+// to the house rather than to a Bereich. The section-filtered calculation
+// charged every fixed item in FULL to each section, so four sections reported
+// 4x the organization's operating costs between them, and a section holding no
+// children at all still carried the whole organization's fixed costs against
+// zero funding.
+//
+// Charging 0 instead would be arithmetically safe but silently wrong in the
+// other direction (every Bereich looks profitable). Splitting the cost needs
+// an allocation key — per child, per hour, per head — which is a management-
+// accounting decision this product has not made. A section-level P&L is a
+// feature to design (Bereichs-Umlage), not a filter to bolt on, so the
+// endpoint answers the only question it can answer correctly: the whole
+// organization.
+//
+// The forecast endpoint still takes a section_id, because there the scope has
+// a different job — deciding which children and employees an overlay applies
+// to — and its fixed-cost handling is documented at sectionAttributableBudgetItems.
+func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from, to *time.Time) (*models.FinancialResponse, error) {
 	rangeStart, rangeEnd, err := snapAndValidateRange(from, to)
 	if err != nil {
 		return nil, err
@@ -234,12 +259,12 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 		return nil, err
 	}
 
-	children, err := s.childStore.FindByOrganizationInDateRange(ctx, orgID, rangeStart, rangeEnd, sectionID)
+	children, err := s.childStore.FindByOrganizationInDateRange(ctx, orgID, rangeStart, rangeEnd, nil)
 	if err != nil {
 		return nil, apperror.InternalWrap(err, "failed to fetch children")
 	}
 
-	employees, err := s.employeeStore.FindByOrganizationInDateRange(ctx, orgID, rangeStart, rangeEnd, []string(nil), sectionID)
+	employees, err := s.employeeStore.FindByOrganizationInDateRange(ctx, orgID, rangeStart, rangeEnd, []string(nil), nil)
 	if err != nil {
 		return nil, apperror.InternalWrap(err, "failed to fetch employees")
 	}

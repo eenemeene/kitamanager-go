@@ -66,6 +66,9 @@ func (s *StatisticsService) loadDataSet(ctx context.Context, orgID uint, rangeSt
 	if err != nil {
 		budgetItems = nil // non-fatal: proceed without budget items
 	}
+	if sectionID != nil {
+		budgetItems = sectionAttributableBudgetItems(budgetItems)
+	}
 
 	return &DataSet{
 		Children:       children,
@@ -74,4 +77,41 @@ func (s *StatisticsService) loadDataSet(ctx context.Context, orgID uint, rangeSt
 		PayPlans:       payPlans,
 		BudgetItems:    budgetItems,
 	}, nil
+}
+
+// sectionAttributableBudgetItems keeps only the budget items that can honestly
+// be charged to a single Bereich.
+//
+// A per-child item is attributable: calculateFinancials multiplies it by the
+// child count, and under a section scope that count is the section's, so
+// "Elternbeitrag 90 EUR x Nest's 7 children" is genuinely Nest's income.
+//
+// A fixed item is not. Rent, the garden, insurance belong to the house. The
+// section-scoped calculation used to charge each of them in FULL to every
+// section, so four sections reported four times the organization's operating
+// costs between them. Splitting the cost instead would need an allocation key
+// (per child, per hour, per head) — a management-accounting decision this
+// product has not made, and one that belongs in a designed Bereichs-Umlage
+// feature rather than in a filter.
+//
+// Dropping them is safe for what the forecast is actually for. The forecast's
+// value is the DELTA between a baseline run and a scenario run
+// (forecast-optimize-tab.tsx compares exactly that way), and a fixed cost is
+// identical in both runs, so it cancels. What the exclusion removes is an
+// absolute balance that silently carried the whole house's costs under one
+// section's heading.
+//
+// GetFinancials takes no section filter at all for the same reason; see its
+// doc-comment.
+func sectionAttributableBudgetItems(items []models.BudgetItem) []models.BudgetItem {
+	if len(items) == 0 {
+		return items
+	}
+	attributable := make([]models.BudgetItem, 0, len(items))
+	for i := range items {
+		if items[i].PerChild {
+			attributable = append(attributable, items[i])
+		}
+	}
+	return attributable
 }

@@ -216,4 +216,5 @@ var registry = map[string]entry{
 	"webauthn_response is required":                                                         {ID: "webauthn.response_required"},
 	"webauthn factors must be verified via the webauthn assertion endpoint":                 {ID: "webauthn.use_assertion_endpoint"},
 	"pay plan period has invalid weekly hours (%v) and cannot be used to estimate a salary": {ID: "statistics.pay_plan_period_invalid_weekly_hours", Args: []string{"WeeklyHours"}},
+	"section_id is not supported for financials; financials are organization-wide": {ID: "statistics.financials_no_section_filter"},
 }
