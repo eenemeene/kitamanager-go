@@ -99,6 +99,8 @@ func (s *StatisticsService) GetForecast(ctx context.Context, orgID uint, req *mo
 
 	dates, rows := calculateEmployeeStaffingHours(ds.Employees, rangeStart, rangeEnd)
 	dataPoints, warnings := calculateFinancials(ds.Children, ds.Employees, ds.PayPlans, ds.FundingPeriods, ds.BudgetItems, rangeStart, rangeEnd)
+	// Loading problems first: they explain a figure the per-row warnings cannot.
+	warnings = append(ds.LoadWarnings, warnings...)
 
 	return &models.ForecastResponse{
 		Financials: &models.FinancialResponse{

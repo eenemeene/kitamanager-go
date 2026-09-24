@@ -19,10 +19,14 @@ interface MonthlyContractChartProps {
   occupancy?: OccupancyResponse;
 }
 
+// Keyed by the labels the backend actually emits. formatAgeGroupLabel renders
+// {0,1} as "0/1" and {3,8} as "3+", so the previous '0-1' and '3-8' keys never
+// matched anything and two of the three groups silently fell through to the
+// default palette.
 const AGE_GROUP_COLORS: Record<string, string> = {
-  '0-1': '#f59e0b',
+  '0/1': '#f59e0b',
   '2': '#3b82f6',
-  '3-8': '#10b981',
+  '3+': '#10b981',
 };
 
 const DEFAULT_COLORS = ['#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899'];
@@ -51,14 +55,27 @@ export function MonthlyContractChart({ data, occupancy }: MonthlyContractChartPr
 
   const counts = data.data_points.map((dp) => dp.child_count ?? 0);
 
-  // Build a static age-group color legend from occupancy metadata (stable across months)
+  // One colour per age group, resolved once and shared by the legend and the
+  // tooltips. They used to resolve independently -- the legend by the group's
+  // index, the tooltip by how many groups happened to be non-empty that month --
+  // so a month where one group was empty shifted the others' colours and the
+  // legend stopped describing what was drawn.
+  const ageGroupColors = useMemo(() => {
+    const byLabel = new Map<string, string>();
+    (occupancy?.age_groups ?? []).forEach((ag, idx) => {
+      const label = ag.label ?? '';
+      byLabel.set(label, AGE_GROUP_COLORS[label] ?? DEFAULT_COLORS[idx % DEFAULT_COLORS.length]);
+    });
+    return byLabel;
+  }, [occupancy]);
+
   const ageGroupLegend = useMemo(() => {
     if (!occupancy) return [];
-    return occupancy.age_groups.map((ag, idx) => ({
+    return occupancy.age_groups.map((ag) => ({
       label: ag.label ?? '',
-      color: AGE_GROUP_COLORS[ag.label ?? ''] ?? DEFAULT_COLORS[idx % DEFAULT_COLORS.length],
+      color: ageGroupColors.get(ag.label ?? '') ?? DEFAULT_COLORS[0],
     }));
-  }, [occupancy]);
+  }, [occupancy, ageGroupColors]);
 
   // Build age-group breakdown per month label for tooltips
   const ageByMonth = useMemo(() => {
@@ -75,15 +92,14 @@ export function MonthlyContractChart({ data, occupancy }: MonthlyContractChartPr
           groups.push({
             label: agLabel,
             count,
-            color:
-              AGE_GROUP_COLORS[agLabel] ?? DEFAULT_COLORS[groups.length % DEFAULT_COLORS.length],
+            color: ageGroupColors.get(agLabel) ?? DEFAULT_COLORS[0],
           });
         }
       }
       map.set(label, groups);
     }
     return map;
-  }, [occupancy, formatDateLabel]);
+  }, [occupancy, formatDateLabel, ageGroupColors]);
 
   const chartData = [
     {

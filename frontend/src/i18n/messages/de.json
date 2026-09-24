@@ -227,7 +227,7 @@
     "cumulativeBalance": "Kumulierter Saldo",
     "monthlyChange": "(monatlich)",
     "deficitSince": "Defizit ab hier",
-    "deficitConsecutive": "Aktuell {count} {count, plural, one {Monat} other {Monate}} in Folge im Defizit",
+    "deficitConsecutive": "Aktuell {count} {count, plural, one {Monat} other {Monate}} in Folge im Defizit (laufendes Kita-Jahr)",
     "employerCostsTooltip": "Arbeitgeberanteile zur Sozialversicherung (Prozentsatz aus der Entgelttabelle)",
     "totalIncome": "Gesamteinnahmen",
     "totalIncomeTooltip": "Summe aus Fördereinnahmen und Budgeteinnahmen für den aktuellen Monat.",
@@ -283,6 +283,7 @@
     "deficitIssueChild": "Kind",
     "deficitIssueDescription": "Problem",
     "deficitIssuePerMonth": "Pro Monat",
+    "deficitIssueMonths": "{count, plural, one {# Monat} other {# Monate}}",
     "deficitIssueAmount": "Gesamtauswirkung",
     "deficitCategory_rate_difference": "Satzdifferenzen",
     "deficitCategory_property_mismatch": "Eigenschaftsabweichungen",
@@ -310,6 +311,8 @@
     "staffingAvailable": "Ist",
     "staffingBalancePercent": "Deckung %",
     "staffCount": "Mitarbeiter",
+    "staffingTotalPedagogical": "davon pädagogisch",
+    "staffingTotalAll": "Gesamt (alle Mitarbeitenden)",
     "average": "Durchschnitt",
     "employeeStaffingHoursGrid": "Mitarbeiter-Stunden-Übersicht",
     "employeeName": "Mitarbeiter",
@@ -355,7 +358,9 @@
       "missingPayPlan": "Gehalt ausgeschlossen: Vertrag verweist auf unbekannte Entgelttabelle {payPlan}",
       "noPayPlanPeriod": "Gehalt ausgeschlossen: Entgelttabelle {payPlan} hat keinen Zeitraum, der dieses Datum abdeckt",
       "noPayPlanEntry": "Gehalt ausgeschlossen: Die Entgelttabelle hat keinen Eintrag für Entgeltgruppe {grade}, Stufe {step}",
-      "unusablePayPlanPeriod": "Gehalt ausgeschlossen: Der Zeitraum der Entgelttabelle {payPlan} hat ungültige Wochenstunden"
+      "unusablePayPlanPeriod": "Gehalt ausgeschlossen: Der Zeitraum der Entgelttabelle {payPlan} hat ungültige Wochenstunden",
+      "budgetItemsLoadFailed": "Haushaltsposten konnten nicht geladen werden; die Ausgaben-Aufschlüsselung enthält keine Betriebskosten.",
+      "fundingBillsLoadFailed": "Die tatsächlichen Abrechnungen konnten nicht geladen werden; die ausgewiesenen Ist-Beträge sind möglicherweise unvollständig."
     },
     "monthlyContractsChart": "Kinder mit Vertrag im Zeitverlauf",
     "month": "Monat",
@@ -462,7 +467,8 @@
       "male": "m",
       "female": "w",
       "diverse": "d"
-    }
+    },
+    "unknown": "Ohne Angabe"
   },
   "addChildFromBill": {
     "title": "Kind aus Abrechnung anlegen",

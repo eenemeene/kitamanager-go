@@ -1649,3 +1649,53 @@ func TestCalculateFinancials_DeterministicOnOverlappingContracts(t *testing.T) {
 		t.Errorf("expected 'qualified', got %q", forwardResult[0].SalaryDetails[0].StaffCategory)
 	}
 }
+
+// A gender outside the enum used to be counted in the bucket total and in no
+// gender bucket, so the stacked bars added up to less than the total printed
+// above them. children.gender is NOT NULL but carries no CHECK, so a row
+// written around the service validation lands here.
+func TestCalculateAgeDistribution_UnknownGenderIsCounted(t *testing.T) {
+	on := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	mk := func(id uint, gender string) models.Child {
+		c := models.Child{
+			Person: models.Person{ID: id, Birthdate: time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC), Gender: gender},
+			Contracts: []models.ChildContract{{ID: id, ChildID: id, BaseContract: models.BaseContract{
+				Period: models.Period{From: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			}}},
+		}
+		return c
+	}
+
+	got := calculateAgeDistribution([]models.Child{
+		mk(1, "male"), mk(2, "female"), mk(3, "diverse"), mk(4, ""), mk(5, "Male"),
+	}, on)
+
+	if got.TotalCount != 5 {
+		t.Fatalf("total_count = %d, want 5", got.TotalCount)
+	}
+	total := 0
+	for _, b := range got.Distribution {
+		// The invariant the chart depends on: every counted child sits in
+		// exactly one gender column.
+		if b.Count != b.MaleCount+b.FemaleCount+b.DiverseCount+b.UnknownCount {
+			t.Errorf("bucket %s: count=%d but m+f+d+unknown=%d",
+				b.AgeLabel, b.Count, b.MaleCount+b.FemaleCount+b.DiverseCount+b.UnknownCount)
+		}
+		total += b.Count
+	}
+	if total != got.TotalCount {
+		t.Errorf("buckets sum to %d, total_count says %d", total, got.TotalCount)
+	}
+
+	// "" and "Male" are both outside the enum -- the match is case-sensitive.
+	for _, b := range got.Distribution {
+		if b.AgeLabel == "4" {
+			if b.UnknownCount != 2 {
+				t.Errorf("unknown_count = %d, want 2 (empty string and wrong case)", b.UnknownCount)
+			}
+			if b.MaleCount != 1 {
+				t.Errorf("male_count = %d, want 1 (only the exact enum value)", b.MaleCount)
+			}
+		}
+	}
+}

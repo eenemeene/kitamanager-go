@@ -16,6 +16,7 @@ import { YearStepper } from '@/components/ui/year-stepper';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
+import { todayBerlinString } from '@/lib/utils/contracts';
 import { getCurrentMonthStart } from '@/lib/utils/formatting';
 
 const StaffingHoursChart = dynamic(
@@ -34,7 +35,7 @@ export default function StaffingPage() {
   const orgId = Number(params.orgId);
   const t = useTranslations();
   const [selectedSectionId, setSelectedSectionId] = useState<number | undefined>(undefined);
-  const [year, setYear] = useState(new Date().getFullYear());
+  const [year, setYear] = useState(Number(todayBerlinString().slice(0, 4)));
 
   const from = `${year}-01-01`;
   const to = `${year}-12-01`;

@@ -62,9 +62,19 @@ export function FinancialSummaryChart({ data }: FinancialSummaryChartProps) {
       }
     });
 
-    // Count consecutive deficit months at the end of the data
+    // Consecutive deficit months at the end of the data, within the current
+    // Kita year only.
+    //
+    // The bars are a cumulative balance that resets every 1 August, so a run
+    // crossing that boundary was already truncated there -- the count stopped
+    // at the reset whether or not the deficit did. Stopping deliberately at the
+    // year boundary and saying so in the label is the honest version: the
+    // number answers "how long has this Kita year been in deficit", which is
+    // the question the cumulative bars pose.
     let consecutiveDeficitMonths = 0;
+    const lastKitaYear = points.length > 0 ? kitaYearLabel(rawDates[points.length - 1] ?? '') : '';
     for (let i = points.length - 1; i >= 0; i--) {
+      if (kitaYearLabel(rawDates[i] ?? '') !== lastKitaYear) break;
       if ((points[i][balanceKey] as number) < 0) {
         consecutiveDeficitMonths++;
       } else {
@@ -77,7 +87,7 @@ export function FinancialSummaryChart({ data }: FinancialSummaryChartProps) {
       deltas: monthlyDeltas,
       deficitInfo: { deficits, consecutiveDeficitMonths },
     };
-  }, [data, balanceKey, formatDateLabel]);
+  }, [data, balanceKey, formatDateLabel, rawDates]);
 
   const todayStr = todayBerlinString();
   const todayLabel = formatDateLabel(todayStr);

@@ -2430,6 +2430,16 @@ export interface components {
       max_age?: number;
       /** @example 3 */
       min_age: number;
+      /**
+       * @description UnknownCount holds children whose gender is none of the three. Count was
+       *     incremented for them while no gender bucket was, so the stacked bars added
+       *     up to less than the total printed above them and the table's gender
+       *     columns did not sum to its own Total column. The column is NOT NULL but
+       *     carries no CHECK, so a row written around the service validation lands
+       *     here rather than disappearing.
+       * @example 0
+       */
+      unknown_count: number;
     };
     AgeDistributionResponse: {
       /** @example 2025-01-28 */

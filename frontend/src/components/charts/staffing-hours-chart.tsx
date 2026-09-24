@@ -24,7 +24,11 @@ interface StaffingHoursChartProps {
  * `(available - required) / required` × 100, rounded to one decimal.
  *
  * Pure function. Pinned by unit tests for its critical edge cases:
- *   - `required === 0` → returns 0 (avoids Infinity / NaN)
+ *   - `required === 0` → returns NaN, which the layer renders as no bar and no
+ *     label. Zero was worse than nothing: with no requirement and staff on
+ *     shift, "0%" reads as "exactly staffed" when the true answer is that a
+ *     ratio has no meaning here. The table beside this chart already showed a
+ *     dash for the same months, so the two disagreed about the same number.
  *   - undefined `required_hours` / `available_hours` (older payloads or
  *     spec-loose response) → treated as 0
  *   - rounding: kept to 0.1 % precision so the bar labels (`+8.3%`)
@@ -36,7 +40,7 @@ export function computeBalancePercentages(
   return data_points.map((dp) => {
     const required = dp.required_hours ?? 0;
     const available = dp.available_hours ?? 0;
-    return required > 0 ? Math.round(((available - required) / required) * 1000) / 10 : 0;
+    return required > 0 ? Math.round(((available - required) / required) * 1000) / 10 : NaN;
   });
 }
 
@@ -81,7 +85,11 @@ export function StaffingHoursChart({ data }: StaffingHoursChartProps) {
       const barWidth = step * 0.5;
 
       // Build a symmetric y-scale for percentages
-      const maxAbs = Math.max(10, ...balancePercentages.map(Math.abs));
+      // Non-finite entries are months with no requirement, which have no ratio.
+      // They must not reach Math.max: one NaN makes the whole domain NaN and the
+      // scale silently stops drawing anything.
+      const finitePercentages = balancePercentages.filter(Number.isFinite);
+      const maxAbs = Math.max(10, ...finitePercentages.map(Math.abs));
       const pctScale = scaleLinear().domain([-maxAbs, maxAbs]).range([innerHeight, 0]);
       const zeroY = pctScale(0);
 
@@ -93,6 +101,9 @@ export function StaffingHoursChart({ data }: StaffingHoursChartProps) {
           {/* Bars with percentage labels */}
           {xLabels.map((label, i) => {
             const pct = balancePercentages[i];
+            // No requirement, no ratio: draw nothing rather than a zero bar,
+            // which would read as "exactly staffed".
+            if (!Number.isFinite(pct)) return null;
             const cx = scale(label);
             const barY = pct >= 0 ? pctScale(pct) : zeroY;
             const barH = Math.abs(pctScale(pct) - zeroY);

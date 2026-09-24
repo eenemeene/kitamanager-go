@@ -945,7 +945,12 @@ func BuildComparisonSummary(comparisons []models.FundingComparisonResponse) mode
 
 	var totalBilled, totalCalculated, totalCorrections int
 
-	// Category accumulators: amount + unique child set
+	// Category accumulators: amount + unique child set.
+	//
+	// The set is keyed by childKeyFor, the same key the issue list uses -- child
+	// id where known, voucher otherwise. Keying on the voucher alone counted one
+	// child twice whenever a Gutschein was reissued mid-period, and collapsed
+	// every unmatched bill row with an empty voucher into one.
 	type catAccum struct {
 		amount   int
 		children map[string]bool
@@ -990,7 +995,7 @@ func BuildComparisonSummary(comparisons []models.FundingComparisonResponse) mode
 			switch child.Status {
 			case "bill_only":
 				cats[catBillOnly].amount += child.BillTotal
-				cats[catBillOnly].children[vn] = true
+				cats[catBillOnly].children[childKeyFor(child)] = true
 				if child.BillTotal != 0 {
 					key := issueKey{childKeyFor(child), "", "bill_only"}
 					acc := issues[key]
@@ -1018,7 +1023,7 @@ func BuildComparisonSummary(comparisons []models.FundingComparisonResponse) mode
 					calcAmt = *child.CalcTotal
 				}
 				cats[catCalcOnly].amount -= calcAmt
-				cats[catCalcOnly].children[vn] = true
+				cats[catCalcOnly].children[childKeyFor(child)] = true
 				if calcAmt != 0 {
 					key := issueKey{childKeyFor(child), "", "calc_only"}
 					acc := issues[key]
@@ -1048,11 +1053,11 @@ func BuildComparisonSummary(comparisons []models.FundingComparisonResponse) mode
 					if prop.Mismatch == "" || prop.Mismatch == models.MismatchNone {
 						// Rate difference: same key:value, amounts differ
 						cats[catRateDiff].amount += prop.Difference
-						cats[catRateDiff].children[vn] = true
+						cats[catRateDiff].children[childKeyFor(child)] = true
 					} else {
 						// Property mismatch: missing/additional/different
 						cats[catMismatch].amount += prop.Difference
-						cats[catMismatch].children[vn] = true
+						cats[catMismatch].children[childKeyFor(child)] = true
 
 						key := issueKey{childKeyFor(child), prop.Key, string(prop.Mismatch)}
 						acc := issues[key]
@@ -2103,14 +2108,12 @@ func (s *GovernmentFundingBillService) ChildrenBillingSummary(ctx context.Contex
 			continue // no contract for this voucher
 		}
 
-		// Find contract active on this bill date
-		var activeContract *models.ChildContract
-		for i := range contracts {
-			if contracts[i].IsActiveOn(bdv.BillFrom) {
-				activeContract = &contracts[i]
-				break
-			}
-		}
+		// The deterministic picker (latest From, tie-break highest ID), not the
+		// first row GORM happens to return. comparePeriod was changed to this
+		// for the same reason and this site was missed: with two contracts
+		// overlapping a bill date, the calculated total for that child depended
+		// on row order.
+		activeContract := pickActiveChildContract(contracts, bdv.BillFrom)
 		if activeContract == nil {
 			continue // no active contract on this date
 		}
@@ -2135,9 +2138,20 @@ func (s *GovernmentFundingBillService) ChildrenBillingSummary(ctx context.Contex
 	// Cap at the Berlin calendar day via models.Today(), not the server's UTC
 	// clock instant, so the last-day-of-month boundary is judged consistently.
 	today := models.Today()
+	// Distinct months, not the sum of each contract's span. Amending a contract
+	// closes the old one at To = yesterday and opens the successor at From =
+	// today (amendContractTx), so on any day but the first of a month BOTH
+	// contracts cover that month and summing their spans counts it twice.
+	// Amending is the ordinary way to change a care type, so the error
+	// accumulates with every amendment a child has ever had. Counting the
+	// months themselves also makes overlapping contracts harmless.
 	contractMonthsByChild := make(map[uint]int)
 	for childID, childContracts := range contractsByChild {
-		months := 0
+		type yearMonth struct {
+			year  int
+			month time.Month
+		}
+		covered := make(map[yearMonth]bool)
 		for _, c := range childContracts {
 			end := today
 			if c.To != nil && c.To.Before(today) {
@@ -2146,33 +2160,49 @@ func (s *GovernmentFundingBillService) ChildrenBillingSummary(ctx context.Contex
 			if end.Before(c.From) || c.From.After(today) {
 				continue
 			}
-			// Count months: from start month to end month (capped at today) inclusive
-			months += monthCount(c.From, end)
+			for m := time.Date(c.From.Year(), c.From.Month(), 1, 0, 0, 0, 0, time.UTC); !m.After(end); m = m.AddDate(0, 1, 0) {
+				covered[yearMonth{m.Year(), m.Month()}] = true
+			}
 		}
-		contractMonthsByChild[childID] = months
+		contractMonthsByChild[childID] = len(covered)
 	}
 
 	// 8. Aggregate per child: sum across all vouchers belonging to the same child
 	type childAccum struct {
 		totalBilled     int
 		totalCalculated int
-		billCount       int
+		// bills the child appeared in, as a set. Summing each voucher's own
+		// count double-counts a bill that lists two of the child's vouchers,
+		// which happens whenever a Gutschein is reissued mid-period.
+		bills map[uint]bool
 	}
 	perChild := make(map[uint]*childAccum)
+	accFor := func(childID uint) *childAccum {
+		acc := perChild[childID]
+		if acc == nil {
+			acc = &childAccum{bills: make(map[uint]bool)}
+			perChild[childID] = acc
+		}
+		return acc
+	}
 
-	// Add billed totals (from SQL aggregation)
+	// Which bills each child appeared in, counted once per bill however many of
+	// the child's vouchers it lists.
+	for _, bdv := range billDateVouchers {
+		if childID, ok := childIDByVoucher[bdv.VoucherNumber]; ok {
+			accFor(childID).bills[bdv.BillID] = true
+		}
+	}
+
+	// Add billed totals (from SQL aggregation). Amounts DO sum across vouchers:
+	// each voucher's payment rows are its own, so adding them is right -- it is
+	// only the count of bills that must not be added.
 	for voucher, bt := range billedByVoucher {
 		childID, ok := childIDByVoucher[voucher]
 		if !ok {
 			continue // bill voucher not matched to any child contract
 		}
-		acc := perChild[childID]
-		if acc == nil {
-			acc = &childAccum{}
-			perChild[childID] = acc
-		}
-		acc.totalBilled += bt.TotalBilled
-		acc.billCount += bt.BillCount
+		accFor(childID).totalBilled += bt.TotalBilled
 	}
 
 	// Add calculated totals
@@ -2181,12 +2211,7 @@ func (s *GovernmentFundingBillService) ChildrenBillingSummary(ctx context.Contex
 		if !ok {
 			continue
 		}
-		acc := perChild[childID]
-		if acc == nil {
-			acc = &childAccum{}
-			perChild[childID] = acc
-		}
-		acc.totalCalculated += calcTotal
+		accFor(childID).totalCalculated += calcTotal
 	}
 
 	// Build response
@@ -2197,7 +2222,7 @@ func (s *GovernmentFundingBillService) ChildrenBillingSummary(ctx context.Contex
 			TotalBilled:     acc.totalBilled,
 			TotalCalculated: acc.totalCalculated,
 			TotalDifference: acc.totalBilled - acc.totalCalculated,
-			BillCount:       acc.billCount,
+			BillCount:       len(acc.bills),
 			ContractMonths:  contractMonthsByChild[childID],
 		})
 	}

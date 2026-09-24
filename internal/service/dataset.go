@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
@@ -16,6 +17,10 @@ type DataSet struct {
 	FundingPeriods []models.GovernmentFundingPeriod
 	PayPlans       map[uint]*models.PayPlan
 	BudgetItems    []models.BudgetItem
+	// LoadWarnings are non-fatal data-loading problems the caller must surface,
+	// so a figure computed from incomplete inputs is not reported as if it were
+	// complete.
+	LoadWarnings []models.CalculationWarning
 }
 
 // PedagogicalEmployees returns employees filtered to only pedagogical contracts.
@@ -62,9 +67,21 @@ func (s *StatisticsService) loadDataSet(ctx context.Context, orgID uint, rangeSt
 		return nil, err
 	}
 
+	// Non-fatal, but not silent. GetFinancials reports this as
+	// budget_items_load_failed so the user knows operating costs are missing
+	// from the figures; the forecast dropped them on the floor and showed a
+	// balance with no expenses and no banner, which is the more misleading of
+	// the two places to hide it.
+	var warnings []models.CalculationWarning
 	budgetItems, err := s.budgetItemStore.FindByOrganizationWithEntries(ctx, orgID)
 	if err != nil {
-		budgetItems = nil // non-fatal: proceed without budget items
+		slog.Warn("failed to load budget items for forecast; expense breakdown will exclude operating costs",
+			"org_id", orgID, "error", err)
+		warnings = append(warnings, models.CalculationWarning{
+			Code:    "budget_items_load_failed",
+			Message: "could not load budget items; expense breakdown excludes operating costs",
+		})
+		budgetItems = nil
 	}
 	if sectionID != nil {
 		budgetItems = sectionAttributableBudgetItems(budgetItems)
@@ -76,6 +93,7 @@ func (s *StatisticsService) loadDataSet(ctx context.Context, orgID uint, rangeSt
 		FundingPeriods: fundingPeriods,
 		PayPlans:       payPlans,
 		BudgetItems:    budgetItems,
+		LoadWarnings:   warnings,
 	}, nil
 }
 

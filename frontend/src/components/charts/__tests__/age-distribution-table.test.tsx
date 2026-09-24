@@ -21,6 +21,7 @@ const data: AgeDistributionResponse = {
       male_count: 2,
       female_count: 3,
       diverse_count: 0,
+      unknown_count: 0,
     },
     {
       age_label: '2',
@@ -30,9 +31,18 @@ const data: AgeDistributionResponse = {
       male_count: 1,
       female_count: 2,
       diverse_count: 1,
+      unknown_count: 0,
     },
     // the open-ended bucket has no max_age, which is what makes it open-ended
-    { age_label: '6+', min_age: 6, count: 3, male_count: 3, female_count: 0, diverse_count: 0 },
+    {
+      age_label: '6+',
+      min_age: 6,
+      count: 3,
+      male_count: 3,
+      female_count: 0,
+      diverse_count: 0,
+      unknown_count: 0,
+    },
   ],
 };
 
@@ -73,5 +83,39 @@ describe('AgeDistributionTable', () => {
   it('has no accessibility violations', async () => {
     const { container } = renderWithProviders(<AgeDistributionTable data={data} />);
     await expectNoA11yViolations(container);
+  });
+});
+
+describe('AgeDistributionTable unknown gender', () => {
+  // Children whose gender is none of the three were counted in the bucket total
+  // and in no gender column, so the columns did not sum to the Total beside
+  // them.
+  const withUnknown: AgeDistributionResponse = {
+    date: '2026-01-15',
+    total_count: 3,
+    distribution: [
+      {
+        age_label: '2',
+        min_age: 2,
+        max_age: 2,
+        count: 3,
+        male_count: 1,
+        female_count: 1,
+        diverse_count: 0,
+        unknown_count: 1,
+      },
+    ],
+  };
+
+  it('shows the column and the row adds up to its own total', () => {
+    renderWithProviders(<AgeDistributionTable data={withUnknown} />);
+    expect(screen.getByText('gender.unknown')).toBeInTheDocument();
+    const b = withUnknown.distribution[0]!;
+    expect(b.male_count + b.female_count + b.diverse_count + b.unknown_count).toBe(b.count);
+  });
+
+  it('omits the column entirely when every gender is one of the three', () => {
+    renderWithProviders(<AgeDistributionTable data={data} />);
+    expect(screen.queryByText('gender.unknown')).not.toBeInTheDocument();
   });
 });

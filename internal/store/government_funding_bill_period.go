@@ -331,7 +331,7 @@ func (s *GovernmentFundingBillPeriodStore) FindBilledTotalsByOrg(ctx context.Con
 func (s *GovernmentFundingBillPeriodStore) FindAllBillDatesAndVouchersByOrg(ctx context.Context, orgID uint) ([]models.BillDateVoucher, error) {
 	var results []models.BillDateVoucher
 	err := DBFromContext(ctx, s.db).
-		Raw(`SELECT c.voucher_number, p.from_date AS bill_from
+		Raw(`SELECT c.voucher_number, p.from_date AS bill_from, p.id AS bill_id
 			FROM government_funding_bill_periods p
 			JOIN government_funding_bill_children c ON c.period_id = p.id
 			WHERE p.organization_id = ?

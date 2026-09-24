@@ -31,14 +31,16 @@ describe('buildSectionStaffingRows', () => {
       expect(rows[0]?.[KEY]).toBe(-10);
     });
 
-    it('returns 0 when required is 0 (no division by zero)', () => {
-      // Section with no required hours (e.g. closed for the period)
-      // should render as 0% — not Infinity, NaN, or crash the chart.
+    it('returns NaN when required is 0, because there is no ratio to report', () => {
+      // A section with no required hours has no balance percentage. 0% would
+      // claim it is exactly staffed. computeSymmetricDomainMax filters
+      // non-finite values before building the domain, and the label renders a
+      // dash, so nothing reaches d3 that could blow up the scale.
       const rows = buildSectionStaffingRows(
         [{ sectionName: 'Closed', required: 0, available: 50 }],
         KEY
       );
-      expect(rows[0]?.[KEY]).toBe(0);
+      expect(Number.isFinite(rows[0]?.[KEY] as number)).toBe(false);
     });
 
     it('returns 0 when available exactly equals required', () => {
