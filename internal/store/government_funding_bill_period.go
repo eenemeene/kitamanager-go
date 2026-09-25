@@ -211,7 +211,13 @@ type BillTotalsByRowType struct {
 	CorrectionTotal int
 }
 
-// FindBillTotalsByRowTypeInDateRange returns per-month regular and correction totals for an org.
+// FindBillTotalsByRowTypeInDateRange returns per-month regular and correction
+// totals for an org, keyed by the month each bill ARRIVED in.
+//
+// This answers "what did we receive in month X?" -- a cash question, where a
+// correction belongs to the month it was paid out. For "was month X funded
+// correctly?", which needs a correction filed against the month it corrects,
+// use FindBillTotalsByRowTypeAttributed instead.
 func (s *GovernmentFundingBillPeriodStore) FindBillTotalsByRowTypeInDateRange(ctx context.Context, orgID uint, from, to time.Time) (map[time.Time]BillTotalsByRowType, error) {
 	var results []struct {
 		FromDate time.Time `gorm:"column:from_date"`
@@ -234,6 +240,64 @@ func (s *GovernmentFundingBillPeriodStore) FindBillTotalsByRowTypeInDateRange(ct
 	m := make(map[time.Time]BillTotalsByRowType, len(results))
 	for _, r := range results {
 		key := time.Date(r.FromDate.Year(), r.FromDate.Month(), 1, 0, 0, 0, 0, time.UTC)
+		entry := m[key]
+		switch r.RowType {
+		case models.RowTypeCorrection:
+			entry.CorrectionTotal += r.Total
+		default: // "regular" or empty
+			entry.RegularTotal += r.Total
+		}
+		m[key] = entry
+	}
+	return m, nil
+}
+
+// FindBillTotalsByRowTypeAttributed returns per-month regular and correction
+// totals for an org, keyed by the month each row is ABOUT rather than the month
+// its bill arrived in.
+//
+// A bill carries one regular row for its own month plus any number of
+// correction rows each adjusting an earlier month, so the two keyings genuinely
+// differ and the year view needs this one: a January correction that arrived in
+// April has to count against January for "was January funded correctly?" to
+// have an answer.
+//
+// Two consequences follow from that, both intended:
+//
+//   - The date range filters on the ATTRIBUTION month, so a correction that
+//     arrived inside the range but corrects a month outside it is excluded, and
+//     one that arrived after the range but corrects a month inside it is
+//     included. The bill's own from_date is not constrained at all.
+//   - Rows imported before migration 000028 carry no month and fall back to
+//     their bill's from_date via COALESCE, which reproduces exactly what
+//     FindBillTotalsByRowTypeInDateRange returns for them. Historical data
+//     therefore does not move; only newly imported bills attribute correctly.
+func (s *GovernmentFundingBillPeriodStore) FindBillTotalsByRowTypeAttributed(ctx context.Context, orgID uint, from, to time.Time) (map[time.Time]BillTotalsByRowType, error) {
+	var results []struct {
+		Month   time.Time `gorm:"column:month"`
+		RowType string    `gorm:"column:row_type"`
+		Total   int       `gorm:"column:total"`
+	}
+	err := DBFromContext(ctx, s.db).
+		Raw(`SELECT date_trunc('month', COALESCE(pay.billing_month, p.from_date))::date AS month,
+				pay.row_type,
+				SUM(pay.amount) AS total
+			FROM government_funding_bill_periods p
+			JOIN government_funding_bill_children c ON c.period_id = p.id
+			JOIN government_funding_bill_payments pay ON pay.child_id = c.id
+			WHERE p.organization_id = ?
+				AND COALESCE(pay.billing_month, p.from_date) >= ?
+				AND COALESCE(pay.billing_month, p.from_date) <= ?
+			GROUP BY month, pay.row_type
+			ORDER BY month`, orgID, from, to).
+		Scan(&results).Error
+	if err != nil {
+		return nil, err
+	}
+
+	m := make(map[time.Time]BillTotalsByRowType, len(results))
+	for _, r := range results {
+		key := time.Date(r.Month.Year(), r.Month.Month(), 1, 0, 0, 0, 0, time.UTC)
 		entry := m[key]
 		switch r.RowType {
 		case models.RowTypeCorrection:

@@ -152,13 +152,25 @@ func (s *GovernmentFundingBillService) ProcessISBJ(ctx context.Context, orgID ui
 			if row.IsCorrection {
 				rowType = models.RowTypeCorrection
 			}
+			// Left nil when the source file carried no "Monat/ Typ"
+			// column. Deliberately not defaulted to the bill's own
+			// month: for a correction that would assert the one thing
+			// we know to be wrong, and nil is what lets the read path
+			// tell "this row is about its own month" apart from "we
+			// do not know which month this row is about".
+			var billingMonth *time.Time
+			if !row.BillingMonth.IsZero() {
+				bm := row.BillingMonth
+				billingMonth = &bm
+			}
 			for _, amt := range row.Amounts {
 				billChild.Payments = append(billChild.Payments, models.GovernmentFundingBillPayment{
-					Key:      amt.Key,
-					Value:    amt.Value,
-					Amount:   amt.Amount,
-					RowIndex: rowIdx,
-					RowType:  rowType,
+					Key:          amt.Key,
+					Value:        amt.Value,
+					Amount:       amt.Amount,
+					RowIndex:     rowIdx,
+					RowType:      rowType,
+					BillingMonth: billingMonth,
 				})
 			}
 		}

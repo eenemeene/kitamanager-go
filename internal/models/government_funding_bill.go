@@ -25,6 +25,32 @@ type GovernmentFundingBillPayment struct {
 	Amount   int    `gorm:"not null" json:"amount" example:"166847"`
 	RowIndex int    `gorm:"not null;default:0" json:"-"`
 	RowType  string `gorm:"size:20;not null;default:'regular'" json:"row_type" example:"regular"` // "regular" or "correction"
+	// BillingMonth is the month this row is ABOUT (first of month),
+	// read from the ISBJ "Monat/ Typ" column. For a regular row that
+	// is the bill's own month; for a correction it is an EARLIER
+	// month the bill is adjusting.
+	//
+	// Nil means unknown -- either the source file had no "Monat/ Typ"
+	// column, or the row predates migration 000028. Callers that
+	// aggregate by attribution month fall back to the bill period's
+	// from_date; see BillingMonthOr.
+	BillingMonth *time.Time `gorm:"type:date;index" json:"billing_month,omitempty" format:"date-time"`
+}
+
+// BillingMonthOr returns the month this payment should be attributed
+// to, falling back to the supplied bill-period month when the row
+// carries no month of its own.
+//
+// The fallback is not a guess dressed up as a fact: for a regular row
+// the two are the same month anyway, and for a correction with no
+// recorded month the arrival month is the only thing we know. Keeping
+// the distinction in the column (nil vs. set) rather than baking the
+// fallback into the data is what lets a caller tell the two apart.
+func (p *GovernmentFundingBillPayment) BillingMonthOr(billFrom time.Time) time.Time {
+	if p.BillingMonth != nil && !p.BillingMonth.IsZero() {
+		return *p.BillingMonth
+	}
+	return time.Date(billFrom.Year(), billFrom.Month(), 1, 0, 0, 0, 0, time.UTC)
 }
 
 // BeforeCreate sets default RowType to "regular" when not explicitly set.

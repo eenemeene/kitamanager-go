@@ -786,6 +786,7 @@ func buildBillPeriod(orgID uint, billDate time.Time, fundingPeriod *models.Gover
 			}
 			payments = append(payments, models.GovernmentFundingBillPayment{
 				Key: fp.Key, Value: fp.Value, Amount: amount, RowIndex: 0,
+				RowType: models.RowTypeRegular, BillingMonth: &billDate,
 			})
 			rowTotal += amount
 		}
@@ -795,6 +796,7 @@ func buildBillPeriod(orgID uint, billDate time.Time, fundingPeriod *models.Gover
 				if fp.Key == "qm/mss" && fp.MatchesAge(childAge) {
 					payments = append(payments, models.GovernmentFundingBillPayment{
 						Key: fp.Key, Value: fp.Value, Amount: fp.Payment, RowIndex: 0,
+						RowType: models.RowTypeRegular, BillingMonth: &billDate,
 					})
 					rowTotal += fp.Payment
 					break
@@ -814,18 +816,29 @@ func buildBillPeriod(orgID uint, billDate time.Time, fundingPeriod *models.Gover
 		facilityTotal += rowTotal
 	}
 
-	// Correction rows for the 2 most recent bills
+	// Correction rows for the 2 most recent bills.
+	//
+	// These carried no RowType, so BeforeCreate defaulted them to "regular"
+	// and the demo data has never actually contained a correction: the bill
+	// header advertised a CorrectionBooking while every payment row under it
+	// was regular, leaving the Korrektur column at 0 EUR everywhere.
+	//
+	// The month they correct is the one BEFORE the bill, which is what a real
+	// ISBJ correction looks like and what makes the attributed and arrival
+	// keyings differ in the demo data rather than agreeing by accident.
 	if monthsAgo <= 2 && len(children) > 10 {
 		corrChild := children[10]
 		if corrChild.voucherNum != "" {
 			corrAmount := -1500
+			correctedMonth := billDate.AddDate(0, -1, 0)
 			billChildren = append(billChildren, models.GovernmentFundingBillChild{
 				VoucherNumber: corrChild.voucherNum,
 				ChildName:     corrChild.child.LastName + ", " + corrChild.child.FirstName,
 				BirthDate:     corrChild.child.Birthdate.Format("01.06"),
 				District:      3,
 				Payments: []models.GovernmentFundingBillPayment{
-					{Key: "care_type", Value: "ganztag", Amount: corrAmount, RowIndex: 1},
+					{Key: "care_type", Value: "ganztag", Amount: corrAmount, RowIndex: 1,
+						RowType: models.RowTypeCorrection, BillingMonth: &correctedMonth},
 				},
 			})
 			correctionTotal += corrAmount

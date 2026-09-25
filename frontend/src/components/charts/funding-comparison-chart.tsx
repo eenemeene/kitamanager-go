@@ -72,8 +72,26 @@ export interface KitaYearSummaryRow {
    * sub-line, whenever the two differ.
    */
   calculatedWithBill: number;
+  /**
+   * Billed amounts ATTRIBUTED to this Kita year's months -- keyed by the month
+   * each bill row is about, not the month its bill arrived in. A bill carries
+   * one regular row for its own month plus corrections for earlier ones, so a
+   * correction paid out in August against July belongs to July's Kita year,
+   * which may not be August's.
+   */
   regular: number;
   correction: number;
+  /**
+   * Corrections attributed to months of this Kita year that have no bill of
+   * their own, and which `difference` therefore cannot account for: there is
+   * no calculated figure to set them against, because `calculatedWithBill`
+   * only counts months we can evaluate.
+   *
+   * Tracked rather than silently dropped. Folding it into `correction` would
+   * compare a month's correction against a calculated total that excludes that
+   * month, turning a 1 EUR adjustment into a month-sized false deficit.
+   */
+  orphanCorrection: number;
   /**
    * (regular + correction) - calculatedWithBill: the net position after
    * retroactive adjustments, which is the question a year row answers. The
@@ -95,6 +113,24 @@ export interface KitaYearSummaryRow {
  * Pure and exported so the arithmetic can be pinned without rendering Nivo,
  * matching buildFundingSlices / buildExpenseSlices elsewhere in this folder.
  */
+/**
+ * The billed figures for one month, attributed to the month each bill row is
+ * ABOUT rather than the month its bill arrived in.
+ *
+ * Falls back to the arrival-keyed fields for bills imported before the billing
+ * month was persisted (migration 000028); for those the backend reports the
+ * same number under both names, so the fallback changes nothing it touches.
+ */
+export function attributedActuals(dp: FinancialResponse['data_points'][number]): {
+  regular: number | null;
+  correction: number | null;
+} {
+  const regular = dp.actual_funding_regular_attributed ?? dp.actual_funding_regular ?? null;
+  const correction =
+    dp.actual_funding_correction_attributed ?? dp.actual_funding_correction ?? null;
+  return { regular, correction };
+}
+
 export function buildKitaYearSummary(
   dataPoints: FinancialResponse['data_points'],
   compareData?: Map<string, FundingComparisonResponse>
@@ -106,6 +142,7 @@ export function buildKitaYearSummary(
       calculatedWithBill: number;
       regular: number;
       correction: number;
+      orphanCorrection: number;
       actualMonths: number;
       totalMonths: number;
       months: KitaYearMonthRow[];
@@ -120,26 +157,40 @@ export function buildKitaYearSummary(
       calculatedWithBill: 0,
       regular: 0,
       correction: 0,
+      orphanCorrection: 0,
       actualMonths: 0,
       totalMonths: 0,
       months: [],
     };
     entry.totalMonths += 1;
     entry.calculatedTotal += dpFundingIncome;
+    // Attributed figures where the backend has them. They fall back to the
+    // arrival-keyed ones for bills imported before the billing month was
+    // persisted, where the two are by definition the same number.
+    const attributed = attributedActuals(dp);
+    const regularAttributed = attributed.regular ?? 0;
+    const correctionAttributed = attributed.correction ?? 0;
+    // A bill of this month's own is what makes the month evaluable: it is what
+    // gives `calculatedWithBill` something to compare against. Attributed
+    // money can land on a month without one -- a correction for a month we
+    // never imported a bill for -- and that money is held aside rather than
+    // set against a calculated total that excludes its month.
     const hasActual = dp.actual_funding != null;
     if (hasActual) {
       entry.calculatedWithBill += dpFundingIncome;
-      entry.regular += dp.actual_funding_regular ?? 0;
-      entry.correction += dp.actual_funding_correction ?? 0;
+      entry.regular += regularAttributed;
+      entry.correction += correctionAttributed;
       entry.actualMonths += 1;
+    } else {
+      entry.orphanCorrection += correctionAttributed;
     }
     const comp = compareData?.get(dpDate);
     entry.months.push({
       date: dpDate,
       calculated: dpFundingIncome,
-      regular: dp.actual_funding_regular ?? null,
-      correction: dp.actual_funding_correction ?? null,
-      difference: hasActual ? (dp.actual_funding_regular ?? 0) - dpFundingIncome : null,
+      regular: hasActual ? regularAttributed : null,
+      correction: hasActual ? correctionAttributed : null,
+      difference: hasActual ? regularAttributed - dpFundingIncome : null,
       billOnlyCount: comp?.bill_only_count ?? null,
       billOnlyAmount: comp?.bill_only_amount ?? null,
       calcOnlyCount: comp?.calc_only_count ?? null,
@@ -153,6 +204,7 @@ export function buildKitaYearSummary(
     calculatedWithBill: v.calculatedWithBill,
     regular: v.regular,
     correction: v.correction,
+    orphanCorrection: v.orphanCorrection,
     difference: v.regular + v.correction - v.calculatedWithBill,
     actualMonths: v.actualMonths,
     totalMonths: v.totalMonths,
@@ -193,11 +245,15 @@ export function FundingComparisonChart({
           date: formatDateLabel(dp.date ?? ''),
           [calculatedKey]: (dp.funding_income ?? 0) / 100,
         };
-        if (dp.actual_funding_regular != null) {
-          entry[actualRegularKey] = dp.actual_funding_regular / 100;
+        // Attributed, so the correction stacked on a month is the correction
+        // FOR that month. Keyed by arrival, a bar showed April carrying three
+        // corrections that were really about January, February and March.
+        const { regular, correction } = attributedActuals(dp);
+        if (regular != null) {
+          entry[actualRegularKey] = regular / 100;
         }
-        if (dp.actual_funding_correction != null && dp.actual_funding_correction !== 0) {
-          entry[actualCorrectionKey] = dp.actual_funding_correction / 100;
+        if (correction != null && correction !== 0) {
+          entry[actualCorrectionKey] = correction / 100;
         }
         return entry;
       }),
@@ -464,10 +520,8 @@ export function FundingComparisonChart({
           enableLabel={false}
           tooltip={({ indexValue, id, value, color }) => {
             const dp = allPoints.find((d) => formatDateLabel(d.date ?? '') === indexValue);
-            const diff =
-              dp && dp.actual_funding_regular != null
-                ? dp.actual_funding_regular - (dp.funding_income ?? 0)
-                : null;
+            const dpRegular = dp ? attributedActuals(dp).regular : null;
+            const diff = dpRegular != null ? dpRegular - (dp?.funding_income ?? 0) : null;
             const comp = dp ? compareData?.get(dp.date ?? '') : undefined;
             return (
               <div
@@ -618,7 +672,11 @@ export function FundingComparisonChart({
                             one printed beside them. The full-range total is
                             still worth having, so it stays as a sub-line
                             whenever the two differ. */}
-                        <TableCell className="text-right tabular-nums">
+                        {/* Masked for the visual baseline along with the three
+                            cells after it: the seeded demo data is dated
+                            relative to today, so every figure in this row moves
+                            as the calendar does. */}
+                        <TableCell data-visual-mask="currency" className="text-right tabular-nums">
                           {row.hasBills
                             ? formatEur(row.calculatedWithBill)
                             : formatEur(row.calculatedTotal)}
@@ -633,13 +691,32 @@ export function FundingComparisonChart({
                             </div>
                           )}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">
+                        <TableCell data-visual-mask="currency" className="text-right tabular-nums">
                           {row.hasBills ? formatEur(row.regular) : '\u2014'}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">
+                        <TableCell data-visual-mask="currency" className="text-right tabular-nums">
                           {row.hasBills ? formatEur(row.correction) : '\u2014'}
+                          {/* Corrections attributed to months of this Kita
+                              year that have no bill of their own. Held out of
+                              the Correction cell because Difference is built
+                              from it, and those months contribute nothing to
+                              calculatedWithBill -- folding them in would read
+                              as a deficit the size of a month. Shown rather
+                              than dropped: it is real money the Senate paid. */}
+                          {row.orphanCorrection !== 0 && (
+                            <div
+                              data-visual-mask="currency"
+                              className="text-muted-foreground text-xs font-normal"
+                              title={t('fundingCorrectionOrphanTooltip')}
+                            >
+                              {t('fundingCorrectionOrphan', {
+                                amount: formatEur(row.orphanCorrection),
+                              })}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell
+                          data-visual-mask="currency"
                           className={`text-right font-medium tabular-nums ${
                             !row.hasBills
                               ? 'text-muted-foreground'

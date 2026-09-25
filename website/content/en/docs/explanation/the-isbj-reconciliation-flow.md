@@ -11,7 +11,7 @@ The Excel file is read with `internal/isbj/parse.go`. The parser:
 
 1. Locates the worksheet that holds the per-child detail rows (sheet names follow a stable Senate convention).
 2. Reads each row, normalising column names against an internal map.
-3. Extracts: child surname/given-name, voucher number, billed amounts per supplement, K/A markers (corrections — see below).
+3. Extracts: child surname/given-name, voucher number, billed amounts per supplement, and each row's type and applicable month (corrections — see below).
 
 Parse errors are surfaced inline. Common causes:
 
@@ -48,6 +48,28 @@ The comparison is per-property: not just total amount, but per-supplement amount
 
 ## K/A markers (corrections)
 
-Real ISBJ bills carry "K" (Korrektur) and "A" (Aufhebung) markers on rows that retroactively correct or cancel a previous month's billing. KitaManager's parser **currently ignores these markers**, treating each row as standalone for the bill month. This causes a known billing-comparison drift when the Senate corrects a prior month's amounts: the corrected amount is recorded against the month the bill was *issued in*, not the month it *applies to*, so two months show offsetting deltas instead of one matching row. Tracked as a known limitation; the workaround when triaging is to ignore offsetting deltas across consecutive months.
+Real ISBJ bills carry two values per row in the "Monat/ Typ" column: the **Typ** — "A" for *Abrechnung* (the regular row) or "K" for *Korrektur* (a correction) — and the **Monat**, the month the row applies to.
+
+Those two are not the same as the bill's own month. A bill for April routinely looks like this:
+
+| Typ | Monat | Amount |
+|---|---|---|
+| K | 01.25 | €1.02 |
+| K | 02.25 | €1.02 |
+| K | 03.25 | €1.02 |
+| A | 04.25 | €946.50 |
+
+The Senate is saying: here is April — and the rate we paid you in January, February and March was €1.02/month short each. Retroactive corrections arise when the Kostenblatt is republished after the fact, an Integrationsstatus is approved with an effective date in the past, or an NdH flag is corrected later.
+
+KitaManager reads both values and files each row against the month it applies to. Two views therefore answer two different questions, and both are right:
+
+- **Financials / balance** counts by **arrival month** — what actually landed in that month, corrections included. That is the cash question.
+- **Bill comparison** counts by **applicable month** — was this month funded correctly. The three corrections above count towards January, February and March there, not April.
+
+{{< callout type="info" >}}
+For bills imported before this behaviour existed, the applicable month was not stored. Those rows still count towards their arrival month, so historical figures do not shift retroactively. To get the attribution for older bills as well, re-import the files in question.
+{{< /callout >}}
+
+When a correction applies to a month for which no bill was imported at all, no difference can be formed for that month — there is no calculated figure to compare against. The amount is not dropped: it is reported separately beneath the "Correction" column in the Kita year row.
 
 For the operational triage matrix (which symptom maps to which fix), see [Investigate a bill discrepancy](../../how-to/use/investigate-a-bill-discrepancy/).

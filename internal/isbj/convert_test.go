@@ -2,6 +2,7 @@ package isbj
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -764,4 +765,91 @@ func TestConvert_BuTNegative(t *testing.T) {
 		}
 	}
 	assert.True(t, found, "expected negative BuT in amounts")
+}
+
+// ---------------------------------------------------------------
+// Abrechnungsmonat -> ConvertedChildRow.BillingMonth
+// ---------------------------------------------------------------
+
+// TestConvert_BillingMonthCarriedThrough pins the shape a real bill has: one
+// regular row for the bill's own month plus corrections for earlier months,
+// each keeping the month it is about. Before migration 000028 this was parsed
+// and then dropped in Convert, which is what made every correction count as
+// money for the month its bill arrived in.
+func TestConvert_BillingMonthCarriedThrough(t *testing.T) {
+	jan := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+	feb := time.Date(2025, time.February, 1, 0, 0, 0, 0, time.UTC)
+	apr := time.Date(2025, time.April, 1, 0, 0, 0, 0, time.UTC)
+
+	output := makeTestOutput()
+	base := output.Vertrag.Kinder[0]
+
+	korrJan := base
+	korrJan.Typ = "K"
+	korrJan.Abrechnungsmonat = jan
+	korrJan.Summe = 102
+
+	korrFeb := base
+	korrFeb.Typ = "K"
+	korrFeb.Abrechnungsmonat = feb
+	korrFeb.Summe = 102
+
+	regular := base
+	regular.Typ = "A"
+	regular.Abrechnungsmonat = apr
+
+	output.Vertrag.Kinder = []Kind{korrJan, korrFeb, regular}
+
+	result, err := Convert(output)
+	require.NoError(t, err)
+
+	// All three rows carry the same voucher, so they group onto one child.
+	require.Len(t, result.Children, 1)
+	rows := result.Children[0].Rows
+	require.Len(t, rows, 3)
+
+	assert.True(t, rows[0].IsCorrection)
+	assert.Equal(t, jan, rows[0].BillingMonth)
+	assert.True(t, rows[1].IsCorrection)
+	assert.Equal(t, feb, rows[1].BillingMonth)
+	assert.False(t, rows[2].IsCorrection)
+	assert.Equal(t, apr, rows[2].BillingMonth)
+}
+
+// TestConvert_BillingMonthZeroWhenAbsent covers files with no "Monat/ Typ"
+// column at all. Zero must stay zero rather than becoming a plausible-looking
+// month: the import path turns it into a NULL column, which is what lets a
+// reader tell "this row is about its own month" from "we do not know".
+func TestConvert_BillingMonthZeroWhenAbsent(t *testing.T) {
+	output := makeTestOutput()
+	// makeTestOutput leaves Typ and Abrechnungsmonat unset, which is exactly
+	// what the parser produces for a file without the merged header cell.
+	require.True(t, output.Vertrag.Kinder[0].Abrechnungsmonat.IsZero())
+
+	result, err := Convert(output)
+	require.NoError(t, err)
+
+	require.Len(t, result.Children, 1)
+	require.Len(t, result.Children[0].Rows, 1)
+	assert.True(t, result.Children[0].Rows[0].BillingMonth.IsZero())
+	assert.False(t, result.Children[0].Rows[0].IsCorrection)
+}
+
+// TestConvert_RegularRowCanPredateItsBill guards the assumption that only
+// corrections carry an earlier month. ISBJ bills a late registration as a
+// regular "A" row against the month it applies to, so the attribution has to
+// follow RowType-independent logic.
+func TestConvert_RegularRowCanPredateItsBill(t *testing.T) {
+	mar := time.Date(2025, time.March, 1, 0, 0, 0, 0, time.UTC)
+
+	output := makeTestOutput()
+	output.Vertrag.Kinder[0].Typ = "A"
+	output.Vertrag.Kinder[0].Abrechnungsmonat = mar
+
+	result, err := Convert(output)
+	require.NoError(t, err)
+
+	row := result.Children[0].Rows[0]
+	assert.False(t, row.IsCorrection)
+	assert.Equal(t, mar, row.BillingMonth)
 }

@@ -265,6 +265,8 @@
     "fundingActualCorrection": "Correction",
     "fundingCalculated": "Calculated",
     "fundingCalculatedFullYear": "of {amount} across the full Kita year",
+    "fundingCorrectionOrphan": "plus {amount} for months with no bill",
+    "fundingCorrectionOrphanTooltip": "Corrections that apply to months of this Kita year for which no bill was imported. They are not part of the difference, because those months have no calculated figure to compare against.",
     "fundingDifference": "Difference",
     "fundingBillMissing": "No government funding bill has been uploaded for the current month.",
     "fundingBillUploadLink": "Upload bill",

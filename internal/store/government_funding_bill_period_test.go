@@ -1072,3 +1072,217 @@ func TestGovernmentFundingBillPeriodStore_FindByOrganizationDateRange(t *testing
 		}
 	})
 }
+
+// ptrDate returns a pointer to the first of the given month, UTC.
+func ptrDate(year int, month time.Month) *time.Time {
+	d := time.Date(year, month, 1, 0, 0, 0, 0, time.UTC)
+	return &d
+}
+
+// newAprilBillWithBackCorrections builds the shape a real ISBJ bill has: one
+// regular row for the bill's own month plus corrections for three earlier
+// months, each carrying the month it is about.
+func newAprilBillWithBackCorrections(orgID uint, userID uint) *models.GovernmentFundingBillPeriod {
+	to := time.Date(2025, 4, 30, 0, 0, 0, 0, time.UTC)
+	return &models.GovernmentFundingBillPeriod{
+		OrganizationID: orgID,
+		Period:         models.Period{From: time.Date(2025, 4, 1, 0, 0, 0, 0, time.UTC), To: &to},
+		FileName:       "Abrechnung_04-25.xlsx",
+		FileSha256:     "attr-april-2025",
+		FacilityName:   "Kita Sonnenschein",
+		FacilityTotal:  94956,
+		CreatedBy:      &userID,
+		Children: []models.GovernmentFundingBillChild{
+			{
+				VoucherNumber: "GB-12345678901-02",
+				ChildName:     "Musterkind, Max",
+				BirthDate:     "01.20",
+				District:      1,
+				Payments: []models.GovernmentFundingBillPayment{
+					{Key: "care_type", Value: "ganztag", Amount: 94650, RowIndex: 3,
+						RowType: models.RowTypeRegular, BillingMonth: ptrDate(2025, time.April)},
+					{Key: "care_type", Value: "ganztag", Amount: 102, RowIndex: 0,
+						RowType: models.RowTypeCorrection, BillingMonth: ptrDate(2025, time.January)},
+					{Key: "care_type", Value: "ganztag", Amount: 102, RowIndex: 1,
+						RowType: models.RowTypeCorrection, BillingMonth: ptrDate(2025, time.February)},
+					{Key: "care_type", Value: "ganztag", Amount: 102, RowIndex: 2,
+						RowType: models.RowTypeCorrection, BillingMonth: ptrDate(2025, time.March)},
+				},
+			},
+		},
+	}
+}
+
+// TestGovernmentFundingBillPeriodStore_FindBillTotalsByRowTypeAttributed pins
+// the difference between the two keyings on one bill. Arrival puts every cent
+// in April; attribution files each correction against the month it corrects.
+func TestGovernmentFundingBillPeriodStore_FindBillTotalsByRowTypeAttributed(t *testing.T) {
+	db := setupTestDB(t)
+	s := NewGovernmentFundingBillPeriodStore(db)
+	org := createTestOrganization(t, db, "Attr Org")
+	user := createTestUser(t, db, "Attr User", "attr@example.com")
+	ctx := context.Background()
+
+	if err := s.Create(ctx, newAprilBillWithBackCorrections(org.ID, user.ID)); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC)
+
+	arrival, err := s.FindBillTotalsByRowTypeInDateRange(ctx, org.ID, from, to)
+	if err != nil {
+		t.Fatalf("FindBillTotalsByRowTypeInDateRange() error = %v", err)
+	}
+	// Everything lands on April, corrections included.
+	if len(arrival) != 1 {
+		t.Fatalf("arrival keying: expected 1 month, got %d (%v)", len(arrival), arrival)
+	}
+	apr := time.Date(2025, 4, 1, 0, 0, 0, 0, time.UTC)
+	if got := arrival[apr]; got.RegularTotal != 94650 || got.CorrectionTotal != 306 {
+		t.Errorf("arrival April = %+v, want regular 94650 correction 306", got)
+	}
+
+	attributed, err := s.FindBillTotalsByRowTypeAttributed(ctx, org.ID, from, to)
+	if err != nil {
+		t.Fatalf("FindBillTotalsByRowTypeAttributed() error = %v", err)
+	}
+	// Four months now: the regular row's own, plus one per corrected month.
+	if len(attributed) != 4 {
+		t.Fatalf("attributed keying: expected 4 months, got %d (%v)", len(attributed), attributed)
+	}
+	for _, m := range []time.Month{time.January, time.February, time.March} {
+		key := time.Date(2025, m, 1, 0, 0, 0, 0, time.UTC)
+		got := attributed[key]
+		if got.CorrectionTotal != 102 {
+			t.Errorf("attributed %s: correction = %d, want 102", m, got.CorrectionTotal)
+		}
+		if got.RegularTotal != 0 {
+			t.Errorf("attributed %s: regular = %d, want 0", m, got.RegularTotal)
+		}
+	}
+	if got := attributed[apr]; got.RegularTotal != 94650 || got.CorrectionTotal != 0 {
+		t.Errorf("attributed April = %+v, want regular 94650 correction 0", got)
+	}
+
+	// Neither keying may invent or lose money.
+	sum := func(m map[time.Time]BillTotalsByRowType) int {
+		total := 0
+		for _, v := range m {
+			total += v.RegularTotal + v.CorrectionTotal
+		}
+		return total
+	}
+	if sum(arrival) != sum(attributed) {
+		t.Errorf("totals disagree: arrival %d, attributed %d", sum(arrival), sum(attributed))
+	}
+}
+
+// TestGovernmentFundingBillPeriodStore_AttributedFiltersOnAttributionMonth
+// covers the range semantics: the filter applies to the month a row is ABOUT,
+// so a correction whose bill arrived outside the window is still counted when
+// the month it corrects falls inside it, and vice versa.
+func TestGovernmentFundingBillPeriodStore_AttributedFiltersOnAttributionMonth(t *testing.T) {
+	db := setupTestDB(t)
+	s := NewGovernmentFundingBillPeriodStore(db)
+	org := createTestOrganization(t, db, "Attr Range Org")
+	user := createTestUser(t, db, "Attr Range User", "attrrange@example.com")
+	ctx := context.Background()
+
+	if err := s.Create(ctx, newAprilBillWithBackCorrections(org.ID, user.ID)); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	// A window covering only January-February. The bill itself is April and
+	// falls outside it entirely, so the arrival keying sees nothing at all.
+	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2025, 2, 28, 0, 0, 0, 0, time.UTC)
+
+	arrival, err := s.FindBillTotalsByRowTypeInDateRange(ctx, org.ID, from, to)
+	if err != nil {
+		t.Fatalf("FindBillTotalsByRowTypeInDateRange() error = %v", err)
+	}
+	if len(arrival) != 0 {
+		t.Errorf("arrival keying: expected no months in Jan-Feb window, got %v", arrival)
+	}
+
+	attributed, err := s.FindBillTotalsByRowTypeAttributed(ctx, org.ID, from, to)
+	if err != nil {
+		t.Fatalf("FindBillTotalsByRowTypeAttributed() error = %v", err)
+	}
+	if len(attributed) != 2 {
+		t.Fatalf("attributed keying: expected Jan and Feb, got %d (%v)", len(attributed), attributed)
+	}
+	for _, m := range []time.Month{time.January, time.February} {
+		key := time.Date(2025, m, 1, 0, 0, 0, 0, time.UTC)
+		if got := attributed[key].CorrectionTotal; got != 102 {
+			t.Errorf("attributed %s: correction = %d, want 102", m, got)
+		}
+	}
+	// March is corrected by the same bill but sits outside the window.
+	marKey := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
+	if _, found := attributed[marKey]; found {
+		t.Error("March is outside the window and must not appear")
+	}
+}
+
+// TestGovernmentFundingBillPeriodStore_AttributedFallsBackToBillMonth covers
+// rows imported before migration 000028, which carry no billing_month. They
+// must behave exactly as the arrival keying does -- NULL means unknown, and
+// the bill's own month is the only thing left to go on.
+func TestGovernmentFundingBillPeriodStore_AttributedFallsBackToBillMonth(t *testing.T) {
+	db := setupTestDB(t)
+	s := NewGovernmentFundingBillPeriodStore(db)
+	org := createTestOrganization(t, db, "Attr Legacy Org")
+	user := createTestUser(t, db, "Attr Legacy User", "attrlegacy@example.com")
+	ctx := context.Background()
+
+	to := time.Date(2025, 4, 30, 0, 0, 0, 0, time.UTC)
+	period := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: time.Date(2025, 4, 1, 0, 0, 0, 0, time.UTC), To: &to},
+		FileName:       "Abrechnung_04-25.xlsx",
+		FileSha256:     "attr-legacy-april",
+		FacilityName:   "Kita Sonnenschein",
+		FacilityTotal:  94752,
+		CreatedBy:      &user.ID,
+		Children: []models.GovernmentFundingBillChild{
+			{
+				VoucherNumber: "GB-12345678901-02",
+				ChildName:     "Musterkind, Max",
+				BirthDate:     "01.20",
+				District:      1,
+				Payments: []models.GovernmentFundingBillPayment{
+					// No BillingMonth: exactly what a pre-000028 row looks like.
+					{Key: "care_type", Value: "ganztag", Amount: 94650, RowType: models.RowTypeRegular},
+					{Key: "care_type", Value: "ganztag", Amount: 102, RowType: models.RowTypeCorrection},
+				},
+			},
+		},
+	}
+	if err := s.Create(ctx, period); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	rangeEnd := time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC)
+
+	arrival, err := s.FindBillTotalsByRowTypeInDateRange(ctx, org.ID, from, rangeEnd)
+	if err != nil {
+		t.Fatalf("FindBillTotalsByRowTypeInDateRange() error = %v", err)
+	}
+	attributed, err := s.FindBillTotalsByRowTypeAttributed(ctx, org.ID, from, rangeEnd)
+	if err != nil {
+		t.Fatalf("FindBillTotalsByRowTypeAttributed() error = %v", err)
+	}
+
+	if len(attributed) != len(arrival) {
+		t.Fatalf("legacy rows: attributed has %d months, arrival %d", len(attributed), len(arrival))
+	}
+	for key, want := range arrival {
+		got := attributed[key]
+		if got != want {
+			t.Errorf("legacy rows at %s: attributed %+v, arrival %+v", key.Format("2006-01"), got, want)
+		}
+	}
+}
