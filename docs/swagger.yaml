@@ -377,6 +377,12 @@ definitions:
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.CalculationWarning:
     properties:
+      child_id:
+        description: |-
+          ChildID names the child a child-side warning is about, the counterpart of
+          EmployeeID. Both are omitempty, so a warning carries whichever it has.
+        example: 17
+        type: integer
       code:
         example: missing_pay_plan
         type: string
@@ -2941,6 +2947,15 @@ definitions:
         type: string
       total:
         example: 45
+        type: integer
+      unmatched:
+        description: |-
+          Unmatched holds children counted in Total that no cell of the matrix can
+          hold: no care type, or an age outside every band the configuration
+          defines. Without it the Total row was not the sum of the column above it
+          and nothing said why. The invariant callers can rely on:
+          sum(ByAgeAndCareType) + Unmatched == Total.
+        example: 0
         type: integer
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.OccupancyResponse:

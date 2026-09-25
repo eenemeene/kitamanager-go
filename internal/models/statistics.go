@@ -102,6 +102,19 @@ type FinancialResponse struct {
 //     breakdown excludes operating costs for
 //     this response. Distinct from "no budget
 //     items configured" (which is silent).
+//   - child_no_funding_entitlement — a child's contract matched no funding
+//     property except the ones the config applies
+//     to every contract, so the child earns the
+//     universal deductions alone. Write-time
+//     validation stops new contracts like this;
+//     this catches rows stored before it existed,
+//     and children who aged past every band, which
+//     validation deliberately does not check
+//     because age moves during a contract's life.
+//   - no_funding_period          — no funding configuration covers a month in
+//     the requested range, so every child in it
+//     calculates to zero. Emitted once for the
+//     range rather than once per child.
 //   - funding_bills_load_failed — actual government funding bill totals
 //     could not be loaded; ActualFunding /
 //     ActualFundingRegular / ActualFundingCorrection
@@ -112,6 +125,9 @@ type CalculationWarning struct {
 	Code       string `json:"code" example:"missing_pay_plan"`
 	Message    string `json:"message" example:"employee contract references unknown pay plan"`
 	EmployeeID uint   `json:"employee_id,omitempty" example:"42"`
+	// ChildID names the child a child-side warning is about, the counterpart of
+	// EmployeeID. Both are omitempty, so a warning carries whichever it has.
+	ChildID    uint   `json:"child_id,omitempty" example:"17"`
 	ContractID uint   `json:"contract_id,omitempty" example:"99"`
 	PayPlanID  uint   `json:"payplan_id,omitempty" example:"7"`
 	Grade      string `json:"grade,omitempty" example:"S8a"`
@@ -145,6 +161,12 @@ type OccupancyDataPoint struct {
 	Total            int                       `json:"total" example:"45"`
 	ByAgeAndCareType map[string]map[string]int `json:"by_age_and_care_type"`
 	BySupplement     map[string]int            `json:"by_supplement"`
+	// Unmatched holds children counted in Total that no cell of the matrix can
+	// hold: no care type, or an age outside every band the configuration
+	// defines. Without it the Total row was not the sum of the column above it
+	// and nothing said why. The invariant callers can rely on:
+	// sum(ByAgeAndCareType) + Unmatched == Total.
+	Unmatched int `json:"unmatched" example:"0"`
 }
 
 // OccupancyResponse represents the full occupancy matrix response

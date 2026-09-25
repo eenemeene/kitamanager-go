@@ -304,6 +304,8 @@
     "careType": "Care Type",
     "supplements": "Supplements",
     "supplementsTooltip": "Additional attributes that trigger a funding supplement (e.g. integration support, language support, extended care hours). A child can carry multiple supplements, so row totals may exceed the child count.",
+    "occupancyUnmatched": "Not assignable",
+    "occupancyUnmatchedTooltip": "Children with a contract that no cell of the matrix can hold: no care type, or an age outside every band the funding configuration defines. They count towards the total.",
     "ageGroupLegend": "Age groups",
     "total": "Total",
     "staffingHoursGrid": "Staffing Hours Grid",
@@ -360,7 +362,9 @@
       "noPayPlanEntry": "Salary excluded: pay plan has no entry for grade {grade}, step {step}",
       "unusablePayPlanPeriod": "Salary excluded: pay plan {payPlan} has a period with invalid weekly hours",
       "budgetItemsLoadFailed": "Budget items could not be loaded; the expense breakdown excludes operating costs.",
-      "fundingBillsLoadFailed": "Actual government funding bills could not be loaded; the reported actuals may be incomplete."
+      "fundingBillsLoadFailed": "Actual government funding bills could not be loaded; the reported actuals may be incomplete.",
+      "childNoFundingEntitlement": "Child #{child}: the contract matches no funding property, so the amount is the universal deductions alone. Check the care type — or the child has aged past every band.",
+      "noFundingPeriod": "At least one month in the range has no funding configuration; funding is reported as zero there."
     },
     "monthlyContractsChart": "Children under contract over time",
     "month": "Month",

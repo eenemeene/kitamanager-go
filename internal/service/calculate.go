@@ -302,7 +302,16 @@ func calculateFinancials(
 			}
 			childCount++
 			age := validation.FundingAgeOnDate(child.Birthdate, date)
+			entitled := false
 			for _, fp := range matchFundingProperties(age, contract.Properties, fundingPeriod) {
+				// A property the configuration applies to every contract is not
+				// something this child was enrolled for, so it does not count as
+				// an entitlement. In Berlin that is the parent meal deduction,
+				// which is why an unmatched child reports -23.00 EUR rather than
+				// zero -- a figure that reads like a real one.
+				if !fp.ApplyToAllContracts {
+					entitled = true
+				}
 				fundingIncome += fp.Payment
 				mapKey := fp.Key + ":" + fp.Value
 				existing := fundingDetailMap[mapKey]
@@ -311,6 +320,34 @@ func calculateFinancials(
 					label:  fp.Label,
 				}
 			}
+			// Only worth saying when there is a configuration to be measured
+			// against, and when the contract actually asked for something: a
+			// contract with no properties at all earns nothing by construction
+			// and needs no explanation. When no period covers the month, every
+			// child would report this, so the month is reported once instead
+			// (below) rather than once per child.
+			if fundingPeriod != nil && !entitled && len(contract.Properties) > 0 {
+				addWarning(models.CalculationWarning{
+					Code:       "child_no_funding_entitlement",
+					Message:    "child contract matched no funding entitlement; the figure is the universal deductions alone",
+					ChildID:    child.ID,
+					ContractID: contract.ID,
+					Date:       date.Format(models.DateFormat),
+				})
+			}
+		}
+
+		// One per range, not one per month: dedupe keys on (code, contract id)
+		// and this carries none, so the first uncovered month speaks for all of
+		// them. Without it a range reaching back before the configuration
+		// starts reports every child as earning nothing, with nothing saying
+		// the configuration is simply absent.
+		if fundingPeriod == nil && childCount > 0 {
+			addWarning(models.CalculationWarning{
+				Code:    "no_funding_period",
+				Message: "no funding configuration covers this month; funding is reported as zero",
+				Date:    date.Format(models.DateFormat),
+			})
 		}
 
 		// Convert funding detail map to sorted slice
@@ -651,6 +688,15 @@ func calculateOccupancy(
 ) *models.OccupancyResponse {
 	ageGroups, careTypes, supplementTypes := extractOccupancyStructure(fundingPeriods)
 
+	// The care types the response advertises, which is what a caller renders
+	// columns from. Anything outside this set has nowhere to be shown.
+	declaredCareTypes := make(map[string]bool, len(careTypes))
+	for _, ct := range careTypes {
+		if ct.Value != "" {
+			declaredCareTypes[ct.Value] = true
+		}
+	}
+
 	dataPoints := make([]models.OccupancyDataPoint, 0, monthCount(start, end))
 	for date := start; !date.After(end); date = date.AddDate(0, 1, 0) {
 		dp := models.OccupancyDataPoint{
@@ -675,22 +721,34 @@ func calculateOccupancy(
 			age := validation.FundingAgeOnDate(child.Birthdate, date)
 			ageLabel := findAgeGroupLabel(age, ageGroups)
 
-			// Count by age group × care type. Use GetAllValues rather than
-			// GetScalarProperty: care_type may be stored as ["ganztag"] (array
-			// form) after a JSON round-trip, in which case the scalar accessor
-			// returns "" and the child is silently dropped from the matrix
-			// while still being counted in dp.Total — totals wouldn't match
-			// the sum of the grid.
-			if ageLabel != "" {
-				for _, careType := range contract.Properties.GetAllValues("care_type") {
-					if careType == "" {
-						continue
-					}
-					if dp.ByAgeAndCareType[ageLabel] == nil {
-						dp.ByAgeAndCareType[ageLabel] = make(map[string]int)
-					}
-					dp.ByAgeAndCareType[ageLabel][careType]++
+			// Exactly one cell per child, or none. GetAllValues rather than
+			// GetScalarProperty because care_type may be stored as ["ganztag"]
+			// after a JSON round-trip, where the scalar accessor returns "".
+			// Iterating those values was the previous behaviour and could add a
+			// child to two cells, so a contract carrying two care types made the
+			// grid sum to MORE than dp.Total while a child with none or with an
+			// age past every band made it sum to less. Either way the Total row
+			// stopped being the sum of the column above it, with nothing saying
+			// so.
+			careType := pickCareType(contract.Properties)
+			switch {
+			case ageLabel != "" && declaredCareTypes[careType]:
+				if dp.ByAgeAndCareType[ageLabel] == nil {
+					dp.ByAgeAndCareType[ageLabel] = make(map[string]int)
 				}
+				dp.ByAgeAndCareType[ageLabel][careType]++
+			default:
+				// Counted in Total and drawn in no cell: no care type, a care
+				// type the configuration does not declare, or an age no band
+				// covers.
+				//
+				// The undeclared case matters because the response's care_types
+				// list is what the table renders rows from. A cell keyed by a
+				// value not in that list summed into the grid but appeared in no
+				// row, so the rendered Total still stood above a column that did
+				// not add up to it -- the same defect this counter exists to
+				// remove, reached a different way.
+				dp.Unmatched++
 			}
 
 			// Count supplements
@@ -710,6 +768,37 @@ func calculateOccupancy(
 		SupplementTypes: supplementTypes,
 		DataPoints:      dataPoints,
 	}
+}
+
+// pickCareType returns the single care type a contract carries, or "" if it
+// carries none.
+//
+// A child has one Betreuungsumfang -- a Kita-Gutschein states exactly one -- and
+// the contract form has always enforced that ("selecting a value replaces any
+// existing value with the same key", tag-input.tsx), as does write-time
+// validation now. A stored contract with several is therefore a row from before
+// that validation, or one written around it. Rather than counting the child
+// once per value and breaking the matrix, the lowest value wins so the answer
+// is at least the same on every run, and the anomaly is logged.
+func pickCareType(props models.ContractProperties) string {
+	values := make([]string, 0, 2)
+	seen := make(map[string]bool, 2)
+	for _, v := range props.GetAllValues("care_type") {
+		if v == "" || seen[v] {
+			continue
+		}
+		seen[v] = true
+		values = append(values, v)
+	}
+	if len(values) == 0 {
+		return ""
+	}
+	if len(values) > 1 {
+		slices.Sort(values)
+		slog.Error("contract carries several care types; counting the child once under the first",
+			"care_types", values, "chosen", values[0])
+	}
+	return values[0]
 }
 
 // calculateAgeDistribution counts children by age bucket (0, 1, 2, 3, 4, 5, 6+)

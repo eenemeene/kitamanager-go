@@ -304,6 +304,8 @@
     "careType": "Umfang",
     "supplements": "Zuschläge",
     "supplementsTooltip": "Zusatzmerkmale, die einen Förderzuschlag auslösen (z. B. Integrationsanspruch, sprachliche Förderung, Erweiterte Betreuungszeit). Ein Kind kann mehrere Zuschläge gleichzeitig haben, daher können die Zeilenwerte die Gesamtanzahl übersteigen.",
+    "occupancyUnmatched": "Ohne Zuordnung",
+    "occupancyUnmatchedTooltip": "Kinder mit Vertrag, die in keine Zelle der Matrix fallen: ohne Betreuungsart, oder mit einem Alter außerhalb aller Altersbänder der Förder-Konfiguration. Sie zählen zur Gesamtzahl.",
     "ageGroupLegend": "Altersgruppen",
     "total": "Gesamt",
     "staffingHoursGrid": "Personalstunden-Übersicht",
@@ -360,7 +362,9 @@
       "noPayPlanEntry": "Gehalt ausgeschlossen: Die Entgelttabelle hat keinen Eintrag für Entgeltgruppe {grade}, Stufe {step}",
       "unusablePayPlanPeriod": "Gehalt ausgeschlossen: Der Zeitraum der Entgelttabelle {payPlan} hat ungültige Wochenstunden",
       "budgetItemsLoadFailed": "Haushaltsposten konnten nicht geladen werden; die Ausgaben-Aufschlüsselung enthält keine Betriebskosten.",
-      "fundingBillsLoadFailed": "Die tatsächlichen Abrechnungen konnten nicht geladen werden; die ausgewiesenen Ist-Beträge sind möglicherweise unvollständig."
+      "fundingBillsLoadFailed": "Die tatsächlichen Abrechnungen konnten nicht geladen werden; die ausgewiesenen Ist-Beträge sind möglicherweise unvollständig.",
+      "childNoFundingEntitlement": "Kind #{child}: Der Vertrag trifft auf keine Förder-Eigenschaft zu; der Betrag besteht nur aus den universellen Abzügen. Betreuungsart prüfen — oder das Kind ist aus allen Altersbändern herausgewachsen.",
+      "noFundingPeriod": "Für mindestens einen Monat im Zeitraum gibt es keine Förder-Konfiguration; die Förderung wird dort als 0 ausgewiesen."
     },
     "monthlyContractsChart": "Kinder mit Vertrag im Zeitverlauf",
     "month": "Monat",
