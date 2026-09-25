@@ -1000,3 +1000,173 @@ func TestIncrementalImport_UpdatePropertyLabel(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "New Label", funding.Periods[0].Properties[0].Label)
 }
+
+// TestIncrementalImport_RequiredKeysLifecycle covers the upgrade path a live
+// installation actually takes: the funding was imported before required_keys
+// existed, the shipped berlin.yaml then grew the field, and the operator
+// re-imports the same file over existing data.
+//
+// The three steps are one test rather than three because the interesting part
+// is the transition between them — an empty list arriving at a period that has
+// keys has to clear them, which a test that only ever adds cannot see.
+func TestIncrementalImport_RequiredKeysLifecycle(t *testing.T) {
+	imp, fundingStore, _ := setupImporter(t)
+	ctx := context.Background()
+
+	// The period as it was imported before the concept existed.
+	withoutKeys := `---
+-
+  from: '2024-01-01'
+  to: ''
+  full_time_weekly_hours: 39
+  entries:
+    - age: [0,6]
+      properties:
+        - key: care_type
+          value: ganztag
+          payment: 1600.00
+          requirement: 0.261
+`
+	result1, err := imp.ImportGovernmentFunding(ctx, []byte(withoutKeys), "berlin")
+	require.NoError(t, err)
+	require.True(t, result1.Created)
+
+	funding, err := fundingStore.FindByIDWithDetails(ctx, result1.FundingID, 0, nil)
+	require.NoError(t, err)
+	require.Len(t, funding.Periods, 1)
+	assert.Empty(t, funding.Periods[0].RequiredKeys,
+		"a period imported from a file without the field requires nothing")
+
+	// The same file, now declaring the field: re-importing has to pick it up.
+	withKeys := `---
+-
+  from: '2024-01-01'
+  to: ''
+  full_time_weekly_hours: 39
+  required_keys:
+    - care_type
+  entries:
+    - age: [0,6]
+      properties:
+        - key: care_type
+          value: ganztag
+          payment: 1600.00
+          requirement: 0.261
+`
+	result2, err := imp.ImportGovernmentFunding(ctx, []byte(withKeys), "berlin")
+	require.NoError(t, err)
+	assert.False(t, result2.Created)
+	assert.Equal(t, 1, result2.PeriodsUpdated)
+	assert.Equal(t, 0, result2.PeriodsCreated)
+	// The vocabulary itself did not move, so nothing about the properties
+	// should have been touched.
+	assert.Equal(t, 0, result2.PropertiesCreated)
+	assert.Equal(t, 0, result2.PropertiesUpdated)
+	assert.Equal(t, 0, result2.PropertiesDeleted)
+
+	funding, err = fundingStore.FindByIDWithDetails(ctx, result2.FundingID, 0, nil)
+	require.NoError(t, err)
+	require.Len(t, funding.Periods, 1)
+	assert.Equal(t, []string{"care_type"}, funding.Periods[0].RequiredKeys)
+
+	// Re-importing the same file again is a no-op: the comparison must not
+	// report a difference between a stored list and the identical YAML one.
+	result3, err := imp.ImportGovernmentFunding(ctx, []byte(withKeys), "berlin")
+	require.NoError(t, err)
+	assert.Equal(t, 0, result3.PeriodsUpdated)
+
+	// Taking the field back out has to clear it. Comparing as sets, or
+	// treating an absent field as "no change", would let the key survive a
+	// deletion from the file that is meant to be the source of truth.
+	result4, err := imp.ImportGovernmentFunding(ctx, []byte(withoutKeys), "berlin")
+	require.NoError(t, err)
+	assert.Equal(t, 1, result4.PeriodsUpdated)
+
+	funding, err = fundingStore.FindByIDWithDetails(ctx, result4.FundingID, 0, nil)
+	require.NoError(t, err)
+	require.Len(t, funding.Periods, 1)
+	assert.Empty(t, funding.Periods[0].RequiredKeys)
+}
+
+// TestIncrementalImport_RequiredKeysNormalized checks that what the file says
+// and what the database holds are the same list. The importer compares the
+// stored value against the raw YAML one, so a value the service rewrites on
+// the way in — duplicates dropped, whitespace trimmed — would otherwise
+// compare unequal forever and report a period updated on every import.
+func TestIncrementalImport_RequiredKeysNormalized(t *testing.T) {
+	imp, fundingStore, _ := setupImporter(t)
+	ctx := context.Background()
+
+	yaml := `---
+-
+  from: '2024-01-01'
+  to: ''
+  full_time_weekly_hours: 39
+  required_keys:
+    - care_type
+    - care_type
+  entries:
+    - age: [0,6]
+      properties:
+        - key: care_type
+          value: ganztag
+          payment: 1600.00
+          requirement: 0.261
+`
+	result1, err := imp.ImportGovernmentFunding(ctx, []byte(yaml), "berlin")
+	require.NoError(t, err)
+
+	funding, err := fundingStore.FindByIDWithDetails(ctx, result1.FundingID, 0, nil)
+	require.NoError(t, err)
+	require.Len(t, funding.Periods, 1)
+	assert.Equal(t, []string{"care_type"}, funding.Periods[0].RequiredKeys,
+		"the duplicate is dropped on the way in")
+
+	result2, err := imp.ImportGovernmentFunding(ctx, []byte(yaml), "berlin")
+	require.NoError(t, err)
+	assert.Equal(t, 0, result2.PeriodsUpdated,
+		"re-importing the same file must not report a change just because the "+
+			"stored list is the normalized form of the YAML one")
+}
+
+// TestImportGovernmentFundingFromFile_ShippedBerlinIsIdempotent imports the
+// berlin.yaml that actually ships, then imports it again.
+//
+// Every other test in this file writes its own three-line YAML, so none of them
+// can catch a problem in the shipped file. Re-importing it over existing data is
+// what a live installation does on every upgrade -- the API seeds from
+// GOVERNMENT_FUNDING_SEED_PATH at startup -- and a second run reporting changes
+// means the file and the database disagree about something no import can settle,
+// so every restart rewrites rows and the counts in the log stop meaning
+// anything.
+func TestImportGovernmentFundingFromFile_ShippedBerlinIsIdempotent(t *testing.T) {
+	imp, fundingStore, _ := setupImporter(t)
+	ctx := context.Background()
+
+	const path = "../../configs/government-fundings/berlin.yaml"
+
+	first, err := imp.ImportGovernmentFundingFromFile(ctx, path, "berlin")
+	require.NoError(t, err)
+	require.True(t, first.Created)
+	require.Positive(t, first.PeriodsCreated)
+	require.Positive(t, first.PropertiesCreated)
+
+	second, err := imp.ImportGovernmentFundingFromFile(ctx, path, "berlin")
+	require.NoError(t, err)
+	assert.False(t, second.Created)
+	assert.Equal(t, 0, second.PeriodsCreated)
+	assert.Equal(t, 0, second.PeriodsUpdated)
+	assert.Equal(t, 0, second.PropertiesCreated)
+	assert.Equal(t, 0, second.PropertiesUpdated)
+	assert.Equal(t, 0, second.PropertiesDeleted)
+
+	// The file declares required_keys on every period, and the validation that
+	// reads them is only as good as the import that stores them.
+	funding, err := fundingStore.FindByIDWithDetails(ctx, first.FundingID, 0, nil)
+	require.NoError(t, err)
+	require.NotEmpty(t, funding.Periods)
+	for _, p := range funding.Periods {
+		assert.Equal(t, []string{"care_type"}, p.RequiredKeys,
+			"period from %s", p.From.Format(models.DateFormat))
+	}
+}

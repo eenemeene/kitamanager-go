@@ -250,7 +250,7 @@ func (s *GovernmentFundingService) CreatePeriod(ctx context.Context, governmentF
 			Period:              models.Period{From: req.From, To: req.To},
 			FullTimeWeeklyHours: req.FullTimeWeeklyHours,
 			Comment:             strings.TrimSpace(req.Comment),
-			RequiredKeys:        normalizeRequiredKeys(req.RequiredKeys),
+			RequiredKeys:        NormalizeRequiredKeys(req.RequiredKeys),
 		}
 
 		if err := s.store.CreatePeriod(txCtx, period); err != nil {
@@ -317,7 +317,7 @@ func (s *GovernmentFundingService) UpdatePeriod(ctx context.Context, periodID, f
 			period.FullTimeWeeklyHours = *req.FullTimeWeeklyHours
 		}
 		if req.RequiredKeys != nil {
-			period.RequiredKeys = normalizeRequiredKeys(*req.RequiredKeys)
+			period.RequiredKeys = NormalizeRequiredKeys(*req.RequiredKeys)
 		}
 		if req.Comment != nil {
 			period.Comment = strings.TrimSpace(*req.Comment)
@@ -489,10 +489,16 @@ func (s *GovernmentFundingService) DeleteProperty(ctx context.Context, propertyI
 	return nil
 }
 
-// normalizeRequiredKeys trims, drops blanks and de-duplicates the declared keys,
+// NormalizeRequiredKeys trims, drops blanks and de-duplicates the declared keys,
 // and returns a non-nil empty slice rather than nil so the column stores `[]`
 // and "declares nothing" is not confused with "was never written".
-func normalizeRequiredKeys(keys []string) []string {
+//
+// Exported because the YAML importer has to compare a file's list against a
+// stored one to decide whether a period changed, and the stored list is this
+// function's output. Comparing the raw list instead reports every period as
+// updated on every import, forever, for any file whose list is not already in
+// normal form.
+func NormalizeRequiredKeys(keys []string) []string {
 	out := make([]string, 0, len(keys))
 	seen := make(map[string]bool, len(keys))
 	for _, k := range keys {

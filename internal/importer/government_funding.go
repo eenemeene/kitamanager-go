@@ -243,10 +243,14 @@ func (i *GovernmentFundingImporter) updatePeriodIfChanged(ctx context.Context, f
 	// The YAML is the source of truth for the vocabulary, so a key removed from
 	// the file has to be removed from the period -- comparing as sets would let
 	// a deletion survive an import.
-	requiredKeys := yp.RequiredKeys
-	if requiredKeys == nil {
-		requiredKeys = []string{}
-	}
+	//
+	// Normalized before comparing, because the stored list is the normalized
+	// form: the service trims, de-duplicates and replaces nil with an empty
+	// list on the way in. Comparing the raw YAML list against it finds a
+	// difference that no import can ever resolve, so a file carrying a
+	// duplicate or a padded key would rewrite every one of its periods on
+	// every import and report them all as updated.
+	requiredKeys := service.NormalizeRequiredKeys(yp.RequiredKeys)
 	if !slices.Equal(existing.RequiredKeys, requiredKeys) {
 		periodChanged = true
 	}
