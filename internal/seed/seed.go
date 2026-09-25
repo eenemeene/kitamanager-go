@@ -875,13 +875,20 @@ func buildBillPeriod(orgID uint, billDate time.Time, fundingPeriod *models.Gover
 	hashInput := fmt.Sprintf("seed-isbj-%s-%d", billDate.Format("2006-01"), orgID)
 	hash := fmt.Sprintf("%x", sha256.Sum256([]byte(hashInput)))
 	return &models.GovernmentFundingBillPeriod{
-		OrganizationID:    orgID,
-		Period:            models.Period{From: billDate, To: &billEndDate},
-		FileName:          fmt.Sprintf("Senatsabrechnung_%s.xlsx", billDate.Format("2006-01")),
-		FileSha256:        hash,
-		FacilityName:      "Kita Sonnenschein",
+		OrganizationID: orgID,
+		Period:         models.Period{From: billDate, To: &billEndDate},
+		FileName:       fmt.Sprintf("Senatsabrechnung_%s.xlsx", billDate.Format("2006-01")),
+		FileSha256:     hash,
+		FacilityName:   "Kita Sonnenschein",
+		// The three have to satisfy contract + correction = facility, the
+		// way a real Senatsabrechnung's Vertragsbuchung, Korrekturbuchung
+		// and Einrichtungssumme do. ContractBooking was facilityTotal minus
+		// the corrections, which is a sign slip: it left the header short by
+		// twice the correction, and the demo bill detail page contradicted
+		// its own total. Only visible now that the seeded corrections are
+		// real correction rows rather than regular ones.
 		FacilityTotal:     facilityTotal + correctionTotal,
-		ContractBooking:   facilityTotal - correctionTotal,
+		ContractBooking:   facilityTotal,
 		CorrectionBooking: correctionTotal,
 		CreatedBy:         models.UintPtr(1),
 		Children:          billChildren,
