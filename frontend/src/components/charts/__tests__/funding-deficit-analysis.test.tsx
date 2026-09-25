@@ -427,4 +427,105 @@ describe('FundingDeficitAnalysis', () => {
       expect(screen.getByText('deficitActionableCount')).toBeInTheDocument();
     });
   });
+
+  // ------------------------------------------------------------------
+  // Reconciliation: categories + corrections == the Kita year row
+  // ------------------------------------------------------------------
+
+  // `+`/`-` is rendered as its own text node beside the formatted amount, so
+  // getByText cannot match the pair. Assert on the row's full textContent.
+  function reconciliationRow(container: HTMLElement, labelKey: string): string {
+    const label = Array.from(container.querySelectorAll('span')).find(
+      (el) => el.textContent === labelKey
+    );
+    if (!label?.parentElement) throw new Error(`no reconciliation row for ${labelKey}`);
+    return label.parentElement.textContent ?? '';
+  }
+  describe('reconciliation lines', () => {
+    // The bars decompose total_difference, which counts regular billing only.
+    // The Kita year row above them also carries the corrections, so the two
+    // never agreed and nothing on screen said why.
+    it('prints the category sum, the corrections and the reconciled total', () => {
+      const { container } = renderInTableBody(
+        <FundingDeficitAnalysis
+          summary={makeSummary({
+            total_difference: 43009,
+            total_corrections: -1500,
+            total_corrections_attributed: -3000,
+            categories: [
+              makeCategory({ category: 'rate_difference', total_amount: 34917 }),
+              makeCategory({ category: 'property_mismatch', total_amount: 8092 }),
+            ],
+          })}
+          orgId="1"
+          forceExpanded
+        />
+      );
+      expect(screen.getByText('deficitCategoriesSum')).toBeInTheDocument();
+      expect(screen.getByText('deficitCorrections')).toBeInTheDocument();
+      expect(screen.getByText('deficitReconciledTotal')).toBeInTheDocument();
+      // Cents: 34917 + 8092 = 43009 -> 430,09 EUR, and 43009 + (-3000) =
+      // 40009 -> 400,09 EUR, the figure the Kita year row shows.
+      expect(reconciliationRow(container, 'deficitCategoriesSum')).toContain('+430,09');
+      expect(reconciliationRow(container, 'deficitCorrections')).toContain('-30,00');
+      expect(reconciliationRow(container, 'deficitReconciledTotal')).toContain('+400,09');
+    });
+
+    // Corrections attributed to these months, not the ones that arrived in
+    // them: a correction paid out in August against July belongs to July's
+    // Kita year, and total_corrections would miss it.
+    it('prefers the attributed correction total over the arrival-keyed one', () => {
+      const { container } = renderInTableBody(
+        <FundingDeficitAnalysis
+          summary={makeSummary({
+            total_difference: 1000,
+            total_corrections: -1500,
+            total_corrections_attributed: -3000,
+            categories: [makeCategory({ total_amount: 1000 })],
+          })}
+          orgId="1"
+          forceExpanded
+        />
+      );
+      // 1000 + (-3000) = -2000 cents, not 1000 + (-1500) = -500.
+      expect(reconciliationRow(container, 'deficitReconciledTotal')).toContain('-20,00');
+      expect(reconciliationRow(container, 'deficitReconciledTotal')).not.toContain('-5,00');
+    });
+
+    // A single-bill comparison has no window to attribute against, so the
+    // field is absent and the arrival-keyed total is the only answer.
+    it('falls back to total_corrections when no attributed figure is present', () => {
+      const { container } = renderInTableBody(
+        <FundingDeficitAnalysis
+          summary={makeSummary({
+            total_difference: 1000,
+            total_corrections: -1500,
+            categories: [makeCategory({ total_amount: 1000 })],
+          })}
+          orgId="1"
+          forceExpanded
+        />
+      );
+      expect(reconciliationRow(container, 'deficitReconciledTotal')).toContain('-5,00');
+    });
+
+    // With nothing corrected, the corrections line is noise -- the category
+    // sum and the reconciled total are the same number.
+    it('omits the corrections line when there is nothing to correct', () => {
+      renderInTableBody(
+        <FundingDeficitAnalysis
+          summary={makeSummary({
+            total_difference: 1000,
+            total_corrections: 0,
+            total_corrections_attributed: 0,
+            categories: [makeCategory({ total_amount: 1000 })],
+          })}
+          orgId="1"
+          forceExpanded
+        />
+      );
+      expect(screen.queryByText('deficitCorrections')).not.toBeInTheDocument();
+      expect(screen.getByText('deficitReconciledTotal')).toBeInTheDocument();
+    });
+  });
 });

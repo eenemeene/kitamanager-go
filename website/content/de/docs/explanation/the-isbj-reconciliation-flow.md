@@ -72,4 +72,29 @@ Für Bescheide, die vor diesem Stand importiert wurden, ist der Geltungsmonat ni
 
 Betrifft eine Korrektur einen Monat, für den gar kein Bescheid importiert wurde, lässt sich für diesen Monat keine Differenz bilden — es gibt keinen berechneten Wert zum Vergleich. Der Betrag geht deshalb nicht verloren, sondern wird in der Kita-Jahres-Zeile als eigener Hinweis unter der Spalte „Korrektur“ ausgewiesen.
 
+## Abweichungsanalyse: woher die Differenz kommt
+
+Unter jeder Kita-Jahres-Zeile steht die **Abweichungsanalyse** mit einer
+Aufschlüsselung nach Kategorie: Satzdifferenzen, Eigenschaftsabweichungen, nur
+in der Abrechnung, nur im System. Die vier Kategorien sind überschneidungsfrei
+und vollständig — sie ergeben zusammen genau die Differenz aus regulärer
+Abrechnung und Berechnung.
+
+Korrekturen gehören bewusst **nicht** dazu. Eine Korrektur ist kein Befund, den
+Sie beheben können, sondern eine bereits erfolgte Nachzahlung oder Rückforderung
+des Senats. Sie verschiebt aber das Ergebnis des Kita-Jahres, und deshalb steht
+sie als eigene Zeile darunter:
+
+```
+Summe der Kategorien        + 430,09 €
+Korrekturen für diese Monate  − 30,00 €
+──────────────────────────────────────
+Differenz im Kita-Jahr      + 400,09 €
+```
+
+Die letzte Zeile entspricht der Differenz in der Kita-Jahres-Zeile darüber. Die
+Korrekturen sind dabei nach **Geltungsmonat** gezählt: eine im August gezahlte
+Korrektur für den Juli zählt zum Kita-Jahr des Juli, auch wenn der Bescheid
+bereits zum nächsten gehört.
+
 Für die operative Triage-Matrix (welches Symptom auf welche Korrektur abbildet) siehe [Abweichung in einer Abrechnung untersuchen](../../how-to/use/investigate-a-bill-discrepancy/).

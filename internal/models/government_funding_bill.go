@@ -257,13 +257,28 @@ type FundingComparisonIssueSummary struct {
 
 // FundingComparisonSummary provides aggregate analysis across all comparisons.
 type FundingComparisonSummary struct {
-	TotalBilled      int                                `json:"total_billed" example:"712387"`
-	TotalCalculated  int                                `json:"total_calculated" example:"783227"`
-	TotalDifference  int                                `json:"total_difference" example:"-70840"`
-	TotalCorrections int                                `json:"total_corrections" example:"37114"`
-	MonthCount       int                                `json:"month_count" example:"12"`
-	Categories       []FundingComparisonCategorySummary `json:"categories"`
-	Issues           []FundingComparisonIssueSummary    `json:"issues"`
+	TotalBilled     int `json:"total_billed" example:"712387"`
+	TotalCalculated int `json:"total_calculated" example:"783227"`
+	TotalDifference int `json:"total_difference" example:"-70840"`
+	// TotalCorrections sums the correction rows of the bills in this
+	// window -- corrections that ARRIVED here, whichever month they
+	// are about.
+	TotalCorrections int `json:"total_corrections" example:"37114"`
+	// TotalCorrectionsAttributed sums the corrections that APPLY to
+	// this window's months, wherever their bill arrived. It is the
+	// figure that reconciles with the Kita year row above the
+	// category bars, because that row is built from the attributed
+	// keying too: a correction paid out in August against July
+	// belongs to July's Kita year, and TotalCorrections would miss it
+	// whenever the two years differ.
+	//
+	// Nil when the caller asked about a single bill rather than a
+	// date range, where there is no window to attribute against and
+	// TotalCorrections is the only answer.
+	TotalCorrectionsAttributed *int                               `json:"total_corrections_attributed,omitempty" example:"37114"`
+	MonthCount                 int                                `json:"month_count" example:"12"`
+	Categories                 []FundingComparisonCategorySummary `json:"categories"`
+	Issues                     []FundingComparisonIssueSummary    `json:"issues"`
 }
 
 // FundingComparisonWrappedResponse wraps per-bill comparisons with aggregate summary.

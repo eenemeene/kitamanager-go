@@ -943,6 +943,26 @@ func (s *GovernmentFundingBillService) CompareRange(ctx context.Context, orgID u
 	return results, nil
 }
 
+// AttributedCorrectionTotal returns the corrections that APPLY to [from, to],
+// wherever the bill carrying them arrived.
+//
+// BuildComparisonSummary can only see the bills in the window, so its
+// TotalCorrections misses a correction for one of these months that arrived in
+// a bill after it -- which is the normal case, since a correction is by
+// definition retroactive. Reading it from the payment rows' own billing month
+// is what lets the category bars reconcile with the Kita year row above them.
+func (s *GovernmentFundingBillService) AttributedCorrectionTotal(ctx context.Context, orgID uint, from, to time.Time) (int, error) {
+	totals, err := s.billPeriodStore.FindBillTotalsByRowTypeAttributed(ctx, orgID, from, to)
+	if err != nil {
+		return 0, apperror.InternalWrap(err, "failed to load attributed correction totals")
+	}
+	total := 0
+	for _, entry := range totals {
+		total += entry.CorrectionTotal
+	}
+	return total, nil
+}
+
 // BuildComparisonSummary aggregates a slice of FundingComparisonResponse into a summary.
 // It decomposes the total difference into exhaustive, non-overlapping categories:
 // rate_difference + property_mismatch + bill_only + calc_only == total_difference.

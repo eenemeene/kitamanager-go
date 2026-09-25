@@ -3952,8 +3952,28 @@ export interface components {
       total_billed: number;
       /** @example 783227 */
       total_calculated: number;
-      /** @example 37114 */
+      /**
+       * @description TotalCorrections sums the correction rows of the bills in this
+       *     window -- corrections that ARRIVED here, whichever month they
+       *     are about.
+       * @example 37114
+       */
       total_corrections: number;
+      /**
+       * @description TotalCorrectionsAttributed sums the corrections that APPLY to
+       *     this window's months, wherever their bill arrived. It is the
+       *     figure that reconciles with the Kita year row above the
+       *     category bars, because that row is built from the attributed
+       *     keying too: a correction paid out in August against July
+       *     belongs to July's Kita year, and TotalCorrections would miss it
+       *     whenever the two years differ.
+       *
+       *     Nil when the caller asked about a single bill rather than a
+       *     date range, where there is no window to attribute against and
+       *     TotalCorrections is the only answer.
+       * @example 37114
+       */
+      total_corrections_attributed?: number;
       /** @example -70840 */
       total_difference: number;
     };

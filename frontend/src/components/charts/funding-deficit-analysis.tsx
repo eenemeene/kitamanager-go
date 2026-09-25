@@ -42,6 +42,19 @@ export function FundingDeficitAnalysis({
   const actionableIssues = issues.filter((i) => i.actionable);
   const maxCategoryAbs = Math.max(...categories.map((c) => Math.abs(c.total_amount ?? 0)), 1);
 
+  // The bars are an exhaustive decomposition of total_difference, which counts
+  // regular billing only. The Kita year row above them also carries the
+  // corrections, so without this the two never agreed and nothing on screen
+  // said why.
+  //
+  // Corrections attributed to these months, not the ones that arrived in them:
+  // a correction paid out in August against July belongs to July's Kita year.
+  // Falls back to the arrival-keyed total for a single-bill comparison, which
+  // has no window to attribute against.
+  const categoriesSum = categories.reduce((acc, c) => acc + (c.total_amount ?? 0), 0);
+  const corrections = summary.total_corrections_attributed ?? summary.total_corrections ?? 0;
+  const reconciledTotal = categoriesSum + corrections;
+
   const visibleIssues = showAllIssues
     ? actionableIssues
     : actionableIssues.slice(0, MAX_INITIAL_ISSUES);
@@ -113,6 +126,54 @@ export function FundingDeficitAnalysis({
                       </div>
                     );
                   })}
+                </div>
+
+                {/* The arithmetic, spelled out. A reader who subtracts the
+                    bars and compares the result with the row above needs to
+                    see where the corrections enter, or the two figures look
+                    like a contradiction. */}
+                <div className="space-y-1 border-t pt-2">
+                  <div className="text-muted-foreground flex items-center gap-3 text-xs">
+                    <span className="w-36 truncate">{t('deficitCategoriesSum')}</span>
+                    <div className="flex-1" />
+                    <span data-visual-mask="currency" className="w-24 text-right tabular-nums">
+                      {categoriesSum >= 0 ? '+' : ''}
+                      {formatEur(categoriesSum)}
+                    </span>
+                    <span className="w-16" />
+                  </div>
+                  {corrections !== 0 && (
+                    <div
+                      className="text-muted-foreground flex items-center gap-3 text-xs"
+                      title={t('deficitCorrectionsTooltip')}
+                    >
+                      <span className="w-36 truncate">{t('deficitCorrections')}</span>
+                      <div className="flex-1" />
+                      <span data-visual-mask="currency" className="w-24 text-right tabular-nums">
+                        {corrections >= 0 ? '+' : ''}
+                        {formatEur(corrections)}
+                      </span>
+                      <span className="w-16" />
+                    </div>
+                  )}
+                  <div
+                    className="flex items-center gap-3 text-sm font-medium"
+                    title={t('deficitReconciledTotalTooltip')}
+                  >
+                    <span className="w-36 truncate">{t('deficitReconciledTotal')}</span>
+                    <div className="flex-1" />
+                    <span
+                      data-visual-mask="currency"
+                      className={cn(
+                        'w-24 text-right tabular-nums',
+                        reconciledTotal < 0 ? 'text-destructive' : 'text-success'
+                      )}
+                    >
+                      {reconciledTotal >= 0 ? '+' : ''}
+                      {formatEur(reconciledTotal)}
+                    </span>
+                    <span className="w-16" />
+                  </div>
                 </div>
               </div>
 
