@@ -1699,3 +1699,236 @@ func TestCalculateAgeDistribution_UnknownGenderIsCounted(t *testing.T) {
 		}
 	}
 }
+
+// d parses a YYYY-MM-DD literal for the fixtures below.
+func d(s string) time.Time {
+	t, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		panic(err)
+	}
+	return t
+}
+
+// --- read-time warnings for contracts that earn nothing ---------------------
+//
+// Write-time validation (PR #373) stops new contracts matching no funding
+// entitlement. These cover the two cases it cannot: rows stored before it
+// existed, and children who aged past every band, which validation deliberately
+// does not check because age moves during a contract's life.
+
+func warnPeriod() []models.GovernmentFundingPeriod {
+	i := func(v int) *int { return &v }
+	return []models.GovernmentFundingPeriod{{
+		ID:                  1,
+		Period:              models.Period{From: d("2020-01-01")},
+		FullTimeWeeklyHours: 39,
+		Properties: []models.GovernmentFundingProperty{
+			{ID: 1, Key: "care_type", Value: "ganztag", Label: "Ganztag", Payment: 194903, Requirement: 0.261, MinAge: i(3), MaxAge: i(8)},
+			{ID: 2, Key: "parent", Value: "meals", Label: "Elternessen", Payment: -2300, MinAge: i(0), MaxAge: i(8), ApplyToAllContracts: true},
+		},
+	}}
+}
+
+func warnChild(id uint, birth string, props models.ContractProperties) models.Child {
+	return models.Child{
+		Person: models.Person{ID: id, Birthdate: d(birth)},
+		Contracts: []models.ChildContract{{ID: id * 10, ChildID: id,
+			BaseContract: models.BaseContract{Period: models.Period{From: d("2021-01-01")}, Properties: props}}},
+	}
+}
+
+func codesOf(ws []models.CalculationWarning) []string {
+	out := make([]string, 0, len(ws))
+	for _, w := range ws {
+		out = append(out, w.Code)
+	}
+	return out
+}
+
+func TestCalculateFinancials_WarnsWhenAChildEarnsOnlyTheUniversalDeduction(t *testing.T) {
+	on := d("2026-06-01")
+	// A contract carrying only the auto-applied deduction: reports -23.00 EUR,
+	// which reads like a real figure rather than "nothing matched".
+	kids := []models.Child{warnChild(1, "2022-01-01", models.ContractProperties{"parent": "meals"})}
+
+	dps, warnings := calculateFinancials(kids, nil, nil, warnPeriod(), nil, on, on)
+	if dps[0].FundingIncome != -2300 {
+		t.Fatalf("setup: expected the deduction alone, got %d", dps[0].FundingIncome)
+	}
+	if len(warnings) != 1 || warnings[0].Code != "child_no_funding_entitlement" {
+		t.Fatalf("expected one child_no_funding_entitlement, got %v", codesOf(warnings))
+	}
+	if warnings[0].ChildID != 1 || warnings[0].ContractID != 10 {
+		t.Errorf("warning must name the child and contract; got child=%d contract=%d",
+			warnings[0].ChildID, warnings[0].ContractID)
+	}
+}
+
+func TestCalculateFinancials_WarnsForAChildPastEveryAgeBand(t *testing.T) {
+	on := d("2026-06-01")
+	// Born 2016: age 10, past the configuration's 0-8. Validation cannot catch
+	// this at write time because the child ages during the contract.
+	kids := []models.Child{warnChild(1, "2016-01-01", models.ContractProperties{"care_type": "ganztag", "parent": "meals"})}
+
+	dps, warnings := calculateFinancials(kids, nil, nil, warnPeriod(), nil, on, on)
+	if dps[0].FundingIncome != 0 {
+		t.Fatalf("setup: nothing should match at all, got %d", dps[0].FundingIncome)
+	}
+	if len(warnings) != 1 || warnings[0].Code != "child_no_funding_entitlement" {
+		t.Fatalf("expected one child_no_funding_entitlement, got %v", codesOf(warnings))
+	}
+}
+
+func TestCalculateFinancials_DoesNotWarnForAnOrdinaryChild(t *testing.T) {
+	on := d("2026-06-01")
+	kids := []models.Child{warnChild(1, "2022-01-01", models.ContractProperties{"care_type": "ganztag", "parent": "meals"})}
+
+	_, warnings := calculateFinancials(kids, nil, nil, warnPeriod(), nil, on, on)
+	if len(warnings) != 0 {
+		t.Errorf("a funded child must not warn; got %v", codesOf(warnings))
+	}
+}
+
+func TestCalculateFinancials_DoesNotWarnForAContractWithNoProperties(t *testing.T) {
+	on := d("2026-06-01")
+	// Earns nothing by construction and needs no explanation.
+	kids := []models.Child{warnChild(1, "2022-01-01", nil)}
+
+	_, warnings := calculateFinancials(kids, nil, nil, warnPeriod(), nil, on, on)
+	if len(warnings) != 0 {
+		t.Errorf("an empty contract needs no warning; got %v", codesOf(warnings))
+	}
+}
+
+// One warning per contract across the range, not one per month.
+func TestCalculateFinancials_WarnsOncePerContractNotPerMonth(t *testing.T) {
+	kids := []models.Child{warnChild(1, "2022-01-01", models.ContractProperties{"parent": "meals"})}
+
+	dps, warnings := calculateFinancials(kids, nil, nil, warnPeriod(), nil, d("2026-01-01"), d("2026-12-01"))
+	if len(dps) != 12 {
+		t.Fatalf("setup: expected 12 months, got %d", len(dps))
+	}
+	if len(warnings) != 1 {
+		t.Errorf("expected one warning for twelve months, got %d: %v", len(warnings), codesOf(warnings))
+	}
+}
+
+// A month no configuration covers would otherwise report every child as
+// earning nothing, with nothing saying the configuration is simply absent.
+func TestCalculateFinancials_ReportsAnUncoveredMonthOnceNotPerChild(t *testing.T) {
+	on := d("2019-06-01") // before the configuration starts
+	// Contracts have to be active in that month for there to be anything to
+	// report -- a month with no children needs no explanation of its zero.
+	kids := make([]models.Child, 0, 3)
+	for id := uint(1); id <= 3; id++ {
+		c := warnChild(id, "2016-01-01", models.ContractProperties{"care_type": "ganztag"})
+		c.Contracts[0].From = d("2018-01-01")
+		kids = append(kids, c)
+	}
+
+	_, warnings := calculateFinancials(kids, nil, nil, warnPeriod(), nil, on, on)
+	if len(warnings) != 1 || warnings[0].Code != "no_funding_period" {
+		t.Fatalf("expected a single no_funding_period, got %v", codesOf(warnings))
+	}
+}
+
+// --- the occupancy matrix sums to its own total -----------------------------
+
+func gridSum(dp models.OccupancyDataPoint) int {
+	n := 0
+	for _, row := range dp.ByAgeAndCareType {
+		for _, v := range row {
+			n += v
+		}
+	}
+	return n
+}
+
+// renderableSum counts only the cells a caller can actually draw: the table
+// builds its rows from resp.CareTypes and resp.AgeGroups, so a cell keyed by
+// anything else sums into the grid while appearing in no row. That is the
+// number the reader compares against the Total, so it is the one the invariant
+// has to hold for.
+func renderableSum(resp *models.OccupancyResponse, dp models.OccupancyDataPoint) int {
+	careTypes := make(map[string]bool, len(resp.CareTypes))
+	for _, ct := range resp.CareTypes {
+		careTypes[ct.Value] = true
+	}
+	ageGroups := make(map[string]bool, len(resp.AgeGroups))
+	for _, ag := range resp.AgeGroups {
+		ageGroups[ag.Label] = true
+	}
+	n := 0
+	for label, row := range dp.ByAgeAndCareType {
+		if !ageGroups[label] {
+			continue
+		}
+		for ct, v := range row {
+			if careTypes[ct] {
+				n += v
+			}
+		}
+	}
+	return n
+}
+
+func TestCalculateOccupancy_GridPlusUnmatchedAlwaysEqualsTotal(t *testing.T) {
+	on := d("2026-06-01")
+	cases := []struct {
+		name string
+		kids []models.Child
+	}{
+		{"ordinary child", []models.Child{warnChild(1, "2022-01-01", models.ContractProperties{"care_type": "ganztag"})}},
+		{"no care type", []models.Child{warnChild(1, "2022-01-01", models.ContractProperties{"parent": "meals"})}},
+		{"age past every band", []models.Child{warnChild(1, "2016-01-01", models.ContractProperties{"care_type": "ganztag"})}},
+		{"care type as a one-element array", []models.Child{warnChild(1, "2022-01-01", models.ContractProperties{"care_type": []any{"ganztag"}})}},
+		{"two care types on one contract", []models.Child{warnChild(1, "2022-01-01", models.ContractProperties{"care_type": []any{"ganztag", "halbtag"}})}},
+		{"care type the configuration does not declare", []models.Child{
+			warnChild(1, "2022-01-01", models.ContractProperties{"care_type": "legacy_value"}),
+		}},
+		{"no funding configuration at all", []models.Child{
+			warnChild(1, "2022-01-01", models.ContractProperties{"care_type": "ganztag"}),
+		}},
+		{"a mix", []models.Child{
+			warnChild(1, "2022-01-01", models.ContractProperties{"care_type": "ganztag"}),
+			warnChild(2, "2016-01-01", models.ContractProperties{"care_type": "ganztag"}),
+			warnChild(3, "2022-01-01", models.ContractProperties{"parent": "meals"}),
+			warnChild(4, "2022-01-01", models.ContractProperties{"care_type": "legacy_value"}),
+		}},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			periods := warnPeriod()
+			if tt.name == "no funding configuration at all" {
+				periods = nil
+			}
+			resp := calculateOccupancy(tt.kids, periods, on, on)
+			dp := resp.DataPoints[0]
+			// The strong form: what a reader can see, plus what they are told
+			// could not be placed, equals the total printed beside it.
+			if got := renderableSum(resp, dp) + dp.Unmatched; got != dp.Total {
+				t.Errorf("renderable(%d) + unmatched(%d) = %d, but total says %d",
+					renderableSum(resp, dp), dp.Unmatched, got, dp.Total)
+			}
+			// And nothing hides in a cell no row can draw.
+			if gridSum(dp) != renderableSum(resp, dp) {
+				t.Errorf("grid sums to %d but only %d of that is renderable -- %d children sit in cells the table has no row for",
+					gridSum(dp), renderableSum(resp, dp), gridSum(dp)-renderableSum(resp, dp))
+			}
+		})
+	}
+}
+
+// The specific regression: two care types used to put one child in two cells.
+func TestCalculateOccupancy_TwoCareTypesCountTheChildOnce(t *testing.T) {
+	on := d("2026-06-01")
+	kids := []models.Child{warnChild(1, "2022-01-01", models.ContractProperties{"care_type": []any{"ganztag", "halbtag"}})}
+
+	dp := calculateOccupancy(kids, warnPeriod(), on, on).DataPoints[0]
+	if gridSum(dp) != 1 {
+		t.Errorf("one child must occupy one cell; grid sums to %d", gridSum(dp))
+	}
+	if dp.Total != 1 {
+		t.Errorf("total = %d, want 1", dp.Total)
+	}
+}

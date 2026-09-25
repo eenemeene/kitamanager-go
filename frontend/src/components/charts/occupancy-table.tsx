@@ -58,6 +58,16 @@ export function OccupancyTable({ data }: OccupancyTableProps) {
     [data.data_points]
   );
 
+  // Children counted in Total that no cell can hold: no care type, or an age
+  // outside every band the configuration defines. Shown so the Total row is
+  // demonstrably the sum of the column above it; for clean data it is always
+  // zero and the row stays hidden.
+  const unmatchedValues = useMemo(
+    () => data.data_points.map((dp) => dp.unmatched ?? 0),
+    [data.data_points]
+  );
+  const hasUnmatched = unmatchedValues.some((v) => v > 0);
+
   // Supplement rows
   const supplementRows = useMemo(() => {
     return data.supplement_types.map((st) => ({
@@ -118,8 +128,31 @@ export function OccupancyTable({ data }: OccupancyTableProps) {
             );
           })}
 
+          {/* Unmatched row, above the total it is part of */}
+          {hasUnmatched && (
+            <TableRow className="border-t-2">
+              <TableCell
+                className="bg-background text-muted-foreground sticky left-0 z-10 px-2 py-1"
+                colSpan={2}
+              >
+                <HeaderWithTooltip
+                  label={t('occupancyUnmatched')}
+                  tooltip={t('occupancyUnmatchedTooltip')}
+                />
+              </TableCell>
+              {unmatchedValues.map((val, i) => (
+                <TableCell
+                  key={months[i]}
+                  className="text-muted-foreground px-1 py-1 text-center tabular-nums"
+                >
+                  {val || '\u2013'}
+                </TableCell>
+              ))}
+            </TableRow>
+          )}
+
           {/* Total row */}
-          <TableRow className="border-t-2 font-bold">
+          <TableRow className={hasUnmatched ? 'font-bold' : 'border-t-2 font-bold'}>
             <TableCell className="bg-background sticky left-0 z-10 px-2 py-1" colSpan={2}>
               {t('total')}
             </TableCell>

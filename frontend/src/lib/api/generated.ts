@@ -2670,6 +2670,12 @@ export interface components {
       per_child?: boolean;
     };
     CalculationWarning: {
+      /**
+       * @description ChildID names the child a child-side warning is about, the counterpart of
+       *     EmployeeID. Both are omitempty, so a warning carries whichever it has.
+       * @example 17
+       */
+      child_id: number;
       /** @example missing_pay_plan */
       code: string;
       /** @example 99 */
@@ -4466,6 +4472,15 @@ export interface components {
       date: string;
       /** @example 45 */
       total: number;
+      /**
+       * @description Unmatched holds children counted in Total that no cell of the matrix can
+       *     hold: no care type, or an age outside every band the configuration
+       *     defines. Without it the Total row was not the sum of the column above it
+       *     and nothing said why. The invariant callers can rely on:
+       *     sum(ByAgeAndCareType) + Unmatched == Total.
+       * @example 0
+       */
+      unmatched: number;
     };
     OccupancyResponse: {
       age_groups: components['schemas']['OccupancyAgeGroup'][];

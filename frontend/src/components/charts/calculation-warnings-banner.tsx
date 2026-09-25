@@ -89,6 +89,11 @@ function renderWarning(t: ReturnType<typeof useTranslations>, w: CalculationWarn
     // Loading failures carry no entity, so no employee or date suffix. Without
     // these two cases they fell through to `default` and rendered the backend's
     // raw English message to a German-primary audience.
+    case 'child_no_funding_entitlement':
+      // No employee suffix: this one names a child.
+      return t('childNoFundingEntitlement', { child: w.child_id ?? '?' }) + datePart;
+    case 'no_funding_period':
+      return t('noFundingPeriod') + datePart;
     case 'budget_items_load_failed':
       return t('budgetItemsLoadFailed');
     case 'funding_bills_load_failed':

@@ -11477,6 +11477,11 @@ const docTemplate = `{
         "github_com_eenemeene_kitamanager-go_internal_models.CalculationWarning": {
             "type": "object",
             "properties": {
+                "child_id": {
+                    "description": "ChildID names the child a child-side warning is about, the counterpart of\nEmployeeID. Both are omitempty, so a warning carries whichever it has.",
+                    "type": "integer",
+                    "example": 17
+                },
                 "code": {
                     "type": "string",
                     "example": "missing_pay_plan"
@@ -14823,6 +14828,11 @@ const docTemplate = `{
                 "total": {
                     "type": "integer",
                     "example": 45
+                },
+                "unmatched": {
+                    "description": "Unmatched holds children counted in Total that no cell of the matrix can\nhold: no care type, or an age outside every band the configuration\ndefines. Without it the Total row was not the sum of the column above it\nand nothing said why. The invariant callers can rely on:\nsum(ByAgeAndCareType) + Unmatched == Total.",
+                    "type": "integer",
+                    "example": 0
                 }
             }
         },

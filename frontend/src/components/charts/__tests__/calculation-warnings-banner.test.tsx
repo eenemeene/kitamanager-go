@@ -7,6 +7,7 @@ function makeWarning(overrides: Partial<CalculationWarning> = {}): CalculationWa
     code: '',
     message: '',
     employee_id: 0,
+    child_id: 0,
     contract_id: 0,
     payplan_id: 0,
     date: '',
@@ -154,5 +155,74 @@ describe('CalculationWarningsBanner', () => {
     // are spliced in (employee tag and date suffix).
     expect(item.textContent).toContain('employee #42');
     expect(item.textContent).toContain('2026-03-01');
+  });
+});
+
+describe('CalculationWarningsBanner child-side codes', () => {
+  it('takes the child-side branch and carries its date', () => {
+    render(
+      <CalculationWarningsBanner
+        warnings={[
+          makeWarning({
+            code: 'child_no_funding_entitlement',
+            child_id: 17,
+            contract_id: 99,
+            date: '2026-06-01',
+            message: 'RAW_BACKEND_ENGLISH',
+          }),
+        ]}
+      />
+    );
+    // The global next-intl mock returns the key and drops interpolation, so the
+    // child id cannot be asserted here -- the catalogue test below covers that
+    // the placeholder survives. What this proves is that the branch exists: the
+    // key renders rather than the backend's raw English, and the date the
+    // component appends outside t() comes through.
+    expect(screen.getByText(/childNoFundingEntitlement/)).toBeInTheDocument();
+    expect(screen.getByText(/2026-06-01/)).toBeInTheDocument();
+    expect(screen.queryByText(/RAW_BACKEND_ENGLISH/)).toBeNull();
+  });
+
+  // The id is the only thing that makes this warning actionable: without it the
+  // reader is told a number is wrong but not whose. A placeholder dropped while
+  // rewording the sentence would lose it silently.
+  it('keeps the child placeholder in both catalogues', () => {
+    for (const locale of ['de', 'en'] as const) {
+      const messages = require(`@/i18n/messages/${locale}.json`);
+      expect(messages.statistics.warnings.childNoFundingEntitlement).toContain('{child}');
+    }
+  });
+
+  it('reports an uncovered month without pretending it is about a child', () => {
+    render(
+      <CalculationWarningsBanner
+        warnings={[makeWarning({ code: 'no_funding_period', date: '2019-06-01' })]}
+      />
+    );
+    expect(screen.getByText(/noFundingPeriod/)).toBeInTheDocument();
+  });
+
+  // The default branch renders the backend's raw English. Every code the Go
+  // side can emit must have a case, or a German reader gets an English string.
+  it('has a case for every code the calculator emits', () => {
+    const emitted = [
+      'missing_pay_plan',
+      'no_pay_plan_period',
+      'no_pay_plan_entry',
+      'unusable_pay_plan_period',
+      'child_no_funding_entitlement',
+      'no_funding_period',
+      'budget_items_load_failed',
+      'funding_bills_load_failed',
+    ];
+    for (const code of emitted) {
+      const { unmount } = render(
+        <CalculationWarningsBanner
+          warnings={[makeWarning({ code, message: 'RAW_BACKEND_ENGLISH' })]}
+        />
+      );
+      expect(screen.queryByText(/RAW_BACKEND_ENGLISH/)).toBeNull();
+      unmount();
+    }
   });
 });
