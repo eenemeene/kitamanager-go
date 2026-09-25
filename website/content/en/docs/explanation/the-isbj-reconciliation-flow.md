@@ -72,4 +72,27 @@ For bills imported before this behaviour existed, the applicable month was not s
 
 When a correction applies to a month for which no bill was imported at all, no difference can be formed for that month — there is no calculated figure to compare against. The amount is not dropped: it is reported separately beneath the "Correction" column in the Kita year row.
 
+## Discrepancy analysis: where the difference comes from
+
+Beneath each Kita year row sits the **discrepancy analysis**, a breakdown by
+category: rate differences, property mismatches, bill only, calculated only.
+The four categories are non-overlapping and exhaustive — together they come to
+exactly the difference between regular billing and the calculation.
+
+Corrections are deliberately **not** among them. A correction is not a finding
+you can fix; it is a back-payment or clawback the Senate has already made. It
+does move the Kita year's result, though, so it gets its own line below:
+
+```
+Sum of categories             + €430.09
+Corrections for these months   − €30.00
+────────────────────────────────────────
+Kita year difference          + €400.09
+```
+
+The last line matches the difference in the Kita year row above. The
+corrections are counted by **applicable month**: a correction paid in August
+for July counts towards July's Kita year, even though the bill itself already
+belongs to the next one.
+
 For the operational triage matrix (which symptom maps to which fix), see [Investigate a bill discrepancy](../../how-to/use/investigate-a-bill-discrepancy/).

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -243,7 +244,22 @@ func (h *GovernmentFundingBillHandler) CompareUnified(c *gin.Context) {
 			respondError(c, err)
 			return
 		}
-		respondWrappedComparison(c, results)
+		summary := service.BuildComparisonSummary(results)
+		// Only meaningful for a range: it answers "what was corrected about
+		// these months", which needs a window to attribute against. A
+		// single-bill comparison has none, and leaves the field nil.
+		if attributed, aerr := h.service.AttributedCorrectionTotal(ctx, orgID, *from, *to); aerr == nil {
+			summary.TotalCorrectionsAttributed = &attributed
+		} else {
+			// Non-fatal: the comparison itself is unaffected, and the client
+			// falls back to the arrival-keyed TotalCorrections.
+			slog.Warn("failed to load attributed correction total; comparison summary will report arrival-keyed corrections only",
+				"org_id", orgID, "from", *from, "to", *to, "error", aerr)
+		}
+		c.JSON(http.StatusOK, models.FundingComparisonWrappedResponse{
+			Comparisons: results,
+			Summary:     summary,
+		})
 		return
 	}
 

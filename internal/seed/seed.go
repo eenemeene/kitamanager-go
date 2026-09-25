@@ -831,16 +831,39 @@ func buildBillPeriod(orgID uint, billDate time.Time, fundingPeriod *models.Gover
 		if corrChild.voucherNum != "" {
 			corrAmount := -1500
 			correctedMonth := billDate.AddDate(0, -1, 0)
-			billChildren = append(billChildren, models.GovernmentFundingBillChild{
-				VoucherNumber: corrChild.voucherNum,
-				ChildName:     corrChild.child.LastName + ", " + corrChild.child.FirstName,
-				BirthDate:     corrChild.child.Birthdate.Format("01.06"),
-				District:      3,
-				Payments: []models.GovernmentFundingBillPayment{
-					{Key: "care_type", Value: "ganztag", Amount: corrAmount, RowIndex: 1,
-						RowType: models.RowTypeCorrection, BillingMonth: &correctedMonth},
-				},
-			})
+			correctionRow := models.GovernmentFundingBillPayment{
+				Key: "care_type", Value: "ganztag", Amount: corrAmount, RowIndex: 1,
+				RowType: models.RowTypeCorrection, BillingMonth: &correctedMonth,
+			}
+			// Onto the child's EXISTING row, not a second row for the same
+			// voucher. Convert groups every row of a bill by voucher into one
+			// GovernmentFundingBillChild carrying several payments, so a real
+			// import can never produce two child records for one voucher in
+			// one bill -- but this seeder used to, and the comparison computes
+			// the calculated side once per bill-child record. The duplicate
+			// therefore got its full calculated amount counted twice: 1269,19
+			// EUR of funding that no child was owed, in the demo data every
+			// screenshot and e2e run is taken against.
+			attached := false
+			for i := range billChildren {
+				if billChildren[i].VoucherNumber == corrChild.voucherNum {
+					billChildren[i].Payments = append(billChildren[i].Payments, correctionRow)
+					attached = true
+					break
+				}
+			}
+			if !attached {
+				// The child had no regular row this month -- a correction for
+				// someone who has since left. One record, as the importer
+				// would build it.
+				billChildren = append(billChildren, models.GovernmentFundingBillChild{
+					VoucherNumber: corrChild.voucherNum,
+					ChildName:     corrChild.child.LastName + ", " + corrChild.child.FirstName,
+					BirthDate:     corrChild.child.Birthdate.Format("01.06"),
+					District:      3,
+					Payments:      []models.GovernmentFundingBillPayment{correctionRow},
+				})
+			}
 			correctionTotal += corrAmount
 		}
 	}

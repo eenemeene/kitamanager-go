@@ -13796,6 +13796,12 @@ const docTemplate = `{
                     "example": 783227
                 },
                 "total_corrections": {
+                    "description": "TotalCorrections sums the correction rows of the bills in this\nwindow -- corrections that ARRIVED here, whichever month they\nare about.",
+                    "type": "integer",
+                    "example": 37114
+                },
+                "total_corrections_attributed": {
+                    "description": "TotalCorrectionsAttributed sums the corrections that APPLY to\nthis window's months, wherever their bill arrived. It is the\nfigure that reconciles with the Kita year row above the\ncategory bars, because that row is built from the attributed\nkeying too: a correction paid out in August against July\nbelongs to July's Kita year, and TotalCorrections would miss it\nwhenever the two years differ.\n\nNil when the caller asked about a single bill rather than a\ndate range, where there is no window to attribute against and\nTotalCorrections is the only answer.",
                     "type": "integer",
                     "example": 37114
                 },

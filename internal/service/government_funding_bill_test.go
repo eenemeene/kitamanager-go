@@ -7666,3 +7666,130 @@ func TestBillingMonthOr(t *testing.T) {
 		t.Errorf("set billing month: got %s, want %s", got, jan)
 	}
 }
+
+// TestAttributedCorrectionTotal covers the figure the deficit analysis needs
+// to reconcile with the Kita year row above it: corrections that APPLY to the
+// window, wherever the bill carrying them arrived.
+//
+// BuildComparisonSummary can only see the bills inside the window, so its
+// TotalCorrections misses a correction for one of these months that arrived in
+// a later bill -- which is the normal case, a correction being retroactive by
+// definition.
+func TestAttributedCorrectionTotal(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Attr Corr Org")
+	user := createTestUser(t, db, "User", "attr_corr@example.com", "password")
+	ctx := context.Background()
+
+	jul := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	aug := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	augEnd := time.Date(2026, 8, 31, 0, 0, 0, 0, time.UTC)
+
+	// An August bill: its own regular row, plus a correction about July.
+	bill := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: aug, To: &augEnd},
+		FileName:       "aug.xlsx",
+		FileSha256:     "attr-corr-aug",
+		FacilityName:   "Kita Sonnenschein",
+		FacilityTotal:  93150,
+		CreatedBy:      &user.ID,
+		Children: []models.GovernmentFundingBillChild{
+			{
+				VoucherNumber: "GB-12345678901-02",
+				ChildName:     "Musterkind, Max",
+				BirthDate:     "01.20",
+				District:      1,
+				Payments: []models.GovernmentFundingBillPayment{
+					{Key: "care_type", Value: "ganztag", Amount: 94650,
+						RowType: models.RowTypeRegular, BillingMonth: &aug},
+					{Key: "care_type", Value: "ganztag", Amount: -1500,
+						RowType: models.RowTypeCorrection, BillingMonth: &jul},
+				},
+			},
+		},
+	}
+	if err := db.Create(bill).Error; err != nil {
+		t.Fatalf("create bill: %v", err)
+	}
+
+	// A Kita-year window ending in July. The August bill falls outside it
+	// entirely, so an arrival-keyed reading sees no corrections at all.
+	from := time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 7, 31, 0, 0, 0, 0, time.UTC)
+
+	got, err := svc.AttributedCorrectionTotal(ctx, org.ID, from, to)
+	if err != nil {
+		t.Fatalf("AttributedCorrectionTotal() error = %v", err)
+	}
+	if got != -1500 {
+		t.Errorf("attributed corrections for 25/26 = %d, want -1500 (the August bill corrects July)", got)
+	}
+
+	// The next Kita year contains the bill but not the month it corrects.
+	nextFrom := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	nextTo := time.Date(2027, 7, 31, 0, 0, 0, 0, time.UTC)
+	gotNext, err := svc.AttributedCorrectionTotal(ctx, org.ID, nextFrom, nextTo)
+	if err != nil {
+		t.Fatalf("AttributedCorrectionTotal() error = %v", err)
+	}
+	if gotNext != 0 {
+		t.Errorf("attributed corrections for 26/27 = %d, want 0 (its only correction is about July)", gotNext)
+	}
+}
+
+// TestBuildComparisonSummary_CategoriesPlusCorrectionsReconcile pins the
+// identity the deficit analysis now prints on screen: the category bars
+// decompose the regular-only difference, and adding the corrections gives the
+// figure the Kita year row shows. The two used to disagree with nothing saying
+// why.
+func TestBuildComparisonSummary_CategoriesPlusCorrectionsReconcile(t *testing.T) {
+	comparisons := []models.FundingComparisonResponse{
+		{
+			BillFrom:        "2026-07-01",
+			BillTotal:       300000,
+			CalcTotal:       310000,
+			CorrectionTotal: -1500,
+			Children: []models.FundingComparisonChild{
+				{
+					VoucherNumber: "V-1",
+					ChildName:     "Rate, Difference",
+					ChildID:       uintPtr(1),
+					Status:        "difference",
+					BillTotal:     300000,
+					CalcTotal:     intPtr(310000),
+					Properties: []models.FundingComparisonAmount{
+						{Key: "care_type", Value: "ganztag", BillAmount: intPtr(300000),
+							CalcAmount: intPtr(310000), Difference: -10000},
+					},
+				},
+			},
+		},
+	}
+
+	s := BuildComparisonSummary(comparisons)
+
+	catSum := 0
+	for _, c := range s.Categories {
+		catSum += c.TotalAmount
+	}
+	if catSum != s.TotalDifference {
+		t.Fatalf("sum(categories)=%d != total_difference=%d", catSum, s.TotalDifference)
+	}
+	if s.TotalDifference != -10000 {
+		t.Errorf("total_difference = %d, want -10000", s.TotalDifference)
+	}
+	// Corrections sit outside the decomposition -- they are not a category of
+	// defect -- but the reconciled figure has to include them.
+	if s.TotalCorrections != -1500 {
+		t.Errorf("total_corrections = %d, want -1500", s.TotalCorrections)
+	}
+	if reconciled := catSum + s.TotalCorrections; reconciled != -11500 {
+		t.Errorf("categories + corrections = %d, want -11500", reconciled)
+	}
+	// Not set by the pure function: it has no window to attribute against.
+	if s.TotalCorrectionsAttributed != nil {
+		t.Errorf("TotalCorrectionsAttributed = %v, want nil from the pure builder", *s.TotalCorrectionsAttributed)
+	}
+}
