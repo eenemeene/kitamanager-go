@@ -774,9 +774,19 @@ func parseKindWithColumns(f *excelize.File, row int, vc *vertragColumns) (*Kind,
 	}
 	if vc.monat != "" {
 		monatStr := cellAsString(f, SheetVertrag, fmt.Sprintf("%s%d", vc.monat, row))
-		if parsed, err := parseMonatTyp(monatStr); err == nil {
-			kind.Abrechnungsmonat = parsed
+		// Rejected rather than shrugged off, the same as Bezirk and
+		// Betreuungsumfang below. This month decides which month a row's
+		// money counts towards, and a correction silently falling back to
+		// the bill's own month is the exact error the column exists to
+		// prevent -- an import that looks like it worked and has the money
+		// in the wrong month. An empty cell is not an error: parseMonatTyp
+		// returns the zero time for it, which the read path treats as
+		// unknown, and that is what a file without the column looks like.
+		parsed, err := parseMonatTyp(monatStr)
+		if err != nil {
+			return nil, fmt.Errorf("row %d: parsing Monat: %w", row, err)
 		}
+		kind.Abrechnungsmonat = parsed
 	}
 
 	kind.Gutscheinnummer = cellAsString(f, SheetVertrag, fmt.Sprintf("%s%d", vc.gutscheinNr, row))
