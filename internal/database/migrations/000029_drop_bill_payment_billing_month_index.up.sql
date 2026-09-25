@@ -1,0 +1,40 @@
+-- Drop idx_bill_payments_billing_month. It cannot serve the query it was
+-- created for, and never could.
+--
+-- Migration 000028 added it with this justification: "Aggregations group by
+-- the attribution month; without an index they fall back to a sequential scan
+-- over every payment row in the org." Both halves are wrong.
+--
+-- The aggregations do not read billing_month. They read
+--
+--     COALESCE(pay.billing_month, p.from_date)
+--
+-- both in the GROUP BY and in the range filter, because a row imported before
+-- 000028 has no month of its own and falls back to its bill's. That expression
+-- spans two tables, so no index on government_funding_bill_payments can
+-- satisfy it, and no expression index can cover it either -- an expression
+-- index may only reference columns of the table it is on.
+--
+-- Measured on 4.16M payment rows across 26k bills, running the real query:
+--
+--     Nested Loop
+--       Join Filter: ((COALESCE(pay.billing_month, p.from_date) >= ...)
+--                 AND (COALESCE(pay.billing_month, p.from_date) <= ...))
+--       ->  Index Scan using government_funding_bill_payments_child_id_idx
+--
+--     indexrelname                                  | idx_scan
+--     government_funding_bill_payments_child_id_idx |     5202
+--     idx_bill_payments_billing_month               |        0   <- 27 MB
+--
+-- The range is applied as a Join Filter after the row is fetched; the index is
+-- never opened.
+--
+-- Nor is one wanted. Every caller is scoped to a single organization, so the
+-- plan is driven from government_funding_bill_periods.organization_id down
+-- through children to payments via the existing child_id index. One org's
+-- payment rows number in the low thousands. An index here is write cost on
+-- every bill import, paid for no read.
+--
+-- The column itself stays exactly as 000028 created it. Only the index goes.
+
+DROP INDEX IF EXISTS idx_bill_payments_billing_month;

@@ -294,6 +294,8 @@
     "deficitCategoriesSum": "Summe der Kategorien",
     "deficitCorrections": "Korrekturen für diese Monate",
     "deficitCorrectionsTooltip": "Rückwirkende Korrekturen des Senats, die Monate dieses Kita-Jahres betreffen — unabhängig davon, in welcher Abrechnung sie eingegangen sind. Sie sind keine Abweichung, die Sie beheben können, verschieben aber das Ergebnis des Kita-Jahres.",
+    "deficitCorrectionsOrphan": "davon ohne Abrechnung",
+    "deficitCorrectionsOrphanTooltip": "Korrekturen für Monate dieses Kita-Jahres, für die keine Abrechnung vorliegt. Sie sind nicht in der Differenz enthalten, weil es für diese Monate keinen berechneten Wert zum Vergleich gibt — sie bleiben aber Geld, das der Senat gezahlt hat.",
     "deficitReconciledTotal": "Differenz im Kita-Jahr",
     "deficitReconciledTotalTooltip": "Summe der Kategorien zuzüglich der Korrekturen. Entspricht der Differenz in der Zeile darüber.",
     "deficitNoIssues": "Keine Abweichungen für diesen Zeitraum gefunden.",

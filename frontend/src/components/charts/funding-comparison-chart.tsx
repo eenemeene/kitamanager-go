@@ -117,9 +117,17 @@ export interface KitaYearSummaryRow {
  * The billed figures for one month, attributed to the month each bill row is
  * ABOUT rather than the month its bill arrived in.
  *
- * Falls back to the arrival-keyed fields for bills imported before the billing
- * month was persisted (migration 000028); for those the backend reports the
- * same number under both names, so the fallback changes nothing it touches.
+ * The fallback is for a backend that cannot report the attributed figures at
+ * all -- an older build, or one whose query failed -- and nothing else. A
+ * current backend sets both for every month in range, 0 included, precisely so
+ * that "nothing is attributed here" cannot be mistaken for "no answer". Reading
+ * a 0 as absent and falling back double-counts: a bill whose rows are all about
+ * earlier months would have its corrections counted in its own month AND in the
+ * months they correct.
+ *
+ * Rows imported before the billing month was persisted (migration 000028) do
+ * not need the fallback either -- the backend COALESCEs them to their bill's
+ * month, so it reports the same number under both names.
  */
 export function attributedActuals(dp: FinancialResponse['data_points'][number]): {
   regular: number | null;
@@ -249,7 +257,14 @@ export function FundingComparisonChart({
         // FOR that month. Keyed by arrival, a bar showed April carrying three
         // corrections that were really about January, February and March.
         const { regular, correction } = attributedActuals(dp);
-        if (regular != null) {
+        // A month with a bill gets an actual bar even when the attributed
+        // regular is 0 -- that is a real "we were paid nothing regular for
+        // this month", which an all-correction bill produces. A month with
+        // no bill gets one only if something was attributed to it anyway,
+        // so the long empty tail of future months stays empty rather than
+        // growing a row of zero-height bars.
+        const hasBill = dp.actual_funding != null;
+        if (regular != null && (hasBill || regular !== 0)) {
           entry[actualRegularKey] = regular / 100;
         }
         if (correction != null && correction !== 0) {

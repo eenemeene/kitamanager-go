@@ -31,26 +31,17 @@ type GovernmentFundingBillPayment struct {
 	// month the bill is adjusting.
 	//
 	// Nil means unknown -- either the source file had no "Monat/ Typ"
-	// column, or the row predates migration 000028. Callers that
-	// aggregate by attribution month fall back to the bill period's
-	// from_date; see BillingMonthOr.
-	BillingMonth *time.Time `gorm:"type:date;index" json:"billing_month,omitempty" format:"date-time"`
-}
-
-// BillingMonthOr returns the month this payment should be attributed
-// to, falling back to the supplied bill-period month when the row
-// carries no month of its own.
-//
-// The fallback is not a guess dressed up as a fact: for a regular row
-// the two are the same month anyway, and for a correction with no
-// recorded month the arrival month is the only thing we know. Keeping
-// the distinction in the column (nil vs. set) rather than baking the
-// fallback into the data is what lets a caller tell the two apart.
-func (p *GovernmentFundingBillPayment) BillingMonthOr(billFrom time.Time) time.Time {
-	if p.BillingMonth != nil && !p.BillingMonth.IsZero() {
-		return *p.BillingMonth
-	}
-	return time.Date(billFrom.Year(), billFrom.Month(), 1, 0, 0, 0, 0, time.UTC)
+	// column, or the row predates migration 000028. The fallback to the
+	// bill period's from_date lives in the aggregation SQL as a COALESCE
+	// (see store.monthExprAttribution), not here: keeping it in one
+	// place is what stops the two drifting, and nothing in Go reads a
+	// single payment's attribution month on its own.
+	//
+	// No `index` tag: the read path never filters on this column alone,
+	// only on the COALESCE across it and the bill's from_date, which no
+	// index on it can serve. Migration 000028 created one anyway;
+	// migration 000029 drops it and carries the measurements.
+	BillingMonth *time.Time `gorm:"type:date" json:"billing_month,omitempty" format:"date-time"`
 }
 
 // BeforeCreate sets default RowType to "regular" when not explicitly set.
@@ -265,20 +256,31 @@ type FundingComparisonSummary struct {
 	// are about.
 	TotalCorrections int `json:"total_corrections" example:"37114"`
 	// TotalCorrectionsAttributed sums the corrections that APPLY to
-	// this window's months, wherever their bill arrived. It is the
-	// figure that reconciles with the Kita year row above the
-	// category bars, because that row is built from the attributed
-	// keying too: a correction paid out in August against July
-	// belongs to July's Kita year, and TotalCorrections would miss it
-	// whenever the two years differ.
+	// this window's months, wherever their bill arrived -- counting
+	// only months that have a bill of their own. It is the figure
+	// that reconciles with the Kita year row above the category
+	// bars, because that row is built the same way: a correction
+	// paid out in August against July belongs to July's Kita year,
+	// and TotalCorrections would miss it whenever the two years
+	// differ.
 	//
 	// Nil when the caller asked about a single bill rather than a
 	// date range, where there is no window to attribute against and
 	// TotalCorrections is the only answer.
-	TotalCorrectionsAttributed *int                               `json:"total_corrections_attributed,omitempty" example:"37114"`
-	MonthCount                 int                                `json:"month_count" example:"12"`
-	Categories                 []FundingComparisonCategorySummary `json:"categories"`
-	Issues                     []FundingComparisonIssueSummary    `json:"issues"`
+	TotalCorrectionsAttributed *int `json:"total_corrections_attributed,omitempty" example:"37114"`
+	// TotalCorrectionsOrphan sums the rest: corrections attributed to
+	// months of this window that have NO bill of their own, which the
+	// year row also holds aside. Those months contribute nothing to
+	// the calculated side, so adding their corrections to the
+	// reconciled total would read as a deficit the size of a month.
+	// Reported rather than dropped -- it is money the Senate paid.
+	//
+	// Nil under the same condition as TotalCorrectionsAttributed, and
+	// the two are always set together.
+	TotalCorrectionsOrphan *int                               `json:"total_corrections_orphan,omitempty" example:"0"`
+	MonthCount             int                                `json:"month_count" example:"12"`
+	Categories             []FundingComparisonCategorySummary `json:"categories"`
+	Issues                 []FundingComparisonIssueSummary    `json:"issues"`
 }
 
 // FundingComparisonWrappedResponse wraps per-bill comparisons with aggregate summary.

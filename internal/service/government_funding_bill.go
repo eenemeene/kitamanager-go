@@ -943,24 +943,85 @@ func (s *GovernmentFundingBillService) CompareRange(ctx context.Context, orgID u
 	return results, nil
 }
 
-// AttributedCorrectionTotal returns the corrections that APPLY to [from, to],
-// wherever the bill carrying them arrived.
+// AttributedCorrections splits the corrections that APPLY to [from, to],
+// wherever the bill carrying them arrived, into the two halves the range view
+// has to keep apart.
+type AttributedCorrections struct {
+	// Billed sums the corrections attributed to months of the window that
+	// have a bill of their own. These are the ones that reconcile with the
+	// Kita year row, because that row's difference is built from exactly
+	// those months: they are the ones with a calculated figure to set the
+	// money against.
+	Billed int
+	// Orphan sums the corrections attributed to months of the window that
+	// have no bill of their own -- a month we never imported, corrected by a
+	// bill that arrived later. Real money, but nothing to compare it with, so
+	// folding it into Billed would read as a deficit the size of a month.
+	Orphan int
+}
+
+// AttributedCorrections returns the corrections that APPLY to [from, to],
+// wherever the bill carrying them arrived, split by whether the month they
+// apply to has a bill of its own.
 //
 // BuildComparisonSummary can only see the bills in the window, so its
 // TotalCorrections misses a correction for one of these months that arrived in
 // a bill after it -- which is the normal case, since a correction is by
 // definition retroactive. Reading it from the payment rows' own billing month
 // is what lets the category bars reconcile with the Kita year row above them.
-func (s *GovernmentFundingBillService) AttributedCorrectionTotal(ctx context.Context, orgID uint, from, to time.Time) (int, error) {
-	totals, err := s.billPeriodStore.FindBillTotalsByRowTypeAttributed(ctx, orgID, from, to)
+//
+// The split is made against the same fact the year row uses to decide a month
+// is evaluable -- whether a bill arrived for it -- so that the two agree by
+// construction rather than by coincidence.
+func (s *GovernmentFundingBillService) AttributedCorrections(ctx context.Context, orgID uint, from, to time.Time) (AttributedCorrections, error) {
+	attributed, err := s.billPeriodStore.FindBillTotalsByRowTypeAttributed(ctx, orgID, from, to)
 	if err != nil {
-		return 0, apperror.InternalWrap(err, "failed to load attributed correction totals")
+		return AttributedCorrections{}, apperror.InternalWrap(err, "failed to load attributed correction totals")
 	}
-	total := 0
-	for _, entry := range totals {
-		total += entry.CorrectionTotal
+	billedMonths, err := s.billPeriodStore.FindFacilityTotalsByOrganizationInDateRange(ctx, orgID, from, to)
+	if err != nil {
+		return AttributedCorrections{}, apperror.InternalWrap(err, "failed to load billed months")
 	}
-	return total, nil
+
+	var out AttributedCorrections
+	for month, entry := range attributed {
+		if _, hasBill := billedMonths[month]; hasBill {
+			out.Billed += entry.CorrectionTotal
+		} else {
+			out.Orphan += entry.CorrectionTotal
+		}
+	}
+	return out, nil
+}
+
+// CompareRangeSummary compares every bill in [from, to] and returns the
+// comparisons together with the summary the range view needs.
+//
+// The attributed correction totals live here rather than in BuildComparisonSummary
+// because they cannot be derived from the comparisons: they are about months,
+// not about bills, and the bill that carries a month's correction is routinely
+// outside the window entirely. BuildComparisonSummary stays a pure function of
+// its argument, and this is the one caller that has a window to attribute
+// against.
+func (s *GovernmentFundingBillService) CompareRangeSummary(ctx context.Context, orgID uint, from, to time.Time) ([]models.FundingComparisonResponse, models.FundingComparisonSummary, error) {
+	results, err := s.CompareRange(ctx, orgID, from, to)
+	if err != nil {
+		return nil, models.FundingComparisonSummary{}, err
+	}
+
+	summary := BuildComparisonSummary(results)
+	corrections, cerr := s.AttributedCorrections(ctx, orgID, from, to)
+	if cerr != nil {
+		// Non-fatal: the comparison itself is unaffected, and a client that
+		// finds the fields absent falls back to the arrival-keyed
+		// TotalCorrections.
+		slog.Warn("failed to load attributed correction totals; comparison summary will report arrival-keyed corrections only",
+			"org_id", orgID, "from", from, "to", to, "error", cerr)
+		return results, summary, nil
+	}
+	summary.TotalCorrectionsAttributed = &corrections.Billed
+	summary.TotalCorrectionsOrphan = &corrections.Orphan
+	return results, summary, nil
 }
 
 // BuildComparisonSummary aggregates a slice of FundingComparisonResponse into a summary.

@@ -294,6 +294,8 @@
     "deficitCategoriesSum": "Sum of categories",
     "deficitCorrections": "Corrections for these months",
     "deficitCorrectionsTooltip": "Retroactive corrections from the Senate that apply to months of this Kita year, whichever bill they arrived in. They are not a discrepancy you can fix, but they move the Kita year's result.",
+    "deficitCorrectionsOrphan": "of which without a bill",
+    "deficitCorrectionsOrphanTooltip": "Corrections for months of this Kita year that have no bill of their own. They are not part of the difference, because those months have no calculated figure to compare against — but they are still money the Senate paid.",
     "deficitReconciledTotal": "Kita year difference",
     "deficitReconciledTotalTooltip": "Sum of the categories plus the corrections. Matches the difference in the row above.",
     "deficitNoIssues": "No discrepancies found for this period.",

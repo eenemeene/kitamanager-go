@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"bytes"
-	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -239,27 +238,16 @@ func (h *GovernmentFundingBillHandler) CompareUnified(c *gin.Context) {
 			respondError(c, err)
 			return
 		}
-		results, err := h.service.CompareRange(ctx, orgID, *from, *to)
+		// The range branch carries attributed correction totals, which only
+		// it can: they answer "what was corrected about these months", and
+		// that needs a window to attribute against. The two single-bill
+		// branches have none and leave the fields nil.
+		results, summary, err := h.service.CompareRangeSummary(ctx, orgID, *from, *to)
 		if err != nil {
 			respondError(c, err)
 			return
 		}
-		summary := service.BuildComparisonSummary(results)
-		// Only meaningful for a range: it answers "what was corrected about
-		// these months", which needs a window to attribute against. A
-		// single-bill comparison has none, and leaves the field nil.
-		if attributed, aerr := h.service.AttributedCorrectionTotal(ctx, orgID, *from, *to); aerr == nil {
-			summary.TotalCorrectionsAttributed = &attributed
-		} else {
-			// Non-fatal: the comparison itself is unaffected, and the client
-			// falls back to the arrival-keyed TotalCorrections.
-			slog.Warn("failed to load attributed correction total; comparison summary will report arrival-keyed corrections only",
-				"org_id", orgID, "from", *from, "to", *to, "error", aerr)
-		}
-		c.JSON(http.StatusOK, models.FundingComparisonWrappedResponse{
-			Comparisons: results,
-			Summary:     summary,
-		})
+		respondComparison(c, results, summary)
 		return
 	}
 
@@ -273,9 +261,13 @@ func (h *GovernmentFundingBillHandler) CompareUnified(c *gin.Context) {
 }
 
 func respondWrappedComparison(c *gin.Context, comparisons []models.FundingComparisonResponse) {
+	respondComparison(c, comparisons, service.BuildComparisonSummary(comparisons))
+}
+
+func respondComparison(c *gin.Context, comparisons []models.FundingComparisonResponse, summary models.FundingComparisonSummary) {
 	c.JSON(http.StatusOK, models.FundingComparisonWrappedResponse{
 		Comparisons: comparisons,
-		Summary:     service.BuildComparisonSummary(comparisons),
+		Summary:     summary,
 	})
 }
 

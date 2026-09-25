@@ -4799,3 +4799,109 @@ func TestStatisticsService_GetFinancials_AttributedCorrections(t *testing.T) {
 		t.Errorf("totals: arrival %d, attributed %d, want both 94752", sumArrival, sumAttributed)
 	}
 }
+
+// TestStatisticsService_GetFinancials_AttributedSetForEveryMonth pins the
+// nil/zero distinction the two keyings depend on.
+//
+// A pure Korrektur-Abrechnung -- a bill whose every row is about an earlier
+// month, which ISBJ does send -- has a bill for its own month and nothing
+// attributed to it. Leaving the attributed fields nil there made them
+// indistinguishable from "this server cannot compute them", and a client doing
+// `attributed ?? arrival` counted the corrections twice: once in the month the
+// bill arrived, once in the month it corrects. 102 cents of correction read as
+// 204.
+func TestStatisticsService_GetFinancials_AttributedSetForEveryMonth(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Orphan Attr Org")
+	user := createTestUser(t, db, "Orphan User", "orphan_attr@test.com", "password")
+
+	jan := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	mar := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
+	toMar := time.Date(2025, 3, 31, 0, 0, 0, 0, time.UTC)
+
+	bill := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: mar, To: &toMar},
+		FileName:       "mar-korrektur.xlsx",
+		FileSha256:     "orphan-attr-mar",
+		FacilityName:   "Kita Sonnenschein",
+		FacilityTotal:  102,
+		CreatedBy:      &user.ID,
+		Children: []models.GovernmentFundingBillChild{
+			{
+				VoucherNumber: "GB-12345678901-02",
+				ChildName:     "Musterkind, Max",
+				BirthDate:     "01.20",
+				District:      1,
+				Payments: []models.GovernmentFundingBillPayment{
+					{Key: "care_type", Value: "ganztag", Amount: 102,
+						RowType: models.RowTypeCorrection, BillingMonth: &jan},
+				},
+			},
+		},
+	}
+	if err := db.Create(bill).Error; err != nil {
+		t.Fatalf("create bill: %v", err)
+	}
+
+	from := jan
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &mar)
+	if err != nil {
+		t.Fatalf("GetFinancials() error = %v", err)
+	}
+
+	// Every month in range carries both attributed figures, whether or not
+	// anything is attributed to it. Nil is reserved for "could not compute".
+	for _, dp := range result.DataPoints {
+		if dp.ActualFundingRegularAttributed == nil {
+			t.Errorf("%s: ActualFundingRegularAttributed is nil; nil means the server could not compute it", dp.Date)
+		}
+		if dp.ActualFundingCorrectionAttributed == nil {
+			t.Errorf("%s: ActualFundingCorrectionAttributed is nil", dp.Date)
+		}
+	}
+
+	marDP := findDataPoint(t, result.DataPoints, "2025-03-01")
+	// March has a bill, and arrival-keyed it carries the whole correction.
+	if marDP.ActualFunding == nil || *marDP.ActualFunding != 102 {
+		t.Errorf("March ActualFunding = %v, want 102", marDP.ActualFunding)
+	}
+	if marDP.ActualFundingCorrection == nil || *marDP.ActualFundingCorrection != 102 {
+		t.Errorf("March arrival correction = %v, want 102", marDP.ActualFundingCorrection)
+	}
+	// Attributed, March has nothing: every row of its bill is about January.
+	if marDP.ActualFundingCorrectionAttributed == nil || *marDP.ActualFundingCorrectionAttributed != 0 {
+		t.Errorf("March attributed correction = %v, want 0", marDP.ActualFundingCorrectionAttributed)
+	}
+	if marDP.ActualFundingRegularAttributed == nil || *marDP.ActualFundingRegularAttributed != 0 {
+		t.Errorf("March attributed regular = %v, want 0", marDP.ActualFundingRegularAttributed)
+	}
+
+	janDP := findDataPoint(t, result.DataPoints, "2025-01-01")
+	if janDP.ActualFundingCorrectionAttributed == nil || *janDP.ActualFundingCorrectionAttributed != 102 {
+		t.Errorf("January attributed correction = %v, want 102", janDP.ActualFundingCorrectionAttributed)
+	}
+
+	// The reading a client actually makes: attributed where present, arrival
+	// only as a fallback. It must total the bill, not twice the bill.
+	attributedOrArrival := func(attr, arrival *int) int {
+		if attr != nil {
+			return *attr
+		}
+		if arrival != nil {
+			return *arrival
+		}
+		return 0
+	}
+	total := 0
+	for _, dp := range result.DataPoints {
+		total += attributedOrArrival(dp.ActualFundingRegularAttributed, dp.ActualFundingRegular)
+		total += attributedOrArrival(dp.ActualFundingCorrectionAttributed, dp.ActualFundingCorrection)
+	}
+	if total != 102 {
+		t.Errorf("client-side total = %d, want 102 (the bill); 204 means the correction was counted twice", total)
+	}
+}

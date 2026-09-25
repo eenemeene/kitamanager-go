@@ -509,6 +509,48 @@ describe('FundingDeficitAnalysis', () => {
       expect(reconciliationRow(container, 'deficitReconciledTotal')).toContain('-5,00');
     });
 
+    // Corrections for months of this Kita year with no bill of their own.
+    // The row above holds them out of its Difference, because those months
+    // contribute nothing to the calculated side; adding them here would break
+    // the identity this block exists to show, by exactly the orphan.
+    it('holds orphan corrections out of the reconciled total and prints them apart', () => {
+      const { container } = renderInTableBody(
+        <FundingDeficitAnalysis
+          summary={makeSummary({
+            total_difference: 1000,
+            total_corrections: -1500,
+            total_corrections_attributed: -3000,
+            total_corrections_orphan: -102,
+            categories: [makeCategory({ total_amount: 1000 })],
+          })}
+          orgId="1"
+          forceExpanded
+        />
+      );
+      // 1000 + (-3000) = -2000 cents. The orphan is NOT in it.
+      expect(reconciliationRow(container, 'deficitReconciledTotal')).toContain('-20,00');
+      expect(reconciliationRow(container, 'deficitReconciledTotal')).not.toContain('-21,02');
+      expect(reconciliationRow(container, 'deficitCorrectionsOrphan')).toContain('-1,02');
+    });
+
+    // Nothing orphaned is the normal case, and an extra line reading "0,00"
+    // would invite the reader to add it to something.
+    it('omits the orphan line when every corrected month has a bill', () => {
+      renderInTableBody(
+        <FundingDeficitAnalysis
+          summary={makeSummary({
+            total_difference: 1000,
+            total_corrections_attributed: -3000,
+            total_corrections_orphan: 0,
+            categories: [makeCategory({ total_amount: 1000 })],
+          })}
+          orgId="1"
+          forceExpanded
+        />
+      );
+      expect(screen.queryByText('deficitCorrectionsOrphan')).not.toBeInTheDocument();
+    });
+
     // With nothing corrected, the corrections line is noise -- the category
     // sum and the reconciled total are the same number.
     it('omits the corrections line when there is nothing to correct', () => {

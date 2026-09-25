@@ -46,6 +46,9 @@ func setupBillRouterWithUser(db *gorm.DB, userID uint) (*gin.Engine, *Government
 	org := r.Group("/organizations/:orgId/government-funding-bills")
 	{
 		org.GET("", handler.List)
+		// Before /:billId, the same as routes.go, or gin matches "compare"
+		// as a bill id.
+		org.GET("/compare", handler.CompareUnified)
 		org.GET("/:billId", handler.Get)
 		org.GET("/:billId/compare", handler.Compare)
 		org.POST("", handler.UploadISBJ)
@@ -1659,4 +1662,130 @@ func TestGovernmentFundingBillHandler_ListDateRange(t *testing.T) {
 			t.Errorf("expected total 4, got %d", response.Total)
 		}
 	})
+}
+
+// TestCompareUnified_RangeCarriesAttributedCorrections walks the range branch
+// over HTTP and asserts the attributed correction fields reach the wire.
+//
+// The service composes them; the handler only has to not drop them. That is
+// worth a test of its own because the enrichment is non-fatal: if it fails the
+// comparison still returns 200, so a silent regression looks exactly like a
+// successful response.
+func TestCompareUnified_RangeCarriesAttributedCorrections(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	r, _ := setupBillRouter(db)
+	org := createTestOrganization(t, db, "Attributed Compare Org")
+	user := createTestUser(t, db, "User", "attrcompare@example.com", "password")
+
+	jul := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	julEnd := time.Date(2026, 7, 31, 0, 0, 0, 0, time.UTC)
+	aug := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	augEnd := time.Date(2026, 8, 31, 0, 0, 0, 0, time.UTC)
+
+	// July has a bill of its own; August's bill corrects it. The correction is
+	// therefore attributed to July and reconcilable, not an orphan.
+	julBill := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: jul, To: &julEnd},
+		FileName:       "jul.xlsx",
+		FileSha256:     "attrcompare-jul",
+		FacilityName:   "Kita Sonnenschein",
+		FacilityTotal:  94650,
+		CreatedBy:      &user.ID,
+		Children: []models.GovernmentFundingBillChild{{
+			VoucherNumber: "GB-12345678901-02",
+			ChildName:     "Musterkind, Max",
+			BirthDate:     "01.20",
+			District:      1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 94650,
+					RowType: models.RowTypeRegular, BillingMonth: &jul},
+			},
+		}},
+	}
+	augBill := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: aug, To: &augEnd},
+		FileName:       "aug.xlsx",
+		FileSha256:     "attrcompare-aug",
+		FacilityName:   "Kita Sonnenschein",
+		FacilityTotal:  93150,
+		CreatedBy:      &user.ID,
+		Children: []models.GovernmentFundingBillChild{{
+			VoucherNumber: "GB-12345678901-02",
+			ChildName:     "Musterkind, Max",
+			BirthDate:     "01.20",
+			District:      1,
+			Payments: []models.GovernmentFundingBillPayment{
+				{Key: "care_type", Value: "ganztag", Amount: 94650,
+					RowType: models.RowTypeRegular, BillingMonth: &aug},
+				{Key: "care_type", Value: "ganztag", Amount: -1500,
+					RowType: models.RowTypeCorrection, BillingMonth: &jul},
+			},
+		}},
+	}
+	for _, b := range []*models.GovernmentFundingBillPeriod{julBill, augBill} {
+		if err := db.Create(b).Error; err != nil {
+			t.Fatalf("create bill %s: %v", b.FileSha256, err)
+		}
+	}
+
+	// A Kita-year window ending in July: the August bill is outside it, so the
+	// arrival-keyed total sees no corrections and the attributed one does.
+	url := fmt.Sprintf("/organizations/%d/government-funding-bills/compare?from=2025-08-01&to=2026-07-31", org.ID)
+	w := performRequest(r, "GET", url, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", w.Code, w.Body.String())
+	}
+
+	var resp models.FundingComparisonWrappedResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decoding response: %v", err)
+	}
+	if resp.Summary.TotalCorrections != 0 {
+		t.Errorf("total_corrections = %d, want 0 (no bill in the window carries a correction row)",
+			resp.Summary.TotalCorrections)
+	}
+	if resp.Summary.TotalCorrectionsAttributed == nil {
+		t.Fatal("total_corrections_attributed is absent; the range branch must always populate it")
+	}
+	if got := *resp.Summary.TotalCorrectionsAttributed; got != -1500 {
+		t.Errorf("total_corrections_attributed = %d, want -1500", got)
+	}
+	if resp.Summary.TotalCorrectionsOrphan == nil {
+		t.Fatal("total_corrections_orphan is absent; it is always set alongside the attributed total")
+	}
+	if got := *resp.Summary.TotalCorrectionsOrphan; got != 0 {
+		t.Errorf("total_corrections_orphan = %d, want 0 (July has a bill of its own)", got)
+	}
+}
+
+// TestCompareUnified_SingleBillLeavesAttributedUnset is the other side of the
+// contract: a single-bill comparison has no window to attribute against, so
+// the fields stay absent and a client falls back to the arrival-keyed total.
+func TestCompareUnified_SingleBillLeavesAttributedUnset(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	r, _ := setupBillRouter(db)
+	org := createTestOrganization(t, db, "Single Compare Org")
+	user := createTestUser(t, db, "User", "singlecompare@example.com", "password")
+	period := createBillPeriodInDB(t, db, org.ID, user.ID, "Kita Sonnenschein", time.July)
+
+	url := fmt.Sprintf("/organizations/%d/government-funding-bills/compare?bill_id=%d", org.ID, period.ID)
+	w := performRequest(r, "GET", url, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", w.Code, w.Body.String())
+	}
+
+	var resp models.FundingComparisonWrappedResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decoding response: %v", err)
+	}
+	if resp.Summary.TotalCorrectionsAttributed != nil {
+		t.Errorf("total_corrections_attributed = %d, want absent for a single bill",
+			*resp.Summary.TotalCorrectionsAttributed)
+	}
+	if resp.Summary.TotalCorrectionsOrphan != nil {
+		t.Errorf("total_corrections_orphan = %d, want absent for a single bill",
+			*resp.Summary.TotalCorrectionsOrphan)
+	}
 }

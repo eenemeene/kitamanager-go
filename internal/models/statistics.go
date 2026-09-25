@@ -75,6 +75,14 @@ type FinancialDataPoint struct {
 	// arrived in it. Rows imported before migration 000028 have no
 	// recorded month and fall back to their bill's month, so for
 	// historical data the attributed figures equal the arrival ones.
+	//
+	// Both are set for every month of the response whenever they could
+	// be computed at all, 0 included -- a month with nothing attributed
+	// to it reports 0, not nil. Nil means only that this server could
+	// not compute them, which is the one case where falling back to the
+	// arrival-keyed fields above is right. Reading nil as "nothing here,
+	// use arrival" double-counts every correction whose bill month has
+	// no attributed rows of its own.
 	ActualFundingRegularAttributed    *int `json:"actual_funding_regular_attributed,omitempty" example:"5000000"`   // cents
 	ActualFundingCorrectionAttributed *int `json:"actual_funding_correction_attributed,omitempty" example:"100000"` // cents
 	// Counts

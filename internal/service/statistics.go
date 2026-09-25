@@ -346,13 +346,28 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 			// month can be corrected by a bill that arrived in a later
 			// one, which leaves it with attributed amounts but no bill
 			// of its own.
+			//
+			// Set for every month in range, including the ones the map
+			// does not mention. The query succeeded, so silence about a
+			// month IS the answer for it -- nothing is attributed there
+			// -- and writing that as 0 keeps nil meaning the one thing
+			// it can usefully mean: this server could not tell you, fall
+			// back to the arrival-keyed figures.
+			//
+			// Leaving it nil for an unmentioned month conflated the two,
+			// and a client doing `attributed ?? arrival` then counted a
+			// correction twice. A bill whose rows all belong to earlier
+			// months -- a pure Korrektur-Abrechnung, which ISBJ does
+			// send -- has a bill for its own month and nothing
+			// attributed to it, so its corrections were counted once in
+			// the month they arrived and once in each month they
+			// correct.
 			if errAttributed == nil {
-				if entry, found := billAttributed[key]; found {
-					regular := entry.RegularTotal
-					correction := entry.CorrectionTotal
-					dp.ActualFundingRegularAttributed = &regular
-					dp.ActualFundingCorrectionAttributed = &correction
-				}
+				entry := billAttributed[key]
+				regular := entry.RegularTotal
+				correction := entry.CorrectionTotal
+				dp.ActualFundingRegularAttributed = &regular
+				dp.ActualFundingCorrectionAttributed = &correction
 			}
 		}
 	}

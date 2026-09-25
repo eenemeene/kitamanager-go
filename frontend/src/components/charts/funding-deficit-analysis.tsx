@@ -51,8 +51,16 @@ export function FundingDeficitAnalysis({
   // a correction paid out in August against July belongs to July's Kita year.
   // Falls back to the arrival-keyed total for a single-bill comparison, which
   // has no window to attribute against.
+  //
+  // Orphans -- corrections for months of this Kita year that have no bill of
+  // their own -- are held out of the reconciled total, exactly as the row above
+  // holds them out of its Difference. Those months contribute nothing to the
+  // calculated side, so adding their corrections here would break the very
+  // identity this block exists to show, by the size of the orphan. Shown on
+  // their own line instead: real money, just not comparable money.
   const categoriesSum = categories.reduce((acc, c) => acc + (c.total_amount ?? 0), 0);
   const corrections = summary.total_corrections_attributed ?? summary.total_corrections ?? 0;
+  const orphanCorrections = summary.total_corrections_orphan ?? 0;
   const reconciledTotal = categoriesSum + corrections;
 
   const visibleIssues = showAllIssues
@@ -152,6 +160,20 @@ export function FundingDeficitAnalysis({
                       <span data-visual-mask="currency" className="w-24 text-right tabular-nums">
                         {corrections >= 0 ? '+' : ''}
                         {formatEur(corrections)}
+                      </span>
+                      <span className="w-16" />
+                    </div>
+                  )}
+                  {orphanCorrections !== 0 && (
+                    <div
+                      className="text-muted-foreground flex items-center gap-3 text-xs"
+                      title={t('deficitCorrectionsOrphanTooltip')}
+                    >
+                      <span className="w-36 truncate">{t('deficitCorrectionsOrphan')}</span>
+                      <div className="flex-1" />
+                      <span data-visual-mask="currency" className="w-24 text-right tabular-nums">
+                        {orphanCorrections >= 0 ? '+' : ''}
+                        {formatEur(orphanCorrections)}
                       </span>
                       <span className="w-16" />
                     </div>

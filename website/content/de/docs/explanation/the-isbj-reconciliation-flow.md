@@ -97,4 +97,11 @@ Korrekturen sind dabei nach **Geltungsmonat** gezählt: eine im August gezahlte
 Korrektur für den Juli zählt zum Kita-Jahr des Juli, auch wenn der Bescheid
 bereits zum nächsten gehört.
 
+Eine Ausnahme sind Korrekturen für Monate, zu denen keine Abrechnung vorliegt;
+sie stehen gesondert als *davon ohne Abrechnung*. Sie bleiben aus der Differenz
+im Kita-Jahr heraus, aus demselben Grund, aus dem die Kita-Jahres-Zeile sie
+nicht in ihre Korrektur-Spalte aufnimmt: diese Monate tragen nichts zur
+berechneten Seite bei, und ihre Korrekturen dagegen zu rechnen ergäbe eine
+Unterdeckung in der Größe eines Monats, die niemand schuldet.
+
 Für die operative Triage-Matrix (welches Symptom auf welche Korrektur abbildet) siehe [Abweichung in einer Abrechnung untersuchen](../../how-to/use/investigate-a-bill-discrepancy/).
