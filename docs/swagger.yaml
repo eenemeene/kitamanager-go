@@ -1662,15 +1662,41 @@ definitions:
   github_com_eenemeene_kitamanager-go_internal_models.FinancialDataPoint:
     properties:
       actual_funding:
-        description: Actual funding from government funding bills
+        description: |-
+          Actual funding from government funding bills, keyed by the month
+          the bill ARRIVED in. This is the cash view: what was booked in
+          this month, corrections included regardless of which month they
+          correct. Use it for income, budget and balance questions.
         example: 5100000
         type: integer
       actual_funding_correction:
         description: cents, correction rows only
         example: 100000
         type: integer
+      actual_funding_correction_attributed:
+        description: cents
+        example: 100000
+        type: integer
       actual_funding_regular:
         description: cents, regular billing only
+        example: 5000000
+        type: integer
+      actual_funding_regular_attributed:
+        description: |-
+          The same amounts keyed by the month each bill row is ABOUT (the
+          ISBJ "Monat/ Typ" column) rather than the month it arrived in.
+          This is the attribution view, and it is the one that answers
+          "was this month funded correctly?": a bill routinely carries one
+          regular row for its own month plus corrections for earlier ones,
+          and comparing our calculation for March against money that
+          happens to have arrived in March is comparing two different
+          things.
+
+          These are populated independently of ActualFunding: a month can
+          carry an attributed correction without a bill of its own having
+          arrived in it. Rows imported before migration 000028 have no
+          recorded month and fall back to their bill's month, so for
+          historical data the attributed figures equal the arrival ones.
         example: 5000000
         type: integer
       balance:

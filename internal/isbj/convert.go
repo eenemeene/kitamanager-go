@@ -3,6 +3,7 @@ package isbj
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 // SettlementAmount represents a single financial line item in a settlement.
@@ -21,6 +22,17 @@ type ConvertedChildRow struct {
 	IsCorrection   bool               `json:"is_correction"` // true if this row is a correction (Typ="K"), false for regular billing (Typ="A")
 	TotalRowAmount int                `json:"total_row_amount"`
 	Amounts        []SettlementAmount `json:"amounts"`
+	// BillingMonth is the month this row is ABOUT, which for a
+	// correction is not the month the bill arrived in: a single bill
+	// carries one "A" row for its own month plus any number of "K"
+	// rows each correcting an earlier one. Both come out of the same
+	// merged "Monat/ Typ" header cell, so this is populated exactly
+	// as often as IsCorrection is meaningful.
+	//
+	// Zero when the source file has no "Monat/ Typ" column or the
+	// cell does not parse. Zero means UNKNOWN, never "the bill's own
+	// month" -- the read path decides what to fall back to.
+	BillingMonth time.Time `json:"billing_month"`
 }
 
 // ConvertedChild represents a child grouped by voucher number.
@@ -181,6 +193,7 @@ func convertChild(kind *Kind) (*ConvertedChildRow, *convertChildMeta, error) {
 			IsCorrection:   kind.Typ == "K",
 			TotalRowAmount: kind.Summe,
 			Amounts:        amounts,
+			BillingMonth:   kind.Abrechnungsmonat,
 		}, &convertChildMeta{
 			VoucherNumber: kind.Gutscheinnummer,
 			ChildName:     kind.Name,

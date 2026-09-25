@@ -54,10 +54,29 @@ type FinancialDataPoint struct {
 	TotalIncome   int `json:"total_income" example:"5000000"`   // cents
 	TotalExpenses int `json:"total_expenses" example:"4770000"` // cents
 	Balance       int `json:"balance" example:"230000"`         // cents (income - expenses)
-	// Actual funding from government funding bills
+	// Actual funding from government funding bills, keyed by the month
+	// the bill ARRIVED in. This is the cash view: what was booked in
+	// this month, corrections included regardless of which month they
+	// correct. Use it for income, budget and balance questions.
 	ActualFunding           *int `json:"actual_funding,omitempty" example:"5100000"`           // cents, nil if no bill for this month
 	ActualFundingRegular    *int `json:"actual_funding_regular,omitempty" example:"5000000"`   // cents, regular billing only
 	ActualFundingCorrection *int `json:"actual_funding_correction,omitempty" example:"100000"` // cents, correction rows only
+	// The same amounts keyed by the month each bill row is ABOUT (the
+	// ISBJ "Monat/ Typ" column) rather than the month it arrived in.
+	// This is the attribution view, and it is the one that answers
+	// "was this month funded correctly?": a bill routinely carries one
+	// regular row for its own month plus corrections for earlier ones,
+	// and comparing our calculation for March against money that
+	// happens to have arrived in March is comparing two different
+	// things.
+	//
+	// These are populated independently of ActualFunding: a month can
+	// carry an attributed correction without a bill of its own having
+	// arrived in it. Rows imported before migration 000028 have no
+	// recorded month and fall back to their bill's month, so for
+	// historical data the attributed figures equal the arrival ones.
+	ActualFundingRegularAttributed    *int `json:"actual_funding_regular_attributed,omitempty" example:"5000000"`   // cents
+	ActualFundingCorrectionAttributed *int `json:"actual_funding_correction_attributed,omitempty" example:"100000"` // cents
 	// Counts
 	ChildCount int `json:"child_count" example:"45"`
 	StaffCount int `json:"staff_count" example:"12"`

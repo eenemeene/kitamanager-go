@@ -4693,3 +4693,109 @@ func findDataPoint(t *testing.T, dps []models.FinancialDataPoint, date string) m
 	t.Fatalf("data point for %s not found", date)
 	return models.FinancialDataPoint{}
 }
+
+// TestStatisticsService_GetFinancials_AttributedCorrections asserts the
+// financials response carries both keyings of the same money: arrival, which
+// answers "what did we receive in March?", and attribution, which answers "was
+// March funded correctly?".
+//
+// The bill is the shape ISBJ actually sends -- March's regular row plus a
+// correction for January -- and the two questions have different answers for
+// both months, which is the whole reason the month has to be persisted.
+func TestStatisticsService_GetFinancials_AttributedCorrections(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Attributed Org")
+	user := createTestUser(t, db, "Attr User", "attr_fin@test.com", "password")
+
+	jan := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	mar := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
+	toMar := time.Date(2025, 3, 31, 0, 0, 0, 0, time.UTC)
+
+	bill := &models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: mar, To: &toMar},
+		FileName:       "mar.xlsx",
+		FileSha256:     "attr-hash-mar",
+		FacilityName:   "Kita Sonnenschein",
+		FacilityTotal:  94752,
+		CreatedBy:      &user.ID,
+		Children: []models.GovernmentFundingBillChild{
+			{
+				VoucherNumber: "GB-12345678901-02",
+				ChildName:     "Musterkind, Max",
+				BirthDate:     "01.20",
+				District:      1,
+				Payments: []models.GovernmentFundingBillPayment{
+					{Key: "care_type", Value: "ganztag", Amount: 94650,
+						RowType: models.RowTypeRegular, BillingMonth: &mar},
+					{Key: "care_type", Value: "ganztag", Amount: 102,
+						RowType: models.RowTypeCorrection, BillingMonth: &jan},
+				},
+			},
+		},
+	}
+	if err := db.Create(bill).Error; err != nil {
+		t.Fatalf("create bill: %v", err)
+	}
+
+	from := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &mar)
+	if err != nil {
+		t.Fatalf("GetFinancials() error = %v", err)
+	}
+
+	marDP := findDataPoint(t, result.DataPoints, "2025-03-01")
+	// Arrival: the correction was paid out in March, so it counts there.
+	if marDP.ActualFundingCorrection == nil || *marDP.ActualFundingCorrection != 102 {
+		t.Errorf("March arrival correction = %v, want 102", marDP.ActualFundingCorrection)
+	}
+	// Attribution: March's own row only. The correction belongs to January.
+	if marDP.ActualFundingCorrectionAttributed == nil || *marDP.ActualFundingCorrectionAttributed != 0 {
+		t.Errorf("March attributed correction = %v, want 0", marDP.ActualFundingCorrectionAttributed)
+	}
+	if marDP.ActualFundingRegularAttributed == nil || *marDP.ActualFundingRegularAttributed != 94650 {
+		t.Errorf("March attributed regular = %v, want 94650", marDP.ActualFundingRegularAttributed)
+	}
+
+	janDP := findDataPoint(t, result.DataPoints, "2025-01-01")
+	// No bill arrived in January, so the arrival-keyed fields stay unset --
+	// including ActualFunding, which the UI uses to decide the month has a
+	// bill at all and must not start reporting one on the strength of a
+	// correction that arrived two months later.
+	if janDP.ActualFunding != nil {
+		t.Errorf("January ActualFunding = %d, want nil", *janDP.ActualFunding)
+	}
+	if janDP.ActualFundingCorrection != nil {
+		t.Errorf("January arrival correction = %d, want nil", *janDP.ActualFundingCorrection)
+	}
+	// Attribution reaches back into January even though nothing arrived there.
+	if janDP.ActualFundingCorrectionAttributed == nil {
+		t.Fatal("January attributed correction is nil; the March bill corrected it")
+	}
+	if *janDP.ActualFundingCorrectionAttributed != 102 {
+		t.Errorf("January attributed correction = %d, want 102", *janDP.ActualFundingCorrectionAttributed)
+	}
+
+	// Whichever keying is read, the same total must come back out.
+	sumArrival, sumAttributed := 0, 0
+	for _, dp := range result.DataPoints {
+		if dp.ActualFundingRegular != nil {
+			sumArrival += *dp.ActualFundingRegular
+		}
+		if dp.ActualFundingCorrection != nil {
+			sumArrival += *dp.ActualFundingCorrection
+		}
+		if dp.ActualFundingRegularAttributed != nil {
+			sumAttributed += *dp.ActualFundingRegularAttributed
+		}
+		if dp.ActualFundingCorrectionAttributed != nil {
+			sumAttributed += *dp.ActualFundingCorrectionAttributed
+		}
+	}
+	if sumArrival != sumAttributed || sumArrival != 94752 {
+		t.Errorf("totals: arrival %d, attributed %d, want both 94752", sumArrival, sumAttributed)
+	}
+}

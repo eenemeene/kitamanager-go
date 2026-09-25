@@ -296,15 +296,18 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 	if s.billStore != nil {
 		billTotals, errTotals := s.billStore.FindFacilityTotalsByOrganizationInDateRange(ctx, orgID, rangeStart, rangeEnd)
 		billByRowType, errRowType := s.billStore.FindBillTotalsByRowTypeInDateRange(ctx, orgID, rangeStart, rangeEnd)
+		billAttributed, errAttributed := s.billStore.FindBillTotalsByRowTypeAttributed(ctx, orgID, rangeStart, rangeEnd)
 
-		if errTotals != nil || errRowType != nil {
+		if errTotals != nil || errRowType != nil || errAttributed != nil {
 			// Non-fatal: proceed without actual funding overlays. A single
-			// warning covers either failure since both fuel the same set of
-			// frontend fields (ActualFunding / ActualFundingRegular /
-			// ActualFundingCorrection) — the UI just needs to know the
+			// warning covers any of the three failures since they fuel the
+			// same set of frontend fields (ActualFunding, the arrival-keyed
+			// ActualFundingRegular / ActualFundingCorrection, and their
+			// *Attributed counterparts) — the UI just needs to know the
 			// numbers may be incomplete.
 			slog.Warn("failed to load government funding bills; actual funding overlay will be incomplete",
-				"org_id", orgID, "totals_error", errTotals, "row_type_error", errRowType)
+				"org_id", orgID, "totals_error", errTotals, "row_type_error", errRowType,
+				"attributed_error", errAttributed)
 			warnings = append(warnings, models.CalculationWarning{
 				Code:    "funding_bills_load_failed",
 				Message: "could not load actual government funding bills; reported actuals may be incomplete",
@@ -337,6 +340,18 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 					correction := entry.CorrectionTotal
 					dp.ActualFundingRegular = &regular
 					dp.ActualFundingCorrection = &correction
+				}
+			}
+			// Set independently of the arrival-keyed figures above: a
+			// month can be corrected by a bill that arrived in a later
+			// one, which leaves it with attributed amounts but no bill
+			// of its own.
+			if errAttributed == nil {
+				if entry, found := billAttributed[key]; found {
+					regular := entry.RegularTotal
+					correction := entry.CorrectionTotal
+					dp.ActualFundingRegularAttributed = &regular
+					dp.ActualFundingCorrectionAttributed = &correction
 				}
 			}
 		}

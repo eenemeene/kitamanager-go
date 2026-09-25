@@ -265,6 +265,8 @@
     "fundingActualCorrection": "Korrektur",
     "fundingCalculated": "Berechnet",
     "fundingCalculatedFullYear": "von {amount} im gesamten Kita-Jahr",
+    "fundingCorrectionOrphan": "zzgl. {amount} für Monate ohne Abrechnung",
+    "fundingCorrectionOrphanTooltip": "Korrekturen, die Monate dieses Kita-Jahres betreffen, für die keine Abrechnung vorliegt. Sie sind nicht in der Differenz enthalten, weil es für diese Monate keinen berechneten Wert zum Vergleich gibt.",
     "fundingDifference": "Differenz",
     "fundingBillMissing": "Für den aktuellen Monat wurde noch keine Abrechnung hochgeladen.",
     "fundingBillUploadLink": "Abrechnung hochladen",

@@ -11,7 +11,7 @@ Die Excel-Datei wird mit `internal/isbj/parse.go` gelesen. Der Parser:
 
 1. Findet das Tabellenblatt mit den pro-Kind-Detail-Zeilen (Tabellenblatt-Namen folgen einer stabilen Senats-Konvention).
 2. Liest jede Zeile und normalisiert Spaltennamen gegen eine interne Map.
-3. Extrahiert: Familienname/Vorname des Kindes, Gutscheinnummer, abgerechnete Beträge pro Zuschlag, K/A-Marker (Korrekturen — siehe unten).
+3. Extrahiert: Familienname/Vorname des Kindes, Gutscheinnummer, abgerechnete Beträge pro Zuschlag sowie Typ und Geltungsmonat der Zeile (Korrekturen — siehe unten).
 
 Parse-Fehler werden inline angezeigt. Häufige Ursachen:
 
@@ -48,6 +48,28 @@ Der Vergleich ist pro Eigenschaft: nicht nur Gesamtbetrag, sondern pro-Zuschlag-
 
 ## K/A-Marker (Korrekturen)
 
-Echte ISBJ-Bescheide tragen „K“- (Korrektur) und „A“- (Aufhebung) Marker auf Zeilen, die rückwirkend einen vorherigen Monat korrigieren oder stornieren. KitaManagers Parser **ignoriert diese Marker derzeit** und behandelt jede Zeile als eigenständig für den Bescheid-Monat. Das verursacht eine bekannte Bescheid-Vergleichs-Drift, wenn der Senat Beträge aus einem früheren Monat korrigiert: der korrigierte Betrag wird gegen den Monat verbucht, in dem der Bescheid *ausgestellt* wurde, nicht den Monat, für den er *gilt*, sodass zwei Monate gegenläufige Differenzen statt einer passenden Zeile zeigen. Bekannte Einschränkung; die Umgehung beim Triagieren ist, gegenläufige Differenzen über aufeinanderfolgende Monate zu ignorieren.
+Echte ISBJ-Bescheide tragen in der Spalte „Monat/ Typ“ zwei Angaben pro Zeile: den **Typ** — „A“ für *Abrechnung* (die reguläre Zeile) oder „K“ für *Korrektur* — und den **Monat**, für den die Zeile gilt.
+
+Diese beiden Angaben meinen nicht dasselbe wie der Monat des Bescheids. Ein Bescheid für den April sieht regelmäßig so aus:
+
+| Typ | Monat | Betrag |
+|---|---|---|
+| K | 01.25 | 1,02 € |
+| K | 02.25 | 1,02 € |
+| K | 03.25 | 1,02 € |
+| A | 04.25 | 946,50 € |
+
+Der Senat sagt damit: hier ist der April — und der Satz, den wir Ihnen im Januar, Februar und März gezahlt haben, war jeweils um 1,02 € zu niedrig. Rückwirkende Korrekturen entstehen, wenn das Kostenblatt nachträglich neu veröffentlicht wird, ein Integrationsstatus mit einem Datum in der Vergangenheit bewilligt wird oder eine NdH-Angabe nachträglich berichtigt wird.
+
+KitaManager wertet beide Angaben aus und ordnet jede Zeile dem Monat zu, für den sie gilt. Deshalb beantworten zwei Ansichten zwei verschiedene Fragen, und beide sind richtig:
+
+- **Finanzen / Saldo** rechnet nach **Eingangsmonat** — was in diesem Monat tatsächlich geflossen ist, Korrekturen eingeschlossen. Das ist die Frage nach der Liquidität.
+- **Abrechnungsvergleich** rechnet nach **Geltungsmonat** — war dieser Monat korrekt gefördert. Die drei Korrekturen oben zählen dort zu Januar, Februar und März, nicht zum April.
+
+{{< callout type="info" >}}
+Für Bescheide, die vor diesem Stand importiert wurden, ist der Geltungsmonat nicht gespeichert. Diese Zeilen zählen weiterhin zum Eingangsmonat — die Zahlen ändern sich rückwirkend nicht. Wer die Zuordnung auch für ältere Bescheide möchte, importiert die betreffenden Dateien erneut.
+{{< /callout >}}
+
+Betrifft eine Korrektur einen Monat, für den gar kein Bescheid importiert wurde, lässt sich für diesen Monat keine Differenz bilden — es gibt keinen berechneten Wert zum Vergleich. Der Betrag geht deshalb nicht verloren, sondern wird in der Kita-Jahres-Zeile als eigener Hinweis unter der Spalte „Korrektur“ ausgewiesen.
 
 Für die operative Triage-Matrix (welches Symptom auf welche Korrektur abbildet) siehe [Abweichung in einer Abrechnung untersuchen](../../how-to/use/investigate-a-bill-discrepancy/).

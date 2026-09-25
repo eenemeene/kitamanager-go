@@ -7589,3 +7589,80 @@ func TestChildrenBillingSummary_BillCount_TwoVouchersInOneBill(t *testing.T) {
 		t.Errorf("total_billed = %d, want 120000 (both vouchers' rows belong to this child)", entry.TotalBilled)
 	}
 }
+
+// TestProcessISBJ_PersistsBillingMonth walks the real anonymized fixture end
+// to end and asserts the ISBJ "Monat/ Typ" month reaches the database. It was
+// parsed and unit-tested long before this, then dropped in Convert, so every
+// correction counted as money for the month its bill arrived in.
+//
+// The fixture is a plain November bill: 40 regular rows, all about November.
+// That is the case where attribution and arrival agree, which is exactly why
+// it is worth pinning -- it proves the column is populated rather than left
+// NULL, without which the COALESCE fallback would hide the whole feature.
+func TestProcessISBJ_PersistsBillingMonth(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Billing Month Org")
+	user := createTestUser(t, db, "User", "billing_month@example.com", "password")
+	ctx := context.Background()
+
+	f, err := os.Open("../isbj/testdata/Abrechnung_11-25_0770_anonymized.xlsx")
+	if err != nil {
+		t.Fatalf("open test fixture: %v", err)
+	}
+	defer f.Close()
+
+	if _, err := svc.ProcessISBJ(ctx, org.ID, f, "test.xlsx", "billingmonthhash", user.ID); err != nil {
+		t.Fatalf("ProcessISBJ() error = %v", err)
+	}
+
+	var payments []models.GovernmentFundingBillPayment
+	if err := db.
+		Joins("JOIN government_funding_bill_children c ON c.id = government_funding_bill_payments.child_id").
+		Joins("JOIN government_funding_bill_periods p ON p.id = c.period_id").
+		Where("p.organization_id = ?", org.ID).
+		Find(&payments).Error; err != nil {
+		t.Fatalf("loading payments: %v", err)
+	}
+	if len(payments) == 0 {
+		t.Fatal("expected persisted payments")
+	}
+
+	want := time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC)
+	for _, p := range payments {
+		if p.BillingMonth == nil {
+			t.Fatalf("payment %d has NULL billing_month; the Monat column was dropped again", p.ID)
+		}
+		if got := p.BillingMonth.UTC(); !got.Equal(want) {
+			t.Fatalf("payment %d billing_month = %s, want %s",
+				p.ID, got.Format("2006-01-02"), want.Format("2006-01-02"))
+		}
+	}
+}
+
+// TestBillingMonthOr covers the fallback a caller gets for rows that predate
+// the column. Nil means unknown, and the bill's own month is the only thing
+// left to go on -- but the distinction stays in the column so a caller can
+// still tell the two apart.
+func TestBillingMonthOr(t *testing.T) {
+	billFrom := time.Date(2025, 4, 17, 9, 30, 0, 0, time.UTC)
+	wantFallback := time.Date(2025, 4, 1, 0, 0, 0, 0, time.UTC)
+
+	var nilMonth models.GovernmentFundingBillPayment
+	if got := nilMonth.BillingMonthOr(billFrom); !got.Equal(wantFallback) {
+		t.Errorf("nil billing month: got %s, want %s", got, wantFallback)
+	}
+
+	var zeroMonth models.GovernmentFundingBillPayment
+	zero := time.Time{}
+	zeroMonth.BillingMonth = &zero
+	if got := zeroMonth.BillingMonthOr(billFrom); !got.Equal(wantFallback) {
+		t.Errorf("zero billing month: got %s, want %s", got, wantFallback)
+	}
+
+	jan := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	set := models.GovernmentFundingBillPayment{BillingMonth: &jan}
+	if got := set.BillingMonthOr(billFrom); !got.Equal(jan) {
+		t.Errorf("set billing month: got %s, want %s", got, jan)
+	}
+}
