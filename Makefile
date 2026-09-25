@@ -315,6 +315,15 @@ web-test-e2e-demo: frontend/node_modules
 # Review the diff before committing: `git status --short` on the snapshots
 # directory should list only the pages you meant to change. If a page you did
 # not touch shows up, stop — something other than your change moved.
+# The postgres image runs initdb against a TEMPORARY server bound to the unix
+# socket only, then restarts with TCP. `docker exec pg_isready` talks to that
+# socket, so it reports ready during the window when a host connection to
+# BASELINE_DB_PORT is still reset by peer -- and the API, which connects over
+# TCP, dies on startup with "connection reset by peer" before it can seed.
+#
+# It looks like flake and is not: it fails whenever the readiness probe is
+# reached within a second of `docker run`, which on a fast machine is always.
+# So readiness is a real query over the same TCP port the API will use.
 BASELINE_DB_IMAGE := postgres:18-alpine
 BASELINE_DB_NAME := kitamanager-baseline-db
 BASELINE_DB_PORT := 55432
@@ -324,6 +333,7 @@ BASELINE_WEB_PORT := 3100
 web-visual-baselines: frontend/node_modules api-build
 	@command -v docker >/dev/null || { echo "docker is needed for the throwaway database"; exit 1; }
 	@command -v openssl >/dev/null || { echo "openssl needed for throwaway keys"; exit 1; }
+	@command -v psql >/dev/null || { echo "psql is needed to tell when the throwaway database is really accepting TCP connections"; exit 1; }
 	@for p in $(BASELINE_DB_PORT) $(BASELINE_API_PORT) $(BASELINE_WEB_PORT); do \
 	  if command -v ss >/dev/null 2>&1 && ss -ltn 2>/dev/null | grep -q ":$$p "; then \
 	    echo "port $$p is already in use, so this run would not be measuring what you think."; \
@@ -342,7 +352,8 @@ web-visual-baselines: frontend/node_modules api-build
 	  -p 127.0.0.1:$(BASELINE_DB_PORT):5432 $(BASELINE_DB_IMAGE) >/dev/null; \
 	printf '    waiting for postgres'; \
 	for i in $$(seq 1 60); do \
-	  if docker exec $(BASELINE_DB_NAME) pg_isready -U kitamanager -q 2>/dev/null; then echo " ready"; break; fi; \
+	  if PGPASSWORD=kitamanager psql -h 127.0.0.1 -p $(BASELINE_DB_PORT) -U kitamanager \
+	       -d kitamanager -At -c 'SELECT 1' >/dev/null 2>&1; then echo " ready"; break; fi; \
 	  if [ $$i -eq 60 ]; then echo " timed out"; exit 1; fi; \
 	  printf '.'; sleep 1; \
 	done; \
