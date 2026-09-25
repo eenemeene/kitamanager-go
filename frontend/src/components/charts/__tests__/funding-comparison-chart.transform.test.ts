@@ -3,7 +3,7 @@
 // d3 through. The transform uses no Nivo APIs, so the stub is invisible here.
 jest.mock('@nivo/bar', () => ({ ResponsiveBar: () => null }));
 
-import { buildKitaYearSummary } from '../funding-comparison-chart';
+import { attributedActuals, buildKitaYearSummary } from '../funding-comparison-chart';
 import type { FinancialResponse } from '@/lib/api/types';
 
 type DataPoint = FinancialResponse['data_points'][0];
@@ -278,5 +278,70 @@ describe('buildKitaYearSummary', () => {
     expect(august.regular).toBeNull();
     expect(august.correction).toBeNull();
     expect(august.difference).toBeNull();
+  });
+});
+
+describe('attributedActuals', () => {
+  // The backend sets both fields for every month it could compute them for,
+  // 0 included. A 0 is an answer -- "nothing is attributed to this month" --
+  // and must not be mistaken for an absent field, or a pure Korrektur bill
+  // has its corrections counted twice: once in the month they arrived (via
+  // the fallback) and once in the months they correct.
+  it('keeps an attributed 0 rather than falling back to the arrival figure', () => {
+    const korrekturBill = dp('2025-03-01', {
+      actual_funding: 102,
+      actual_funding_regular: 0,
+      actual_funding_correction: 102,
+      actual_funding_regular_attributed: 0,
+      actual_funding_correction_attributed: 0,
+    });
+    expect(attributedActuals(korrekturBill)).toEqual({ regular: 0, correction: 0 });
+  });
+
+  // The fallback is for a backend that cannot report the attributed figures
+  // at all -- an older build, or one whose query failed.
+  it('falls back to the arrival figures only when the attributed ones are absent', () => {
+    const legacy = dp('2025-03-01', {
+      actual_funding: 94752,
+      actual_funding_regular: 94650,
+      actual_funding_correction: 102,
+    });
+    expect(attributedActuals(legacy)).toEqual({ regular: 94650, correction: 102 });
+  });
+
+  it('reports null when neither keying is present', () => {
+    expect(attributedActuals(dp('2025-03-01', {}))).toEqual({ regular: null, correction: null });
+  });
+});
+
+describe('buildKitaYearSummary with a pure Korrektur bill', () => {
+  // A bill whose every row is about an earlier month. Its own month has a
+  // bill, so it is evaluable, but nothing is attributed to it; the correction
+  // belongs to the month it corrects and must be counted exactly once.
+  it('counts the correction once, in the month it is about', () => {
+    const rows = buildKitaYearSummary([
+      // January: no bill of its own, corrected by March's.
+      dp('2025-01-01', {
+        funding_income: 50000,
+        actual_funding_regular_attributed: 0,
+        actual_funding_correction_attributed: 102,
+      }),
+      // March: a bill made entirely of that correction.
+      dp('2025-03-01', {
+        funding_income: 50000,
+        actual_funding: 102,
+        actual_funding_regular: 0,
+        actual_funding_correction: 102,
+        actual_funding_regular_attributed: 0,
+        actual_funding_correction_attributed: 0,
+      }),
+    ]);
+    const row = rows[0]!;
+    // March is the only billed month, and nothing is attributed to it.
+    expect(row.correction).toBe(0);
+    // January's correction is an orphan: real money, no month to compare it
+    // against. Counted once, and only here.
+    expect(row.orphanCorrection).toBe(102);
+    expect(row.correction + row.orphanCorrection).toBe(102);
   });
 });

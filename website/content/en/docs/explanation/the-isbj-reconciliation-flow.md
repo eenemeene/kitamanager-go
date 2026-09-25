@@ -95,4 +95,11 @@ corrections are counted by **applicable month**: a correction paid in August
 for July counts towards July's Kita year, even though the bill itself already
 belongs to the next one.
 
+Corrections for months with no bill of their own are the exception, and they
+are listed separately as *of which without a bill*. They stay out of the Kita
+year difference for the same reason the Kita year row keeps them out of its
+Correction column: those months contribute nothing to the calculated side, so
+counting their corrections against it would show a deficit the size of a month
+that nobody owes.
+
 For the operational triage matrix (which symptom maps to which fix), see [Investigate a bill discrepancy](../../how-to/use/investigate-a-bill-discrepancy/).

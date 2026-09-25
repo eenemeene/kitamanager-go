@@ -3626,6 +3626,14 @@ export interface components {
        *     arrived in it. Rows imported before migration 000028 have no
        *     recorded month and fall back to their bill's month, so for
        *     historical data the attributed figures equal the arrival ones.
+       *
+       *     Both are set for every month of the response whenever they could
+       *     be computed at all, 0 included -- a month with nothing attributed
+       *     to it reports 0, not nil. Nil means only that this server could
+       *     not compute them, which is the one case where falling back to the
+       *     arrival-keyed fields above is right. Reading nil as "nothing here,
+       *     use arrival" double-counts every correction whose bill month has
+       *     no attributed rows of its own.
        * @example 5000000
        */
       actual_funding_regular_attributed?: number;
@@ -3961,12 +3969,13 @@ export interface components {
       total_corrections: number;
       /**
        * @description TotalCorrectionsAttributed sums the corrections that APPLY to
-       *     this window's months, wherever their bill arrived. It is the
-       *     figure that reconciles with the Kita year row above the
-       *     category bars, because that row is built from the attributed
-       *     keying too: a correction paid out in August against July
-       *     belongs to July's Kita year, and TotalCorrections would miss it
-       *     whenever the two years differ.
+       *     this window's months, wherever their bill arrived -- counting
+       *     only months that have a bill of their own. It is the figure
+       *     that reconciles with the Kita year row above the category
+       *     bars, because that row is built the same way: a correction
+       *     paid out in August against July belongs to July's Kita year,
+       *     and TotalCorrections would miss it whenever the two years
+       *     differ.
        *
        *     Nil when the caller asked about a single bill rather than a
        *     date range, where there is no window to attribute against and
@@ -3974,6 +3983,19 @@ export interface components {
        * @example 37114
        */
       total_corrections_attributed?: number;
+      /**
+       * @description TotalCorrectionsOrphan sums the rest: corrections attributed to
+       *     months of this window that have NO bill of their own, which the
+       *     year row also holds aside. Those months contribute nothing to
+       *     the calculated side, so adding their corrections to the
+       *     reconciled total would read as a deficit the size of a month.
+       *     Reported rather than dropped -- it is money the Senate paid.
+       *
+       *     Nil under the same condition as TotalCorrectionsAttributed, and
+       *     the two are always set together.
+       * @example 0
+       */
+      total_corrections_orphan?: number;
       /** @example -70840 */
       total_difference: number;
     };

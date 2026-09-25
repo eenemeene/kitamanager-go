@@ -2478,7 +2478,7 @@
                         "type": "integer"
                     },
                     "actual_funding_regular_attributed": {
-                        "description": "The same amounts keyed by the month each bill row is ABOUT (the\nISBJ \"Monat/ Typ\" column) rather than the month it arrived in.\nThis is the attribution view, and it is the one that answers\n\"was this month funded correctly?\": a bill routinely carries one\nregular row for its own month plus corrections for earlier ones,\nand comparing our calculation for March against money that\nhappens to have arrived in March is comparing two different\nthings.\n\nThese are populated independently of ActualFunding: a month can\ncarry an attributed correction without a bill of its own having\narrived in it. Rows imported before migration 000028 have no\nrecorded month and fall back to their bill's month, so for\nhistorical data the attributed figures equal the arrival ones.",
+                        "description": "The same amounts keyed by the month each bill row is ABOUT (the\nISBJ \"Monat/ Typ\" column) rather than the month it arrived in.\nThis is the attribution view, and it is the one that answers\n\"was this month funded correctly?\": a bill routinely carries one\nregular row for its own month plus corrections for earlier ones,\nand comparing our calculation for March against money that\nhappens to have arrived in March is comparing two different\nthings.\n\nThese are populated independently of ActualFunding: a month can\ncarry an attributed correction without a bill of its own having\narrived in it. Rows imported before migration 000028 have no\nrecorded month and fall back to their bill's month, so for\nhistorical data the attributed figures equal the arrival ones.\n\nBoth are set for every month of the response whenever they could\nbe computed at all, 0 included -- a month with nothing attributed\nto it reports 0, not nil. Nil means only that this server could\nnot compute them, which is the one case where falling back to the\narrival-keyed fields above is right. Reading nil as \"nothing here,\nuse arrival\" double-counts every correction whose bill month has\nno attributed rows of its own.",
                         "example": 5000000,
                         "type": "integer"
                     },
@@ -3225,8 +3225,13 @@
                         "type": "integer"
                     },
                     "total_corrections_attributed": {
-                        "description": "TotalCorrectionsAttributed sums the corrections that APPLY to\nthis window's months, wherever their bill arrived. It is the\nfigure that reconciles with the Kita year row above the\ncategory bars, because that row is built from the attributed\nkeying too: a correction paid out in August against July\nbelongs to July's Kita year, and TotalCorrections would miss it\nwhenever the two years differ.\n\nNil when the caller asked about a single bill rather than a\ndate range, where there is no window to attribute against and\nTotalCorrections is the only answer.",
+                        "description": "TotalCorrectionsAttributed sums the corrections that APPLY to\nthis window's months, wherever their bill arrived -- counting\nonly months that have a bill of their own. It is the figure\nthat reconciles with the Kita year row above the category\nbars, because that row is built the same way: a correction\npaid out in August against July belongs to July's Kita year,\nand TotalCorrections would miss it whenever the two years\ndiffer.\n\nNil when the caller asked about a single bill rather than a\ndate range, where there is no window to attribute against and\nTotalCorrections is the only answer.",
                         "example": 37114,
+                        "type": "integer"
+                    },
+                    "total_corrections_orphan": {
+                        "description": "TotalCorrectionsOrphan sums the rest: corrections attributed to\nmonths of this window that have NO bill of their own, which the\nyear row also holds aside. Those months contribute nothing to\nthe calculated side, so adding their corrections to the\nreconciled total would read as a deficit the size of a month.\nReported rather than dropped -- it is money the Senate paid.\n\nNil under the same condition as TotalCorrectionsAttributed, and\nthe two are always set together.",
+                        "example": 0,
                         "type": "integer"
                     },
                     "total_difference": {

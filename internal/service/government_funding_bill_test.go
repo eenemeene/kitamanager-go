@@ -7640,42 +7640,15 @@ func TestProcessISBJ_PersistsBillingMonth(t *testing.T) {
 	}
 }
 
-// TestBillingMonthOr covers the fallback a caller gets for rows that predate
-// the column. Nil means unknown, and the bill's own month is the only thing
-// left to go on -- but the distinction stays in the column so a caller can
-// still tell the two apart.
-func TestBillingMonthOr(t *testing.T) {
-	billFrom := time.Date(2025, 4, 17, 9, 30, 0, 0, time.UTC)
-	wantFallback := time.Date(2025, 4, 1, 0, 0, 0, 0, time.UTC)
-
-	var nilMonth models.GovernmentFundingBillPayment
-	if got := nilMonth.BillingMonthOr(billFrom); !got.Equal(wantFallback) {
-		t.Errorf("nil billing month: got %s, want %s", got, wantFallback)
-	}
-
-	var zeroMonth models.GovernmentFundingBillPayment
-	zero := time.Time{}
-	zeroMonth.BillingMonth = &zero
-	if got := zeroMonth.BillingMonthOr(billFrom); !got.Equal(wantFallback) {
-		t.Errorf("zero billing month: got %s, want %s", got, wantFallback)
-	}
-
-	jan := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
-	set := models.GovernmentFundingBillPayment{BillingMonth: &jan}
-	if got := set.BillingMonthOr(billFrom); !got.Equal(jan) {
-		t.Errorf("set billing month: got %s, want %s", got, jan)
-	}
-}
-
-// TestAttributedCorrectionTotal covers the figure the deficit analysis needs
-// to reconcile with the Kita year row above it: corrections that APPLY to the
+// TestAttributedCorrections covers the figure the deficit analysis needs to
+// reconcile with the Kita year row above it: corrections that APPLY to the
 // window, wherever the bill carrying them arrived.
 //
 // BuildComparisonSummary can only see the bills inside the window, so its
 // TotalCorrections misses a correction for one of these months that arrived in
 // a later bill -- which is the normal case, a correction being retroactive by
 // definition.
-func TestAttributedCorrectionTotal(t *testing.T) {
+func TestAttributedCorrections(t *testing.T) {
 	db := setupTestDB(t)
 	svc := setupBillCompareService(t, db)
 	org := createTestOrganization(t, db, "Attr Corr Org")
@@ -7719,23 +7692,94 @@ func TestAttributedCorrectionTotal(t *testing.T) {
 	from := time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2026, 7, 31, 0, 0, 0, 0, time.UTC)
 
-	got, err := svc.AttributedCorrectionTotal(ctx, org.ID, from, to)
+	got, err := svc.AttributedCorrections(ctx, org.ID, from, to)
 	if err != nil {
-		t.Fatalf("AttributedCorrectionTotal() error = %v", err)
+		t.Fatalf("AttributedCorrections() error = %v", err)
 	}
-	if got != -1500 {
-		t.Errorf("attributed corrections for 25/26 = %d, want -1500 (the August bill corrects July)", got)
+	// July has no bill of its own, so the correction is an orphan: real money,
+	// but no calculated figure for that month to set it against.
+	if got.Billed != 0 {
+		t.Errorf("billed corrections for 25/26 = %d, want 0 (July has no bill)", got.Billed)
+	}
+	if got.Orphan != -1500 {
+		t.Errorf("orphan corrections for 25/26 = %d, want -1500 (the August bill corrects July)", got.Orphan)
 	}
 
 	// The next Kita year contains the bill but not the month it corrects.
 	nextFrom := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
 	nextTo := time.Date(2027, 7, 31, 0, 0, 0, 0, time.UTC)
-	gotNext, err := svc.AttributedCorrectionTotal(ctx, org.ID, nextFrom, nextTo)
+	gotNext, err := svc.AttributedCorrections(ctx, org.ID, nextFrom, nextTo)
 	if err != nil {
-		t.Fatalf("AttributedCorrectionTotal() error = %v", err)
+		t.Fatalf("AttributedCorrections() error = %v", err)
 	}
-	if gotNext != 0 {
-		t.Errorf("attributed corrections for 26/27 = %d, want 0 (its only correction is about July)", gotNext)
+	if gotNext.Billed != 0 || gotNext.Orphan != 0 {
+		t.Errorf("attributed corrections for 26/27 = %+v, want both 0 (its only correction is about July)", gotNext)
+	}
+}
+
+// TestAttributedCorrections_BilledMonthIsNotAnOrphan is the other half of the
+// split: the same July correction, but now July has a bill of its own, so the
+// month is evaluable and the correction reconciles against it.
+//
+// The split has to be made on "did a bill arrive for this month", because that
+// is the same fact the Kita year row uses to decide a month counts towards its
+// difference. Splitting on anything else -- whether the month has attributed
+// regular money, say -- puts a late-registration month on the wrong side.
+func TestAttributedCorrections_BilledMonthIsNotAnOrphan(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Attr Corr Billed Org")
+	user := createTestUser(t, db, "User", "attr_corr_billed@example.com", "password")
+	ctx := context.Background()
+
+	jul := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	julEnd := time.Date(2026, 7, 31, 0, 0, 0, 0, time.UTC)
+	aug := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	augEnd := time.Date(2026, 8, 31, 0, 0, 0, 0, time.UTC)
+
+	billFor := func(from, to time.Time, hash string, payments []models.GovernmentFundingBillPayment) *models.GovernmentFundingBillPeriod {
+		return &models.GovernmentFundingBillPeriod{
+			OrganizationID: org.ID,
+			Period:         models.Period{From: from, To: &to},
+			FileName:       hash + ".xlsx",
+			FileSha256:     hash,
+			FacilityName:   "Kita Sonnenschein",
+			FacilityTotal:  94650,
+			CreatedBy:      &user.ID,
+			Children: []models.GovernmentFundingBillChild{{
+				VoucherNumber: "GB-12345678901-02",
+				ChildName:     "Musterkind, Max",
+				BirthDate:     "01.20",
+				District:      1,
+				Payments:      payments,
+			}},
+		}
+	}
+
+	julBill := billFor(jul, julEnd, "attr-corr-billed-jul", []models.GovernmentFundingBillPayment{
+		{Key: "care_type", Value: "ganztag", Amount: 94650, RowType: models.RowTypeRegular, BillingMonth: &jul},
+	})
+	augBill := billFor(aug, augEnd, "attr-corr-billed-aug", []models.GovernmentFundingBillPayment{
+		{Key: "care_type", Value: "ganztag", Amount: 94650, RowType: models.RowTypeRegular, BillingMonth: &aug},
+		{Key: "care_type", Value: "ganztag", Amount: -1500, RowType: models.RowTypeCorrection, BillingMonth: &jul},
+	})
+	for _, b := range []*models.GovernmentFundingBillPeriod{julBill, augBill} {
+		if err := db.Create(b).Error; err != nil {
+			t.Fatalf("create bill %s: %v", b.FileSha256, err)
+		}
+	}
+
+	from := time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 7, 31, 0, 0, 0, 0, time.UTC)
+	got, err := svc.AttributedCorrections(ctx, org.ID, from, to)
+	if err != nil {
+		t.Fatalf("AttributedCorrections() error = %v", err)
+	}
+	if got.Billed != -1500 {
+		t.Errorf("billed corrections = %d, want -1500 (July has a bill of its own)", got.Billed)
+	}
+	if got.Orphan != 0 {
+		t.Errorf("orphan corrections = %d, want 0", got.Orphan)
 	}
 }
 
