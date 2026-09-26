@@ -24,6 +24,7 @@ import { queryKeys } from '@/lib/api/queryKeys';
 import { LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
 import type { Section } from '@/lib/api/types';
 import { useForecastStore } from '@/stores/forecast-store';
+import { todayBerlinDate } from '@/lib/utils/contracts';
 
 export function ForecastChildrenTab() {
   const params = useParams();
@@ -58,7 +59,7 @@ export function ForecastChildrenTab() {
   const handleAdd = () => {
     if (!canAdd || !sectionId) return;
     // Convert age to a birthdate (approximate: today minus age years)
-    const now = new Date();
+    const now = todayBerlinDate();
     const birthYear = now.getFullYear() - Number(age);
     const birthdate = `${birthYear}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 
@@ -183,7 +184,7 @@ export function ForecastChildrenTab() {
                 {store.addChildren.map((child, i) => {
                   const contract = child.contracts[0];
                   const birthYear = new Date(child.birthdate).getFullYear();
-                  const childAge = new Date().getFullYear() - birthYear;
+                  const childAge = todayBerlinDate().getFullYear() - birthYear;
                   const sectionName =
                     sections?.data.find((s) => s.id === contract?.section_id)?.name ?? '';
                   const props = contract?.properties

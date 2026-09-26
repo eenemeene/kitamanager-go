@@ -21,6 +21,7 @@ import { queryKeys } from '@/lib/api/queryKeys';
 import { LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
 import type { Section } from '@/lib/api/types';
 import { useForecastStore } from '@/stores/forecast-store';
+import { todayBerlinDate } from '@/lib/utils/contracts';
 
 export function ForecastEmployeesTab() {
   const params = useParams();
@@ -65,7 +66,7 @@ export function ForecastEmployeesTab() {
   const handleAdd = () => {
     if (!canAdd || !sectionId || !payPlanId || !step) return;
     // Auto-generate a birthdate (30 years ago) — not relevant for forecast calculations
-    const birthYear = new Date().getFullYear() - 30;
+    const birthYear = todayBerlinDate().getFullYear() - 30;
     const birthdate = `${birthYear}-01-01`;
 
     for (let i = 0; i < count; i++) {

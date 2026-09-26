@@ -40,6 +40,7 @@ import { getCurrentMonthRange } from '@/lib/utils/formatting';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUiStore } from '@/stores/ui-store';
 import { useFormatters } from '@/hooks/use-formatters';
+import { todayBerlinDate } from '@/lib/utils/contracts';
 
 export default function OrgDashboardPage() {
   const params = useParams();
@@ -82,7 +83,7 @@ export default function OrgDashboardPage() {
 
   const previousMonthMissing = useMemo(() => {
     if (!billsData?.data) return null;
-    const now = new Date();
+    const now = todayBerlinDate();
     const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     // Use local date components — toISOString() converts to UTC which shifts the month in non-UTC timezones
     const prevMonthStr = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;

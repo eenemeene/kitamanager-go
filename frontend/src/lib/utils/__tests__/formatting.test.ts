@@ -123,6 +123,26 @@ describe('calculateAge', () => {
   it('returns 0 for an empty string', () => {
     expect(calculateAge('')).toBe(0);
   });
+
+  // The same rule the contract helpers follow: a calendar-date question is
+  // answered in Europe/Berlin, not in whatever zone the browser sits in. A
+  // birthday that turns over on the browser's midnight shows one age in the
+  // roster and a different one in anything the server computed.
+  it("turns over on Berlin's day, not the browser's", () => {
+    jest.useFakeTimers();
+    try {
+      // 22:30 UTC on 14 June is already 00:30 on 15 June in Berlin.
+      jest.setSystemTime(new Date('2026-06-14T22:30:00Z'));
+      expect(calculateAge('2020-06-15')).toBe(6);
+
+      // An hour earlier it is still 14 June in both, and the birthday has not
+      // arrived.
+      jest.setSystemTime(new Date('2026-06-14T12:00:00Z'));
+      expect(calculateAge('2020-06-15')).toBe(5);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -18,6 +18,7 @@
 
 import { format, parseISO, differenceInYears, type Locale as DateFnsLocale } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
+import { todayBerlinDate } from './contracts';
 import type { Locale } from '@/i18n/config';
 import { todayBerlinString } from './contracts';
 
@@ -119,7 +120,9 @@ export function calculateAge(birthdate: string): number {
     if (isNaN(birth.getTime())) {
       return 0;
     }
-    const age = differenceInYears(new Date(), birth);
+    // Berlin's today, not the browser's: this is a calendar-date question
+    // and a birthday has to turn over on the application's day.
+    const age = differenceInYears(todayBerlinDate(), birth);
     return isNaN(age) ? 0 : age;
   } catch {
     return 0;
