@@ -21,18 +21,24 @@ jest.mock('@/lib/api/client', () => ({
 jest.mock('@dnd-kit/core', () => ({
   DndContext: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DragOverlay: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  PointerSensor: jest.fn(),
+  MouseSensor: jest.fn(),
+  TouchSensor: jest.fn(),
+  KeyboardSensor: jest.fn(),
   useSensor: jest.fn(() => ({})),
   useSensors: jest.fn(() => []),
   useDroppable: () => ({
     setNodeRef: jest.fn(),
     isOver: false,
   }),
-  useDraggable: () => ({
-    attributes: {},
-    listeners: {},
+  useDraggable: ({ disabled }: { disabled?: boolean } = {}) => ({
+    // Mirrors what dnd-kit does: a disabled draggable still gets these back,
+    // which is why the cards withhold them rather than relying on `disabled`
+    // alone to stop announcing themselves as movable.
+    attributes: { role: 'button', tabIndex: 0, 'aria-roledescription': 'draggable' },
+    listeners: { onPointerDown: jest.fn() },
     setNodeRef: jest.fn(),
     isDragging: false,
+    disabled: !!disabled,
   }),
 }));
 
@@ -322,5 +328,155 @@ describe('SectionKanbanBoard', () => {
     render(<SectionKanbanBoard orgId={1} />, { wrapper: TestWrapper });
 
     expect(await screen.findByText('sections.dragHint')).toBeInTheDocument();
+  });
+  // -------------------------------------------------------------------------
+  // Snapshot date
+  // -------------------------------------------------------------------------
+  //
+  // The board fetches for its as-of date, but it used to bucket the cards it
+  // got back by whichever contract was active *today*. So the one thing the
+  // date picker exists for did not work: a child who had since changed rooms
+  // appeared under the room they are in now, and one who had since left had no
+  // contract active today at all and was dropped from the board without a
+  // trace. The fetch was covered; the bucketing was not.
+  describe('as-of date', () => {
+    const sectionsFixture = {
+      data: [
+        {
+          id: 1,
+          organization_id: 1,
+          name: 'Krippe',
+          is_default: false,
+          min_age_months: 0,
+          max_age_months: 36,
+          created_at: '2024-01-01T00:00:00Z',
+          created_by: 'admin',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+        {
+          id: 2,
+          organization_id: 1,
+          name: 'Mäuse',
+          is_default: false,
+          min_age_months: 36,
+          max_age_months: 72,
+          created_at: '2024-01-01T00:00:00Z',
+          created_by: 'admin',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+      ],
+      total: 2,
+      page: 1,
+      limit: 100,
+      total_pages: 1,
+    };
+
+    // Moved from Krippe to Mäuse on 2025-08-01, and left on 2026-07-31.
+    const movedAndLeft = [
+      {
+        id: 1,
+        organization_id: 1,
+        first_name: 'Emma',
+        last_name: 'Schmidt',
+        gender: 'female' as const,
+        birthdate: '2022-06-15',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        vouchers: [],
+        contracts: [
+          {
+            id: 1,
+            child_id: 1,
+            version: 1,
+            from: '2024-08-01T00:00:00Z',
+            to: '2025-07-31T00:00:00Z',
+            section_id: 1,
+            section_name: 'Krippe',
+            properties: {},
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+          },
+          {
+            id: 2,
+            child_id: 1,
+            version: 1,
+            from: '2025-08-01T00:00:00Z',
+            to: '2026-07-31T00:00:00Z',
+            section_id: 2,
+            section_name: 'Mäuse',
+            properties: {},
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+          },
+        ],
+      },
+    ];
+
+    /** Which column heading precedes a card in document order. */
+    function columnOf(name: string): string | null {
+      const card = screen.getByText(name);
+      const column = card.closest('div.w-72');
+      return column?.querySelector('h3')?.textContent ?? null;
+    }
+
+    beforeEach(() => {
+      mockApiClient.getSections.mockResolvedValue(sectionsFixture);
+      mockApiClient.getChildrenAllForDate.mockResolvedValue(movedAndLeft);
+      mockApiClient.getEmployeesAllForDate.mockResolvedValue([]);
+    });
+
+    /** Render the board and move its date picker to `date`. */
+    async function boardAsOf(date: string) {
+      const { fireEvent } = await import('@testing-library/react');
+      render(<SectionKanbanBoard orgId={1} />, { wrapper: TestWrapper });
+      // Not on the board at all to begin with: both Emma's contracts have
+      // ended, so nothing covers today. That is the point -- the card exists
+      // only on a date she was enrolled for.
+      await screen.findByText('sections.dragHint');
+      expect(screen.queryByText('Emma Schmidt')).not.toBeInTheDocument();
+
+      const dateInput = screen.getByLabelText('sections.asOfDate') as HTMLInputElement;
+      fireEvent.change(dateInput, { target: { value: date } });
+      await screen.findByDisplayValue(date);
+    }
+
+    it('buckets a card by the contract in force on the chosen date', async () => {
+      await boardAsOf('2025-01-15');
+      expect(columnOf('Emma Schmidt')).toBe('Krippe');
+    });
+
+    it('follows the same child to the room a later contract moved them to', async () => {
+      await boardAsOf('2026-01-15');
+      expect(columnOf('Emma Schmidt')).toBe('Mäuse');
+    });
+
+    it('keeps a child who has since left on the board, in the room they were in', async () => {
+      await boardAsOf('2025-01-15');
+      // No contract covers today, so resolving against today answered null and
+      // the card was silently dropped off the board.
+      expect(screen.getByText('Emma Schmidt')).toBeInTheDocument();
+      expect(columnOf('Emma Schmidt')).toBe('Krippe');
+    });
+
+    it('is a read-only snapshot away from today', async () => {
+      await boardAsOf('2025-01-15');
+
+      // The hint swaps, and the cards stop offering themselves as draggable:
+      // the only write the board can make is "amend from today", which does not
+      // describe a card being looked at on another date.
+      expect(screen.getByText('sections.snapshotHint')).toBeInTheDocument();
+      expect(screen.queryByText('sections.dragHint')).not.toBeInTheDocument();
+      expect(screen.getByText('Emma Schmidt').closest('[role="button"]')).toBeNull();
+    });
+
+    it('offers the cards again once the date is back to today', async () => {
+      const { fireEvent } = await import('@testing-library/react');
+      await boardAsOf('2025-01-15');
+      expect(screen.getByText('sections.snapshotHint')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('sections.backToToday'));
+
+      expect(await screen.findByText('sections.dragHint')).toBeInTheDocument();
+    });
   });
 });

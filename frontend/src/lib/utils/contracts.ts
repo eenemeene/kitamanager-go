@@ -84,21 +84,53 @@ export function addDaysToDateString(dateStr: string, days: number): string {
 }
 
 /**
- * Check if a period (from/to) is active today.
+ * Resolve an `asOf` argument to the UTC-midnight timestamp to compare against.
+ *
+ * Omitted means today in Europe/Berlin, which is what every caller without a
+ * date control wants. A caller *with* one passes the date it is displaying, so
+ * that "which contract applies" is answered for the row the user is looking at
+ * rather than for the day they happen to be looking on.
+ *
+ * An unparseable value falls back to today rather than propagating NaN. Every
+ * comparison against NaN is false, so the alternative is a screen that silently
+ * shows nothing active — a blank kanban board, a roster with no sections — with
+ * no error to explain it. A date input cleared to "" is enough to reach here.
  */
-export function isActivePeriod(period: { from: string; to?: string | null }): boolean {
-  const today = todayBerlin();
-  return toUTCDate(period.from) <= today && (!period.to || toUTCDate(period.to) >= today);
+function asOfTimestamp(asOf?: string | null): number {
+  if (!asOf) return todayBerlin();
+  const parsed = toUTCDate(asOf);
+  return Number.isNaN(parsed) ? todayBerlin() : parsed;
 }
 
 /**
- * Get the currently active contract (from <= today, no end date or end date >= today)
+ * Is a period (from/to) active on `asOf` — by default, today in Europe/Berlin?
+ *
+ * Both ends are inclusive days; a missing `to` means the period never ends.
+ */
+export function isActivePeriod(
+  period: { from: string; to?: string | null },
+  asOf?: string | null
+): boolean {
+  const on = asOfTimestamp(asOf);
+  return toUTCDate(period.from) <= on && (!period.to || toUTCDate(period.to) >= on);
+}
+
+/**
+ * The contract active on `asOf` — by default, today in Europe/Berlin.
+ *
+ * Pass `asOf` from any view with a date control. The list endpoints filter the
+ * *rows* by `active_on` but hand back each entity's full contract history
+ * (`Preload("Contracts")` with no filter), so resolving against today would
+ * describe a historical row with the contract that applies now: the section the
+ * child has since moved to, the salary the employee is on today. Where a date is
+ * in play it has to reach here too, or the page contradicts its own filter.
  */
 export function getActiveContract<T extends { from: string; to?: string | null }>(
-  contracts?: T[]
+  contracts?: T[],
+  asOf?: string | null
 ): T | null {
   if (!contracts || contracts.length === 0) return null;
-  return contracts.find((c) => isActivePeriod(c)) || null;
+  return contracts.find((c) => isActivePeriod(c, asOf)) || null;
 }
 
 /**
@@ -136,17 +168,32 @@ export function classifySchoolOverrun(
 }
 
 /**
- * Get the current or most recent contract.
- * Falls back to the contract with the latest start date.
+ * The contract in force on `asOf`, or the nearest thing to it.
+ *
+ * Like `getActiveContract`, but never answers null for an entity that has any
+ * contracts at all — the list tables need *something* to render in the section
+ * and grade columns. `asOf` defaults to today in Europe/Berlin.
+ *
+ * The fallback is the latest contract that had already started by `asOf`, so a
+ * gap between two contracts is described by the one that just ended rather than
+ * by one that has not begun. Only when every contract starts after `asOf` does
+ * it answer with the earliest, which is then the next one due.
+ *
+ * On the list pages the fallback is unreachable by construction: the server
+ * filtered those rows by `active_on`, so a contract covering `asOf` exists. It
+ * earns its keep for callers holding an entity fetched some other way.
  */
 export function getCurrentContract<T extends { from: string; to?: string | null }>(
-  contracts?: T[]
+  contracts?: T[],
+  asOf?: string | null
 ): T | null {
   if (!contracts || contracts.length === 0) return null;
-  return (
-    contracts.find((c) => isActivePeriod(c)) ||
-    [...contracts].sort((a, b) => toUTCDate(b.from) - toUTCDate(a.from))[0]
-  );
+  const active = contracts.find((c) => isActivePeriod(c, asOf));
+  if (active) return active;
+
+  const on = asOfTimestamp(asOf);
+  const byStartDesc = [...contracts].sort((a, b) => toUTCDate(b.from) - toUTCDate(a.from));
+  return byStartDesc.find((c) => toUTCDate(c.from) <= on) ?? byStartDesc[byStartDesc.length - 1];
 }
 
 /**
