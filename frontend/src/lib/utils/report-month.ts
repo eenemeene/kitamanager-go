@@ -1,5 +1,6 @@
 import type { Locale } from '@/i18n/config';
 import { intlLocale } from './formatting';
+import { todayBerlinDate } from './contracts';
 
 /**
  * Helpers for the print/report pages: parse a `?month=YYYY-MM` query
@@ -120,7 +121,7 @@ export function parseReportMonth(input: string | null | undefined): ReportMonth 
 }
 
 function currentYearMonth(): { year: number; month: number } {
-  const now = new Date();
+  const now = todayBerlinDate();
   return { year: now.getFullYear(), month: now.getMonth() + 1 };
 }
 

@@ -9,6 +9,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { BaseContract } from './timeline-utils';
 import { useFormatters } from '@/hooks/use-formatters';
+import { todayBerlinDate } from '@/lib/utils/contracts';
 
 interface BoundaryHandleProps {
   upperContract: BaseContract;
@@ -41,7 +42,9 @@ export function BoundaryHandle({
   const endDate = lowerContract.to || '';
   const startDate = upperContract.from;
 
-  const currentBoundary = endDate ? parseISO(endDate) : new Date();
+  // An open-ended lower contract has no boundary yet, so the calendar opens
+  // on today -- the application's day, not the browser's.
+  const currentBoundary = endDate ? parseISO(endDate) : todayBerlinDate();
 
   const handleSelect = (date: Date | undefined) => {
     if (!date) return;

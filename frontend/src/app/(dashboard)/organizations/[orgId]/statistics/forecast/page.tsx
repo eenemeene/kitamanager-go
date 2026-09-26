@@ -18,6 +18,7 @@ import { ForecastOptimizeTab } from '@/components/forecast/forecast-optimize-tab
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { useForecastStore, ForecastBuildError } from '@/stores/forecast-store';
+import { todayBerlinDate } from '@/lib/utils/contracts';
 
 export default function ForecastPage() {
   const params = useParams();
@@ -25,8 +26,10 @@ export default function ForecastPage() {
   const t = useTranslations();
   const store = useForecastStore();
 
-  // Kita year runs Aug 1 – Jul 31. Default to the next Kita year.
-  const now = new Date();
+  // Kita year runs Aug 1 – Jul 31. Default to the next Kita year as it falls
+  // in Europe/Berlin: on 31 July a browser behind Berlin is still on the old
+  // year when the application has already moved on.
+  const now = todayBerlinDate();
   const nextKitaYear = now.getMonth() >= 7 ? now.getFullYear() + 1 : now.getFullYear();
   const [year, setYear] = useState(nextKitaYear);
   const from = `${year}-08-01`;
