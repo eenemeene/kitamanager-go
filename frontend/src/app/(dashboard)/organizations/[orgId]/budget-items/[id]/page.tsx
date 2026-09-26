@@ -249,25 +249,27 @@ export default function BudgetItemDetailPage() {
                     <TableCell>{fmt.currency(entry.amount_cents)}</TableCell>
                     <TableCell>{entry.notes || '-'}</TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleEditEntry(entry)}
-                        aria-label={t('common.edit')}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => {
-                          setDeletingEntry(entry);
-                          setIsDeleteEntryDialogOpen(true);
-                        }}
-                        aria-label={t('common.delete')}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex flex-nowrap items-center justify-end gap-0.5">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleEditEntry(entry)}
+                          aria-label={t('common.edit')}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            setDeletingEntry(entry);
+                            setIsDeleteEntryDialogOpen(true);
+                          }}
+                          aria-label={t('common.delete')}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

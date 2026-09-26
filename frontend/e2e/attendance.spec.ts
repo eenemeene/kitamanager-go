@@ -71,12 +71,12 @@ test.describe('Attendance', () => {
 
     // Click the first check-in button in the row
     await row
-      .getByRole('button', { name: /check-in/i })
+      .getByRole('button', { name: /^check-in$/i })
       .first()
       .click();
 
     // After check-in, a check-out button should appear
-    await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
+    await expect(row.getByRole('button', { name: /^check-out$/i }).first()).toBeVisible({
       timeout: 10000,
     });
   });
@@ -87,21 +87,21 @@ test.describe('Attendance', () => {
     const row = page.getByRole('row').filter({ hasText: childFirstName });
 
     // Check in if not already
-    const checkInButton = row.getByRole('button', { name: /check-in/i }).first();
+    const checkInButton = row.getByRole('button', { name: /^check-in$/i }).first();
     if (await checkInButton.isVisible().catch(() => false)) {
       await checkInButton.click();
-      await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
+      await expect(row.getByRole('button', { name: /^check-out$/i }).first()).toBeVisible({
         timeout: 10000,
       });
     }
 
     // Click check-out
-    const checkOutButton = row.getByRole('button', { name: /check-out/i }).first();
+    const checkOutButton = row.getByRole('button', { name: /^check-out$/i }).first();
     await checkOutButton.click();
 
     // After check-out, should show a time range (check-in and check-out times displayed)
     await expect(
-      row.locator('button[aria-label="Check-out"]').filter({ hasText: /\d{2}:\d{2}/ })
+      row.locator('button[aria-label="Edit check-out time"]').filter({ hasText: /\d{2}:\d{2}/ })
     ).toBeVisible({ timeout: 10000 });
   });
 
@@ -167,12 +167,12 @@ test.describe('Attendance Status Transitions', () => {
 
     // Click check-in
     await row
-      .getByRole('button', { name: /check-in/i })
+      .getByRole('button', { name: /^check-in$/i })
       .first()
       .click();
 
     // Should show a check-out button and a time (HH:MM)
-    await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
+    await expect(row.getByRole('button', { name: /^check-out$/i }).first()).toBeVisible({
       timeout: 10000,
     });
     await expect(row.locator('text=/\\d{2}:\\d{2}/')).toBeVisible();
@@ -199,10 +199,10 @@ test.describe('Attendance Status Transitions', () => {
 
     // Check-in first
     await row
-      .getByRole('button', { name: /check-in/i })
+      .getByRole('button', { name: /^check-in$/i })
       .first()
       .click();
-    await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
+    await expect(row.getByRole('button', { name: /^check-out$/i }).first()).toBeVisible({
       timeout: 10000,
     });
 
@@ -240,7 +240,7 @@ test.describe('Attendance Status Transitions', () => {
     await page.getByRole('button', { name: /^Present$/i }).click();
 
     // Should show check-out button (meaning check-in time was auto-set)
-    await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
+    await expect(row.getByRole('button', { name: /^check-out$/i }).first()).toBeVisible({
       timeout: 10000,
     });
     // Should NOT show "Present" as italic text (should show time instead)
@@ -255,11 +255,11 @@ test.describe('Attendance Status Transitions', () => {
       (r) => r.url().includes('/attendance') && r.request().method() === 'POST'
     );
     await row
-      .getByRole('button', { name: /check-in/i })
+      .getByRole('button', { name: /^check-in$/i })
       .first()
       .click();
     await checkInResp;
-    await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
+    await expect(row.getByRole('button', { name: /^check-out$/i }).first()).toBeVisible({
       timeout: 10000,
     });
 
@@ -268,7 +268,7 @@ test.describe('Attendance Status Transitions', () => {
       (r) => r.url().includes('/attendance') && r.request().method() === 'PUT'
     );
     await row
-      .getByRole('button', { name: /check-out/i })
+      .getByRole('button', { name: /^check-out$/i })
       .first()
       .click();
     await checkOutResp;
@@ -312,7 +312,7 @@ test.describe('Attendance Status Transitions', () => {
     await page.getByRole('button', { name: /^Present$/i }).click();
 
     // Should show check-out button (check-in auto-set)
-    await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
+    await expect(row.getByRole('button', { name: /^check-out$/i }).first()).toBeVisible({
       timeout: 10000,
     });
   });
@@ -361,10 +361,10 @@ test.describe('Attendance Editable Times', () => {
 
     // Check-in first
     await row
-      .getByRole('button', { name: /check-in/i })
+      .getByRole('button', { name: /^check-in$/i })
       .first()
       .click();
-    await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
+    await expect(row.getByRole('button', { name: /^check-out$/i }).first()).toBeVisible({
       timeout: 10000,
     });
 
@@ -406,10 +406,10 @@ test.describe('Attendance Editable Times', () => {
 
     // Check-in
     await row
-      .getByRole('button', { name: /check-in/i })
+      .getByRole('button', { name: /^check-in$/i })
       .first()
       .click();
-    await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
+    await expect(row.getByRole('button', { name: /^check-out$/i }).first()).toBeVisible({
       timeout: 10000,
     });
 
@@ -469,7 +469,7 @@ test.describe('Attendance Editable Times', () => {
     const colIndex = 0; // Monday of next week
 
     // Get all check-in buttons in the row and click the target column's
-    const checkInButtons = row.getByRole('button', { name: /check-in/i });
+    const checkInButtons = row.getByRole('button', { name: /^check-in$/i });
 
     // Check-in: wait for the API response before proceeding
     const checkInResponse = page.waitForResponse(
@@ -483,7 +483,7 @@ test.describe('Attendance Editable Times', () => {
       (resp) => resp.url().includes('/attendance') && resp.request().method() === 'PUT'
     );
     await row
-      .getByRole('button', { name: /check-out/i })
+      .getByRole('button', { name: /^check-out$/i })
       .first()
       .click();
     await checkOutResponse;
@@ -548,10 +548,10 @@ test.describe('Attendance Editable Times', () => {
 
     // Check-in
     await row
-      .getByRole('button', { name: /check-in/i })
+      .getByRole('button', { name: /^check-in$/i })
       .first()
       .click();
-    await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
+    await expect(row.getByRole('button', { name: /^check-out$/i }).first()).toBeVisible({
       timeout: 10000,
     });
 
@@ -646,10 +646,10 @@ test.describe('Attendance Note Saving', () => {
 
     // Check-in first (note textarea only shows when attendance record exists)
     await row
-      .getByRole('button', { name: /check-in/i })
+      .getByRole('button', { name: /^check-in$/i })
       .first()
       .click();
-    await expect(row.getByRole('button', { name: /check-out/i }).first()).toBeVisible({
+    await expect(row.getByRole('button', { name: /^check-out$/i }).first()).toBeVisible({
       timeout: 10000,
     });
 

@@ -374,6 +374,15 @@ test.describe('Visual Regression - Operations', () => {
     await page.waitForLoadState('load');
     await expect(page.locator('table').first()).toBeVisible({ timeout: 15000 });
 
+    // Below md the grid shows one day, chosen by the picker, which starts on
+    // today. That would put a different weekday's column in the phone baseline
+    // depending on the day it was generated, so pin it to Monday. The picker is
+    // `md:hidden`, so this is a no-op at the other two viewports.
+    const dayPicker = page.getByRole('group', { name: /select day/i });
+    if (await dayPicker.isVisible().catch(() => false)) {
+      await dayPicker.getByRole('button').first().click();
+    }
+
     // The header row carries this week's dates ("Mon 18.08"), so it is different
     // every Monday and has to be masked or the baseline expires weekly. What is
     // being watched here is the grid itself: five columns of dense cells with
@@ -570,6 +579,8 @@ test.describe('Visual Regression - Operations', () => {
   // rather than magenta rectangles.
   test.describe('funding bills list', () => {
     let billsOrgId: number;
+    // 11-25 is November 2025, which falls in the Kita year starting 2025.
+    const BILLS_KITA_YEAR = 2025;
 
     test.beforeAll(async ({ browser }) => {
       const page = await browser.newPage();
@@ -580,9 +591,37 @@ test.describe('Visual Regression - Operations', () => {
       await page
         .locator('input[type="file"]')
         .setInputFiles('../internal/isbj/testdata/Abrechnung_11-25_0770_anonymized.xlsx');
+
+      // Wait for the POST itself, then for the row on the year that actually
+      // contains it.
+      //
+      // What was here waited for /Kita|Sonnenschein/, which matches the "Kita
+      // year" label and the "... Kita Year 2025/26" heading — both static parts
+      // of the page that are present before any upload. So it waited for
+      // nothing, and the screenshot raced the round-trip: regenerating the
+      // baselines caught one run where the tablet capture came out with "No
+      // funding bills uploaded yet" and was written as the expected appearance.
+      //
+      // The second navigation matters as much. The fixture bills November 2025,
+      // which is in the 2025/26 Kita year, and this page defaults to the
+      // current one — so on the page the upload lands on, the row is correctly
+      // not shown at all.
+      const uploaded = page.waitForResponse(
+        (r) =>
+          r.url().includes('/government-funding-bills') &&
+          r.request().method() === 'POST' &&
+          r.status() < 400
+      );
       await page.getByRole('button', { name: /^upload$/i }).click();
-      // The row only exists once the upload round-trips.
-      await expect(page.getByText(/Kita|Sonnenschein/).first()).toBeVisible({ timeout: 20000 });
+      await uploaded;
+
+      await page.goto(
+        `/organizations/${billsOrgId}/government-funding-bills?kitaYear=${BILLS_KITA_YEAR}`
+      );
+      await page.waitForLoadState('load');
+      // Fixture constant, and shown at every width — unlike the file name,
+      // whose column is hidden below lg.
+      await expect(page.getByText(/Sternenstaub/).first()).toBeVisible({ timeout: 20000 });
       await page.close();
     });
 
@@ -603,8 +642,9 @@ test.describe('Visual Regression - Operations', () => {
         if (url.includes('/government-funding-bills?')) listRequests.push(url);
       });
 
-      // 11-25 is November 2025, which falls in the Kita year starting 2025.
-      await page.goto(`/organizations/${billsOrgId}/government-funding-bills?kitaYear=2025`);
+      await page.goto(
+        `/organizations/${billsOrgId}/government-funding-bills?kitaYear=${BILLS_KITA_YEAR}`
+      );
       await page.waitForLoadState('load');
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10000 });
 
@@ -614,7 +654,11 @@ test.describe('Visual Regression - Operations', () => {
       await expect(page.locator('[data-slot="skeleton"]')).toHaveCount(0, { timeout: 20000 });
 
       expect(
-        listRequests.some((u) => u.includes('from=2025-08-01') && u.includes('to=2026-07-31')),
+        listRequests.some(
+          (u) =>
+            u.includes(`from=${BILLS_KITA_YEAR}-08-01`) &&
+            u.includes(`to=${BILLS_KITA_YEAR + 1}-07-31`)
+        ),
         `the listing must be filtered server-side; requests seen: ${listRequests.join(', ')}`
       ).toBe(true);
 

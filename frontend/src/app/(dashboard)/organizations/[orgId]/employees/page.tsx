@@ -491,6 +491,7 @@ export default function EmployeesPage() {
             <EmployeesTable
               employees={employees ?? []}
               payPlanMap={payPlanMap}
+              asOf={toLocalDateString(activeOn)}
               onViewHistory={handleViewContractHistory}
               onAddContract={handleAddContract}
               onEdit={dialogs.handleEdit}

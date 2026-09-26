@@ -53,6 +53,14 @@ interface NavItem {
   requiresOrg?: boolean;
   minRole?: EffectiveRole;
   children?: NavChild[];
+  /**
+   * Match the path exactly instead of as a prefix.
+   *
+   * For `/organizations`, whose prefix is also every org-scoped route in the
+   * app: without this a superadmin saw "Organizations" lit up on top of
+   * Children, Employees and everything else, for the whole session.
+   */
+  exact?: boolean;
 }
 
 interface NavGroup {
@@ -68,6 +76,7 @@ const globalNavigation: NavItem[] = [
     icon: Building2,
     requiresOrg: false,
     minRole: 'superadmin',
+    exact: true,
   },
   {
     name: 'nav.governmentFundings',
@@ -188,8 +197,11 @@ export function AppSidebar() {
     })
     .filter((group) => group.items.length > 0);
 
-  const isActive = (href: string) => {
-    return pathname.startsWith(href);
+  const isActive = (item: NavItem) => {
+    if (item.exact) return pathname === item.href;
+    // A prefix, but only on a path segment: `/government-funding-rates` should
+    // light up on its own detail pages and nothing else.
+    return pathname === item.href || pathname.startsWith(`${item.href}/`);
   };
 
   const getOrgHref = (path: string) => {
@@ -239,6 +251,11 @@ export function AppSidebar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, selectedOrganizationId]);
 
+  // Below lg every nav link carries `min-h-11`. At px-3 py-2 around a 20px
+  // icon they were 36px, and the submenu links 32px -- and below md this
+  // drawer is the only route to every other page in the app, so they are the
+  // most important touch targets there are. Compact from lg: where there is a
+  // mouse, like every other control here.
   const renderSidebar = (collapsed: boolean) => (
     <>
       {/* Header */}
@@ -270,7 +287,7 @@ export function AppSidebar() {
           <ul className="space-y-1">
             {filteredGlobalNavigation.map((item) => {
               const Icon = item.icon;
-              const active = isActive(item.href);
+              const active = isActive(item);
               return (
                 <li key={item.name}>
                   <Link
@@ -278,7 +295,7 @@ export function AppSidebar() {
                     aria-label={t(item.name)}
                     title={collapsed ? t(item.name) : undefined}
                     className={cn(
-                      'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                      'flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors lg:min-h-0',
                       active
                         ? 'bg-sidebar-active text-sidebar-active-foreground'
                         : 'text-sidebar-foreground hover:bg-accent hover:text-accent-foreground'
@@ -316,9 +333,17 @@ export function AppSidebar() {
                   const hasChildren = item.children && item.children.length > 0;
                   const anyChildActive = isAnyChildActive(item);
                   const isExpanded = expandedItems.has(item.name);
-                  const parentActive = pathname.includes(
-                    `/organizations/${selectedOrganizationId}${item.href}`
-                  );
+                  // An item with a submenu is active exactly when one of its
+                  // children is. Matching its own href as a prefix instead lit
+                  // up Statistics *and* Forecast together in the icon rail,
+                  // because `/statistics` is a prefix of `/statistics/forecast`
+                  // and Forecast is a sibling item, not one of its children.
+                  //
+                  // For a leaf, the prefix has to stop at a segment boundary,
+                  // which `includes` never did.
+                  const parentActive = hasChildren
+                    ? anyChildActive
+                    : pathname === href || pathname.startsWith(`${href}/`);
 
                   if (hasChildren && !collapsed) {
                     return (
@@ -327,7 +352,7 @@ export function AppSidebar() {
                           <Link
                             href={href}
                             className={cn(
-                              'flex flex-1 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                              'flex min-h-11 flex-1 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors lg:min-h-0',
                               anyChildActive
                                 ? 'bg-sidebar-active/10 text-sidebar-foreground'
                                 : 'text-sidebar-foreground hover:bg-accent hover:text-accent-foreground'
@@ -366,7 +391,7 @@ export function AppSidebar() {
                                   <Link
                                     href={childHref}
                                     className={cn(
-                                      'flex items-center rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                                      'flex min-h-11 items-center rounded-md px-3 py-1.5 text-sm font-medium transition-colors lg:min-h-0',
                                       childActive
                                         ? 'bg-sidebar-active text-sidebar-active-foreground'
                                         : 'text-sidebar-foreground hover:bg-accent hover:text-accent-foreground'
@@ -390,7 +415,7 @@ export function AppSidebar() {
                         aria-label={t(item.name)}
                         title={collapsed ? t(item.name) : undefined}
                         className={cn(
-                          'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                          'flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors lg:min-h-0',
                           parentActive
                             ? 'bg-sidebar-active text-sidebar-active-foreground'
                             : 'text-sidebar-foreground hover:bg-accent hover:text-accent-foreground'

@@ -661,3 +661,86 @@ describe('periodsOverlap', () => {
     expect(periodsOverlap(active, { from: '', to: null })).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// asOf — resolving a contract for a date other than today
+// ---------------------------------------------------------------------------
+//
+// The list endpoints filter *rows* by `active_on` but preload each entity's
+// whole contract history, so a page with a date control has to resolve the
+// contract for the date it is showing. Reading today's instead described a
+// March roster with September's sections and September's grades.
+describe('getActiveContract / getCurrentContract — asOf', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-09-26'));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  // A child who moved rooms in the summer: two consecutive contracts, the
+  // handover on 2026-08-01.
+  const moved = [
+    { from: '2025-08-01T00:00:00Z', to: '2026-07-31T00:00:00Z', section_id: 1 },
+    { from: '2026-08-01T00:00:00Z', to: null, section_id: 2 },
+  ];
+
+  it('resolves the contract in force on the given date, not today', () => {
+    expect(getActiveContract(moved, '2026-03-01')).toBe(moved[0]);
+    expect(getActiveContract(moved, '2026-09-26')).toBe(moved[1]);
+  });
+
+  it('defaults to today when asOf is omitted', () => {
+    expect(getActiveContract(moved)).toBe(moved[1]);
+    expect(getCurrentContract(moved)).toBe(moved[1]);
+  });
+
+  it('falls back to today for an unparseable asOf rather than answering null', () => {
+    // A cleared date input reaches here as ''. NaN would compare false against
+    // everything and blank the screen with nothing to explain it.
+    expect(getActiveContract(moved, '')).toBe(moved[1]);
+    expect(getActiveContract(moved, 'not-a-date')).toBe(moved[1]);
+    expect(getCurrentContract(moved, 'not-a-date')).toBe(moved[1]);
+  });
+
+  it('finds someone who has since left, on a date they were still enrolled', () => {
+    // The case that silently dropped cards off the kanban board: no contract is
+    // active today, so resolving against today answered null.
+    const left = [{ from: '2024-08-01T00:00:00Z', to: '2025-07-31T00:00:00Z', section_id: 1 }];
+    expect(getActiveContract(left)).toBeNull();
+    expect(getActiveContract(left, '2025-01-15')).toBe(left[0]);
+  });
+
+  it('ignores a contract that had not started on the given date', () => {
+    const future = [{ from: '2026-08-01T00:00:00Z', to: null, section_id: 2 }];
+    expect(getActiveContract(future, '2026-03-01')).toBeNull();
+  });
+
+  describe('getCurrentContract fallback', () => {
+    // Unreachable from the list pages -- the server only returns rows with a
+    // contract covering active_on -- but it decides what a caller holding an
+    // entity fetched some other way renders.
+    const gapped = [
+      { from: '2024-01-01T00:00:00Z', to: '2024-12-31T00:00:00Z' },
+      { from: '2026-01-01T00:00:00Z', to: null },
+    ];
+
+    it('prefers the contract that had already started over one still to come', () => {
+      // On a date in the gap, the one that just ended describes the entity
+      // better than one that has not begun.
+      expect(getCurrentContract(gapped, '2025-06-01')).toBe(gapped[0]);
+    });
+
+    it('answers the earliest when every contract starts after the date', () => {
+      expect(getCurrentContract(gapped, '2023-01-01')).toBe(gapped[0]);
+    });
+
+    it('does not mutate the array it was given', () => {
+      const copy = [...gapped];
+      getCurrentContract(gapped, '2025-06-01');
+      expect(gapped).toEqual(copy);
+    });
+  });
+});

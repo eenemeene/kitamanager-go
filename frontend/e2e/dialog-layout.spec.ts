@@ -33,6 +33,39 @@ interface DialogUnderTest {
   /** Which component owns the layout, so a failure names the file to open. */
   component: string;
   open: (page: Page) => Promise<void>;
+  /**
+   * Make the open form invalid, for the dialogs that arrive pre-filled.
+   *
+   * The contract dialogs copy the active contract's terms and default the start
+   * date, so submitting one as it opens would *succeed* — this spec would
+   * create a contract on the seed data every run. Emptying the start date is
+   * the smallest way to guarantee the rejection the layout is measured in.
+   */
+  invalidate?: (page: Page) => Promise<void>;
+}
+
+/**
+ * Open a row action that the phone layout hides behind the overflow menu.
+ *
+ * Above `sm` the action is its own icon button; below it, the row shows a
+ * single "Actions" menu carrying the same items. This spec runs at both widths.
+ *
+ * The menu's name is matched anchored, because it has to stay distinct from
+ * the "Add contract"/"Edit"/"Delete" buttons in the very same cell — an
+ * unanchored match is how the trigger and the Edit button collided in the
+ * first place.
+ */
+async function clickRowAction(page: Page, label: RegExp) {
+  const inline = page.getByRole('button', { name: label }).first();
+  if (await inline.isVisible().catch(() => false)) {
+    await inline.click();
+    return;
+  }
+  await page
+    .getByRole('button', { name: /^actions$/i })
+    .first()
+    .click();
+  await page.getByRole('menuitem', { name: label }).click();
 }
 
 const dialogs: DialogUnderTest[] = [
@@ -78,6 +111,34 @@ const dialogs: DialogUnderTest[] = [
       await page.getByRole('button', { name: /new organization/i }).click();
     },
   },
+  // The two longest forms in the app, and the last two that still used the
+  // old single-scroller geometry: alert, date pair, section select, property
+  // or pay-plan fields, help text, footer. They are exactly the dialogs whose
+  // Save scrolls away, which is what this spec exists to catch.
+  {
+    name: 'add child contract',
+    component: 'child-contract-create-dialog.tsx',
+    open: async (page) => {
+      await page.goto('/organizations/1/children');
+      await page.waitForLoadState('load');
+      await clickRowAction(page, /add contract/i);
+    },
+    invalidate: async (page) => {
+      await page.getByRole('dialog').locator('#from').fill('');
+    },
+  },
+  {
+    name: 'add employee contract',
+    component: 'employee-contract-dialog.tsx',
+    open: async (page) => {
+      await page.goto('/organizations/1/employees');
+      await page.waitForLoadState('load');
+      await clickRowAction(page, /add contract/i);
+    },
+    invalidate: async (page) => {
+      await page.getByRole('dialog').locator('#from').fill('');
+    },
+  },
 ];
 
 /**
@@ -91,6 +152,8 @@ async function openAndReject(page: Page, dialog: DialogUnderTest) {
 
   const d = page.getByRole('dialog');
   await expect(d).toBeVisible();
+
+  await dialog.invalidate?.(page);
 
   const save = d.getByRole('button', { name: /^(create|save|add)/i }).first();
   const before = await save.boundingBox();

@@ -43,6 +43,7 @@ import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
 import { QueryError } from '@/components/crud/query-error';
 import { SearchInput } from '@/components/ui/search-input';
 import { useFormatters } from '@/hooks/use-formatters';
+import { todayBerlinDate } from '@/lib/utils/contracts';
 
 /** The Kita year (Aug 1 – Jul 31) that a date falls in, as its start year. */
 function kitaYearForDate(date: Date): number {
@@ -90,7 +91,7 @@ export default function GovernmentFundingBillsPage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const currentKitaYear = kitaYearForDate(new Date());
+  const currentKitaYear = kitaYearForDate(todayBerlinDate());
   const kitaYear = parseKitaYearParam(searchParams.get('kitaYear'), currentKitaYear);
 
   const setKitaYear = useCallback(

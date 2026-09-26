@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { Pencil, Trash2, FileText, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { RowActionsMenu } from '@/components/crud/row-actions-menu';
 import { HeaderWithTooltip } from '@/components/ui/header-with-tooltip';
 import {
   Table,
@@ -15,7 +16,7 @@ import {
 import { TooltipProvider } from '@/components/ui/tooltip';
 import type { Employee, PayPlanDetail } from '@/lib/api/types';
 import { calculateAge } from '@/lib/utils/formatting';
-import { getCurrentContract } from '@/lib/utils/contracts';
+import { getCurrentContract, toUTCDate } from '@/lib/utils/contracts';
 import { calculateMonthlySalary } from '@/lib/utils/salary';
 import { calculateYearsOfService } from '@/lib/utils/step-promotions';
 import { useFormatters } from '@/hooks/use-formatters';
@@ -23,6 +24,15 @@ import { useFormatters } from '@/hooks/use-formatters';
 export interface EmployeesTableProps {
   employees: Employee[];
   payPlanMap: Map<number, PayPlanDetail>;
+  /**
+   * The date the roster is filtered to, "YYYY-MM-DD".
+   *
+   * Staff category, grade/step, weekly hours, salary and years of service all
+   * come from a contract, and which contract that is depends on the date. The
+   * page sends this to the API as `active_on`; resolving the columns against
+   * today instead would price a March roster with September's Entgelttabelle.
+   */
+  asOf: string;
   onViewHistory: (employee: Employee) => void;
   onAddContract: (employee: Employee) => void;
   onEdit: (employee: Employee) => void;
@@ -32,6 +42,7 @@ export interface EmployeesTableProps {
 export function EmployeesTable({
   employees,
   payPlanMap,
+  asOf,
   onViewHistory,
   onAddContract,
   onEdit,
@@ -84,16 +95,18 @@ export function EmployeesTable({
         </TableHeader>
         <TableBody>
           {employees.map((employee) => {
-            const currentContract = getCurrentContract(employee.contracts);
+            const currentContract = getCurrentContract(employee.contracts, asOf);
             const payPlanForSalary = currentContract?.payplan_id
               ? payPlanMap.get(currentContract.payplan_id)
               : undefined;
             const salary =
               currentContract && payPlanForSalary
-                ? calculateMonthlySalary(currentContract, payPlanForSalary)
+                ? calculateMonthlySalary(currentContract, payPlanForSalary, asOf)
                 : null;
+            // The UTC-midnight frame the helper documents, which is also what
+            // `toUTCDate` answers in — see its `asOf` parameter.
             const yearsOfService = employee.contracts?.length
-              ? calculateYearsOfService(employee.contracts)
+              ? calculateYearsOfService(employee.contracts, new Date(toUTCDate(asOf)))
               : null;
             return (
               <TableRow key={employee.id}>
@@ -135,6 +148,26 @@ export function EmployeesTable({
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex flex-nowrap items-center justify-end gap-0.5">
+                    {/* See children-table: contract history and Add contract are
+                        hidden below sm and have no other route into them. */}
+                    <RowActionsMenu
+                      className="sm:hidden"
+                      label={t('common.actions')}
+                      actions={[
+                        {
+                          key: 'history',
+                          label: t('employees.contractHistory'),
+                          icon: History,
+                          onSelect: () => onViewHistory(employee),
+                        },
+                        {
+                          key: 'add-contract',
+                          label: t('employees.addContract'),
+                          icon: FileText,
+                          onSelect: () => onAddContract(employee),
+                        },
+                      ]}
+                    />
                     <Button
                       variant="ghost"
                       size="icon"

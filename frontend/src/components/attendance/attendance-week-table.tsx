@@ -27,6 +27,7 @@ import {
 import type { ChildAttendanceResponse, ChildAttendanceStatus } from '@/lib/api/types';
 import type { Child } from '@/lib/api/types';
 import { formatTime } from '@/lib/utils/formatting';
+import { cn } from '@/lib/utils';
 
 const dateFnsLocales: Record<string, typeof de> = {
   de: de,
@@ -82,6 +83,11 @@ interface EditableTimeProps {
   ariaLabel: string;
 }
 
+// Named apart from the Check-in / Check-out buttons that sit in the same cell.
+// They used to share an accessible name, which is ambiguous for anyone reading
+// the cell out -- two controls called "Check-in", one recording an arrival and
+// one editing a time already recorded -- and made `getByRole('button', {name:
+// /check-in/i}).first()` resolve to whichever happened to come first in the DOM.
 function EditableTime({ value, className, onSave, ariaLabel }: EditableTimeProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -123,7 +129,11 @@ function EditableTime({ value, className, onSave, ariaLabel }: EditableTimeProps
             setEditing(false);
           }
         }}
-        className="border-primary h-9 w-[6rem] rounded border px-1 text-center text-sm"
+        // The one field in this grid the user types into, so it gets the full
+        // touch height and only goes compact from lg: where there is a mouse.
+        // The read-only button it replaces stays at min-h-9, which is the
+        // documented allowance for an inline editor's resting state.
+        className="border-primary h-11 w-[6rem] rounded border px-1 text-center text-sm lg:h-9"
         aria-label={ariaLabel}
       />
     );
@@ -352,20 +362,19 @@ function AttendanceCell({
     return (
       <TooltipProvider>
         <div className="flex items-center gap-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                className="text-success hover:bg-success/10 hover:text-success gap-1"
-                onClick={() => onCheckIn(childId, dateStr)}
-                aria-label={t('checkIn')}
-              >
-                <LogIn className="h-4 w-4" />
-                <span>{t('checkIn')}</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{t('checkIn')}</TooltipContent>
-          </Tooltip>
+          <Button
+            variant="outline"
+            className="text-success hover:bg-success/10 hover:text-success gap-1"
+            onClick={() => onCheckIn(childId, dateStr)}
+            aria-label={t('checkIn')}
+          >
+            <LogIn className="h-4 w-4" />
+            {/* Hidden only between md and lg. That is the one width showing all
+                five days at once on a screen too narrow for them: below md the
+                grid is down to a single day and has room for the word, and at
+                lg+ so is the desktop. The aria-label stays either way. */}
+            <span className="md:hidden lg:inline">{t('checkIn')}</span>
+          </Button>
           <Tooltip>
             <TooltipTrigger asChild>
               <span>
@@ -400,24 +409,17 @@ function AttendanceCell({
               onSave={(newTime) =>
                 onUpdateTime(childId, dateStr, attendance.id, 'check_in_time', newTime)
               }
-              ariaLabel={t('checkIn')}
+              ariaLabel={t('editCheckInTime')}
             />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="text-warning hover:bg-warning/10 hover:text-warning gap-1"
-                  onClick={() =>
-                    onCheckOut(childId, dateStr, attendance.id, attendance.check_in_time)
-                  }
-                  aria-label={t('checkOut')}
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span>{t('checkOut')}</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{t('checkOut')}</TooltipContent>
-            </Tooltip>
+            <Button
+              variant="outline"
+              className="text-warning hover:bg-warning/10 hover:text-warning gap-1"
+              onClick={() => onCheckOut(childId, dateStr, attendance.id, attendance.check_in_time)}
+              aria-label={t('checkOut')}
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="md:hidden lg:inline">{t('checkOut')}</span>
+            </Button>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span>
@@ -451,7 +453,7 @@ function AttendanceCell({
               onSave={(newTime) =>
                 onUpdateTime(childId, dateStr, attendance.id, 'check_in_time', newTime)
               }
-              ariaLabel={t('checkIn')}
+              ariaLabel={t('editCheckInTime')}
             />
             <span className="text-muted-foreground text-sm">–</span>
             <EditableTime
@@ -460,7 +462,7 @@ function AttendanceCell({
               onSave={(newTime) =>
                 onUpdateTime(childId, dateStr, attendance.id, 'check_out_time', newTime)
               }
-              ariaLabel={t('checkOut')}
+              ariaLabel={t('editCheckOutTime')}
             />
             <Tooltip>
               <TooltipTrigger asChild>
@@ -551,6 +553,20 @@ interface AttendanceWeekTableProps {
   ) => void;
   onSaveNote: (childId: number, dateStr: string, attendanceId: number, note: string) => void;
   days: Date[];
+  /**
+   * Index into `days` of the one column a phone shows.
+   *
+   * Five day columns, each holding a labelled button and a popover trigger,
+   * come to roughly 900px of table. Below `md` that was a horizontal scroller
+   * over the surface teachers use most, on the device they most often use it
+   * from. So below `md` the grid narrows to name plus this one day, and the
+   * page offers a day picker to choose it; from `md` up all five return.
+   *
+   * Done with `hidden md:table-cell` rather than by slicing `days`, so the
+   * markup does not depend on a media query and there is nothing to mismatch
+   * between server and client render.
+   */
+  focusedDayIndex?: number;
 }
 
 export function AttendanceWeekTable({
@@ -563,6 +579,7 @@ export function AttendanceWeekTable({
   onSetStatus,
   onSaveNote,
   days,
+  focusedDayIndex = 0,
 }: AttendanceWeekTableProps) {
   const t = useTranslations('attendance');
   const tCommon = useTranslations('common');
@@ -584,8 +601,11 @@ export function AttendanceWeekTable({
       <TableHeader>
         <TableRow>
           <TableHead>{tCommon('name')}</TableHead>
-          {days.map((day) => (
-            <TableHead key={day.toISOString()} className="text-center">
+          {days.map((day, index) => (
+            <TableHead
+              key={day.toISOString()}
+              className={cn('text-center', index !== focusedDayIndex && 'hidden md:table-cell')}
+            >
               {format(day, 'EEE dd.MM', { locale: dfLocale })}
             </TableHead>
           ))}
@@ -597,8 +617,9 @@ export function AttendanceWeekTable({
             <TableCell className="font-medium">
               {child.first_name} {child.last_name}
             </TableCell>
-            {days.map((day) => {
+            {days.map((day, index) => {
               const dayStr = format(day, 'yyyy-MM-dd');
+              const hiddenOnPhone = index !== focusedDayIndex && 'hidden md:table-cell';
               const dayRecords = attendanceByDate.get(dayStr) ?? [];
               const attendance = dayRecords.find((a) => a.child_id === child.id);
               const enrolledThatDay = enrolledByDate?.get(dayStr);
@@ -606,7 +627,7 @@ export function AttendanceWeekTable({
               // for that day, and hiding it would hide data.
               if (enrolledThatDay && !enrolledThatDay.has(child.id) && !attendance) {
                 return (
-                  <TableCell key={dayStr} className="text-center">
+                  <TableCell key={dayStr} className={cn('text-center', hiddenOnPhone)}>
                     <span
                       className="text-muted-foreground/60 text-xs"
                       title={t('notEnrolledTooltip')}
@@ -617,7 +638,7 @@ export function AttendanceWeekTable({
                 );
               }
               return (
-                <TableCell key={dayStr} className="text-center">
+                <TableCell key={dayStr} className={cn('text-center', hiddenOnPhone)}>
                   <div className="flex justify-center">
                     <AttendanceCell
                       attendance={attendance}

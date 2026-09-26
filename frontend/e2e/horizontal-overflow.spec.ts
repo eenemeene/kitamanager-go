@@ -22,12 +22,29 @@ import { login } from './utils/test-helpers';
  * someone opened one.
  */
 test.describe('Horizontal overflow', () => {
+  // The five that were failing when this was written, plus the pages carrying
+  // the widest tables and the charts. A statistics page is the easiest place to
+  // reintroduce this -- a chart sized from its data rather than its container
+  // overflows without anyone editing a layout -- and the bill detail table has
+  // nineteen columns.
   const paths = (org: string) => [
     '/organizations',
     `/organizations/${org}/children`,
     `/organizations/${org}/employees`,
     `/organizations/${org}/sections`,
     `/organizations/${org}/attendance`,
+    `/organizations/${org}/dashboard`,
+    `/organizations/${org}/budget-items`,
+    `/organizations/${org}/payplans`,
+    `/organizations/${org}/government-funding-bills`,
+    `/organizations/${org}/audit-logs`,
+    `/organizations/${org}/users`,
+    `/organizations/${org}/statistics`,
+    `/organizations/${org}/statistics/financials`,
+    `/organizations/${org}/statistics/staffing`,
+    `/organizations/${org}/statistics/children`,
+    `/organizations/${org}/statistics/occupancy`,
+    '/settings',
   ];
 
   test('no page scrolls horizontally', async ({ page }) => {

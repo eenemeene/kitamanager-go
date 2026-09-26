@@ -53,11 +53,11 @@ export function UpcomingChildrenWidget({ orgId }: UpcomingChildrenWidgetProps) {
           <TableHeader>
             <TableRow>
               <TableHead>{t('name')}</TableHead>
-              <TableHead>{t('gender')}</TableHead>
-              <TableHead>{t('birthdate')}</TableHead>
-              <TableHead>{t('age')}</TableHead>
+              <TableHead className="hidden lg:table-cell">{t('gender')}</TableHead>
+              <TableHead className="hidden lg:table-cell">{t('birthdate')}</TableHead>
+              <TableHead className="hidden md:table-cell">{t('age')}</TableHead>
               <TableHead>{t('section')}</TableHead>
-              <TableHead>{t('properties')}</TableHead>
+              <TableHead className="hidden lg:table-cell">{t('properties')}</TableHead>
               <TableHead>{t('startDate')}</TableHead>
             </TableRow>
           </TableHeader>
@@ -79,13 +79,17 @@ export function UpcomingChildrenWidget({ orgId }: UpcomingChildrenWidgetProps) {
                   <TableCell className="font-medium">
                     {child.first_name} {child.last_name}
                   </TableCell>
-                  <TableCell>{tGender(child.gender)}</TableCell>
-                  <TableCell>{fmt.date(child.birthdate)}</TableCell>
-                  <TableCell>{calculateAge(child.birthdate)}</TableCell>
+                  <TableCell className="hidden lg:table-cell">{tGender(child.gender)}</TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    {fmt.date(child.birthdate)}
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {calculateAge(child.birthdate)}
+                  </TableCell>
                   <TableCell>
                     {futureContract?.section_name && <span>{futureContract.section_name}</span>}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden lg:table-cell">
                     {futureContract?.properties &&
                     Object.keys(futureContract.properties).length > 0 ? (
                       <div className="flex flex-wrap gap-1">

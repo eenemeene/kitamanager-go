@@ -115,4 +115,44 @@ describe('calculateMonthlySalary', () => {
     const fullTimeContract = { ...contract, weekly_hours: 39 };
     expect(calculateMonthlySalary(fullTimeContract, payPlan)).toBe(350000);
   });
+
+  // A pay plan carries one period per Entgelttabelle, and they differ at every
+  // tariff round. Pricing a roster shown for a past month with the table in
+  // force today overstates every salary on it by the raise in between.
+  describe('asOf', () => {
+    const fullTime = { ...contract, weekly_hours: 39 };
+    const twoPeriods: PayPlanDetail = {
+      ...payPlan,
+      periods: [
+        {
+          ...payPlan.periods[0]!,
+          id: 1,
+          from: '2025-01-01',
+          to: '2025-12-31',
+          entries: [{ ...payPlan.periods![0]!.entries![0]!, monthly_amount: 320000 }],
+        },
+        {
+          ...payPlan.periods[0]!,
+          id: 2,
+          from: '2026-01-01',
+          to: '',
+          entries: [{ ...payPlan.periods![0]!.entries![0]!, id: 2, period_id: 2 }],
+        },
+      ],
+    };
+
+    it('prices against the Entgelttabelle in force on that date', () => {
+      expect(calculateMonthlySalary(fullTime, twoPeriods, '2025-06-01')).toBe(320000);
+      expect(calculateMonthlySalary(fullTime, twoPeriods, '2026-06-01')).toBe(350000);
+    });
+
+    it("defaults to today's period when omitted", () => {
+      // Fake system time above is 2026-03-08.
+      expect(calculateMonthlySalary(fullTime, twoPeriods)).toBe(350000);
+    });
+
+    it('returns null for a date no period covers', () => {
+      expect(calculateMonthlySalary(fullTime, twoPeriods, '2024-06-01')).toBeNull();
+    });
+  });
 });

@@ -5,7 +5,8 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type Announcements,
@@ -17,7 +18,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { differenceInMonths, parseISO } from 'date-fns';
 import { useTranslations } from 'next-intl';
-import { GripVertical } from 'lucide-react';
+import { Eye, GripVertical } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -25,6 +26,8 @@ import { useMoveContractMutation } from '@/lib/hooks/use-move-contract-mutation'
 import { type Child, type Employee, LOOKUP_FETCH_LIMIT } from '@/lib/api/types';
 import { getActiveContract, todayBerlinString } from '@/lib/utils/contracts';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useFormatters } from '@/hooks/use-formatters';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SectionColumn } from './section-column';
@@ -38,16 +41,18 @@ interface SectionKanbanBoardProps {
 
 type ActiveItem = { type: 'child'; item: Child } | { type: 'employee'; item: Employee };
 
-/** Get the section_id from the active contract. */
+/** The section a contract put someone in on `asOf`. */
 function getContractSectionId(
-  contracts?: { from: string; to?: string | null; section_id: number }[]
+  contracts?: { from: string; to?: string | null; section_id: number }[],
+  asOf?: string
 ): number | null {
-  const active = getActiveContract(contracts);
+  const active = getActiveContract(contracts, asOf);
   return active?.section_id ?? null;
 }
 
 export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
   const t = useTranslations();
+  const fmt = useFormatters();
   const { toast } = useToast();
   const [activeItem, setActiveItem] = useState<ActiveItem | null>(null);
 
@@ -58,9 +63,36 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
   // backend's active_on filter.
   const [asOfDate, setAsOfDate] = useState(() => todayBerlinString());
 
+  // Dragging is a write, and the only write this board offers is "amend the
+  // contract from today onward" (see useMoveContractMutation). There is no
+  // honest way to apply that to a card the user is looking at on some other
+  // date: on a past snapshot the contract on screen may have ended, and the
+  // server rightly refuses to extend it; on a future one the user would be
+  // rewriting a section they can already see is scheduled. Rather than guess
+  // which contract they meant, the snapshot is read-only and says so.
+  const isToday = asOfDate === todayBerlinString();
+
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    // Mouse and touch are separated on purpose, rather than left to the single
+    // PointerSensor this used to have.
+    //
+    // A distance constraint is the right one for a mouse: the drag starts as
+    // soon as the pointer has clearly moved. It is the wrong one for a finger,
+    // because on a touch screen the same gesture that starts a drag is the one
+    // that scrolls, and the columns here scroll vertically inside a strip that
+    // scrolls horizontally. With distance-only activation a swipe to scroll a
+    // column picked up a card instead. Tablets are the primary device for this
+    // app, so that is the main way the board was used.
+    //
+    // A delay constraint is dnd-kit's answer for a draggable inside a scrollable
+    // list: hold for 250ms to pick up, move before then and it is a scroll. It
+    // also means the cards must NOT carry `touch-action: none` -- that would
+    // hand every gesture to the drag and take scrolling away entirely.
+    useSensor(MouseSensor, {
       activationConstraint: { distance: 8 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 250, tolerance: 5 },
     }),
     // Without this the cards are still tab stops that dnd-kit announces as
     // draggable — it sets role, tabIndex and aria-roledescription on every one
@@ -92,12 +124,17 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
 
   const pedagogicalEmployees = useMemo(() => {
     if (!allEmployees) return [];
-    // Backend already filters by active_on — every employee here has an active contract.
+    // The backend filtered these by active_on, so everyone here has a contract
+    // covering `asOfDate` -- but it hands back each employee's whole history, so
+    // the staff category has to be read from the contract for *that* date. Read
+    // from today's instead and anyone who has since left is dropped from the
+    // board altogether, silently, which is the opposite of what a snapshot date
+    // is for.
     return allEmployees.filter((e) => {
-      const c = getActiveContract(e.contracts);
+      const c = getActiveContract(e.contracts, asOfDate);
       return c && c.staff_category !== 'non_pedagogical';
     });
-  }, [allEmployees]);
+  }, [allEmployees, asOfDate]);
 
   const allSections = useMemo(() => sectionsData?.data ?? [], [sectionsData]);
   const sections = allSections;
@@ -109,7 +146,7 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
       map.set(String(section.id), []);
     }
     for (const child of children ?? []) {
-      const sectionId = getContractSectionId(child.contracts);
+      const sectionId = getContractSectionId(child.contracts, asOfDate);
       if (sectionId) {
         const key = String(sectionId);
         const list = map.get(key);
@@ -119,7 +156,7 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
       }
     }
     return map;
-  }, [sections, children]);
+  }, [sections, children, asOfDate]);
 
   const employeesBySection = useMemo(() => {
     const map = new Map<string, Employee[]>();
@@ -127,7 +164,7 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
       map.set(String(section.id), []);
     }
     for (const emp of pedagogicalEmployees) {
-      const sectionId = getContractSectionId(emp.contracts);
+      const sectionId = getContractSectionId(emp.contracts, asOfDate);
       if (sectionId) {
         const key = String(sectionId);
         const list = map.get(key);
@@ -137,7 +174,7 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
       }
     }
     return map;
-  }, [sections, pedagogicalEmployees]);
+  }, [sections, pedagogicalEmployees, asOfDate]);
 
   // Screen-reader narration for the drag. dnd-kit ships defaults, but they are
   // English strings baked into the library, which would leave the one part of
@@ -244,20 +281,27 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
     setActiveItem(null);
     const { over } = event;
     if (!over || !currentItem) return;
+    // Belt and braces: the cards are already disabled off-today, so this is
+    // unreachable through the pointer. The keyboard sensor and any future
+    // caller go through the same door.
+    if (!isToday) return;
 
     const targetColumnId = String(over.id);
     const newSectionId = Number(targetColumnId);
 
     if (currentItem.type === 'child') {
       const child = currentItem.item;
-      const activeContract = getActiveContract(child.contracts);
+      const activeContract = getActiveContract(child.contracts, asOfDate);
       if (!activeContract) return; // no active contract to update
       if (newSectionId === activeContract.section_id) return;
 
       // Warn if child's age is outside target section's age range
       const targetSection = allSections.find((s) => s.id === newSectionId);
       if (targetSection && child.birthdate) {
-        const ageMonths = differenceInMonths(new Date(), parseISO(child.birthdate));
+        // parseISO on the board's own date, not `new Date()`: the browser's
+        // clock is not the application's day (see todayBerlinString), and a
+        // move is planned against the date on screen.
+        const ageMonths = differenceInMonths(parseISO(asOfDate), parseISO(child.birthdate));
         const minAge = targetSection.min_age_months;
         const maxAge = targetSection.max_age_months;
         const outsideRange =
@@ -280,7 +324,7 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
       });
     } else {
       const employee = currentItem.item;
-      const activeContract = getActiveContract(employee.contracts);
+      const activeContract = getActiveContract(employee.contracts, asOfDate);
       if (!activeContract) return; // no active contract to update
       if (newSectionId === activeContract.section_id) return;
       moveEmployeeMutation.mutate({
@@ -306,10 +350,24 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <p className="text-muted-foreground flex items-center gap-2 text-sm">
-          <GripVertical className="h-4 w-4" />
-          {t('sections.dragHint')}
-        </p>
+        {isToday ? (
+          <p className="text-muted-foreground flex items-center gap-2 text-sm">
+            <GripVertical className="h-4 w-4" />
+            {t('sections.dragHint')}
+          </p>
+        ) : (
+          <p className="text-muted-foreground flex flex-wrap items-center gap-2 text-sm">
+            <Eye className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>{t('sections.snapshotHint', { date: fmt.date(asOfDate) })}</span>
+            <Button
+              variant="link"
+              className="h-auto p-0 text-sm"
+              onClick={() => setAsOfDate(todayBerlinString())}
+            >
+              {t('sections.backToToday')}
+            </Button>
+          </p>
+        )}
         <div className="flex items-center gap-2">
           <Label htmlFor="kanban-as-of-date" className="text-sm">
             {t('sections.asOfDate')}
@@ -357,14 +415,16 @@ export function SectionKanbanBoard({ orgId }: SectionKanbanBoardProps) {
               isDefault={section.is_default}
               minAgeMonths={section.min_age_months}
               maxAgeMonths={section.max_age_months}
+              draggable={isToday}
+              asOf={asOfDate}
             />
           ))}
         </div>
         <DragOverlay>
           {activeItem?.type === 'child' ? (
-            <ChildCard child={activeItem.item} />
+            <ChildCard child={activeItem.item} draggable={false} />
           ) : activeItem?.type === 'employee' ? (
-            <EmployeeCard employee={activeItem.item} />
+            <EmployeeCard employee={activeItem.item} draggable={false} asOf={asOfDate} />
           ) : null}
         </DragOverlay>
       </DndContext>
