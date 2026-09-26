@@ -109,7 +109,7 @@ describe('ChildrenTable', () => {
     const onManageVouchers = jest.fn();
     renderAt('2026-09-26', { onAddContract, onManageVouchers });
 
-    const trigger = screen.getByRole('button', { name: 'common.actionsFor' });
+    const trigger = screen.getByRole('button', { name: 'common.actions' });
     await user.click(trigger);
 
     expect(await screen.findByRole('menuitem', { name: 'children.contractHistory' })).toBeVisible();

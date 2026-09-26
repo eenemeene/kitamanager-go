@@ -309,9 +309,7 @@ export function ChildrenTable({
                         See RowActionsMenu. */}
                     <RowActionsMenu
                       className="sm:hidden"
-                      label={t('common.actionsFor', {
-                        name: `${child.first_name} ${child.last_name}`,
-                      })}
+                      label={t('common.actions')}
                       actions={[
                         {
                           key: 'history',

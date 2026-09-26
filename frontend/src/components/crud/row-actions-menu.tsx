@@ -21,7 +21,14 @@ export interface RowAction {
 
 export interface RowActionsMenuProps {
   actions: RowAction[];
-  /** Accessible name for the trigger, e.g. "Actions for Emma Schmidt". */
+  /**
+   * Accessible name for the trigger.
+   *
+   * Plain, like the Edit and Delete buttons beside it -- not "Actions for
+   * <name>". Putting the row's own text in here made the accessible name
+   * collide with the row content: a locator matching /edit/i inside a row found
+   * both the Edit button and a menu labelled "Actions for EditChild".
+   */
   label: string;
   className?: string;
 }

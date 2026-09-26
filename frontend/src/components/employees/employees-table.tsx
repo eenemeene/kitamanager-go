@@ -152,9 +152,7 @@ export function EmployeesTable({
                         hidden below sm and have no other route into them. */}
                     <RowActionsMenu
                       className="sm:hidden"
-                      label={t('common.actionsFor', {
-                        name: `${employee.first_name} ${employee.last_name}`,
-                      })}
+                      label={t('common.actions')}
                       actions={[
                         {
                           key: 'history',

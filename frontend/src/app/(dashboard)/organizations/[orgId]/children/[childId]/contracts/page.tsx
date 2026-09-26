@@ -385,9 +385,7 @@ export default function ChildContractsPage() {
                         <TableHead>{t('sections.title')}</TableHead>
                         <TableHead>{t('contracts.from')}</TableHead>
                         <TableHead>{t('contracts.to')}</TableHead>
-                        <TableHead className="hidden lg:table-cell">
-                          {t('children.properties')}
-                        </TableHead>
+                        <TableHead>{t('children.properties')}</TableHead>
                         <TableHead className="text-right">{t('common.actions')}</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -426,7 +424,7 @@ export default function ChildContractsPage() {
                             <TableCell>
                               {contract.to ? fmt.date(contract.to) : t('common.ongoing')}
                             </TableCell>
-                            <TableCell className="hidden lg:table-cell">
+                            <TableCell>
                               {contract.properties &&
                               Object.keys(contract.properties).length > 0 ? (
                                 <div className="flex flex-wrap gap-1">

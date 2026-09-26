@@ -374,15 +374,9 @@ export default function EmployeeContractsPage() {
                         <TableHead>{t('sections.title')}</TableHead>
                         <TableHead>{t('contracts.from')}</TableHead>
                         <TableHead>{t('contracts.to')}</TableHead>
-                        <TableHead className="hidden lg:table-cell">
-                          {t('employees.staffCategory.label')}
-                        </TableHead>
-                        <TableHead className="hidden md:table-cell">
-                          {t('employees.grade')}
-                        </TableHead>
-                        <TableHead className="hidden md:table-cell">
-                          {t('employees.weeklyHours')}
-                        </TableHead>
+                        <TableHead>{t('employees.staffCategory.label')}</TableHead>
+                        <TableHead>{t('employees.grade')}</TableHead>
+                        <TableHead>{t('employees.weeklyHours')}</TableHead>
                         <TableHead className="text-right">{t('common.actions')}</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -421,15 +415,13 @@ export default function EmployeeContractsPage() {
                             <TableCell>
                               {contract.to ? fmt.date(contract.to) : t('common.ongoing')}
                             </TableCell>
-                            <TableCell className="hidden lg:table-cell">
+                            <TableCell>
                               {t(`employees.staffCategory.${contract.staff_category}`)}
                             </TableCell>
-                            <TableCell className="hidden md:table-cell">
+                            <TableCell>
                               {contract.grade} / {contract.step}
                             </TableCell>
-                            <TableCell className="hidden md:table-cell">
-                              {contract.weekly_hours}h
-                            </TableCell>
+                            <TableCell>{contract.weekly_hours}h</TableCell>
                             <TableCell className="text-right">
                               <div className="flex flex-nowrap items-center justify-end gap-0.5">
                                 <Button
