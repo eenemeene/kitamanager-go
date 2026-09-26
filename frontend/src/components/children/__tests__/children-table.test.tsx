@@ -1,4 +1,5 @@
 import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { ChildrenTable } from '../children-table';
 import { renderWithProviders } from '@/test-utils';
 import type { Child, ChildFundingResponse, ChildBillingSummaryEntry } from '@/lib/api/types';
@@ -96,6 +97,27 @@ describe('ChildrenTable', () => {
     renderAt('2026-09-26');
     expect(screen.getByText('Mäuse')).toBeInTheDocument();
     expect(screen.queryByText('Krippe')).not.toBeInTheDocument();
+  });
+
+  // Below sm the four secondary actions are hidden for width, and every page
+  // they lead to is reachable from nowhere else in the app -- so the row's menu
+  // is the only door to them on a phone, not a convenience.
+  it('reaches every hidden action through the row menu', async () => {
+    jest.useRealTimers();
+    const user = userEvent.setup();
+    const onAddContract = jest.fn();
+    const onManageVouchers = jest.fn();
+    renderAt('2026-09-26', { onAddContract, onManageVouchers });
+
+    const trigger = screen.getByRole('button', { name: 'common.actionsFor' });
+    await user.click(trigger);
+
+    expect(await screen.findByRole('menuitem', { name: 'children.contractHistory' })).toBeVisible();
+    expect(screen.getByRole('menuitem', { name: 'children.billingHistory' })).toBeVisible();
+    expect(screen.getByRole('menuitem', { name: 'vouchers.dialogTitle' })).toBeVisible();
+
+    await user.click(screen.getByRole('menuitem', { name: 'children.addContract' }));
+    expect(onAddContract).toHaveBeenCalledWith(moved);
   });
 
   // The warning and the button beside it say "this contract should already have
