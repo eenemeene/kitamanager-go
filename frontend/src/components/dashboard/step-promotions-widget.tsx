@@ -64,11 +64,13 @@ export function StepPromotionsWidget({ orgId }: StepPromotionsWidgetProps) {
           <TableHeader>
             <TableRow>
               <TableHead>{t('employee')}</TableHead>
-              <TableHead>{t('grade')}</TableHead>
+              <TableHead className="hidden md:table-cell">{t('grade')}</TableHead>
               <TableHead className="text-center">{t('currentStep')}</TableHead>
               <TableHead className="text-center">{t('eligibleStep')}</TableHead>
-              <TableHead>{t('serviceStart')}</TableHead>
-              <TableHead className="text-right">{t('yearsOfService')}</TableHead>
+              <TableHead className="hidden lg:table-cell">{t('serviceStart')}</TableHead>
+              <TableHead className="hidden text-right lg:table-cell">
+                {t('yearsOfService')}
+              </TableHead>
               <TableHead className="text-right">
                 {t('monthlyCostDelta')} ({t('inclEmployerContrib')}{' '}
                 <Tooltip delayDuration={0}>
@@ -85,11 +87,13 @@ export function StepPromotionsWidget({ orgId }: StepPromotionsWidgetProps) {
             {data.promotions.map((p) => (
               <TableRow key={p.employee_id}>
                 <TableCell className="font-medium">{p.employee_name}</TableCell>
-                <TableCell>{p.grade}</TableCell>
+                <TableCell className="hidden md:table-cell">{p.grade}</TableCell>
                 <TableCell className="text-center">{p.current_step}</TableCell>
                 <TableCell className="text-center">{p.eligible_step}</TableCell>
-                <TableCell>{formatServiceStart(p.service_start)}</TableCell>
-                <TableCell className="text-right">
+                <TableCell className="hidden lg:table-cell">
+                  {formatServiceStart(p.service_start)}
+                </TableCell>
+                <TableCell className="hidden text-right lg:table-cell">
                   {fmt.number(p.years_of_service, {
                     minimumFractionDigits: 1,
                     maximumFractionDigits: 1,

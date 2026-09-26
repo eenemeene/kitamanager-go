@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -206,116 +207,117 @@ export function ChildContractCreateDialog({
             })}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-          <FormErrorSummary
-            errors={errors}
-            unmapped={unmapped}
-            labels={{
-              from: t('contracts.startDate'),
-              to: t('contracts.endDateOptional'),
-              section_id: t('sections.title'),
-              properties: t('contracts.propertiesLabel'),
-            }}
-          />
-          {activeContract && (
-            <Alert>
-              <AlertDescription className="space-y-3">
-                <p className="font-medium">{t('contracts.hasActiveContract')}</p>
-                <p className="text-muted-foreground text-sm">
-                  {t('contracts.activeSince', {
-                    date: fmt.date(activeContract.from),
-                    attrs:
-                      propertiesToLabelKeys(activeContract.properties as ContractProperties)
-                        .map((k) => (tLabels.has(k) ? tLabels(k) : k.split('--').pop()))
-                        .join(', ') || t('contracts.noAttributes'),
-                  })}
-                </p>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="endCurrentContract"
-                    checked={endCurrentContract}
-                    onCheckedChange={(checked) => setEndCurrentContract(checked === true)}
-                  />
-                  <label
-                    htmlFor="endCurrentContract"
-                    className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    {t('contracts.endCurrentContract')}
-                  </label>
-                </div>
-                {/* No `role="alert"` of its own: the surrounding Alert is
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="flex min-h-0 flex-1 flex-col">
+          <DialogBody className="space-y-4">
+            <FormErrorSummary
+              errors={errors}
+              unmapped={unmapped}
+              labels={{
+                from: t('contracts.startDate'),
+                to: t('contracts.endDateOptional'),
+                section_id: t('sections.title'),
+                properties: t('contracts.propertiesLabel'),
+              }}
+            />
+            {activeContract && (
+              <Alert>
+                <AlertDescription className="space-y-3">
+                  <p className="font-medium">{t('contracts.hasActiveContract')}</p>
+                  <p className="text-muted-foreground text-sm">
+                    {t('contracts.activeSince', {
+                      date: fmt.date(activeContract.from),
+                      attrs:
+                        propertiesToLabelKeys(activeContract.properties as ContractProperties)
+                          .map((k) => (tLabels.has(k) ? tLabels(k) : k.split('--').pop()))
+                          .join(', ') || t('contracts.noAttributes'),
+                    })}
+                  </p>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="endCurrentContract"
+                      checked={endCurrentContract}
+                      onCheckedChange={(checked) => setEndCurrentContract(checked === true)}
+                    />
+                    <label
+                      htmlFor="endCurrentContract"
+                      className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      {t('contracts.endCurrentContract')}
+                    </label>
+                  </div>
+                  {/* No `role="alert"` of its own: the surrounding Alert is
                     already a live region, and nesting a second one inside it
                     announces twice and makes `getByRole('alert')` ambiguous. */}
-                {overlapsActiveContract && (
-                  <p data-testid="overlap-warning" className="text-destructive text-sm">
-                    {t('contracts.overlapsActiveContract')}
-                  </p>
+                  {overlapsActiveContract && (
+                    <p data-testid="overlap-warning" className="text-destructive text-sm">
+                      {t('contracts.overlapsActiveContract')}
+                    </p>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="from">{t('contracts.startDate')}</Label>
+                <Input id="from" type="date" aria-invalid={!!errors.from} {...register('from')} />
+                {errors.from && (
+                  <p className="text-destructive text-sm">{t('contracts.startDateRequired')}</p>
                 )}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="from">{t('contracts.startDate')}</Label>
-              <Input id="from" type="date" aria-invalid={!!errors.from} {...register('from')} />
-              {errors.from && (
-                <p className="text-destructive text-sm">{t('contracts.startDateRequired')}</p>
-              )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="to">{t('contracts.endDateOptional')}</Label>
+                <Input id="to" type="date" aria-invalid={!!errors.to} {...register('to')} />
+                {child && orgState && (
+                  <p className="text-muted-foreground text-xs">{t('children.contractEndHint')}</p>
+                )}
+              </div>
             </div>
+
+            {sections.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="contract_section">{t('sections.title')} *</Label>
+                <Select
+                  value={watch('section_id')?.toString() || ''}
+                  onValueChange={(value) => setValue('section_id', value ? Number(value) : 0)}
+                >
+                  <SelectTrigger id="contract_section" aria-label={t('sections.title')}>
+                    <SelectValue placeholder={t('sections.selectSection')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sections.map((section) => (
+                      <SelectItem key={section.id} value={section.id.toString()}>
+                        {section.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.section_id && (
+                  <p className="text-destructive text-sm">{t('validation.sectionRequired')}</p>
+                )}
+              </div>
+            )}
+
             <div className="space-y-2">
-              <Label htmlFor="to">{t('contracts.endDateOptional')}</Label>
-              <Input id="to" type="date" aria-invalid={!!errors.to} {...register('to')} />
-              {child && orgState && (
-                <p className="text-muted-foreground text-xs">{t('children.contractEndHint')}</p>
-              )}
+              <Label id="properties-label">{t('contracts.propertiesLabel')}</Label>
+              <Controller
+                name="properties"
+                control={control}
+                render={({ field }) => (
+                  <PropertyTagInput
+                    id="properties"
+                    value={field.value as Record<string, string> | undefined}
+                    onChange={field.onChange}
+                    fundingAttributes={fundingAttributes}
+                    attributesByKey={attributesByKey}
+                    placeholder={t('contracts.propertiesPlaceholder')}
+                    suggestionsLabel={t('contracts.suggestedProperties')}
+                  />
+                )}
+              />
+              <p className="text-muted-foreground text-xs">{t('contracts.propertiesHelp')}</p>
             </div>
-          </div>
-
-          {sections.length > 0 && (
-            <div className="space-y-2">
-              <Label htmlFor="contract_section">{t('sections.title')} *</Label>
-              <Select
-                value={watch('section_id')?.toString() || ''}
-                onValueChange={(value) => setValue('section_id', value ? Number(value) : 0)}
-              >
-                <SelectTrigger id="contract_section" aria-label={t('sections.title')}>
-                  <SelectValue placeholder={t('sections.selectSection')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {sections.map((section) => (
-                    <SelectItem key={section.id} value={section.id.toString()}>
-                      {section.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.section_id && (
-                <p className="text-destructive text-sm">{t('validation.sectionRequired')}</p>
-              )}
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <Label id="properties-label">{t('contracts.propertiesLabel')}</Label>
-            <Controller
-              name="properties"
-              control={control}
-              render={({ field }) => (
-                <PropertyTagInput
-                  id="properties"
-                  value={field.value as Record<string, string> | undefined}
-                  onChange={field.onChange}
-                  fundingAttributes={fundingAttributes}
-                  attributesByKey={attributesByKey}
-                  placeholder={t('contracts.propertiesPlaceholder')}
-                  suggestionsLabel={t('contracts.suggestedProperties')}
-                />
-              )}
-            />
-            <p className="text-muted-foreground text-xs">{t('contracts.propertiesHelp')}</p>
-          </div>
-
+          </DialogBody>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {t('common.cancel')}

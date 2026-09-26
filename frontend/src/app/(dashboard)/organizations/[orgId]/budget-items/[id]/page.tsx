@@ -238,7 +238,7 @@ export default function BudgetItemDetailPage() {
                 <TableRow>
                   <TableHead>{t('governmentFundings.period')}</TableHead>
                   <TableHead>{t('governmentFundings.amount')}</TableHead>
-                  <TableHead>{t('budgetItems.notes')}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t('budgetItems.notes')}</TableHead>
                   <TableHead className="text-right">{t('common.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -247,27 +247,29 @@ export default function BudgetItemDetailPage() {
                   <TableRow key={entry.id}>
                     <TableCell>{fmt.period(entry.from, entry.to, t('common.ongoing'))}</TableCell>
                     <TableCell>{fmt.currency(entry.amount_cents)}</TableCell>
-                    <TableCell>{entry.notes || '-'}</TableCell>
+                    <TableCell className="hidden md:table-cell">{entry.notes || '-'}</TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleEditEntry(entry)}
-                        aria-label={t('common.edit')}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => {
-                          setDeletingEntry(entry);
-                          setIsDeleteEntryDialogOpen(true);
-                        }}
-                        aria-label={t('common.delete')}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex flex-nowrap items-center justify-end gap-0.5">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleEditEntry(entry)}
+                          aria-label={t('common.edit')}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            setDeletingEntry(entry);
+                            setIsDeleteEntryDialogOpen(true);
+                          }}
+                          aria-label={t('common.delete')}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
