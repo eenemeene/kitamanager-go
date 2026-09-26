@@ -2,9 +2,10 @@
 
 import { useMemo, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
 import { startOfWeek, addDays, eachDayOfInterval, format } from 'date-fns';
+import { de, enUS } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -13,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WeekStepper } from '@/components/ui/week-stepper';
 import { AttendanceWeekTable } from '@/components/attendance/attendance-week-table';
@@ -32,9 +34,12 @@ import { ToastAction } from '@/components/ui/toast';
 import { useState } from 'react';
 import { todayBerlinDate } from '@/lib/utils/contracts';
 
+const dateFnsLocales: Record<string, typeof de> = { de, en: enUS };
+
 export default function AttendancePage() {
   const params = useParams();
   const orgId = Number(params.orgId);
+  const dfLocale = dateFnsLocales[useLocale()] ?? enUS;
   const t = useTranslations('attendance');
   const tStats = useTranslations('statistics');
   const tCommon = useTranslations('common');
@@ -55,6 +60,16 @@ export default function AttendancePage() {
     [weekMonday]
   );
   const weekMondayStr = format(weekMonday, 'yyyy-MM-dd');
+
+  // Which of Mon-Fri the phone-width grid shows. Derived rather than held in
+  // state, so stepping to another week cannot leave it pointing at a day that
+  // is no longer on screen. `selectedDate` starts as today, which may be a
+  // Saturday or Sunday and so is not in `weekDays` at all -- findIndex answers
+  // -1 there and the clamp lands on Monday.
+  const focusedDayIndex = Math.max(
+    0,
+    weekDays.findIndex((day) => format(day, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd'))
+  );
 
   // Fetch sections for filter dropdown
   const { data: sectionsData } = useQuery({
@@ -430,6 +445,28 @@ export default function AttendancePage() {
           <span className="text-muted-foreground text-sm">{tCommon('week')}</span>
           <WeekStepper value={selectedDate} onChange={setSelectedDate} />
         </div>
+        {/* Day picker, phone only: from md the grid shows all five days at once
+            and this would be a control with nothing to control. Rendered by CSS
+            rather than behind a media-query hook so there is no hydration
+            mismatch and no layout shift after mount -- the same reasoning as
+            the steppers' two labels. */}
+        <div
+          className="flex w-full flex-wrap gap-1 md:hidden"
+          role="group"
+          aria-label={t('selectDay')}
+        >
+          {weekDays.map((day, index) => (
+            <Button
+              key={day.toISOString()}
+              variant={index === focusedDayIndex ? 'default' : 'outline'}
+              aria-pressed={index === focusedDayIndex}
+              className="min-w-[3.5rem] flex-1 px-2"
+              onClick={() => setSelectedDate(day)}
+            >
+              {format(day, 'EEE', { locale: dfLocale })}
+            </Button>
+          ))}
+        </div>
         <Select
           value={sectionFilter ? String(sectionFilter) : 'all'}
           onValueChange={(value) => setSectionFilter(value === 'all' ? undefined : Number(value))}
@@ -478,6 +515,7 @@ export default function AttendancePage() {
               onSetStatus={handleSetStatus}
               onSaveNote={handleSaveNote}
               days={weekDays}
+              focusedDayIndex={focusedDayIndex}
             />
           )}
         </CardContent>
