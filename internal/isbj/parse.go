@@ -751,18 +751,80 @@ func parseMonatTyp(s string) (time.Time, error) {
 	if len(parts) != 2 {
 		return time.Time{}, fmt.Errorf("invalid month format: %q", s)
 	}
+
+	// isAllDigits on both components, for the reason given on the function: a
+	// sign is not a number a spreadsheet date cell can render.
+	if !isAllDigits(parts[0]) {
+		return time.Time{}, fmt.Errorf("invalid month in %q: %q is not a plain number", s, parts[0])
+	}
 	month, err := strconv.Atoi(parts[0])
-	if err != nil || month < 1 || month > 12 {
+	if err != nil {
 		return time.Time{}, fmt.Errorf("invalid month in %q: %w", s, err)
 	}
-	year, err := strconv.Atoi(parts[1])
+	// Not wrapped: err is nil on this path, and %w of a nil error renders as
+	// `%!w(<nil>)`. That text used to go nowhere, because an unparseable cell
+	// was silently ignored; it is now the message an operator gets when an
+	// import is refused.
+	if month < 1 || month > 12 {
+		return time.Time{}, fmt.Errorf("invalid month in %q: %d is not a month", s, month)
+	}
+
+	// The year is bounded, not merely parsed.
+	//
+	// It used to be handed to Atoi and accepted whatever came back, so
+	// "04.999" was year 999, "04.1000000" was year one million, and "04.-5"
+	// became 1995 -- a negative year turning into a real past one. None of
+	// them look wrong afterwards: billing_month is a DATE, Postgres stores
+	// anything up to 5874897 AD, and the only check downstream is IsZero().
+	//
+	// An absurd month is worse than a rejected one. Every aggregation groups
+	// and range-filters on COALESCE(pay.billing_month, p.from_date), so a row
+	// attributed to 0999-04 sits outside every window a caller can ask for:
+	// the money is not misplaced, it is invisible. Refusing the import keeps
+	// it visible, which is the whole point of reading this column.
+	//
+	// The bound is the wire format's own range. ISBJ writes MM.YY, so a
+	// well-formed cell can only mean 2000-2099; a four-digit variant is
+	// accepted for a file whose cell is formatted MM.YYYY, held to the same
+	// century so the two spellings cannot disagree. A sign is refused
+	// because Atoi accepts one and no format emits it.
+	yearStr := parts[1]
+	if !isAllDigits(yearStr) {
+		return time.Time{}, fmt.Errorf("invalid year in %q: %q is not a plain number", s, yearStr)
+	}
+	year, err := strconv.Atoi(yearStr)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("invalid year in %q: %w", s, err)
 	}
-	if year < 100 {
+	switch len(yearStr) {
+	case 2:
 		year += 2000
+	case 4:
+		// Already a full year; the range check below is the guard.
+	default:
+		return time.Time{}, fmt.Errorf(
+			"invalid year in %q: %q is neither a two-digit (MM.YY) nor a four-digit (MM.YYYY) year", s, yearStr)
 	}
+	if year < 2000 || year > 2099 {
+		return time.Time{}, fmt.Errorf("invalid year in %q: %d is outside 2000-2099", s, year)
+	}
+
 	return time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC), nil
+}
+
+// isAllDigits reports whether s is one or more ASCII digits and nothing else.
+// strconv.Atoi accepts a leading sign, which for a date component read out of a
+// spreadsheet cell is not a number but a sign that the wrong cell was read.
+func isAllDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func parseKindWithColumns(f *excelize.File, row int, vc *vertragColumns) (*Kind, error) {
