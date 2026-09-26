@@ -374,6 +374,15 @@ test.describe('Visual Regression - Operations', () => {
     await page.waitForLoadState('load');
     await expect(page.locator('table').first()).toBeVisible({ timeout: 15000 });
 
+    // Below md the grid shows one day, chosen by the picker, which starts on
+    // today. That would put a different weekday's column in the phone baseline
+    // depending on the day it was generated, so pin it to Monday. The picker is
+    // `md:hidden`, so this is a no-op at the other two viewports.
+    const dayPicker = page.getByRole('group', { name: /select day/i });
+    if (await dayPicker.isVisible().catch(() => false)) {
+      await dayPicker.getByRole('button').first().click();
+    }
+
     // The header row carries this week's dates ("Mon 18.08"), so it is different
     // every Monday and has to be masked or the baseline expires weekly. What is
     // being watched here is the grid itself: five columns of dense cells with
