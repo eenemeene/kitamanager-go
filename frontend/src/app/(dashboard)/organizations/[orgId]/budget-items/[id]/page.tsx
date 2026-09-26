@@ -238,7 +238,7 @@ export default function BudgetItemDetailPage() {
                 <TableRow>
                   <TableHead>{t('governmentFundings.period')}</TableHead>
                   <TableHead>{t('governmentFundings.amount')}</TableHead>
-                  <TableHead className="hidden md:table-cell">{t('budgetItems.notes')}</TableHead>
+                  <TableHead>{t('budgetItems.notes')}</TableHead>
                   <TableHead className="text-right">{t('common.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -247,7 +247,7 @@ export default function BudgetItemDetailPage() {
                   <TableRow key={entry.id}>
                     <TableCell>{fmt.period(entry.from, entry.to, t('common.ongoing'))}</TableCell>
                     <TableCell>{fmt.currency(entry.amount_cents)}</TableCell>
-                    <TableCell className="hidden md:table-cell">{entry.notes || '-'}</TableCell>
+                    <TableCell>{entry.notes || '-'}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex flex-nowrap items-center justify-end gap-0.5">
                         <Button
