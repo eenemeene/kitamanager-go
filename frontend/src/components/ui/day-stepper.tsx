@@ -48,6 +48,12 @@ export function DayStepper({ value, onChange }: DayStepperProps) {
             // happened when the short form landed.
             data-testid="day-stepper-value"
             data-value={format(value, 'yyyy-MM-dd')}
+            // Masked in the visual baselines, like the week and Kita-year
+            // steppers already are. This defaults to today, so without it the
+            // committed PNG holds the date it was generated on and drifts from
+            // every later run -- the rule in .claude/rules/frontend-ui.md. The
+            // machine-readable value above is what tests read.
+            data-visual-mask="date"
             className="text-sm font-medium md:min-w-[200px]"
           >
             {/* Two renderings, toggled by CSS rather than a media-query hook, so
