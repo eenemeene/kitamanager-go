@@ -1243,8 +1243,24 @@ func TestParseMonatTyp(t *testing.T) {
 		{"06.99", 2099, 6, false},
 		{"", 0, 0, false}, // empty is ok, returns zero time
 		{"invalid", 0, 0, true},
-		{"13.24", 0, 0, true}, // month > 12
-		{"00.24", 0, 0, true}, // month 0
+		{"13.24", 0, 0, true},       // month > 12
+		{"00.24", 0, 0, true},       // month 0
+		{"4.25", 2025, 4, false},    // single-digit month, as a cell may render it
+		{"04.2025", 2025, 4, false}, // four-digit year, for a MM.YYYY cell
+
+		// The year is bounded, not merely parsed. Each of these was accepted
+		// before and produced a month no query window can reach, which hides
+		// the row's money rather than misplacing it.
+		{"04.999", 0, 0, true},     // was year 999
+		{"04.1000000", 0, 0, true}, // was year 1000000
+		{"04.-5", 0, 0, true},      // was 1995: a negative year became a real one
+		{"04.1", 0, 0, true},       // was 2001, from a one-digit year no format emits
+		{"04.0", 0, 0, true},       // was 2000, same
+		{"04.1999", 0, 0, true},    // four-digit, before the ISBJ era
+		{"04.2100", 0, 0, true},    // four-digit, past what MM.YY can express
+		{"+4.25", 0, 0, true},      // Atoi accepts a sign; no cell format emits one
+		{"04.+25", 0, 0, true},     // same, on the year
+		{"-1.24", 0, 0, true},      // negative month
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
@@ -1580,5 +1596,27 @@ func TestParseVertragMultipleCorrections(t *testing.T) {
 	}
 	if v.Kinder[3].Summe != 94650 {
 		t.Errorf("row 3: expected 94650, got %d", v.Kinder[3].Summe)
+	}
+}
+
+// TestParseMonatTyp_ErrorMessagesAreReadable guards the text, not the rejection.
+//
+// An out-of-range month took the `%w` path with a nil err, so the message read
+// `invalid month in "13.24": %!w(<nil>)`. It went nowhere while an unparseable
+// cell was silently ignored; since the parser refuses such a cell, it is what an
+// operator is shown when an import is turned away, and it has to say what is
+// wrong with the file.
+func TestParseMonatTyp_ErrorMessagesAreReadable(t *testing.T) {
+	for _, in := range []string{"13.24", "00.24", "-1.24", "04.999", "04.1", "+4.25"} {
+		_, err := parseMonatTyp(in)
+		if err == nil {
+			t.Fatalf("parseMonatTyp(%q) = nil error, want a rejection", in)
+		}
+		if strings.Contains(err.Error(), "%!w") {
+			t.Errorf("parseMonatTyp(%q) error = %q, contains a formatting artefact", in, err)
+		}
+		if strings.Contains(err.Error(), "<nil>") {
+			t.Errorf("parseMonatTyp(%q) error = %q, names a nil cause", in, err)
+		}
 	}
 }
