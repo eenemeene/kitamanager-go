@@ -1075,6 +1075,7 @@
     "failedToSave": "Failed to save attendance",
     "failedToDelete": "Failed to delete attendance",
     "thisWeek": "This week",
+    "selectDay": "Select day",
     "previousWeek": "Previous week",
     "nextWeek": "Next week",
     "undo": "Undo",
