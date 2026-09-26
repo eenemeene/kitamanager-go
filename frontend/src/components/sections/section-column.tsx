@@ -17,6 +17,10 @@ export interface SectionColumnProps {
   isDefault?: boolean;
   minAgeMonths?: number | null;
   maxAgeMonths?: number | null;
+  /** False on a read-only snapshot of the board — see ChildCard. */
+  draggable?: boolean;
+  /** The board's snapshot date, "YYYY-MM-DD". */
+  asOf?: string;
 }
 
 export function SectionColumn({
@@ -27,6 +31,8 @@ export function SectionColumn({
   isDefault,
   minAgeMonths,
   maxAgeMonths,
+  draggable = true,
+  asOf,
 }: SectionColumnProps) {
   const t = useTranslations();
   const { setNodeRef, isOver } = useDroppable({ id });
@@ -73,13 +79,18 @@ export function SectionColumn({
         ) : (
           <>
             {employees.map((employee) => (
-              <EmployeeCard key={`emp-${employee.id}`} employee={employee} />
+              <EmployeeCard
+                key={`emp-${employee.id}`}
+                employee={employee}
+                draggable={draggable}
+                asOf={asOf}
+              />
             ))}
             {employees.length > 0 && items.length > 0 && (
               <div className="my-1 border-t border-dashed" />
             )}
             {items.map((child) => (
-              <ChildCard key={child.id} child={child} />
+              <ChildCard key={child.id} child={child} draggable={draggable} />
             ))}
           </>
         )}

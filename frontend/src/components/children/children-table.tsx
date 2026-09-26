@@ -35,7 +35,11 @@ import type {
 } from '@/lib/api/types';
 import { calculateAge } from '@/lib/utils/formatting';
 import { propertiesToLabelKeys } from '@/lib/utils/contract-properties';
-import { classifySchoolOverrun, getCurrentContract } from '@/lib/utils/contracts';
+import {
+  classifySchoolOverrun,
+  getCurrentContract,
+  todayBerlinString,
+} from '@/lib/utils/contracts';
 import { classifySchoolEnrollment } from '@/lib/utils/school-enrollment';
 import { useFormatters } from '@/hooks/use-formatters';
 
@@ -45,6 +49,15 @@ export interface ChildrenTableProps {
   billingSummaryByChildId: Map<number, ChildBillingSummaryEntry>;
   weeklyHoursBasis?: number;
   orgState?: string;
+  /**
+   * The date the roster is filtered to, "YYYY-MM-DD".
+   *
+   * Every per-row value derived from a contract — section, properties — is
+   * resolved against this, not against today. The page already sends it to the
+   * API as `active_on`; the rows have to agree with the filter that selected
+   * them.
+   */
+  asOf: string;
   onViewHistory: (child: Child) => void;
   onViewBilling: (child: Child) => void;
   onAddContract: (child: Child) => void;
@@ -65,6 +78,7 @@ export function ChildrenTable({
   billingSummaryByChildId,
   weeklyHoursBasis,
   orgState,
+  asOf,
   onViewHistory,
   onViewBilling,
   onAddContract,
@@ -77,6 +91,14 @@ export function ChildrenTable({
   const t = useTranslations();
   const fmt = useFormatters();
   const tLabels = useTranslations('fundingLabels');
+
+  // The school-overrun warning, and the button that acts on it, describe the
+  // state of a child's record *now*: this contract should already have ended.
+  // On a row showing some other month that sentence is not true of what is on
+  // screen, and the button would amend a contract the user is not looking at.
+  // So the alert belongs to the today view only; stepping away leaves a plain
+  // historical roster.
+  const showsToday = asOf === todayBerlinString();
 
   return (
     <TooltipProvider>
@@ -112,15 +134,16 @@ export function ChildrenTable({
         </TableHeader>
         <TableBody>
           {items.map((child) => {
-            const currentContract = getCurrentContract(child.contracts);
+            const currentContract = getCurrentContract(child.contracts, asOf);
             const enrollment = classifySchoolEnrollment(
               child.birthdate,
               orgState ?? '',
               child.school_entry_date
             );
-            const overrun = enrollment
-              ? classifySchoolOverrun(currentContract, enrollment.mussContractEnd)
-              : null;
+            const overrun =
+              showsToday && enrollment
+                ? classifySchoolOverrun(currentContract, enrollment.mussContractEnd)
+                : null;
             // Same date on both: the school-start date is what the contract
             // should end on, and what the adjust button sets it to.
             const overrunMessage =
