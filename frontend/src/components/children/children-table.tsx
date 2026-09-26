@@ -14,6 +14,7 @@ import {
   CalendarCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { RowActionsMenu } from '@/components/crud/row-actions-menu';
 import { HeaderWithTooltip } from '@/components/ui/header-with-tooltip';
 import {
   Table,
@@ -302,6 +303,42 @@ export function ChildrenTable({
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex flex-nowrap items-center justify-end gap-0.5">
+                    {/* Below sm the four buttons after this one are hidden for
+                        width. Every page they lead to is reachable from nowhere
+                        else, so the menu carries them instead of dropping them.
+                        See RowActionsMenu. */}
+                    <RowActionsMenu
+                      className="sm:hidden"
+                      label={t('common.actionsFor', {
+                        name: `${child.first_name} ${child.last_name}`,
+                      })}
+                      actions={[
+                        {
+                          key: 'history',
+                          label: t('children.contractHistory'),
+                          icon: History,
+                          onSelect: () => onViewHistory(child),
+                        },
+                        {
+                          key: 'billing',
+                          label: t('children.billingHistory'),
+                          icon: Receipt,
+                          onSelect: () => onViewBilling(child),
+                        },
+                        {
+                          key: 'add-contract',
+                          label: t('children.addContract'),
+                          icon: FileText,
+                          onSelect: () => onAddContract(child),
+                        },
+                        {
+                          key: 'vouchers',
+                          label: t('vouchers.dialogTitle'),
+                          icon: Ticket,
+                          onSelect: () => onManageVouchers(child),
+                        },
+                      ]}
+                    />
                     <Button
                       variant="ghost"
                       size="icon"
