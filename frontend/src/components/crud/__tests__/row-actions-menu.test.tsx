@@ -6,20 +6,20 @@ import { RowActionsMenu } from '../row-actions-menu';
 
 describe('RowActionsMenu', () => {
   it('renders nothing when there are no actions', () => {
-    const { container } = render(<RowActionsMenu actions={[]} label="Actions for Emma" />);
+    const { container } = render(<RowActionsMenu actions={[]} label="Actions" />);
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('names the row it acts on, so a column of them is distinguishable', () => {
+  it('is named plainly, so it cannot collide with the row content', () => {
     render(
       <RowActionsMenu
-        label="Actions for Emma Schmidt"
+        label="Actions"
         actions={[
           { key: 'history', label: 'Contract history', icon: History, onSelect: jest.fn() },
         ]}
       />
     );
-    expect(screen.getByRole('button', { name: 'Actions for Emma Schmidt' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Actions' })).toBeInTheDocument();
   });
 
   it('runs the action the user picks', async () => {
@@ -27,7 +27,7 @@ describe('RowActionsMenu', () => {
     const addContract = jest.fn();
     render(
       <RowActionsMenu
-        label="Actions for Emma Schmidt"
+        label="Actions"
         actions={[
           { key: 'history', label: 'Contract history', icon: History, onSelect: jest.fn() },
           { key: 'add', label: 'Add contract', icon: FileText, onSelect: addContract },
@@ -35,7 +35,7 @@ describe('RowActionsMenu', () => {
       />
     );
 
-    await user.click(screen.getByRole('button', { name: 'Actions for Emma Schmidt' }));
+    await user.click(screen.getByRole('button', { name: 'Actions' }));
     await user.click(await screen.findByRole('menuitem', { name: 'Add contract' }));
 
     expect(addContract).toHaveBeenCalledTimes(1);
@@ -46,12 +46,12 @@ describe('RowActionsMenu', () => {
     const onSelect = jest.fn();
     render(
       <RowActionsMenu
-        label="Actions for Emma Schmidt"
+        label="Actions"
         actions={[{ key: 'add', label: 'Add contract', icon: FileText, onSelect, disabled: true }]}
       />
     );
 
-    await user.click(screen.getByRole('button', { name: 'Actions for Emma Schmidt' }));
+    await user.click(screen.getByRole('button', { name: 'Actions' }));
     const item = await screen.findByRole('menuitem', { name: 'Add contract' });
     await user.click(item);
 
