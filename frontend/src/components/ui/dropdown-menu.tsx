@@ -81,7 +81,11 @@ const DropdownMenuItem = React.forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      'focus:bg-accent focus:text-accent-foreground relative flex cursor-default items-center rounded-sm px-2 py-1.5 text-sm transition-colors outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+      // 44px on touch, compact only from lg: where there is a mouse -- the same
+      // rule the buttons follow. These items are the whole of the user menu, the
+      // language picker and the phone-width row-action menus, so they are
+      // primary targets on exactly the devices that cannot afford a 34px one.
+      'focus:bg-accent focus:text-accent-foreground relative flex min-h-11 cursor-default items-center rounded-sm px-2 py-2 text-sm transition-colors outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 lg:min-h-0 lg:py-1.5',
       inset && 'pl-8',
       className
     )}

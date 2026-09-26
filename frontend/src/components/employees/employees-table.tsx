@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { Pencil, Trash2, FileText, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { RowActionsMenu } from '@/components/crud/row-actions-menu';
 import { HeaderWithTooltip } from '@/components/ui/header-with-tooltip';
 import {
   Table,
@@ -147,6 +148,28 @@ export function EmployeesTable({
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex flex-nowrap items-center justify-end gap-0.5">
+                    {/* See children-table: contract history and Add contract are
+                        hidden below sm and have no other route into them. */}
+                    <RowActionsMenu
+                      className="sm:hidden"
+                      label={t('common.actionsFor', {
+                        name: `${employee.first_name} ${employee.last_name}`,
+                      })}
+                      actions={[
+                        {
+                          key: 'history',
+                          label: t('employees.contractHistory'),
+                          icon: History,
+                          onSelect: () => onViewHistory(employee),
+                        },
+                        {
+                          key: 'add-contract',
+                          label: t('employees.addContract'),
+                          icon: FileText,
+                          onSelect: () => onAddContract(employee),
+                        },
+                      ]}
+                    />
                     <Button
                       variant="ghost"
                       size="icon"
