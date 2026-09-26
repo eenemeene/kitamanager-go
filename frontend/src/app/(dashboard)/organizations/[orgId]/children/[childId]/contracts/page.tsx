@@ -385,7 +385,9 @@ export default function ChildContractsPage() {
                         <TableHead>{t('sections.title')}</TableHead>
                         <TableHead>{t('contracts.from')}</TableHead>
                         <TableHead>{t('contracts.to')}</TableHead>
-                        <TableHead>{t('children.properties')}</TableHead>
+                        <TableHead className="hidden lg:table-cell">
+                          {t('children.properties')}
+                        </TableHead>
                         <TableHead className="text-right">{t('common.actions')}</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -424,7 +426,7 @@ export default function ChildContractsPage() {
                             <TableCell>
                               {contract.to ? fmt.date(contract.to) : t('common.ongoing')}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="hidden lg:table-cell">
                               {contract.properties &&
                               Object.keys(contract.properties).length > 0 ? (
                                 <div className="flex flex-wrap gap-1">
@@ -445,22 +447,24 @@ export default function ChildContractsPage() {
                               )}
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleEdit(contract)}
-                                aria-label={t('common.edit')}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDelete(contract)}
-                                aria-label={t('common.delete')}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <div className="flex flex-nowrap items-center justify-end gap-0.5">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleEdit(contract)}
+                                  aria-label={t('common.edit')}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDelete(contract)}
+                                  aria-label={t('common.delete')}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         );

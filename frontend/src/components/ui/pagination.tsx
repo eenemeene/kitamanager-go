@@ -34,7 +34,11 @@ function PaginationInner({
   return (
     <nav
       aria-label={t('pagination.navigation')}
-      className="flex items-center justify-between px-2 py-4"
+      // Wraps, because it cannot not: the summary text plus four 44px buttons
+      // plus "Page 1 of 3" does not fit 375px on one line, and the button group
+      // has no shrink to give. Without this the row decided for itself what to
+      // push past the edge.
+      className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-2 py-4"
     >
       <div className="text-muted-foreground text-sm">
         {t('pagination.showing', { start: startItem, end: endItem, total })}
