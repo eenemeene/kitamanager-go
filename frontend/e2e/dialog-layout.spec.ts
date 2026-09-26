@@ -48,7 +48,12 @@ interface DialogUnderTest {
  * Open a row action that the phone layout hides behind the overflow menu.
  *
  * Above `sm` the action is its own icon button; below it, the row shows a
- * single "Actions for <name>" menu. This spec runs at both widths.
+ * single "Actions" menu carrying the same items. This spec runs at both widths.
+ *
+ * The menu's name is matched anchored, because it has to stay distinct from
+ * the "Add contract"/"Edit"/"Delete" buttons in the very same cell — an
+ * unanchored match is how the trigger and the Edit button collided in the
+ * first place.
  */
 async function clickRowAction(page: Page, label: RegExp) {
   const inline = page.getByRole('button', { name: label }).first();
@@ -57,7 +62,7 @@ async function clickRowAction(page: Page, label: RegExp) {
     return;
   }
   await page
-    .getByRole('button', { name: /^actions for /i })
+    .getByRole('button', { name: /^actions$/i })
     .first()
     .click();
   await page.getByRole('menuitem', { name: label }).click();

@@ -83,6 +83,11 @@ interface EditableTimeProps {
   ariaLabel: string;
 }
 
+// Named apart from the Check-in / Check-out buttons that sit in the same cell.
+// They used to share an accessible name, which is ambiguous for anyone reading
+// the cell out -- two controls called "Check-in", one recording an arrival and
+// one editing a time already recorded -- and made `getByRole('button', {name:
+// /check-in/i}).first()` resolve to whichever happened to come first in the DOM.
 function EditableTime({ value, className, onSave, ariaLabel }: EditableTimeProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -404,7 +409,7 @@ function AttendanceCell({
               onSave={(newTime) =>
                 onUpdateTime(childId, dateStr, attendance.id, 'check_in_time', newTime)
               }
-              ariaLabel={t('checkIn')}
+              ariaLabel={t('editCheckInTime')}
             />
             <Button
               variant="outline"
@@ -448,7 +453,7 @@ function AttendanceCell({
               onSave={(newTime) =>
                 onUpdateTime(childId, dateStr, attendance.id, 'check_in_time', newTime)
               }
-              ariaLabel={t('checkIn')}
+              ariaLabel={t('editCheckInTime')}
             />
             <span className="text-muted-foreground text-sm">–</span>
             <EditableTime
@@ -457,7 +462,7 @@ function AttendanceCell({
               onSave={(newTime) =>
                 onUpdateTime(childId, dateStr, attendance.id, 'check_out_time', newTime)
               }
-              ariaLabel={t('checkOut')}
+              ariaLabel={t('editCheckOutTime')}
             />
             <Tooltip>
               <TooltipTrigger asChild>
