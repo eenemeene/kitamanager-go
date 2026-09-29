@@ -217,7 +217,7 @@ test.describe('Attendance Status Transitions', () => {
     await expect(row.getByText('Sick')).toBeVisible({ timeout: 10000 });
     // Time range should not be visible (times were cleared)
     await expect(
-      row.locator('button[aria-label="Check-out"]').filter({ hasText: /\d{2}:\d{2}/ })
+      row.locator('button[aria-label="Edit check-out time"]').filter({ hasText: /\d{2}:\d{2}/ })
     ).toBeHidden();
   });
 
@@ -274,7 +274,7 @@ test.describe('Attendance Status Transitions', () => {
     await checkOutResp;
     // Should show editable check-out time
     await expect(
-      row.locator('button[aria-label="Check-out"]').filter({ hasText: /\d{2}:\d{2}/ })
+      row.locator('button[aria-label="Edit check-out time"]').filter({ hasText: /\d{2}:\d{2}/ })
     ).toBeVisible({
       timeout: 10000,
     });
@@ -289,7 +289,7 @@ test.describe('Attendance Status Transitions', () => {
     // Should show "Vacation" text, times should be gone
     await expect(row.getByText('Vacation')).toBeVisible({ timeout: 10000 });
     await expect(
-      row.locator('button[aria-label="Check-out"]').filter({ hasText: /\d{2}:\d{2}/ })
+      row.locator('button[aria-label="Edit check-out time"]').filter({ hasText: /\d{2}:\d{2}/ })
     ).toBeHidden();
   });
 
@@ -368,15 +368,15 @@ test.describe('Attendance Editable Times', () => {
       timeout: 10000,
     });
 
-    // Click the check-in time text (it's a button with aria-label "Check-in")
+    // Click the check-in time text (a button labelled "Edit check-in time")
     // The EditableTime renders as a <button> showing the time
     const timeButton = row
-      .locator('button[aria-label="Check-in"]')
+      .locator('button[aria-label="Edit check-in time"]')
       .filter({ hasText: /\d{2}:\d{2}/ });
     await timeButton.click();
 
     // Should show a time input
-    const timeInput = row.locator('input[type="time"][aria-label="Check-in"]');
+    const timeInput = row.locator('input[type="time"][aria-label="Edit check-in time"]');
     await expect(timeInput).toBeVisible();
   });
 
@@ -415,9 +415,9 @@ test.describe('Attendance Editable Times', () => {
 
     // The time may render as a button (view mode) or input (edit mode).
     const timeButton = row
-      .locator('button[aria-label="Check-in"]')
+      .locator('button[aria-label="Edit check-in time"]')
       .filter({ hasText: /\d{2}:\d{2}/ });
-    const timeInput = row.locator('input[type="time"][aria-label="Check-in"]');
+    const timeInput = row.locator('input[type="time"][aria-label="Edit check-in time"]');
     await expect(timeButton.or(timeInput)).toBeVisible({ timeout: 10000 });
     if (await timeButton.isVisible()) {
       await timeButton.click();
@@ -442,7 +442,7 @@ test.describe('Attendance Editable Times', () => {
     // Input should be gone, replaced by a time button again
     await expect(timeInput).toBeHidden({ timeout: 5000 });
     await expect(
-      row.locator('button[aria-label="Check-in"]').filter({ hasText: /\d{2}:\d{2}/ })
+      row.locator('button[aria-label="Edit check-in time"]').filter({ hasText: /\d{2}:\d{2}/ })
     ).toBeVisible({ timeout: 10000 });
   });
 
@@ -488,14 +488,17 @@ test.describe('Attendance Editable Times', () => {
       .click();
     await checkOutResponse;
     await expect(
-      row.locator('button[aria-label="Check-out"]').filter({ hasText: /\d{2}:\d{2}/ })
+      row.locator('button[aria-label="Edit check-out time"]').filter({ hasText: /\d{2}:\d{2}/ })
     ).toBeVisible({
       timeout: 10000,
     });
 
     // Pin both times rather than leaving either at "now", so what is asserted
     // does not drift with the clock either.
-    const editTime = async (label: 'Check-in' | 'Check-out', value: string) => {
+    const editTime = async (which: 'in' | 'out', value: string) => {
+      // The editors are named apart from the Check-in / Check-out buttons, and
+      // in a checked-out cell there is no button of either name left to find.
+      const label = which === 'in' ? 'Edit check-in time' : 'Edit check-out time';
       await row
         .locator(`button[aria-label="${label}"]`)
         .filter({ hasText: /\d{2}:\d{2}/ })
@@ -530,16 +533,16 @@ test.describe('Attendance Editable Times', () => {
     // thirds depends on which order you pick. Pushing check-out out to 23:30
     // first makes every subsequent edit valid on its own, whatever the clock
     // says: 08:00 lands below 23:30, and 16:45 lands above 08:00.
-    await editTime('Check-out', '23:30');
-    await editTime('Check-in', '08:00');
-    await editTime('Check-out', '16:45');
+    await editTime('out', '23:30');
+    await editTime('in', '08:00');
+    await editTime('out', '16:45');
 
-    const timeInput = row.locator('input[type="time"][aria-label="Check-out"]');
+    const timeInput = row.locator('input[type="time"][aria-label="Edit check-out time"]');
 
     // Input should be gone, replaced by a time button again
     await expect(timeInput).toBeHidden({ timeout: 5000 });
     await expect(
-      row.locator('button[aria-label="Check-out"]').filter({ hasText: /\d{2}:\d{2}/ })
+      row.locator('button[aria-label="Edit check-out time"]').filter({ hasText: /\d{2}:\d{2}/ })
     ).toBeVisible({ timeout: 10000 });
   });
 
@@ -557,9 +560,9 @@ test.describe('Attendance Editable Times', () => {
 
     // The time may render as a button (view mode) or input (edit mode).
     const timeButton = row
-      .locator('button[aria-label="Check-in"]')
+      .locator('button[aria-label="Edit check-in time"]')
       .filter({ hasText: /\d{2}:\d{2}/ });
-    const timeInput = row.locator('input[type="time"][aria-label="Check-in"]');
+    const timeInput = row.locator('input[type="time"][aria-label="Edit check-in time"]');
     await expect(timeButton.or(timeInput)).toBeVisible({ timeout: 10000 });
 
     // Get the original time from whichever element is showing
@@ -578,7 +581,7 @@ test.describe('Attendance Editable Times', () => {
 
     // Should revert to original time (no toast)
     await expect(
-      row.locator('button[aria-label="Check-in"]').filter({ hasText: originalTime })
+      row.locator('button[aria-label="Edit check-in time"]').filter({ hasText: originalTime })
     ).toBeVisible({
       timeout: 5000,
     });
