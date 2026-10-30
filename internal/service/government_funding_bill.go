@@ -409,7 +409,14 @@ func (s *GovernmentFundingBillService) AssignVoucher(ctx context.Context, childI
 		voucher := &models.ChildVoucher{
 			ChildID:       childID,
 			VoucherNumber: voucherNumber,
-			FirstSeen:     time.Now().UTC(),
+			// first_seen is a DATE recording the day an operator recorded this
+			// Gutschein, so it is a calendar-day question and must use
+			// models.Today(). time.Now().UTC() stores the server's clock day:
+			// just after midnight in Berlin it is still yesterday in UTC, and
+			// the session TimeZone on the DATE column is UTC, so the row lands
+			// one day early. The importer's counterpart below is already
+			// correct — it takes the bill's own date, not a clock reading.
+			FirstSeen: models.Today(),
 		}
 		err := s.childVoucherStore.CreateVoucherStrict(txCtx, voucher)
 		if err == nil {
