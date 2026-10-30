@@ -1,6 +1,7 @@
 package pdf
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -283,14 +284,19 @@ func (g *Generator) WebVersion() string {
 	return g.webVersion
 }
 
+// pdfcpu takes a context on every file operation since v0.12. This tool is a
+// one-shot CLI: it has no cancellation to propagate and no caller holding a
+// context, so the calls below pass context.Background() rather than widening
+// these signatures for a value nothing would ever supply.
+
 // MergeFiles combines multiple PDF files into a single output file.
 func MergeFiles(inputPaths []string, outputPath string) error {
-	return pdfcpuapi.MergeCreateFile(inputPaths, outputPath, false, nil)
+	return pdfcpuapi.MergeCreateFile(context.Background(), inputPaths, outputPath, false, nil)
 }
 
 // AddProperties adds custom properties to an existing PDF file.
 func AddProperties(pdfPath string, properties map[string]string) error {
-	return pdfcpuapi.AddPropertiesFile(pdfPath, "", properties, nil)
+	return pdfcpuapi.AddPropertiesFile(context.Background(), pdfPath, "", properties, nil)
 }
 
 // StampColophon writes `text` as a small bottom-center stamp on the
@@ -304,7 +310,7 @@ func AddProperties(pdfPath string, properties map[string]string) error {
 // (stamp, not watermark) so it stays readable on top of any
 // background fill the print page might have.
 func StampColophon(pdfPath, text string) error {
-	pages, err := pdfcpuapi.PageCountFile(pdfPath)
+	pages, err := pdfcpuapi.PageCountFile(context.Background(), pdfPath)
 	if err != nil {
 		return fmt.Errorf("count pages of %s: %w", pdfPath, err)
 	}
@@ -322,7 +328,7 @@ func StampColophon(pdfPath, text string) error {
 	// the short prefix because `sc` collides with `strokecolor` and
 	// `rot` with `rendermode` — pdfcpu rejects ambiguous prefixes.
 	desc := "pos:bc, offset:0 20, points:9, opacity:0.6, rotation:0, scalefactor:1.0 abs"
-	if err := pdfcpuapi.AddTextWatermarksFile(pdfPath, "", []string{lastPage}, true, text, desc, nil); err != nil {
+	if err := pdfcpuapi.AddTextWatermarksFile(context.Background(), pdfPath, "", []string{lastPage}, true, text, desc, nil); err != nil {
 		return fmt.Errorf("stamp colophon on %s: %w", pdfPath, err)
 	}
 	return nil
