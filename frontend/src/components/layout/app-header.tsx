@@ -114,7 +114,15 @@ export function AppHeader() {
             variant="ghost"
             size="icon"
             className="relative rounded-full"
-            aria-label={t('common.userMenu')}
+            // The initials are the button's visible label, so WCAG 2.5.3
+            // (Label in Name) requires the accessible name to contain them --
+            // someone driving the app by voice reads "AS" off the screen and
+            // says it. A bare "User menu" replaced that text instead of
+            // extending it. The message therefore interpolates the initials
+            // and must keep them outside any parentheses: axe strips
+            // parentheticals from both sides before comparing, so
+            // "User menu (AS)" still counts as a mismatch.
+            aria-label={t('common.userMenu', { initials: userInitials })}
           >
             <Avatar className="h-10 w-10">
               <AvatarFallback className="bg-primary text-primary-foreground">

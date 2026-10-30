@@ -45,7 +45,7 @@
     "organization": "Organization",
     "comment": "Comment",
     "unknown": "Unknown",
-    "userMenu": "User menu",
+    "userMenu": "{initials} — User menu",
     "confirmDeleteMessage": "Are you sure you want to delete this {resource}?",
     "updateSuccess": "{resource} updated successfully",
     "createSuccess": "{resource} created successfully",
