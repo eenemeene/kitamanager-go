@@ -32,6 +32,9 @@ const (
 
 // Login authenticates against the API and returns cookies suitable for Playwright.
 func Login(apiURL, email, password, baseURL string) ([]playwright.OptionalCookie, error) {
+	// #nosec G117 -- the password is the point: this is the login request body,
+	// sent over the wire to /api/v1/login. The field is never logged or
+	// persisted, and the struct exists solely to encode this one request.
 	body, err := json.Marshal(loginRequest{Email: email, Password: password})
 	if err != nil {
 		return nil, fmt.Errorf("marshal login request: %w", err)
