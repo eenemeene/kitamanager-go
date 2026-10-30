@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	pdfcpuapi "github.com/pdfcpu/pdfcpu/pkg/api"
 	"github.com/mxschmitt/playwright-go"
+	pdfcpuapi "github.com/pdfcpu/pdfcpu/pkg/api"
 )
 
 // loginPathPrefix is the SPA route the frontend redirects to when no
@@ -77,7 +77,10 @@ func NewGenerator(cookies []playwright.OptionalCookie, baseURL, locale string) (
 		Headless: playwright.Bool(true),
 	})
 	if err != nil {
-		pw.Stop()
+		// Best-effort teardown on the failure path: the launch error below is
+		// what the caller needs, and a Stop error on top of it would only
+		// obscure the cause.
+		_ = pw.Stop()
 		return nil, fmt.Errorf("launch chromium: %w", err)
 	}
 
@@ -326,7 +329,12 @@ func StampColophon(pdfPath, text string) error {
 }
 
 // Close shuts down the browser and Playwright.
+//
+// Errors are discarded deliberately rather than returned: the sole caller uses
+// `defer gen.Close()` after the PDF has already been written, so there is no
+// longer anything a failure here could change. Returning an error would only
+// move the discard to the caller's defer.
 func (g *Generator) Close() {
-	g.browser.Close()
-	g.pw.Stop()
+	_ = g.browser.Close()
+	_ = g.pw.Stop()
 }

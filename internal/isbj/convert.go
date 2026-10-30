@@ -190,14 +190,14 @@ func convertChild(kind *Kind) (*ConvertedChildRow, *convertChildMeta, error) {
 	}
 
 	return &ConvertedChildRow{
-			IsCorrection:   kind.Typ == "K",
-			TotalRowAmount: kind.Summe,
-			Amounts:        amounts,
-			BillingMonth:   kind.Abrechnungsmonat,
-		}, &convertChildMeta{
-			VoucherNumber: kind.Gutscheinnummer,
-			ChildName:     kind.Name,
-			BirthDate:     kind.Geburtsdatum,
-			District:      kind.Bezirk,
-		}, nil
+		IsCorrection:   kind.Typ == "K",
+		TotalRowAmount: kind.Summe,
+		Amounts:        amounts,
+		BillingMonth:   kind.Abrechnungsmonat,
+	}, &convertChildMeta{
+		VoucherNumber: kind.Gutscheinnummer,
+		ChildName:     kind.Name,
+		BirthDate:     kind.Geburtsdatum,
+		District:      kind.Bezirk,
+	}, nil
 }

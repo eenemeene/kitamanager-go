@@ -9,20 +9,23 @@ import (
 	"testing"
 )
 
-// GO-2026-6452 is a panic in excelize on a cell whose shared-string index is
-// negative. v2.11.0 fixed the bounds check in xlsxC.getValueFrom but not the
-// one in File.getFromStringItem, which still tests only the upper bound:
+// GO-2026-6452 was a panic in excelize on a cell whose shared-string index is
+// negative: File.getFromStringItem tested only the upper bound, so a <v> of -1
+// indexed f.sharedStringItem out of range (rows.go:362). The path is taken only
+// once the shared-string table is large enough for excelize to stream it to a
+// temp file, governed by UnzipXMLSizeLimit — and xlsxOpenOptions sets that to
+// 25 MB, so every ISBJ upload was one crafted workbook away from it.
 //
-//	if len(f.sharedStringItem) <= index {   // rows.go:359
-//	    return strconv.Itoa(index)
-//	}
-//	offsetRange := f.sharedStringItem[index]  // rows.go:362 — panics on -1
+// Upstream fixed it after v2.11.0, and this module now pins the commit that
+// carries the fix. The fixture stays as the regression guard, with the
+// assertions inverted: a workbook that once panicked must now parse far enough
+// to fail on its own structure. recoverMalformedWorkbook stays in parse.go too
+// — not for this bug, which is fixed, but as the net for the next one.
 //
-// That path is taken only once the shared-string table is large enough for
-// excelize to stream it to a temp file, which is governed by
-// UnzipXMLSizeLimit — and xlsxOpenOptions sets that to 25 MB, so every ISBJ
-// upload is one crafted workbook away from it. There is no released excelize
-// with a fix, so the parser catches the panic instead.
+// If either test starts reporting a "malformed spreadsheet" error, a panic was
+// recovered and upstream has regressed. That is the signal these tests exist to
+// give; they are deliberately written to fail loudly on it rather than to
+// tolerate either outcome.
 //
 // The workbook is built here rather than committed as a fixture: it is 30 MB
 // uncompressed, and it carries no data worth storing.
@@ -72,19 +75,21 @@ func buildNegativeSharedStringIndexWorkbook(t *testing.T) []byte {
 func TestParseFromReaderSurvivesNegativeSharedStringIndex(t *testing.T) {
 	data := buildNegativeSharedStringIndexWorkbook(t)
 
-	// Without recoverMalformedWorkbook this panics inside GetRows and takes
-	// the calling goroutine with it.
+	// A panic here fails the test by taking the goroutine down, which is the
+	// first half of the guard. The second half is the shape of the error: the
+	// fixture carries one sheet named "Sheet1", so a parser that gets as far as
+	// looking for the ISBJ sheets must fail on the missing one.
 	out, err := ParseFromReader(bytes.NewReader(data))
 	if err == nil {
-		t.Fatal("expected an error for a workbook with a negative shared-string index, got nil")
+		t.Fatal("expected an error: the fixture carries no Einrichtungsübersicht sheet")
 	}
 	if out != nil {
 		t.Errorf("expected no output alongside the error, got %+v", out)
 	}
-	if !strings.Contains(err.Error(), "malformed spreadsheet") {
-		t.Errorf("error = %q, want it to name the malformed spreadsheet", err)
+	if strings.Contains(err.Error(), "malformed spreadsheet") {
+		t.Fatalf("error = %q — a panic was recovered, so excelize has regressed on GO-2026-6452", err)
 	}
-	t.Logf("recovered as: %v", err)
+	t.Logf("parsed past the shared-string table and failed on structure, as it should: %v", err)
 }
 
 func TestOpenSenatsabrechnungSurvivesNegativeSharedStringIndex(t *testing.T) {
@@ -93,16 +98,20 @@ func TestOpenSenatsabrechnungSurvivesNegativeSharedStringIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// OpenSenatsabrechnung only opens the workbook and enforces the size limits,
+	// neither of which this fixture breaches, so with the panic fixed upstream it
+	// now succeeds where it used to return a recovered error.
 	f, err := OpenSenatsabrechnung(path)
-	if err == nil {
-		t.Fatal("expected an error for a workbook with a negative shared-string index, got nil")
+	if err != nil {
+		if strings.Contains(err.Error(), "malformed spreadsheet") {
+			t.Fatalf("error = %q — a panic was recovered, so excelize has regressed on GO-2026-6452", err)
+		}
+		t.Fatalf("OpenSenatsabrechnung() error = %v, want it to open cleanly", err)
 	}
-	if f != nil {
-		t.Error("expected no workbook handle alongside the error")
+	if f == nil {
+		t.Fatal("OpenSenatsabrechnung() returned no error and no workbook handle")
 	}
-	if !strings.Contains(err.Error(), "malformed spreadsheet") {
-		t.Errorf("error = %q, want it to name the malformed spreadsheet", err)
-	}
+	t.Cleanup(func() { _ = f.Close() })
 }
 
 func writeFile(t *testing.T, path string, data []byte) error {
