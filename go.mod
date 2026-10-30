@@ -5,7 +5,7 @@ go 1.27.3
 require (
 	github.com/casbin/casbin/v3 v3.11.0
 	github.com/casbin/gorm-adapter/v3 v3.41.0
-	github.com/fxamacker/cbor/v2 v2.9.4
+	github.com/fxamacker/cbor/v2 v2.9.6
 	github.com/getkin/kin-openapi v0.139.0
 	github.com/gin-contrib/cors v1.7.9
 	github.com/gin-gonic/gin v1.12.0
@@ -17,7 +17,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
 	github.com/pquerna/otp v1.5.0
-	github.com/prometheus/client_golang v1.24.1
+	github.com/prometheus/client_golang v1.25.0
 	github.com/prometheus/client_model v0.6.3
 	github.com/stretchr/testify v1.12.1
 	github.com/swaggo/files v1.0.1
@@ -96,7 +96,7 @@ require (
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.19.1 // indirect
+	github.com/klauspost/compress v1.20.1 // indirect
 	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
 	github.com/leodido/go-urn v1.5.0 // indirect
 	github.com/lib/pq v1.10.9 // indirect
@@ -128,8 +128,8 @@ require (
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
-	github.com/prometheus/common v0.70.1 // indirect
-	github.com/prometheus/procfs v0.21.1 // indirect
+	github.com/prometheus/common v0.72.0 // indirect
+	github.com/prometheus/procfs v0.22.0 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/quic-go/quic-go v0.60.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
