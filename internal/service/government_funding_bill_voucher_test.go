@@ -1151,3 +1151,61 @@ func TestAssignVoucher_ConcurrentAssignsToDifferentChildrenSerializeOnUniqueInde
 		t.Errorf("expected 1 voucher row org-wide, got %d", len(all))
 	}
 }
+
+// TestAssignVoucher_FirstSeenUsesAppCalendarDay pins the clock to an instant
+// where the server's UTC day and the app's calendar day disagree: 23:30 UTC on
+// 2026-10-30 is already 2026-10-31 in Europe/Berlin. first_seen is a DATE
+// column recording the day an operator recorded the Gutschein, so it has to
+// follow the operator's calendar rather than the server's clock day.
+//
+// The assertion is written against models.DateIn so it stays correct under a
+// KITAMANAGER_TIMEZONE override, and skips when that override is UTC — there
+// the two dates coincide and the test could not tell a regression from a fix.
+func TestAssignVoucher_FirstSeenUsesAppCalendarDay(t *testing.T) {
+	instant := time.Date(2026, 10, 30, 23, 30, 0, 0, time.UTC)
+	want := models.DateIn(instant, models.AppLocation())
+	if want.Equal(models.DateIn(instant, time.UTC)) {
+		t.Skip("app timezone resolves to UTC; this instant cannot discriminate the two")
+	}
+	defer models.SetNow(instant)()
+
+	db := setupTestDB(t)
+	svc := NewGovernmentFundingBillService(
+		store.NewChildStore(db),
+		store.NewChildVoucherStore(db),
+		store.NewGovernmentFundingBillPeriodStore(db),
+		store.NewOrganizationStore(db),
+		store.NewGovernmentFundingStore(db),
+		store.NewTransactor(db),
+	)
+	org := createTestOrganization(t, db, "Test Org")
+	section := getDefaultSection(t, db, org.ID)
+	ctx := context.Background()
+
+	child := createTestChildWithContract(t, db, "Late", "Night", org.ID, section.ID)
+
+	voucher, err := svc.AssignVoucher(ctx, child.ID, org.ID, "GB-12345678901-01")
+	if err != nil {
+		t.Fatalf("AssignVoucher() error = %v", err)
+	}
+	if !voucher.FirstSeen.Equal(want) {
+		t.Errorf("returned first_seen = %s, want %s (server clock day was %s)",
+			voucher.FirstSeen.Format(models.DateFormat),
+			want.Format(models.DateFormat),
+			instant.UTC().Format(models.DateFormat))
+	}
+
+	// Read it back: the returned struct could be right while the stored row is
+	// wrong, which is the half that actually reaches the operator.
+	stored, err := store.NewChildVoucherStore(db).FindVouchersByChildID(ctx, child.ID)
+	if err != nil {
+		t.Fatalf("FindVouchersByChildID() error = %v", err)
+	}
+	if len(stored) != 1 {
+		t.Fatalf("expected 1 stored voucher, got %d", len(stored))
+	}
+	if !stored[0].FirstSeen.Equal(want) {
+		t.Errorf("stored first_seen = %s, want %s",
+			stored[0].FirstSeen.Format(models.DateFormat), want.Format(models.DateFormat))
+	}
+}
