@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 env:
-  GO_VERSION: '1.26.6'
+  GO_VERSION: '1.27.3'
   # The floor the API suites must clear. Measured coverage is 70.6% and has
   # been for every run sampled, because Go coverage is deterministic for
   # identical code — there is no noise band to leave room for.
