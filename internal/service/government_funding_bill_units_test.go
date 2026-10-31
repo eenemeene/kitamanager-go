@@ -429,11 +429,14 @@ func TestParseBillChildName(t *testing.T) {
 		wantFirst string
 		wantLast  string
 	}{
-		{"Mevissen,Magnus Morgan", "Magnus Morgan", "Mevissen"},
-		{"Hardt,Alva", "Alva", "Hardt"},
-		{"Silva Elgueda,Caetano", "Caetano", "Silva Elgueda"},
-		{"Conde Kleppe,Yanosh Rio", "Yanosh Rio", "Conde Kleppe"},
-		{"Beetz,Wilda", "Wilda", "Beetz"},
+		// The five shapes the ISBJ "Nachname,Vorname" column comes in: a
+		// multi-part given name, a single given name, a multi-part surname,
+		// both at once, and a plain pair.
+		{"Mustermann,Fridolin Gernot", "Fridolin Gernot", "Mustermann"},
+		{"Beispiel,Hedda", "Hedda", "Beispiel"},
+		{"Von Beispiel,Balduin", "Balduin", "Von Beispiel"},
+		{"Di Beispiel,Roswitha Adelheid", "Roswitha Adelheid", "Di Beispiel"},
+		{"Musterfrau,Egon", "Egon", "Musterfrau"},
 		{"NoComma", "", "NoComma"},
 		{"", "", ""},
 	}

@@ -878,8 +878,8 @@ func buildVertragSheet(t *testing.T, f *excelize.File, layout string) {
 		_ = f.SetCellValue(SheetVertrag, "W7", "MSS")
 		_ = f.SetCellValue(SheetVertrag, "X7", "NdHs")
 		_ = f.SetCellValue(SheetVertrag, "Y7", "SpH")
-		// Section header at row 8
-		_ = f.SetCellValue(SheetVertrag, "A8", "11170130-EKT Eene meene mopel")
+		// Section header at row 8, in the "Einrichtungsnummer-Name" shape
+		_ = f.SetCellValue(SheetVertrag, "A8", "12345678-EKT Kita Sonnenschein")
 		// Data at row 9
 		_ = f.SetCellValue(SheetVertrag, "E9", "GB-12345678901-02")
 		_ = f.SetCellValue(SheetVertrag, "F9", "Mustermann,Max")
@@ -932,7 +932,7 @@ func buildVertragSheet(t *testing.T, f *excelize.File, layout string) {
 		_ = f.SetCellValue(SheetVertrag, "X6", "ndH")
 		_ = f.SetCellValue(SheetVertrag, "Z6", "SpH")
 		// Section header at row 7
-		_ = f.SetCellValue(SheetVertrag, "A7", "11170130-EKT Eene meene mopel")
+		_ = f.SetCellValue(SheetVertrag, "A7", "12345678-EKT Kita Sonnenschein")
 		// Data at row 8 — using German number format (comma decimal)
 		_ = f.SetCellValue(SheetVertrag, "C8", "GB-98765432101-03")
 		_ = f.SetCellValue(SheetVertrag, "D8", "Schmidt,Anna")
@@ -1377,7 +1377,7 @@ func TestParseVertragWithCorrections(t *testing.T) {
 	_ = f.SetCellValue(sheet, "Z6", "Abrechn.-summe")
 
 	// Facility row 8
-	_ = f.SetCellValue(sheet, "C8", "11170130-Test Kita")
+	_ = f.SetCellValue(sheet, "C8", "12345678-Test Kita")
 
 	// K row (correction for January): row 9
 	_ = f.SetCellValue(sheet, "C9", "01.25")
@@ -1535,7 +1535,7 @@ func TestParseVertragMultipleCorrections(t *testing.T) {
 	_ = f.SetCellValue(sheet, "Y7", "SpH")
 	_ = f.SetCellValue(sheet, "Z6", "Abrechn.-summe")
 
-	_ = f.SetCellValue(sheet, "C8", "11170130-Test Kita")
+	_ = f.SetCellValue(sheet, "C8", "12345678-Test Kita")
 
 	// 3 K rows for months Jan-Mar + 1 A row (like Praxis correction pattern)
 	voucher := "GB-33333333333-01"
