@@ -10,6 +10,7 @@ import {
   XCircle,
   AlertTriangle,
   MinusCircle,
+  FileWarning,
   ChevronDown,
   ChevronRight,
 } from 'lucide-react';
@@ -73,6 +74,16 @@ function StatusBadge({
           {t('statusCalcOnly')}
         </Badge>
       );
+    // The comparison can now reach this too, not just the billing history: a
+    // matched child whose rate could not be computed carries no difference,
+    // and saying so beats a badge-less row.
+    case 'no_funding_config':
+      return (
+        <Badge variant="secondary">
+          <FileWarning className="mr-1 h-3 w-3" />
+          {t('statusNoFundingConfig')}
+        </Badge>
+      );
   }
 }
 
@@ -118,6 +129,11 @@ function DifferenceReason({
   // mismatch; the month simply carries no billing row.
   if (comp.status === 'not_billed') {
     return <span className="text-muted-foreground text-xs">{t('mismatchReasonNotBilled')}</span>;
+  }
+  if (comp.status === 'no_funding_config') {
+    return (
+      <span className="text-muted-foreground text-xs">{t('mismatchReasonNoFundingConfig')}</span>
+    );
   }
   if (comp.status !== 'difference' || !comp.properties?.length) return null;
 
@@ -225,7 +241,8 @@ export default function GovernmentFundingBillDetailPage() {
                 className={`text-sm ${
                   comparison.difference_count === 0 &&
                   comparison.bill_only_count === 0 &&
-                  comparison.calc_only_count === 0
+                  comparison.calc_only_count === 0 &&
+                  (comparison.no_funding_config_count ?? 0) === 0
                     ? 'text-success'
                     : 'text-destructive'
                 }`}
@@ -261,7 +278,8 @@ export default function GovernmentFundingBillDetailPage() {
                     className={`inline-block h-2.5 w-2.5 rounded-full ${
                       comparison.difference_count === 0 &&
                       comparison.bill_only_count === 0 &&
-                      comparison.calc_only_count === 0
+                      comparison.calc_only_count === 0 &&
+                      (comparison.no_funding_config_count ?? 0) === 0
                         ? 'bg-success'
                         : 'bg-muted-foreground'
                     }`}

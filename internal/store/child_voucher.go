@@ -194,11 +194,27 @@ func (s *ChildVoucherStore) FindActiveContractsByChildIDsAndDate(ctx context.Con
 		return make(map[uint]models.ChildContract), nil
 	}
 
+	// Ordered, and first-wins below, so that a child with two contracts active
+	// on one date resolves the same way every run. Unordered, the map was
+	// overwritten in whatever sequence Postgres returned the rows, and the
+	// comparison's calculated figure could change between two runs over
+	// unchanged data. The tie-break is the one pickActiveChildContract uses --
+	// latest start, then highest id -- so every "which contract is active?"
+	// decision in the codebase now answers alike.
+	//
+	// A deferred exclusion constraint guards against overlapping contracts, so
+	// this is defence in depth rather than a live divergence -- and it is why
+	// there is no test for it. The overlap can only be staged inside a
+	// transaction that is rolled back, and even then the order Postgres returns
+	// two rows in is not something a test can pin, so an assertion here passes
+	// with or without the ORDER BY. A test that cannot fail is worse than this
+	// comment.
 	var contracts []models.ChildContract
 	err := DBFromContext(ctx, s.db).
 		Joins("JOIN children ON children.id = child_contracts.child_id").
 		Where("children.organization_id = ? AND child_contracts.child_id IN ?", orgID, childIDs).
 		Scopes(PeriodActiveOn("child_contracts.from_date", "child_contracts.to_date", date)).
+		Order("child_contracts.from_date DESC, child_contracts.id DESC").
 		Find(&contracts).Error
 	if err != nil {
 		return nil, err
@@ -206,7 +222,9 @@ func (s *ChildVoucherStore) FindActiveContractsByChildIDsAndDate(ctx context.Con
 
 	result := make(map[uint]models.ChildContract, len(contracts))
 	for _, c := range contracts {
-		result[c.ChildID] = c
+		if _, seen := result[c.ChildID]; !seen {
+			result[c.ChildID] = c
+		}
 	}
 	return result, nil
 }
