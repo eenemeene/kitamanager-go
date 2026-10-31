@@ -79,16 +79,6 @@ updates:
       # the TS7 native compiler.
       - dependency-name: typescript
         versions: [">=7"]
-      # eslint-plugin-react-hooks 7.1 turns on set-state-in-effect and a
-      # stricter dependency-list shape check, which flag 9 pre-existing spots
-      # (the two-factor dialogs, app-sidebar, forecast-optimize-tab,
-      # use-problem-form-errors, attendance). They are real findings, not noise,
-      # and fixing them means restructuring effects — a behavioural change that
-      # belongs in its own pull request, not in a dependency bump. package.json
-      # pins the plugin to 7.0.1 via `overrides` because it arrives transitively
-      # through eslint-config-next. Drop both once those effects are fixed.
-      - dependency-name: eslint-plugin-react-hooks
-        versions: [">=7.1"]
 
   # Docker
   - package-ecosystem: docker
