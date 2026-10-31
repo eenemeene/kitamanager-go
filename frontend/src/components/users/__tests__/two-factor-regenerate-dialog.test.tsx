@@ -37,6 +37,40 @@ beforeEach(() => {
 });
 
 describe('TwoFactorRegenerateDialog', () => {
+  // The reset-on-close effect is gone; the form's state now lives inside
+  // DialogContent, which radix unmounts on close. Assert the outcome the
+  // effect used to guarantee, so a change that keeps the subtree mounted
+  // (forceMount, or hoisting state back up) fails here rather than leaking a
+  // previous attempt's password into the next open.
+  it('clears a half-filled form when the dialog is closed and reopened', async () => {
+    const u = userEvent.setup();
+    const props = { onOpenChange: () => {}, factorId: 43, onComplete: jest.fn() };
+    const { rerender } = renderWithProviders(<TwoFactorRegenerateDialog open {...props} />);
+
+    const password = () =>
+      screen.getByLabelText(
+        'settings.twoFactor.regenerateDialog.passwordLabel'
+      ) as HTMLInputElement;
+    const code = () =>
+      screen.getByLabelText('settings.twoFactor.regenerateDialog.codeLabel') as HTMLInputElement;
+
+    await u.type(password(), 'pw');
+    await u.type(code(), '123456');
+    expect(password().value).toBe('pw');
+    expect(code().value).toBe('123456');
+
+    rerender(<TwoFactorRegenerateDialog open={false} {...props} />);
+    await waitFor(() =>
+      expect(
+        screen.queryByLabelText('settings.twoFactor.regenerateDialog.passwordLabel')
+      ).not.toBeInTheDocument()
+    );
+
+    rerender(<TwoFactorRegenerateDialog open {...props} />);
+    await waitFor(() => expect(password()).toBeInTheDocument());
+    expect(password().value).toBe('');
+    expect(code().value).toBe('');
+  });
   it('submit is disabled when password is empty', () => {
     renderWithProviders(
       <TwoFactorRegenerateDialog

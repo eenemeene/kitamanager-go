@@ -148,14 +148,45 @@ describe('ForecastOptimizeTab', () => {
       expect(targetInput).toHaveValue(0);
     });
 
-    it('prefills the target balance once when baseline data first loads', async () => {
-      // The component's useEffect reads baselineBalanceCents and rounds
-      // cents → euros once. A re-render with a new baseline must NOT
-      // overwrite the user's manual edit later — pinned in the next test.
+    it('prefills the target balance when baseline data first loads', async () => {
+      // The target is derived from baselineBalanceCents, rounded cents → euros.
+      // The two tests below pin the halves that matter: an untouched field
+      // follows the baseline, and a typed value then wins for good.
       renderWithProviders(
         <ForecastOptimizeTab baselineBalanceCents={250_000} isLoadingBaseline={false} />
       );
       await waitFor(() => expect(getTargetInput()).toHaveValue(2500));
+    });
+
+    it('an untouched target follows a baseline that changes later', async () => {
+      // This is a deliberate change from the effect that used to prefill here.
+      // That effect fired once, on the first non-null baseline, and froze --
+      // so a refetch that moved the balance left a stale figure in a field the
+      // user had never touched. Derived state tracks it.
+      const { rerender } = renderWithProviders(
+        <ForecastOptimizeTab baselineBalanceCents={250_000} isLoadingBaseline={false} />
+      );
+      await waitFor(() => expect(getTargetInput()).toHaveValue(2500));
+
+      rerender(<ForecastOptimizeTab baselineBalanceCents={310_000} isLoadingBaseline={false} />);
+      await waitFor(() => expect(getTargetInput()).toHaveValue(3100));
+    });
+
+    it('a typed target survives a later baseline change', async () => {
+      // The half the old comment claimed was pinned "in the next test", where
+      // no such test existed. Once the user types, the override wins.
+      const user = userEvent.setup();
+      const { rerender } = renderWithProviders(
+        <ForecastOptimizeTab baselineBalanceCents={250_000} isLoadingBaseline={false} />
+      );
+      await waitFor(() => expect(getTargetInput()).toHaveValue(2500));
+
+      await user.clear(getTargetInput());
+      await user.type(getTargetInput(), '9000');
+      expect(getTargetInput()).toHaveValue(9000);
+
+      rerender(<ForecastOptimizeTab baselineBalanceCents={310_000} isLoadingBaseline={false} />);
+      await waitFor(() => expect(getTargetInput()).toHaveValue(9000));
     });
 
     it('renders the loading hint while baseline is loading', () => {
@@ -199,6 +230,29 @@ describe('ForecastOptimizeTab', () => {
       // does not. Match against the bg-primary class fragment.
       expect(krippeBtn.className).toMatch(/bg-primary/);
       expect(elementarBtn.className).not.toMatch(/bg-primary/);
+    });
+
+    it('keeps an empty selection empty instead of re-applying the default', async () => {
+      // The effect this replaces re-applied the default whenever the selection
+      // was empty, so clearing every section could silently put one back. An
+      // explicit override separates "not chosen yet" from "chose nothing".
+      const user = userEvent.setup();
+      const { rerender } = renderWithProviders(
+        <ForecastOptimizeTab baselineBalanceCents={null} isLoadingBaseline={false} />
+      );
+      await waitFor(() => expect(screen.getByText(/Krippe/)).toBeInTheDocument());
+
+      const krippeBtn = screen.getByRole('button', { name: /Krippe/ });
+      expect(krippeBtn.className).toMatch(/bg-primary/);
+
+      // Deselect the auto-selected section, leaving nothing chosen.
+      await user.click(krippeBtn);
+      expect(screen.getByRole('button', { name: /Krippe/ }).className).not.toMatch(/bg-primary/);
+
+      rerender(<ForecastOptimizeTab baselineBalanceCents={null} isLoadingBaseline={false} />);
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: /Krippe/ }).className).not.toMatch(/bg-primary/)
+      );
     });
 
     it('toggles a section in/out when its button is clicked', async () => {

@@ -100,6 +100,50 @@ describe('TwoFactorWebAuthnDialog — unsupported browser', () => {
 });
 
 describe('TwoFactorWebAuthnDialog — password step', () => {
+  // Same reasoning as the other two dialogs, but this one carries a step
+  // machine, so closing mid-ceremony is the case that matters: reopening must
+  // land back on the password step with no stale prompt error, not resume a
+  // ceremony whose browser prompt is long gone.
+  it('returns to the password step when closed mid-ceremony and reopened', async () => {
+    const u = userEvent.setup();
+    (apiClient.enrolWebAuthn as jest.Mock).mockResolvedValue(enrolResponse());
+    stubCredentials(async () => {
+      throw domError('NotAllowedError');
+    });
+    const props = { onOpenChange: () => {}, onComplete: jest.fn() };
+    const { rerender } = renderWithProviders(<TwoFactorWebAuthnDialog open {...props} />);
+
+    await u.type(screen.getByLabelText('settings.twoFactor.webauthnDialog.passwordLabel'), 'pw');
+    await u.click(
+      screen.getByRole('button', { name: 'settings.twoFactor.webauthnDialog.continue' })
+    );
+    // Now on the prompting step, with an error and a retry button.
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'settings.twoFactor.webauthnDialog.userCancelled'
+      );
+    });
+    expect(
+      screen.getByRole('button', { name: 'settings.twoFactor.webauthnDialog.retry' })
+    ).toBeInTheDocument();
+
+    rerender(<TwoFactorWebAuthnDialog open={false} {...props} />);
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'settings.twoFactor.webauthnDialog.retry' })
+      ).not.toBeInTheDocument()
+    );
+
+    rerender(<TwoFactorWebAuthnDialog open {...props} />);
+    const password = () =>
+      screen.getByLabelText('settings.twoFactor.webauthnDialog.passwordLabel') as HTMLInputElement;
+    await waitFor(() => expect(password()).toBeInTheDocument());
+    expect(password().value).toBe('');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'settings.twoFactor.webauthnDialog.retry' })
+    ).not.toBeInTheDocument();
+  });
   it('disables Continue until a password is typed', () => {
     renderWithProviders(
       <TwoFactorWebAuthnDialog open onOpenChange={() => {}} onComplete={jest.fn()} />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -56,6 +56,28 @@ export function TwoFactorWebAuthnDialog({
   onOpenChange,
   onComplete,
 }: TwoFactorWebAuthnDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent autoFocusFirstField>
+        {/*
+          The whole ceremony -- step, both error slots, the password form and
+          the two mutations -- lives in here rather than in the parent, because
+          radix unmounts this subtree on close. That is what resets it, so the
+          `if (!open)` effect that used to reset all six by hand is gone.
+
+          The header comes along because its description reads `step`. See
+          two-factor-disable-dialog.tsx for the longer note.
+        */}
+        <WebAuthnEnrolFlow onOpenChange={onOpenChange} onComplete={onComplete} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function WebAuthnEnrolFlow({
+  onOpenChange,
+  onComplete,
+}: Omit<TwoFactorWebAuthnDialogProps, 'open'>) {
   const t = useTranslations('settings.twoFactor.webauthnDialog');
   const tParent = useTranslations('settings.twoFactor');
   const tCommon = useTranslations('common');
@@ -78,19 +100,6 @@ export function TwoFactorWebAuthnDialog({
 
   const enrol = useEnrolWebAuthn();
   const activate = useActivateFactor();
-
-  // Reset on close so a subsequent open starts fresh.
-  useEffect(() => {
-    if (!open) {
-      setStep('password');
-      setPasswordError(null);
-      setPromptError(null);
-      pwForm.reset({ password: '' });
-      enrol.reset();
-      activate.reset();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
 
   const supported = isWebAuthnSupported();
 
@@ -167,70 +176,68 @@ export function TwoFactorWebAuthnDialog({
   });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent autoFocusFirstField>
-        <DialogHeader>
-          <DialogTitle>{t('title')}</DialogTitle>
-          <DialogDescription>
-            {step === 'password' ? t('description') : t('prompting')}
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <DialogHeader>
+        <DialogTitle>{t('title')}</DialogTitle>
+        <DialogDescription>
+          {step === 'password' ? t('description') : t('prompting')}
+        </DialogDescription>
+      </DialogHeader>
 
-        {!supported ? (
-          <p role="alert" className="text-destructive text-sm">
-            {t('unsupported')}
-          </p>
-        ) : step === 'password' ? (
-          <form onSubmit={onPasswordSubmit} className="space-y-4" noValidate>
-            <div className="space-y-1">
-              <Label htmlFor="wa-enrol-password">{t('passwordLabel')}</Label>
-              <Input
-                id="wa-enrol-password"
-                type="password"
-                autoComplete="current-password"
-                aria-invalid={!!passwordError}
-                {...pwForm.register('password')}
-              />
-              {passwordError && (
-                <p role="alert" className="text-destructive text-sm">
-                  {passwordError}
-                </p>
-              )}
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                {t('cancel')}
-              </Button>
-              <Button type="submit" disabled={!pwForm.formState.isValid || enrol.isPending}>
-                {t('continue')}
-              </Button>
-            </DialogFooter>
-          </form>
-        ) : (
-          <div className="space-y-4">
-            <p className="text-muted-foreground text-sm">{t('prompting')}</p>
-            {promptError && (
+      {!supported ? (
+        <p role="alert" className="text-destructive text-sm">
+          {t('unsupported')}
+        </p>
+      ) : step === 'password' ? (
+        <form onSubmit={onPasswordSubmit} className="space-y-4" noValidate>
+          <div className="space-y-1">
+            <Label htmlFor="wa-enrol-password">{t('passwordLabel')}</Label>
+            <Input
+              id="wa-enrol-password"
+              type="password"
+              autoComplete="current-password"
+              aria-invalid={!!passwordError}
+              {...pwForm.register('password')}
+            />
+            {passwordError && (
               <p role="alert" className="text-destructive text-sm">
-                {promptError}
+                {passwordError}
               </p>
             )}
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                {t('cancel')}
-              </Button>
-              {promptError && (
-                <Button
-                  type="button"
-                  onClick={() => runCeremony(pwForm.getValues('password'))}
-                  disabled={activate.isPending}
-                >
-                  {t('retry')}
-                </Button>
-              )}
-            </DialogFooter>
           </div>
-        )}
-      </DialogContent>
-    </Dialog>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              {t('cancel')}
+            </Button>
+            <Button type="submit" disabled={!pwForm.formState.isValid || enrol.isPending}>
+              {t('continue')}
+            </Button>
+          </DialogFooter>
+        </form>
+      ) : (
+        <div className="space-y-4">
+          <p className="text-muted-foreground text-sm">{t('prompting')}</p>
+          {promptError && (
+            <p role="alert" className="text-destructive text-sm">
+              {promptError}
+            </p>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              {t('cancel')}
+            </Button>
+            {promptError && (
+              <Button
+                type="button"
+                onClick={() => runCeremony(pwForm.getValues('password'))}
+                disabled={activate.isPending}
+              >
+                {t('retry')}
+              </Button>
+            )}
+          </DialogFooter>
+        </div>
+      )}
+    </>
   );
 }
