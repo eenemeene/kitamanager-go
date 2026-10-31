@@ -97,6 +97,54 @@ describe('buildKitaYearSummary', () => {
     expect(year.difference).not.toBe(year.regular + year.correction - year.calculatedTotal);
   });
 
+  // The Senate's district-level "Korrekturbuchung manuell". No child rows
+  // stand behind it, so no attributed figure can see it, and before it was
+  // carried here the bills added up to less than the bank did.
+  it('carries the manual correction booking without folding it into the difference', () => {
+    const rows = buildKitaYearSummary([
+      dp('2025-11-01', {
+        funding_income: 1000,
+        actual_funding: 1000,
+        actual_funding_regular: 1000,
+        actual_funding_correction: 0,
+        actual_funding_manual_correction: 1823085,
+      }),
+    ]);
+    const year = rows[0]!;
+    expect(year.manualCorrection).toBe(1823085);
+    // Not in the difference: there is no calculated counterpart to set it
+    // against, and in practice these bookings settle months one or two Kita
+    // years back. Folding it in would invent a surplus the size of the booking.
+    expect(year.difference).toBe(0);
+    expect(year.correction).toBe(0);
+  });
+
+  it('reports no manual correction booking when the bills carry none', () => {
+    const rows = buildKitaYearSummary([billed('2025-08-01', 1000, 1000)]);
+    expect(rows[0]!.manualCorrection).toBe(0);
+  });
+
+  // Keyed by arrival, so a month with no bill of its own still cannot carry
+  // one -- but a month with a bill carries it whether or not it is evaluable.
+  it('sums the booking across every bill of the Kita year', () => {
+    const rows = buildKitaYearSummary([
+      dp('2025-11-01', {
+        funding_income: 1000,
+        actual_funding: 1000,
+        actual_funding_regular: 1000,
+        actual_funding_manual_correction: 1823085,
+      }),
+      dp('2025-12-01', {
+        funding_income: 1000,
+        actual_funding: 1000,
+        actual_funding_regular: 1000,
+        actual_funding_manual_correction: 312440,
+      }),
+      billed('2026-04-01', 1000, 1000),
+    ]);
+    expect(rows[0]!.manualCorrection).toBe(2135525);
+  });
+
   it('collapses the two calculated figures when every month is billed', () => {
     const rows = buildKitaYearSummary([
       billed('2025-08-01', 1000, 1100),

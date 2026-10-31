@@ -3607,6 +3607,23 @@ export interface components {
        */
       actual_funding_correction_attributed?: number;
       /**
+       * @description ActualFundingManualCorrection is the Senate's "Korrekturbuchung manuell"
+       *     for the bill that arrived in this month: a district-level booking with no
+       *     child rows behind it, which every figure above is therefore blind to.
+       *
+       *     It is real money -- tatsächlicher Zahlbetrag gesamt = Vertragsbuchung +
+       *     Korrekturbuchung manuell, and the child rows reproduce only the
+       *     Vertragsbuchung -- so leaving it out understated what the Kita received.
+       *     Reported on its own rather than added to the fields above because it
+       *     cannot be attributed to a month without parsing the Korrekturübersicht
+       *     sheet, and because it is not comparable with a calculated figure: in
+       *     practice these bookings settle months one or two Kita years back.
+       *
+       *     Keyed by arrival, and nil when no bill arrived in this month.
+       * @example 2147350
+       */
+      actual_funding_manual_correction?: number;
+      /**
        * @description cents, regular billing only
        * @example 5000000
        */
@@ -3883,12 +3900,36 @@ export interface components {
       difference?: number;
       properties: components['schemas']['FundingComparisonAmount'][];
       /**
-       * @description match|difference|bill_only|calc_only
+       * @description Status is one of:
+       *       match             bill and contract agree to the cent
+       *       difference        both sides have figures and they differ
+       *       not_billed        contract active, bill carries no regular row for it
+       *       bill_only         in the bill, no contract active in the system
+       *       calc_only         contract active, the child is absent from the bill
+       *       no_funding_config matched, but no rate could be computed
        * @example match
        */
       status: string;
-      /** @example GB-12345678901-02 */
+      /**
+       * @description VoucherNumber is the Gutschein this comparison is filed under. Where a
+       *     child held several in one bill it is the one that carried the month's
+       *     regular row, because that is the Gutschein the money came in on; the
+       *     full set is in VoucherNumbers.
+       * @example GB-12345678901-02
+       */
       voucher_number: string;
+      /**
+       * @description VoucherNumbers lists every Gutschein of this child that appeared in the
+       *     bill, in the order the bill listed them. Usually one. A renewal puts two
+       *     in the same bill: the Senate reverses the months already paid on the old
+       *     Gutschein and re-books them on the new one, so both carry rows for one
+       *     enrolment. Present so the UI can show which Gutscheine a row stands for
+       *     rather than appearing to lose one.
+       * @example [
+       *       "GB-12345678901-02"
+       *     ]
+       */
+      voucher_numbers?: string[];
     };
     FundingComparisonIssueSummary: {
       /** @example true */
@@ -3948,6 +3989,14 @@ export interface components {
       difference_count: number;
       /** @example Kita Sonnenschein */
       facility_name: string;
+      /**
+       * @description ManualCorrectionTotal is the bill's "Korrekturbuchung manuell": a
+       *     district-level booking with no child rows behind it, so it appears in
+       *     none of the totals above. Carried here so it stops being invisible; it
+       *     is not part of Difference, because it has no calculated counterpart.
+       * @example 0
+       */
+      manual_correction_total: number;
       /** @example 20 */
       match_count: number;
     };
@@ -3998,6 +4047,16 @@ export interface components {
       total_corrections_orphan?: number;
       /** @example -70840 */
       total_difference: number;
+      /**
+       * @description TotalManualCorrections sums the "Korrekturbuchung manuell" of the
+       *     bills in this window. No child rows stand behind these, so they
+       *     are in none of the three totals above and in no category bar:
+       *     they cannot be set against a calculated figure, and in practice
+       *     they settle months one or two Kita years back. Reported so that
+       *     money the Senate paid is not simply absent from the screen.
+       * @example 2147350
+       */
+      total_manual_corrections: number;
     };
     FundingComparisonWrappedResponse: {
       comparisons: components['schemas']['FundingComparisonResponse'][];

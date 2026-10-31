@@ -52,6 +52,13 @@ function StatusBadge({
           {t('statusDifference')}
         </Badge>
       );
+    case 'not_billed':
+      return (
+        <Badge variant="warning">
+          <AlertTriangle className="mr-1 h-3 w-3" />
+          {t('statusNotBilled')}
+        </Badge>
+      );
     case 'bill_only':
       return (
         <Badge variant="warning">
@@ -105,6 +112,12 @@ function DifferenceReason({
   }
   if (comp.status === 'calc_only') {
     return <span className="text-muted-foreground text-xs">{t('mismatchReasonCalcOnly')}</span>;
+  }
+  // The child is in the bill, but only with corrections for earlier months.
+  // Listing its contract properties as missing would read as a Kostenblatt
+  // mismatch; the month simply carries no billing row.
+  if (comp.status === 'not_billed') {
+    return <span className="text-muted-foreground text-xs">{t('mismatchReasonNotBilled')}</span>;
   }
   if (comp.status !== 'difference' || !comp.properties?.length) return null;
 

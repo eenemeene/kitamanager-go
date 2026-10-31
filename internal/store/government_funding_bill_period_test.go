@@ -1286,3 +1286,76 @@ func TestGovernmentFundingBillPeriodStore_AttributedFallsBackToBillMonth(t *test
 		}
 	}
 }
+
+func TestGovernmentFundingBillPeriodStore_FindManualCorrectionTotalsByOrganizationInDateRange(t *testing.T) {
+	db := setupTestDB(t)
+	s := NewGovernmentFundingBillPeriodStore(db)
+	org := createTestOrganization(t, db, "Test Org")
+	org2 := createTestOrganization(t, db, "Other Org")
+	user := createTestUser(t, db, "Test User", "manualcorrstore@example.com")
+	ctx := context.Background()
+
+	// Nov carries a manual booking, Dec a smaller one, Jan none -- the shape a
+	// real Kita year has: most months zero, a couple carrying a Nachfinanzierung.
+	bookings := map[time.Month]int{time.November: 1823085, time.December: 312440, time.January: 0}
+	for _, m := range []time.Month{time.November, time.December} {
+		to := time.Date(2025, m+1, 0, 0, 0, 0, 0, time.UTC)
+		if err := s.Create(ctx, &models.GovernmentFundingBillPeriod{
+			OrganizationID: org.ID,
+			Period:         models.Period{From: time.Date(2025, m, 1, 0, 0, 0, 0, time.UTC), To: &to},
+			FileName:       fmt.Sprintf("manual_%d.xlsx", m), FileSha256: fmt.Sprintf("manualhash_%d", m),
+			FacilityName:      "Kita",
+			FacilityTotal:     500000,
+			ContractBooking:   500000,
+			CorrectionBooking: bookings[m],
+			CreatedBy:         &user.ID,
+		}); err != nil {
+			t.Fatalf("setup: Create() error = %v", err)
+		}
+	}
+	toJan := time.Date(2026, 1, 31, 0, 0, 0, 0, time.UTC)
+	if err := s.Create(ctx, &models.GovernmentFundingBillPeriod{
+		OrganizationID: org.ID,
+		Period:         models.Period{From: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), To: &toJan},
+		FileName:       "manual_jan.xlsx", FileSha256: "manualhash_jan", FacilityName: "Kita",
+		FacilityTotal:   500000,
+		ContractBooking: 500000,
+		CreatedBy:       &user.ID,
+	}); err != nil {
+		t.Fatalf("setup: Create() error = %v", err)
+	}
+	toOtherNov := time.Date(2025, 11, 30, 0, 0, 0, 0, time.UTC)
+	if err := s.Create(ctx, &models.GovernmentFundingBillPeriod{
+		OrganizationID: org2.ID,
+		Period:         models.Period{From: time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC), To: &toOtherNov},
+		FileName:       "other.xlsx", FileSha256: "othermanualhash", FacilityName: "Other",
+		FacilityTotal:     999999,
+		CorrectionBooking: 999999,
+		CreatedBy:         &user.ID,
+	}); err != nil {
+		t.Fatalf("setup: Create() error = %v", err)
+	}
+
+	from := time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 1, 31, 0, 0, 0, 0, time.UTC)
+	result, err := s.FindManualCorrectionTotalsByOrganizationInDateRange(ctx, org.ID, from, to)
+	if err != nil {
+		t.Fatalf("FindManualCorrectionTotalsByOrganizationInDateRange() error = %v", err)
+	}
+	nov := time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC)
+	if result[nov] != 1823085 {
+		t.Errorf("Nov = %d, want 1823085", result[nov])
+	}
+	dec := time.Date(2025, 12, 1, 0, 0, 0, 0, time.UTC)
+	if result[dec] != 312440 {
+		t.Errorf("Dec = %d, want 312440", result[dec])
+	}
+	// A bill with no manual booking is still a bill: present, reporting zero.
+	jan := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	if got, ok := result[jan]; !ok || got != 0 {
+		t.Errorf("Jan = (%d, %v), want (0, true)", got, ok)
+	}
+	if len(result) != 3 {
+		t.Errorf("len(result) = %d, want 3 — the other org must not leak in", len(result))
+	}
+}

@@ -297,8 +297,9 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 		billTotals, errTotals := s.billStore.FindFacilityTotalsByOrganizationInDateRange(ctx, orgID, rangeStart, rangeEnd)
 		billByRowType, errRowType := s.billStore.FindBillTotalsByRowTypeInDateRange(ctx, orgID, rangeStart, rangeEnd)
 		billAttributed, errAttributed := s.billStore.FindBillTotalsByRowTypeAttributed(ctx, orgID, rangeStart, rangeEnd)
+		billManual, errManual := s.billStore.FindManualCorrectionTotalsByOrganizationInDateRange(ctx, orgID, rangeStart, rangeEnd)
 
-		if errTotals != nil || errRowType != nil || errAttributed != nil {
+		if errTotals != nil || errRowType != nil || errAttributed != nil || errManual != nil {
 			// Non-fatal: proceed without actual funding overlays. A single
 			// warning covers any of the three failures since they fuel the
 			// same set of frontend fields (ActualFunding, the arrival-keyed
@@ -307,7 +308,7 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 			// numbers may be incomplete.
 			slog.Warn("failed to load government funding bills; actual funding overlay will be incomplete",
 				"org_id", orgID, "totals_error", errTotals, "row_type_error", errRowType,
-				"attributed_error", errAttributed)
+				"attributed_error", errAttributed, "manual_correction_error", errManual)
 			warnings = append(warnings, models.CalculationWarning{
 				Code:    "funding_bills_load_failed",
 				Message: "could not load actual government funding bills; reported actuals may be incomplete",
@@ -368,6 +369,14 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 				correction := entry.CorrectionTotal
 				dp.ActualFundingRegularAttributed = &regular
 				dp.ActualFundingCorrectionAttributed = &correction
+			}
+			// Nil rather than 0 where no bill arrived in this month, matching
+			// ActualFunding above: both answer "what did this month's bill
+			// carry?", and for a month with no bill there is nothing to say.
+			if errManual == nil {
+				if manual, found := billManual[key]; found {
+					dp.ActualFundingManualCorrection = &manual
+				}
 			}
 		}
 	}

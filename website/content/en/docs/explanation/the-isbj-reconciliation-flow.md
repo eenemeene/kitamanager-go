@@ -75,9 +75,19 @@ When a correction applies to a month for which no bill was imported at all, no d
 ## Discrepancy analysis: where the difference comes from
 
 Beneath each Kita year row sits the **discrepancy analysis**, a breakdown by
-category: rate differences, property mismatches, bill only, calculated only.
-The four categories are non-overlapping and exhaustive — together they come to
-exactly the difference between regular billing and the calculation.
+category: rate differences, property mismatches, month not billed, bill only,
+calculated only. The five categories are non-overlapping and exhaustive —
+together they come to exactly the difference between regular billing and the
+calculation.
+
+**Month not billed** is the one worth knowing about. The child is in the bill,
+but only with corrections for earlier months: the bill carries no regular row
+for its own month. The amount is a full month's rate, and it is real — that
+month was not funded. What it is *not* is a Kostenblatt problem. Classified by
+property, it read as "care_type: ganztag — in contract but not billed", which
+sends you to the Senate to argue about a care type that is perfectly correct.
+The question to ask is why the child was not billed, which is usually a
+registration still in progress, settled retroactively a month or two later.
 
 Corrections are deliberately **not** among them. A correction is not a finding
 you can fix; it is a back-payment or clawback the Senate has already made. It
@@ -101,5 +111,48 @@ year difference for the same reason the Kita year row keeps them out of its
 Correction column: those months contribute nothing to the calculated side, so
 counting their corrections against it would show a deficit the size of a month
 that nobody owes.
+
+### Manual correction bookings
+
+The Abrechnungsübersicht carries a second, separate figure: **Korrekturbuchung
+manuell**. This is a district-level booking the Senate makes by hand, and no
+child rows stand behind it —
+
+```
+tatsächlicher Zahlbetrag gesamt = Vertragsbuchung + Korrekturbuchung manuell
+```
+
+— where the per-child rows of the Vertragsübersicht add up to the
+Vertragsbuchung exactly. So every per-child figure in KitaManager is blind to
+it by construction, and it needs a line of its own:
+
+```
+Sum of categories             + €430.09
+Corrections for these months   − €30.00
+Manual correction bookings  + €18,230.85
+────────────────────────────────────────
+Kita year difference          + €400.09
+```
+
+It stays out of the Kita year difference, for the same reason the orphan
+corrections do: there is no calculated counterpart to set it against. In
+practice these bookings are *Nachfinanzierung I-Status* — a retroactively
+granted Integrationsstatus — and they settle months one or two Kita years back,
+so crediting them to the year they arrived in would overstate it badly.
+
+Which months a booking settles is written only in the **Korrekturübersicht**
+sheet, as free text. KitaManager reports the amount but not the attribution.
+
+## One child, two Gutschein rows in one bill
+
+On a Gutschein renewal the Senate does not simply switch over. It **reverses**
+the months already paid under the old Gutschein — negative correction rows —
+and **re-books** them under the new one, which also carries the regular row for
+the bill's own month. One child therefore appears twice in the same bill, under
+two Gutscheinnummern, and the two rows are one enrolment.
+
+KitaManager compares per child, not per Gutschein row, so the month's
+calculated rate is counted once. The comparison names the Gutschein the money
+actually arrived on, and lists both.
 
 For the operational triage matrix (which symptom maps to which fix), see [Investigate a bill discrepancy](../../how-to/use/investigate-a-bill-discrepancy/).

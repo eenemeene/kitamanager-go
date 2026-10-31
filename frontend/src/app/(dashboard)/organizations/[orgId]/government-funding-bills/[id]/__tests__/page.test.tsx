@@ -123,6 +123,7 @@ function makeComparison(
     bill_total: 500_000,
     calculated_total: 500_000,
     correction_total: 0,
+    manual_correction_total: 0,
     difference: 0,
     children_count: 1,
     match_count: 1,

@@ -45,6 +45,8 @@ Wenn Bescheid und KitaManager nicht übereinstimmen, fällt jedes nicht passende
 | Viele „Zusätzlich in Abrechnung“-Einträge | Kinder sind gegangen, Senat hat den Abgang nicht verarbeitet | Bezirks-Jugendamt |
 | Anhaltende Gesamt-Drift über viele Kinder | Fördersätze veraltet | [Berliner Fördersätze aktualisieren](../../operate/update-government-funding-rates/) |
 | Gesamt passt, aber Eigenschafts-Aufschlüsselung weicht ab | Zuschlag nicht synchron | Vertrags-Zuschläge des Kindes vs. Papier-Gutschein |
+| „Monat nicht abgerechnet“ bei einem Kind, das offensichtlich da ist | Registrierung beim Bezirk noch nicht abgeschlossen; der Senat rechnet den Monat rückwirkend ab, oft ein bis zwei Bescheide später | Abrechnungsverlauf des Kindes — der Monat erscheint meist später als Korrektur |
+| Die Balken ergeben nicht die Kita-Jahres-Zeile | Korrekturen oder eine manuelle Korrekturbuchung, die keine Abweichungen sind | die Abstimmungszeilen unter den Balken; Abweichungsanalyse aufklappen |
 
 ## Hinweise
 

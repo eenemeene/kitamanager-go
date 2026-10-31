@@ -85,6 +85,20 @@ type FinancialDataPoint struct {
 	// no attributed rows of its own.
 	ActualFundingRegularAttributed    *int `json:"actual_funding_regular_attributed,omitempty" example:"5000000"`   // cents
 	ActualFundingCorrectionAttributed *int `json:"actual_funding_correction_attributed,omitempty" example:"100000"` // cents
+	// ActualFundingManualCorrection is the Senate's "Korrekturbuchung manuell"
+	// for the bill that arrived in this month: a district-level booking with no
+	// child rows behind it, which every figure above is therefore blind to.
+	//
+	// It is real money -- tatsächlicher Zahlbetrag gesamt = Vertragsbuchung +
+	// Korrekturbuchung manuell, and the child rows reproduce only the
+	// Vertragsbuchung -- so leaving it out understated what the Kita received.
+	// Reported on its own rather than added to the fields above because it
+	// cannot be attributed to a month without parsing the Korrekturübersicht
+	// sheet, and because it is not comparable with a calculated figure: in
+	// practice these bookings settle months one or two Kita years back.
+	//
+	// Keyed by arrival, and nil when no bill arrived in this month.
+	ActualFundingManualCorrection *int `json:"actual_funding_manual_correction,omitempty" example:"2147350"` // cents
 	// Counts
 	ChildCount int `json:"child_count" example:"45"`
 	StaffCount int `json:"staff_count" example:"12"`

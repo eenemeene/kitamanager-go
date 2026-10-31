@@ -69,6 +69,13 @@ function StatusBadge({
           {t('statusNoFundingConfig')}
         </Badge>
       );
+    case 'not_billed':
+      return (
+        <Badge variant="warning">
+          <AlertTriangle className="mr-1 h-3 w-3" />
+          {t('statusNotBilled')}
+        </Badge>
+      );
     case 'bill_only':
       return (
         <Badge variant="warning">

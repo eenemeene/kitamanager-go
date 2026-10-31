@@ -206,6 +206,44 @@ func (s *GovernmentFundingBillPeriodStore) FindFacilityTotalsByOrganizationInDat
 	return m, nil
 }
 
+// FindManualCorrectionTotalsByOrganizationInDateRange returns the manual
+// correction booking per bill month, keyed the way the facility totals above
+// are.
+//
+// This is the Senate's "Korrekturbuchung manuell" from the Abrechnungsübersicht
+// -- a district-level booking that is NOT part of the Vertragsbuchung and has
+// no child rows behind it, so none of the payment-row aggregations can see it.
+// Measured across a full Kita year of real Abrechnungen, the child rows
+// reproduce the Vertragsbuchung to the cent and this column is money on top of
+// it: tatsächlicher Zahlbetrag gesamt = Vertragsbuchung + Korrekturbuchung
+// manuell. Reported separately rather than folded into the facility total,
+// because it is attributable to months of its own that only the unparsed
+// Korrekturübersicht sheet names.
+//
+// Keyed by arrival, deliberately: that is the only month known without parsing
+// that sheet, and it is the right key for the cash question.
+func (s *GovernmentFundingBillPeriodStore) FindManualCorrectionTotalsByOrganizationInDateRange(ctx context.Context, orgID uint, from, to time.Time) (map[time.Time]int, error) {
+	var results []struct {
+		FromDate          time.Time `gorm:"column:from_date"`
+		CorrectionBooking int       `gorm:"column:correction_booking"`
+	}
+	err := DBFromContext(ctx, s.db).
+		Model(&models.GovernmentFundingBillPeriod{}).
+		Select("from_date, correction_booking").
+		Where("organization_id = ? AND from_date >= ? AND from_date <= ?", orgID, from, to).
+		Order("from_date ASC").
+		Find(&results).Error
+	if err != nil {
+		return nil, err
+	}
+	m := make(map[time.Time]int, len(results))
+	for _, r := range results {
+		key := time.Date(r.FromDate.Year(), r.FromDate.Month(), 1, 0, 0, 0, 0, time.UTC)
+		m[key] += r.CorrectionBooking
+	}
+	return m, nil
+}
+
 // BillTotalsByRowType holds the regular and correction payment totals for a bill month.
 type BillTotalsByRowType struct {
 	RegularTotal    int
