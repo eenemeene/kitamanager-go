@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
@@ -42,21 +42,28 @@ export function ForecastOptimizeTab({
   const contractStartMonth = store.from ? store.from.slice(0, 7) : '';
 
   // Optimizer inputs
-  const [targetBalanceEur, setTargetBalanceEur] = useState(0);
+  // Both of these are "the user's choice, or a sensible default derived from
+  // data that arrives later". Keeping only the override in state and computing
+  // the effective value during render is what removes the two effects that
+  // used to patch state up after the fact -- see the notes on each below.
+  const [targetOverrideEur, setTargetOverrideEur] = useState<number | null>(null);
   const [maxPerSectionPerMonth, setMaxPerSectionPerMonth] = useState(2);
-  const [sectionIds, setSectionIds] = useState<number[]>([]);
+  const [sectionOverride, setSectionOverride] = useState<number[] | null>(null);
   const [properties, setProperties] = useState<ScalarContractProperties | undefined>({
     care_type: 'ganztag',
   });
 
-  // Pre-fill target balance with baseline when baseline data first loads
-  const [hasPrefilledTarget, setHasPrefilledTarget] = useState(false);
-  useEffect(() => {
-    if (baselineBalanceCents != null && !hasPrefilledTarget) {
-      setTargetBalanceEur(Math.round(baselineBalanceCents / 100));
-      setHasPrefilledTarget(true);
-    }
-  }, [baselineBalanceCents, hasPrefilledTarget]);
+  // The target starts at the baseline and follows it until the user types a
+  // number of their own, after which the override wins for good.
+  //
+  // One deliberate behaviour change: the effect this replaces prefilled once,
+  // on the first non-null baseline, and froze thereafter -- so if the parent's
+  // query refetched and the balance moved, an untouched field kept showing the
+  // old figure. Deriving it means an untouched field tracks the current
+  // baseline, which is what the label promises.
+  const targetBalanceEur =
+    targetOverrideEur ??
+    (baselineBalanceCents != null ? Math.round(baselineBalanceCents / 100) : 0);
 
   // Optimizer state
   const [isOptimizing, setIsOptimizing] = useState(false);
@@ -74,20 +81,29 @@ export function ForecastOptimizeTab({
 
   const { fundingAttributes, attributesByKey } = useFundingAttributes(orgId);
 
-  // Pre-select the section with the lowest age range
-  useEffect(() => {
-    if (sections?.data && sections.data.length > 0 && sectionIds.length === 0) {
-      const sorted = [...sections.data].sort(
-        (a, b) => (a.min_age_months ?? 0) - (b.min_age_months ?? 0)
-      );
-      setSectionIds([sorted[0].id]);
-    }
-  }, [sections]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Default selection: the section with the lowest age range. react-query hands
+  // back a stable `data` reference, so unlike the two memos this file's
+  // neighbours used to carry, this one genuinely memoizes.
+  const defaultSectionIds = useMemo(() => {
+    const rows = sections?.data;
+    if (!rows?.length) return [];
+    const lowest = [...rows].sort((a, b) => (a.min_age_months ?? 0) - (b.min_age_months ?? 0))[0];
+    return [lowest.id];
+  }, [sections?.data]);
+
+  // The effect this replaces re-ran whenever `sections` changed and re-applied
+  // the default whenever the selection was empty -- so deselecting every
+  // section could silently put one back on the next refetch. An explicit
+  // override distinguishes "not chosen yet" (null) from "chosen nothing" ([]),
+  // and the latter now sticks.
+  const sectionIds = sectionOverride ?? defaultSectionIds;
 
   const canOptimize = sectionIds.length > 0 && !!contractStartMonth && !isOptimizing;
 
   const toggleSection = (id: number) => {
-    setSectionIds((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
+    setSectionOverride(
+      sectionIds.includes(id) ? sectionIds.filter((s) => s !== id) : [...sectionIds, id]
+    );
   };
 
   /** Derive a typical child age (in years) from a section's age range. */
@@ -315,7 +331,7 @@ export function ForecastOptimizeTab({
               type="number"
               step={100}
               value={targetBalanceEur}
-              onChange={(e) => setTargetBalanceEur(Number(e.target.value) || 0)}
+              onChange={(e) => setTargetOverrideEur(Number(e.target.value) || 0)}
             />
             {isLoadingBaseline ? (
               <p className="text-muted-foreground text-xs">{t('common.loading')}</p>

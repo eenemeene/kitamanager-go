@@ -86,8 +86,5 @@
     "prettier-plugin-tailwindcss": "^0.8.1",
     "tailwindcss": "^4.2.1",
     "typescript": "^6.0.3"
-  },
-  "overrides": {
-    "eslint-plugin-react-hooks": "7.0.1"
   }
 }

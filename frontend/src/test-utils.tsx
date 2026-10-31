@@ -12,13 +12,22 @@ export function createTestQueryClient() {
   });
 }
 
-export function renderWithProviders(ui: React.ReactNode) {
+// The providers go in via RTL's `wrapper` rather than around `ui`, because
+// `wrapper` is what the returned `rerender` keeps. Wrapping `ui` inline meant
+// `rerender(<Thing />)` replaced the whole tree, providers included, and the
+// component threw "No QueryClient set" on the second render -- which makes any
+// test that drives a prop through a change (a dialog's `open`, say) look like a
+// component bug.
+export function renderWithProviders(ui: React.ReactElement) {
   const queryClient = createTestQueryClient();
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>{ui}</TooltipProvider>
-    </QueryClientProvider>
-  );
+  function Providers({ children }: { children: React.ReactNode }) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>{children}</TooltipProvider>
+      </QueryClientProvider>
+    );
+  }
+  return render(ui, { wrapper: Providers });
 }
 
 export function createHookWrapper(queryClient?: QueryClient) {

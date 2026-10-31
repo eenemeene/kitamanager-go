@@ -37,6 +37,41 @@ beforeEach(() => {
 });
 
 describe('TwoFactorDisableDialog', () => {
+  // The reset-on-close effect this component used to carry is gone; the form's
+  // state now lives inside DialogContent, which radix unmounts on close. That
+  // is only equivalent if radix really does unmount it, so assert the outcome
+  // the effect used to guarantee rather than trusting the library.
+  it('clears a half-filled form when the dialog is closed and reopened', async () => {
+    const u = userEvent.setup();
+    const { rerender } = renderWithProviders(
+      <TwoFactorDisableDialog open onOpenChange={() => {}} factorId={42} />
+    );
+
+    const password = () =>
+      screen.getByLabelText('settings.twoFactor.disableDialog.passwordLabel') as HTMLInputElement;
+    const code = () =>
+      screen.getByLabelText('settings.twoFactor.disableDialog.codeLabel') as HTMLInputElement;
+
+    await u.type(password(), 'pw');
+    await u.type(code(), '123456');
+    expect(password().value).toBe('pw');
+    expect(code().value).toBe('123456');
+
+    rerender(<TwoFactorDisableDialog open={false} onOpenChange={() => {}} factorId={42} />);
+    await waitFor(() =>
+      expect(
+        screen.queryByLabelText('settings.twoFactor.disableDialog.passwordLabel')
+      ).not.toBeInTheDocument()
+    );
+
+    rerender(<TwoFactorDisableDialog open onOpenChange={() => {}} factorId={42} />);
+    await waitFor(() => expect(password()).toBeInTheDocument());
+    expect(password().value).toBe('');
+    expect(code().value).toBe('');
+    expect(
+      screen.getByRole('button', { name: 'settings.twoFactor.disableDialog.submit' })
+    ).toBeDisabled();
+  });
   it('submit disabled when password or code is empty', async () => {
     const u = userEvent.setup();
     renderWithProviders(<TwoFactorDisableDialog open onOpenChange={() => {}} factorId={42} />);

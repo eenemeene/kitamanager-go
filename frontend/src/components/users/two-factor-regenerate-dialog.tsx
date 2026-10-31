@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -35,6 +35,29 @@ interface Props {
 
 export function TwoFactorRegenerateDialog({ open, onOpenChange, factorId, onComplete }: Props) {
   const t = useTranslations('settings.twoFactor.regenerateDialog');
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent autoFocusFirstField>
+        <DialogHeader>
+          <DialogTitle>{t('title')}</DialogTitle>
+          <DialogDescription>{t('description')}</DialogDescription>
+        </DialogHeader>
+        {/*
+          The form is its own component so that the password, the code, the
+          error and the mutation live inside DialogContent, which radix
+          unmounts on close. Closing therefore resets them for free. See
+          two-factor-disable-dialog.tsx for the longer note; this is the same
+          shape, and the effect that used to do it by hand is gone.
+        */}
+        <RegenerateForm onOpenChange={onOpenChange} factorId={factorId} onComplete={onComplete} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RegenerateForm({ onOpenChange, factorId, onComplete }: Omit<Props, 'open'>) {
+  const t = useTranslations('settings.twoFactor.regenerateDialog');
   const tParent = useTranslations('settings.twoFactor');
   const tCommon = useTranslations('common');
   const { toast } = useToast();
@@ -51,15 +74,6 @@ export function TwoFactorRegenerateDialog({ open, onOpenChange, factorId, onComp
     defaultValues: { password: '', code: '' },
   });
   const mutation = useRegenerateBackupCodes();
-
-  useEffect(() => {
-    if (!open) {
-      setError(null);
-      form.reset({ password: '', code: '' });
-      mutation.reset();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
 
   const onSubmit = form.handleSubmit((data) => {
     if (!factorId) return;
@@ -86,56 +100,45 @@ export function TwoFactorRegenerateDialog({ open, onOpenChange, factorId, onComp
   });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent autoFocusFirstField>
-        <DialogHeader>
-          <DialogTitle>{t('title')}</DialogTitle>
-          <DialogDescription>{t('description')}</DialogDescription>
-        </DialogHeader>
-        <form onSubmit={onSubmit} className="space-y-4" noValidate>
-          <div className="space-y-1">
-            <Label htmlFor="regen-password">{t('passwordLabel')}</Label>
-            <Input
-              id="regen-password"
-              type="password"
-              autoComplete="current-password"
-              aria-invalid={!!error}
-              {...form.register('password')}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="regen-code">{t('codeLabel')}</Label>
-            <Input
-              id="regen-code"
-              type="text"
-              inputMode="text"
-              autoComplete="one-time-code"
-              autoCapitalize="none"
-              spellCheck={false}
-              aria-invalid={!!error}
-              placeholder={t('codePlaceholder')}
-              {...form.register('code')}
-            />
-            <p className="text-muted-foreground text-xs">{t('codeHelp')}</p>
-            {error && (
-              <p role="alert" className="text-destructive text-sm">
-                {error}
-              </p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              {t('cancel')}
-            </Button>
-            <Button
-              type="submit"
-              disabled={!form.formState.isValid || mutation.isPending || !factorId}
-            >
-              {t('submit')}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <form onSubmit={onSubmit} className="space-y-4" noValidate>
+      <div className="space-y-1">
+        <Label htmlFor="regen-password">{t('passwordLabel')}</Label>
+        <Input
+          id="regen-password"
+          type="password"
+          autoComplete="current-password"
+          aria-invalid={!!error}
+          {...form.register('password')}
+        />
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor="regen-code">{t('codeLabel')}</Label>
+        <Input
+          id="regen-code"
+          type="text"
+          inputMode="text"
+          autoComplete="one-time-code"
+          autoCapitalize="none"
+          spellCheck={false}
+          aria-invalid={!!error}
+          placeholder={t('codePlaceholder')}
+          {...form.register('code')}
+        />
+        <p className="text-muted-foreground text-xs">{t('codeHelp')}</p>
+        {error && (
+          <p role="alert" className="text-destructive text-sm">
+            {error}
+          </p>
+        )}
+      </div>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          {t('cancel')}
+        </Button>
+        <Button type="submit" disabled={!form.formState.isValid || mutation.isPending || !factorId}>
+          {t('submit')}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }

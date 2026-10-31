@@ -78,6 +78,22 @@ export function useProblemFormErrors<T extends FieldValues>(
   // the only unconditional call passes a function that returns the *same* array
   // when there is nothing to clear, which react bails out of. The
   // "does not re-apply on an unrelated re-render" test holds that line.
+  //
+  // set-state-in-effect is suppressed rather than restructured, and this is the
+  // one place in the codebase where that is the honest answer. The rule's own
+  // guidance is that an effect belongs where React has to be synchronized with
+  // an external system, and that is precisely what this is: applyProblemToForm
+  // writes violations into react-hook-form's error store and moves focus to the
+  // first rejected field. Neither may happen during render, so the imperative
+  // pass has to live in an effect -- and `unmapped` is that same pass's return
+  // value, so moving the setState out would mean running it twice or
+  // duplicating what it decides.
+  //
+  // What the rule guards against is a cascading render, and the paragraph above
+  // explains why there isn't one. The alternative -- deriving `unmapped` during
+  // render via the "compare against the previous value" pattern -- cannot carry
+  // the side effects, so it would be a worse structure adopted to satisfy a
+  // lint rule rather than a reader.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const previous = previousErrors.current;
@@ -95,6 +111,7 @@ export function useProblemFormErrors<T extends FieldValues>(
 
     if (latest) {
       const { unmapped: left } = applyProblemToForm(latest, form, aliases);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- see above
       setUnmapped(left);
       return;
     }

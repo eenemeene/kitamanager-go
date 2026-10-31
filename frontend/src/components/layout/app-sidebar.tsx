@@ -164,7 +164,15 @@ export function AppSidebar() {
   // At md (tablet portrait) the rail is always visually collapsed — the user
   // preference only applies at lg+ where there's room for the expanded version.
   const desktopCollapsed = sidebarCollapsed || !isLgUp;
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  // Explicit submenu toggles only. Whether a submenu is open by default is
+  // derived during render from "is one of its children the current route", so
+  // there is no accumulated copy of that to keep in sync.
+  //
+  // The key carries the pathname because the effect this replaces listed
+  // `pathname` in its dependencies: navigating re-asserted the default and
+  // discarded what the user had done on the previous page. Keying by route
+  // reproduces that without storing the default itself.
+  const [manualExpanded, setManualExpanded] = useState<Record<string, boolean>>({});
 
   const { data: health } = useQuery({
     queryKey: ['health'],
@@ -222,34 +230,16 @@ export function AppSidebar() {
     return item.children.some((child) => isChildActive(child));
   };
 
-  const toggleExpanded = (name: string) => {
-    setExpandedItems((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) {
-        next.delete(name);
-      } else {
-        next.add(name);
-      }
-      return next;
-    });
-  };
+  const expansionKey = (name: string) => `${pathname}\u0000${name}`;
 
-  // Auto-expand parent when a child route is active
-  useEffect(() => {
-    for (const group of filteredOrgGroups) {
-      for (const item of group.items) {
-        if (item.children && item.children.length > 0 && isAnyChildActive(item)) {
-          setExpandedItems((prev) => {
-            if (prev.has(item.name)) return prev;
-            const next = new Set(prev);
-            next.add(item.name);
-            return next;
-          });
-        }
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, selectedOrganizationId]);
+  /** Open if the user said so on this route, else open iff a child is active. */
+  const isItemExpanded = (item: NavItem) =>
+    manualExpanded[expansionKey(item.name)] ?? isAnyChildActive(item);
+
+  const toggleExpanded = (item: NavItem) => {
+    const key = expansionKey(item.name);
+    setManualExpanded((prev) => ({ ...prev, [key]: !(prev[key] ?? isAnyChildActive(item)) }));
+  };
 
   // Below lg every nav link carries `min-h-11`. At px-3 py-2 around a 20px
   // icon they were 36px, and the submenu links 32px -- and below md this
@@ -332,7 +322,7 @@ export function AppSidebar() {
                   const href = getOrgHref(item.href);
                   const hasChildren = item.children && item.children.length > 0;
                   const anyChildActive = isAnyChildActive(item);
-                  const isExpanded = expandedItems.has(item.name);
+                  const isExpanded = isItemExpanded(item);
                   // An item with a submenu is active exactly when one of its
                   // children is. Matching its own href as a prefix instead lit
                   // up Statistics *and* Forecast together in the icon rail,
@@ -367,7 +357,7 @@ export function AppSidebar() {
                               Compact only at lg+, where there is a mouse. */}
                           <button
                             type="button"
-                            onClick={() => toggleExpanded(item.name)}
+                            onClick={() => toggleExpanded(item)}
                             aria-label={t('common.toggleSubmenu', { name: t(item.name) })}
                             aria-expanded={isExpanded}
                             aria-controls={submenuId(item.name)}

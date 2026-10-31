@@ -107,5 +107,44 @@ describe('AttendancePage', () => {
       expect(await screen.findByText('Bob Test')).toBeInTheDocument();
       expect(screen.getByText('Alice Test')).toBeInTheDocument();
     });
+
+    it('marks the days a child is not enrolled for', async () => {
+      // The other half of the per-day roster: the union gives Bob a row, and
+      // the per-day sets are what stop that row offering a check-in for the
+      // Monday he was not enrolled for.
+      //
+      // Both used to be useMemos whose dependency array held
+      // `weekChildrenQueries.map((q) => q.data)` -- a fresh array on every
+      // render, so neither memo ever hit and both recomputed constantly behind
+      // an exhaustive-deps suppression. They are now derived in `combine`,
+      // which react-query memoizes against the query results. This asserts the
+      // output survived the move; the recomputation was invisible from outside,
+      // which is why it went unnoticed for so long.
+      const child = (id: number, first: string) => ({
+        id,
+        organization_id: 1,
+        first_name: first,
+        last_name: 'Test',
+        birthdate: '2021-01-01',
+        gender: 'female' as const,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+      });
+      // Monday: Alice only. Tuesday onwards: Alice and Bob.
+      let call = 0;
+      (apiClient.getChildrenAllForDate as jest.Mock).mockImplementation(() => {
+        call += 1;
+        return Promise.resolve(
+          call === 1 ? [child(1, 'Alice')] : [child(1, 'Alice'), child(2, 'Bob')]
+        );
+      });
+
+      renderWithProviders(<AttendancePage />);
+
+      expect(await screen.findByText('Bob Test')).toBeInTheDocument();
+      // Exactly one cell says "not enrolled": Bob's Monday. Alice is enrolled
+      // every day, and Bob is enrolled Tuesday to Friday.
+      await waitFor(() => expect(screen.getAllByText('notEnrolled')).toHaveLength(1));
+    });
   });
 });

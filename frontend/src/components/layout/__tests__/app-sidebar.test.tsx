@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppSidebar } from '../app-sidebar';
 
@@ -49,7 +50,10 @@ jest.mock('@/lib/api/client', () => ({
 
 function renderWithQueryClient(ui: React.ReactElement) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+  function Providers({ children }: { children: React.ReactNode }) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  }
+  return render(ui, { wrapper: Providers });
 }
 
 describe('AppSidebar', () => {
@@ -62,6 +66,77 @@ describe('AppSidebar', () => {
       sidebarMobileOpen: false,
       setMobileSidebarOpen: mockSetMobileSidebarOpen,
     };
+  });
+
+  // Submenu expansion used to be an accumulating Set that an effect wrote to
+  // whenever a child route went active. It is now derived during render, with
+  // state holding only the user's explicit toggles, keyed by route. These three
+  // pin the behaviour that effect provided -- and the one thing it did by
+  // accident, which is called out below.
+  describe('submenu expansion', () => {
+    beforeEach(() => {
+      mockUiStore = {
+        sidebarCollapsed: false,
+        toggleSidebar: mockToggleSidebar,
+        selectedOrganizationId: 1,
+        sidebarMobileOpen: false,
+        setMobileSidebarOpen: mockSetMobileSidebarOpen,
+      };
+    });
+
+    const statisticsToggle = () => screen.getByRole('button', { name: 'common.toggleSubmenu' });
+
+    it('opens the submenu of the active route without being asked', () => {
+      mockPathname = '/organizations/1/statistics/financials';
+      renderWithQueryClient(<AppSidebar />);
+
+      expect(statisticsToggle()).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByText('nav.statisticsFinancials')).toBeInTheDocument();
+    });
+
+    it('leaves the submenu closed when none of its children is the route', () => {
+      mockPathname = '/organizations/1/children';
+      renderWithQueryClient(<AppSidebar />);
+
+      expect(statisticsToggle()).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.queryByText('nav.statisticsFinancials')).not.toBeInTheDocument();
+    });
+
+    it('lets the user close the submenu of the route they are on', async () => {
+      const u = userEvent.setup();
+      mockPathname = '/organizations/1/statistics/financials';
+      renderWithQueryClient(<AppSidebar />);
+      expect(statisticsToggle()).toHaveAttribute('aria-expanded', 'true');
+
+      await u.click(statisticsToggle());
+
+      expect(statisticsToggle()).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.queryByText('nav.statisticsFinancials')).not.toBeInTheDocument();
+    });
+
+    it("re-asserts the default on navigation, discarding the previous route's toggle", async () => {
+      // The replaced effect listed `pathname` in its dependencies, so moving
+      // between routes re-applied the default and forgot what the user had
+      // done on the page before. The route-keyed override keeps that.
+      //
+      // It does drop one accidental behaviour: accumulating into a Set meant a
+      // submenu stayed open after navigating *away* from its children. The
+      // code's own comment described the rule as "auto-expand parent when a
+      // child route is active", so the stickiness was a side effect of the
+      // storage, not the intent. It is gone deliberately.
+      const u = userEvent.setup();
+      mockPathname = '/organizations/1/statistics/financials';
+      const { rerender } = renderWithQueryClient(<AppSidebar />);
+
+      await u.click(statisticsToggle());
+      expect(statisticsToggle()).toHaveAttribute('aria-expanded', 'false');
+
+      mockPathname = '/organizations/1/statistics/staffing';
+      rerender(<AppSidebar />);
+
+      expect(statisticsToggle()).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByText('nav.statisticsStaffing')).toBeInTheDocument();
+    });
   });
 
   it('renders main navigation links (Organizations, Government Fundings)', () => {

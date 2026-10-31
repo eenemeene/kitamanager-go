@@ -4,6 +4,7 @@ import { useMemo, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { UseQueryResult } from '@tanstack/react-query';
 import { startOfWeek, addDays, eachDayOfInterval, format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -89,74 +90,98 @@ export default function AttendancePage() {
   // for. Asking per day is the only answer that is right on both ends, and it
   // also gives the grid what it needs to grey out the days a child is not
   // enrolled for rather than silently offering them.
-  const weekChildrenQueries = useQueries({
-    queries: weekDays.map((day) => {
-      const dayStr = format(day, 'yyyy-MM-dd');
-      return {
-        queryKey: [...queryKeys.children.allUnpaginated(orgId), dayStr, sectionFilter],
-        queryFn: () => apiClient.getChildrenAllForDate(orgId, dayStr, sectionFilter),
-        enabled: !!orgId,
-      };
-    }),
-  });
-
-  const childrenLoading = weekChildrenQueries.some((q) => q.isLoading);
-  const childrenError = weekChildrenQueries.find((q) => q.error)?.error ?? null;
-  const refetchChildren = useCallback(() => {
-    for (const query of weekChildrenQueries) query.refetch();
-  }, [weekChildrenQueries]);
-
-  // Every child enrolled on any day of the week, deduplicated. The table sorts
-  // by name, so the union needs no ordering of its own.
-  const weekChildren = useMemo(() => {
-    const byId = new Map<number, Child>();
-    for (const query of weekChildrenQueries) {
-      for (const child of query.data ?? []) {
-        if (!byId.has(child.id)) byId.set(child.id, child);
+  // Derived with `combine` rather than a useMemo over the returned array,
+  // because useQueries hands back a *fresh* array on every render. A memo keyed
+  // on it -- or on `queries.map((q) => q.data)`, which is equally fresh -- can
+  // never hit: Object.is says "changed" every time, so the union and the five
+  // per-day sets were rebuilt on every render of this page, behind an
+  // exhaustive-deps suppression that hid exactly that. react-query memoizes
+  // `combine` against the underlying query results, which is the thing that
+  // actually changes.
+  const combineChildren = useCallback(
+    (results: UseQueryResult<Child[], Error>[]) => {
+      // Every child enrolled on any day of the week, deduplicated. The table
+      // sorts by name, so the union needs no ordering of its own.
+      const byId = new Map<number, Child>();
+      for (const result of results) {
+        for (const child of result.data ?? []) {
+          if (!byId.has(child.id)) byId.set(child.id, child);
+        }
       }
-    }
-    return [...byId.values()];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weekChildrenQueries.map((q) => q.data)]);
 
-  // Which children are enrolled on which day, so a cell outside a child's
-  // contract can say so instead of offering a check-in.
-  const enrolledByDate = useMemo(() => {
-    const map = new Map<string, Set<number>>();
-    weekDays.forEach((day, i) => {
-      const dayStr = format(day, 'yyyy-MM-dd');
-      const data = weekChildrenQueries[i]?.data;
-      // No entry at all while the day is still loading: the grid then leaves
-      // the cell alone rather than flashing "not enrolled" at every child.
-      if (data) map.set(dayStr, new Set(data.map((c) => c.id)));
+      // Which children are enrolled on which day, so a cell outside a child's
+      // contract can say so instead of offering a check-in.
+      const enrolled = new Map<string, Set<number>>();
+      weekDays.forEach((day, i) => {
+        const data = results[i]?.data;
+        // No entry at all while the day is still loading: the grid then leaves
+        // the cell alone rather than flashing "not enrolled" at every child.
+        if (data) enrolled.set(format(day, 'yyyy-MM-dd'), new Set(data.map((c) => c.id)));
+      });
+
+      return {
+        weekChildren: [...byId.values()],
+        enrolledByDate: enrolled,
+        childrenLoading: results.some((r) => r.isLoading),
+        childrenError: results.find((r) => r.error)?.error ?? null,
+        refetchChildren: () => {
+          for (const result of results) result.refetch();
+        },
+      };
+    },
+    [weekDays]
+  );
+
+  const { weekChildren, enrolledByDate, childrenLoading, childrenError, refetchChildren } =
+    useQueries({
+      queries: weekDays.map((day) => {
+        const dayStr = format(day, 'yyyy-MM-dd');
+        return {
+          queryKey: [...queryKeys.children.allUnpaginated(orgId), dayStr, sectionFilter],
+          queryFn: () => apiClient.getChildrenAllForDate(orgId, dayStr, sectionFilter),
+          enabled: !!orgId,
+        };
+      }),
+      combine: combineChildren,
     });
-    return map;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weekDays, weekChildrenQueries.map((q) => q.data)]);
+
+  // Same treatment as the roster above, and for the same reason: the dependency
+  // here was the `useQueries` array itself, which is new on every render, so
+  // this map was also rebuilt every time. The lint rule did not flag this one --
+  // a bare identifier in the dependency list looks fine to it, while
+  // `queries.map(...)` does not -- but the defect was identical, and fixing
+  // only the flagged pair would have left its twin twenty lines down.
+  const combineAttendance = useCallback(
+    (results: UseQueryResult<ChildAttendanceResponse[], Error>[]) => {
+      const byDate = new Map<string, ChildAttendanceResponse[]>();
+      weekDays.forEach((day, i) => {
+        byDate.set(format(day, 'yyyy-MM-dd'), results[i]?.data ?? []);
+      });
+      return {
+        weekAttendanceByDate: byDate,
+        attendanceLoading: results.some((r) => r.isLoading),
+        attendanceError: results.find((r) => r.error)?.error ?? null,
+        refetchAttendance: () => {
+          for (const result of results) result.refetch();
+        },
+      };
+    },
+    [weekDays]
+  );
 
   // Fetch attendance for all 5 weekdays in parallel
-  const weekAttendanceQueries = useQueries({
-    queries: weekDays.map((day) => {
-      const dayStr = format(day, 'yyyy-MM-dd');
-      return {
-        queryKey: queryKeys.attendance.byDate(orgId, dayStr),
-        queryFn: () => apiClient.getChildAttendanceByDateAll(orgId, dayStr),
-        enabled: !!orgId,
-      };
-    }),
-  });
-
-  const attendanceLoading = weekAttendanceQueries.some((q) => q.isLoading);
-  const attendanceError = weekAttendanceQueries.find((q) => q.error)?.error ?? null;
-
-  const weekAttendanceByDate = useMemo(() => {
-    const map = new Map<string, ChildAttendanceResponse[]>();
-    weekDays.forEach((day, i) => {
-      const dayStr = format(day, 'yyyy-MM-dd');
-      map.set(dayStr, weekAttendanceQueries[i]?.data ?? []);
+  const { weekAttendanceByDate, attendanceLoading, attendanceError, refetchAttendance } =
+    useQueries({
+      queries: weekDays.map((day) => {
+        const dayStr = format(day, 'yyyy-MM-dd');
+        return {
+          queryKey: queryKeys.attendance.byDate(orgId, dayStr),
+          queryFn: () => apiClient.getChildAttendanceByDateAll(orgId, dayStr),
+          enabled: !!orgId,
+        };
+      }),
+      combine: combineAttendance,
     });
-    return map;
-  }, [weekDays, weekAttendanceQueries]);
 
   const isLoading = childrenLoading || attendanceLoading;
   const queryError = childrenError || attendanceError;
@@ -495,7 +520,7 @@ export default function AttendancePage() {
               error={queryError}
               onRetry={() => {
                 refetchChildren();
-                weekAttendanceQueries.forEach((q) => q.refetch());
+                refetchAttendance();
               }}
             />
           ) : isLoading ? (
