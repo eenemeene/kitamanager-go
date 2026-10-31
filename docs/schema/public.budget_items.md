@@ -1,7 +1,5 @@
 # public.budget_items
 
-## Description
-
 ## Columns
 
 | Name            | Type                     | Default                                  | Nullable | Children                                                    | Parents                                         | Comment |
@@ -16,22 +14,23 @@
 
 ## Constraints
 
-| Name                                  | Type        | Definition                                                                   |
-| ------------------------------------- | ----------- | ---------------------------------------------------------------------------- |
-| budget_items_category_not_null        | n           | NOT NULL category                                                            |
-| budget_items_id_not_null              | n           | NOT NULL id                                                                  |
-| budget_items_name_not_null            | n           | NOT NULL name                                                                |
-| budget_items_organization_id_not_null | n           | NOT NULL organization_id                                                     |
-| budget_items_per_child_not_null       | n           | NOT NULL per_child                                                           |
-| budget_items_organization_id_fkey     | FOREIGN KEY | FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE |
-| budget_items_pkey                     | PRIMARY KEY | PRIMARY KEY (id)                                                             |
+| Name                                  | Type        | Definition                                                                                                    |
+| ------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------- |
+| budget_items_category_not_null        | n           | NOT NULL category                                                                                             |
+| budget_items_category_valid           | CHECK       | CHECK (((category)::text = ANY ((ARRAY['income'::character varying, 'expense'::character varying])::text[]))) |
+| budget_items_id_not_null              | n           | NOT NULL id                                                                                                   |
+| budget_items_name_not_null            | n           | NOT NULL name                                                                                                 |
+| budget_items_organization_id_not_null | n           | NOT NULL organization_id                                                                                      |
+| budget_items_per_child_not_null       | n           | NOT NULL per_child                                                                                            |
+| budget_items_organization_id_fkey     | FOREIGN KEY | FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE                                  |
+| budget_items_pkey                     | PRIMARY KEY | PRIMARY KEY (id)                                                                                              |
 
 ## Indexes
 
-| Name                     | Definition                                                                                              |
-| ------------------------ | ------------------------------------------------------------------------------------------------------- |
-| budget_items_pkey        | CREATE UNIQUE INDEX budget_items_pkey ON public.budget_items USING btree (id)                           |
-| idx_budget_item_org_name | CREATE UNIQUE INDEX idx_budget_item_org_name ON public.budget_items USING btree (organization_id, name) |
+| Name                     | Definition                                                                                                                     |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| budget_items_pkey        | CREATE UNIQUE INDEX budget_items_pkey ON public.budget_items USING btree (id)                                                  |
+| idx_budget_item_org_name | CREATE UNIQUE INDEX idx_budget_item_org_name ON public.budget_items USING btree (organization_id, lower(TRIM(BOTH FROM name))) |
 
 ## Relations
 
@@ -43,11 +42,11 @@ erDiagram
 "public.user_organizations" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.sections" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.employees" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
-"public.pay_plans" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id)"
+"public.pay_plans" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.children" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.child_attendances" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.audit_logs" }o--o| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL"
-"public.government_funding_bill_periods" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id)"
+"public.government_funding_bill_periods" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 
 "public.budget_items" {
   bigint id
@@ -76,6 +75,7 @@ erDiagram
   timestamp_with_time_zone created_at
   varchar_255_ created_by
   timestamp_with_time_zone updated_at
+  timestamp_with_time_zone deleted_at
 }
 "public.user_organizations" {
   bigint user_id FK
@@ -94,6 +94,7 @@ erDiagram
   timestamp_with_time_zone created_at
   varchar_255_ created_by
   timestamp_with_time_zone updated_at
+  timestamp_with_time_zone deleted_at
 }
 "public.employees" {
   bigint id
@@ -121,6 +122,7 @@ erDiagram
   date birthdate
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  date school_entry_date
 }
 "public.child_attendances" {
   bigint id
@@ -148,6 +150,7 @@ erDiagram
   text details
   boolean success
   bigint organization_id FK
+  varchar_64_ request_id
 }
 "public.government_funding_bill_periods" {
   bigint id
@@ -163,6 +166,9 @@ erDiagram
   bigint created_by FK
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  date correction_booking_from_month
+  date correction_booking_to_month
+  varchar_64_ correction_booking_reason
 }
 ```
 

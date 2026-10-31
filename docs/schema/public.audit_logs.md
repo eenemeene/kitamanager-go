@@ -1,7 +1,5 @@
 # public.audit_logs
 
-## Description
-
 ## Columns
 
 | Name            | Type                     | Default                                | Nullable | Children | Parents                                         | Comment |
@@ -18,6 +16,7 @@
 | details         | text                     |                                        | true     |          |                                                 |         |
 | success         | boolean                  |                                        | false    |          |                                                 |         |
 | organization_id | bigint                   |                                        | true     |          | [public.organizations](public.organizations.md) |         |
+| request_id      | varchar(64)              |                                        | true     |          |                                                 |         |
 
 ## Constraints
 
@@ -32,13 +31,14 @@
 
 ## Indexes
 
-| Name                     | Definition                                                                                              |
-| ------------------------ | ------------------------------------------------------------------------------------------------------- |
-| audit_logs_pkey          | CREATE UNIQUE INDEX audit_logs_pkey ON public.audit_logs USING btree (id)                               |
-| idx_audit_logs_timestamp | CREATE INDEX idx_audit_logs_timestamp ON public.audit_logs USING btree ("timestamp")                    |
-| idx_audit_logs_user_id   | CREATE INDEX idx_audit_logs_user_id ON public.audit_logs USING btree (user_id)                          |
-| idx_audit_logs_action    | CREATE INDEX idx_audit_logs_action ON public.audit_logs USING btree (action)                            |
-| idx_audit_logs_org_ts    | CREATE INDEX idx_audit_logs_org_ts ON public.audit_logs USING btree (organization_id, "timestamp" DESC) |
+| Name                      | Definition                                                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| audit_logs_pkey           | CREATE UNIQUE INDEX audit_logs_pkey ON public.audit_logs USING btree (id)                                           |
+| idx_audit_logs_timestamp  | CREATE INDEX idx_audit_logs_timestamp ON public.audit_logs USING btree ("timestamp")                                |
+| idx_audit_logs_user_id    | CREATE INDEX idx_audit_logs_user_id ON public.audit_logs USING btree (user_id)                                      |
+| idx_audit_logs_action     | CREATE INDEX idx_audit_logs_action ON public.audit_logs USING btree (action)                                        |
+| idx_audit_logs_org_ts     | CREATE INDEX idx_audit_logs_org_ts ON public.audit_logs USING btree (organization_id, "timestamp" DESC)             |
+| idx_audit_logs_request_id | CREATE INDEX idx_audit_logs_request_id ON public.audit_logs USING btree (request_id) WHERE (request_id IS NOT NULL) |
 
 ## Relations
 
@@ -49,11 +49,11 @@ erDiagram
 "public.user_organizations" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.sections" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.employees" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
-"public.pay_plans" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id)"
+"public.pay_plans" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.children" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.child_attendances" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.budget_items" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
-"public.government_funding_bill_periods" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id)"
+"public.government_funding_bill_periods" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 
 "public.audit_logs" {
   bigint id
@@ -68,6 +68,7 @@ erDiagram
   text details
   boolean success
   bigint organization_id FK
+  varchar_64_ request_id
 }
 "public.organizations" {
   bigint id
@@ -77,6 +78,7 @@ erDiagram
   timestamp_with_time_zone created_at
   varchar_255_ created_by
   timestamp_with_time_zone updated_at
+  timestamp_with_time_zone deleted_at
 }
 "public.user_organizations" {
   bigint user_id FK
@@ -95,6 +97,7 @@ erDiagram
   timestamp_with_time_zone created_at
   varchar_255_ created_by
   timestamp_with_time_zone updated_at
+  timestamp_with_time_zone deleted_at
 }
 "public.employees" {
   bigint id
@@ -122,6 +125,7 @@ erDiagram
   date birthdate
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  date school_entry_date
 }
 "public.child_attendances" {
   bigint id
@@ -159,6 +163,9 @@ erDiagram
   bigint created_by FK
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  date correction_booking_from_month
+  date correction_booking_to_month
+  varchar_64_ correction_booking_reason
 }
 ```
 

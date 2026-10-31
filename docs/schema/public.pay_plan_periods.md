@@ -1,7 +1,5 @@
 # public.pay_plan_periods
 
-## Description
-
 ## Columns
 
 | Name                       | Type                     | Default                                      | Nullable | Children                                              | Parents                                 | Comment |
@@ -17,14 +15,16 @@
 
 ## Constraints
 
-| Name                                   | Type        | Definition                                                           |
-| -------------------------------------- | ----------- | -------------------------------------------------------------------- |
-| pay_plan_periods_from_date_not_null    | n           | NOT NULL from_date                                                   |
-| pay_plan_periods_id_not_null           | n           | NOT NULL id                                                          |
-| pay_plan_periods_pay_plan_id_not_null  | n           | NOT NULL pay_plan_id                                                 |
-| pay_plan_periods_weekly_hours_not_null | n           | NOT NULL weekly_hours                                                |
-| pay_plan_periods_pay_plan_id_fkey      | FOREIGN KEY | FOREIGN KEY (pay_plan_id) REFERENCES pay_plans(id) ON DELETE CASCADE |
-| pay_plan_periods_pkey                  | PRIMARY KEY | PRIMARY KEY (id)                                                     |
+| Name                                              | Type        | Definition                                                                                     |
+| ------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------- |
+| pay_plan_periods_employer_contribution_rate_valid | CHECK       | CHECK (((employer_contribution_rate >= 0) AND (employer_contribution_rate <= 10000)))          |
+| pay_plan_periods_from_date_not_null               | n           | NOT NULL from_date                                                                             |
+| pay_plan_periods_id_not_null                      | n           | NOT NULL id                                                                                    |
+| pay_plan_periods_pay_plan_id_not_null             | n           | NOT NULL pay_plan_id                                                                           |
+| pay_plan_periods_weekly_hours_not_null            | n           | NOT NULL weekly_hours                                                                          |
+| pay_plan_periods_weekly_hours_valid               | CHECK       | CHECK (((weekly_hours > (0)::double precision) AND (weekly_hours <= (168)::double precision))) |
+| pay_plan_periods_pay_plan_id_fkey                 | FOREIGN KEY | FOREIGN KEY (pay_plan_id) REFERENCES pay_plans(id) ON DELETE CASCADE                           |
+| pay_plan_periods_pkey                             | PRIMARY KEY | PRIMARY KEY (id)                                                                               |
 
 ## Indexes
 
@@ -42,7 +42,7 @@ erDiagram
 "public.pay_plan_entries" }o--|| "public.pay_plan_periods" : "FOREIGN KEY (period_id) REFERENCES pay_plan_periods(id) ON DELETE CASCADE"
 "public.pay_plan_periods" }o--|| "public.pay_plans" : "FOREIGN KEY (pay_plan_id) REFERENCES pay_plans(id) ON DELETE CASCADE"
 "public.employee_contracts" }o--|| "public.pay_plans" : "FOREIGN KEY (pay_plan_id) REFERENCES pay_plans(id)"
-"public.pay_plans" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id)"
+"public.pay_plans" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 
 "public.pay_plan_periods" {
   bigint id
@@ -85,6 +85,7 @@ erDiagram
   bigint pay_plan_id FK
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  bigint version
 }
 "public.organizations" {
   bigint id
@@ -94,6 +95,7 @@ erDiagram
   timestamp_with_time_zone created_at
   varchar_255_ created_by
   timestamp_with_time_zone updated_at
+  timestamp_with_time_zone deleted_at
 }
 ```
 

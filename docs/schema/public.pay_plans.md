@@ -1,7 +1,5 @@
 # public.pay_plans
 
-## Description
-
 ## Columns
 
 | Name            | Type                     | Default                               | Nullable | Children                                                                                                        | Parents                                         | Comment |
@@ -14,13 +12,13 @@
 
 ## Constraints
 
-| Name                               | Type        | Definition                                                 |
-| ---------------------------------- | ----------- | ---------------------------------------------------------- |
-| pay_plans_id_not_null              | n           | NOT NULL id                                                |
-| pay_plans_name_not_null            | n           | NOT NULL name                                              |
-| pay_plans_organization_id_not_null | n           | NOT NULL organization_id                                   |
-| pay_plans_organization_id_fkey     | FOREIGN KEY | FOREIGN KEY (organization_id) REFERENCES organizations(id) |
-| pay_plans_pkey                     | PRIMARY KEY | PRIMARY KEY (id)                                           |
+| Name                               | Type        | Definition                                                                   |
+| ---------------------------------- | ----------- | ---------------------------------------------------------------------------- |
+| pay_plans_id_not_null              | n           | NOT NULL id                                                                  |
+| pay_plans_name_not_null            | n           | NOT NULL name                                                                |
+| pay_plans_organization_id_not_null | n           | NOT NULL organization_id                                                     |
+| pay_plans_organization_id_fkey     | FOREIGN KEY | FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE |
+| pay_plans_pkey                     | PRIMARY KEY | PRIMARY KEY (id)                                                             |
 
 ## Indexes
 
@@ -40,7 +38,7 @@ erDiagram
 "public.employee_contracts" }o--|| "public.pay_plans" : "FOREIGN KEY (pay_plan_id) REFERENCES pay_plans(id)"
 "public.employee_contracts" }o--|| "public.employees" : "FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE"
 "public.employee_contracts" }o--|| "public.sections" : "FOREIGN KEY (section_id) REFERENCES sections(id)"
-"public.pay_plans" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id)"
+"public.pay_plans" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.user_organizations" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.sections" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.employees" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
@@ -48,7 +46,7 @@ erDiagram
 "public.child_attendances" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.budget_items" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.audit_logs" }o--o| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL"
-"public.government_funding_bill_periods" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id)"
+"public.government_funding_bill_periods" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 
 "public.pay_plans" {
   bigint id
@@ -91,6 +89,7 @@ erDiagram
   bigint pay_plan_id FK
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  bigint version
 }
 "public.employees" {
   bigint id
@@ -112,6 +111,7 @@ erDiagram
   timestamp_with_time_zone created_at
   varchar_255_ created_by
   timestamp_with_time_zone updated_at
+  timestamp_with_time_zone deleted_at
 }
 "public.organizations" {
   bigint id
@@ -121,6 +121,7 @@ erDiagram
   timestamp_with_time_zone created_at
   varchar_255_ created_by
   timestamp_with_time_zone updated_at
+  timestamp_with_time_zone deleted_at
 }
 "public.user_organizations" {
   bigint user_id FK
@@ -138,6 +139,7 @@ erDiagram
   date birthdate
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  date school_entry_date
 }
 "public.child_attendances" {
   bigint id
@@ -174,6 +176,7 @@ erDiagram
   text details
   boolean success
   bigint organization_id FK
+  varchar_64_ request_id
 }
 "public.government_funding_bill_periods" {
   bigint id
@@ -189,6 +192,9 @@ erDiagram
   bigint created_by FK
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  date correction_booking_from_month
+  date correction_booking_to_month
+  varchar_64_ correction_booking_reason
 }
 ```
 
