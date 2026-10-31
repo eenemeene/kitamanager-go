@@ -1,10 +1,36 @@
 version: 2
+
+# Every ecosystem below carries a 7-day cooldown: Dependabot will not propose a
+# release until it has been on the registry for a week. This repo has
+# auto-merge enabled, so without it a freshly published malicious version can
+# reach `main` unattended, gated only by the required checks — and those test
+# behaviour, not provenance. A week is roughly the window in which the
+# npm compromises of recent years were spotted and yanked.
+#
+# The cost is real and worth stating: this also delays Dependabot's
+# *security* update PRs for these manifests, so a known CVE sits for up to a
+# week longer. That is the trade — slower patching of known-bad in exchange
+# for not auto-merging unknown-bad. Urgent CVEs can still be bumped by hand,
+# which is faster than waiting for Dependabot either way.
+#
+# `default-days` is what every ecosystem here supports. gomod and npm also
+# accept semver-major-days/semver-minor-days/semver-patch-days; they are left
+# off deliberately, because a malicious release is just as likely to be shaped
+# as a patch as a major, so splitting the window by bump type would weaken
+# exactly the case this is for.
+#
+# Go modules are included even though the module proxy makes published versions
+# immutable. Immutability defeats "publish good, later swap in bad"; it does
+# nothing against "publish bad in the first place", which is the attack a
+# cooldown addresses.
 updates:
   # Go modules
   - package-ecosystem: gomod
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "deps:"
     groups:
@@ -17,6 +43,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "ci:"
     groups:
@@ -29,6 +57,8 @@ updates:
     directory: /frontend
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "deps(frontend):"
     groups:
@@ -65,5 +95,7 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "docker:"
