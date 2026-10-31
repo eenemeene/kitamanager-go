@@ -1905,16 +1905,21 @@ func TestStatisticsService_GetFinancials_ManualCorrectionBooking(t *testing.T) {
 	user := createTestUser(t, db, "Bill User", "manualcorr@test.com", "password")
 
 	toNov := time.Date(2025, 11, 30, 0, 0, 0, 0, time.UTC)
+	korrFrom := time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)
+	korrTo := time.Date(2024, 9, 1, 0, 0, 0, 0, time.UTC)
 	bill := &models.GovernmentFundingBillPeriod{
-		OrganizationID:    org.ID,
-		Period:            models.Period{From: time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC), To: &toNov},
-		FileName:          "nov.xlsx",
-		FileSha256:        "hash-manual-corr",
-		FacilityName:      "Kita Test",
-		FacilityTotal:     4940653,
-		ContractBooking:   4940653,
-		CorrectionBooking: 1823085,
-		CreatedBy:         &user.ID,
+		OrganizationID:             org.ID,
+		Period:                     models.Period{From: time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC), To: &toNov},
+		FileName:                   "nov.xlsx",
+		FileSha256:                 "hash-manual-corr",
+		FacilityName:               "Kita Test",
+		FacilityTotal:              4940653,
+		ContractBooking:            4940653,
+		CorrectionBooking:          1823085,
+		CorrectionBookingFromMonth: &korrFrom,
+		CorrectionBookingToMonth:   &korrTo,
+		CorrectionBookingReason:    "nachfinanzierung_i_status",
+		CreatedBy:                  &user.ID,
 	}
 	if err := db.Create(bill).Error; err != nil {
 		t.Fatalf("create bill: %v", err)
@@ -1933,6 +1938,17 @@ func TestStatisticsService_GetFinancials_ManualCorrectionBooking(t *testing.T) {
 	}
 	if *novDP.ActualFundingManualCorrection != 1823085 {
 		t.Errorf("ActualFundingManualCorrection = %d, want 1823085", *novDP.ActualFundingManualCorrection)
+	}
+	// And the months it settles, which is what keeps it from being read as
+	// this Kita year's income: a November 2025 booking for months in 2023/24.
+	if got := novDP.ActualFundingManualCorrectionFromMonth; got == nil || *got != "2023-10-01" {
+		t.Errorf("ActualFundingManualCorrectionFromMonth = %v, want 2023-10-01", got)
+	}
+	if got := novDP.ActualFundingManualCorrectionToMonth; got == nil || *got != "2024-09-01" {
+		t.Errorf("ActualFundingManualCorrectionToMonth = %v, want 2024-09-01", got)
+	}
+	if got := novDP.ActualFundingManualCorrectionReason; got == nil || *got != "nachfinanzierung_i_status" {
+		t.Errorf("ActualFundingManualCorrectionReason = %v, want \"nachfinanzierung_i_status\"", got)
 	}
 	// It must stay out of the figures that only child rows feed, or it would
 	// be counted twice the moment the Korrekturübersicht sheet is parsed.

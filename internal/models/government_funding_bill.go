@@ -74,6 +74,20 @@ type GovernmentFundingBillPeriod struct {
 	FacilityTotal     int    `gorm:"not null" json:"facility_total" example:"500000"`
 	ContractBooking   int    `gorm:"not null" json:"contract_booking" example:"480000"`
 	CorrectionBooking int    `gorm:"not null" json:"correction_booking" example:"20000"`
+	// The months CorrectionBooking settles, and why, read from the
+	// Korrekturübersicht sheet (migration 000030).
+	//
+	// Nil is the ordinary state: nineteen of twenty-two real bills carried no
+	// manual booking at all. Nil also covers a bill whose sheet did not
+	// reconcile with its own stated Korrektursumme, where the amount stands
+	// and only its attribution is unknown.
+	//
+	// CorrectionBookingReason is a short code, never the Korrekturgrund it was
+	// derived from. That text carries children's names and birthdates and has
+	// no place in a database.
+	CorrectionBookingFromMonth *time.Time `gorm:"type:date" json:"correction_booking_from_month,omitempty" format:"date" example:"2023-10-01"`
+	CorrectionBookingToMonth   *time.Time `gorm:"type:date" json:"correction_booking_to_month,omitempty" format:"date" example:"2024-09-01"`
+	CorrectionBookingReason    string     `gorm:"size:64" json:"correction_booking_reason,omitempty" example:"nachfinanzierung_i_status"`
 	// CreatedBy became nullable in migration 000014: the FK to
 	// users(id) is now ON DELETE SET NULL so deleting the uploader
 	// doesn't block user deletion and doesn't destroy the bill
@@ -116,21 +130,29 @@ type GovernmentFundingBillChildResponse struct {
 
 // GovernmentFundingBillPeriodResponse is the full detail response for a single bill period.
 type GovernmentFundingBillPeriodResponse struct {
-	ID                uint                                 `json:"id" example:"1"`
-	OrganizationID    uint                                 `json:"organization_id" example:"1"`
-	From              string                               `json:"from" example:"2025-11-01"`
-	To                string                               `json:"to" example:"2025-11-30"`
-	FileName          string                               `json:"file_name" example:"Abrechnung_11-25.xlsx"`
-	FileSha256        string                               `json:"file_sha256" example:"a1b2c3d4..."`
-	FacilityName      string                               `json:"facility_name" example:"Kita Sonnenschein"`
-	FacilityTotal     int                                  `json:"facility_total" example:"500000"`
-	ContractBooking   int                                  `json:"contract_booking" example:"480000"`
-	CorrectionBooking int                                  `json:"correction_booking" example:"20000"`
-	ChildrenCount     int                                  `json:"children_count" example:"25"`
-	MatchedCount      int                                  `json:"matched_count" example:"23"`
-	UnmatchedCount    int                                  `json:"unmatched_count" example:"2"`
-	Surcharges        []GovernmentFundingBillAmount        `json:"surcharges"`
-	Children          []GovernmentFundingBillChildResponse `json:"children"`
+	ID                uint   `json:"id" example:"1"`
+	OrganizationID    uint   `json:"organization_id" example:"1"`
+	From              string `json:"from" example:"2025-11-01"`
+	To                string `json:"to" example:"2025-11-30"`
+	FileName          string `json:"file_name" example:"Abrechnung_11-25.xlsx"`
+	FileSha256        string `json:"file_sha256" example:"a1b2c3d4..."`
+	FacilityName      string `json:"facility_name" example:"Kita Sonnenschein"`
+	FacilityTotal     int    `json:"facility_total" example:"500000"`
+	ContractBooking   int    `json:"contract_booking" example:"480000"`
+	CorrectionBooking int    `json:"correction_booking" example:"20000"`
+	// The months CorrectionBooking settles, and why. Absent when the bill
+	// carries no manual booking or its attribution could not be read.
+	CorrectionBookingFromMonth *string `json:"correction_booking_from_month,omitempty" example:"2023-10-01"`
+	CorrectionBookingToMonth   *string `json:"correction_booking_to_month,omitempty" example:"2024-09-01"`
+	// A pointer so that "no attribution" is absent on the wire rather than an
+	// empty string, which is what keeps it optional in the generated client
+	// types instead of a field every caller has to set.
+	CorrectionBookingReason *string                              `json:"correction_booking_reason,omitempty" example:"nachfinanzierung_i_status"`
+	ChildrenCount           int                                  `json:"children_count" example:"25"`
+	MatchedCount            int                                  `json:"matched_count" example:"23"`
+	UnmatchedCount          int                                  `json:"unmatched_count" example:"2"`
+	Surcharges              []GovernmentFundingBillAmount        `json:"surcharges"`
+	Children                []GovernmentFundingBillChildResponse `json:"children"`
 	// CreatedBy is nil when the uploader has since been deleted
 	// (migration 000014 ON DELETE SET NULL).
 	CreatedBy *uint     `json:"created_by,omitempty" example:"1"`

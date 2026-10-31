@@ -1298,6 +1298,11 @@ func TestGovernmentFundingBillPeriodStore_FindManualCorrectionTotalsByOrganizati
 	// Nov carries a manual booking, Dec a smaller one, Jan none -- the shape a
 	// real Kita year has: most months zero, a couple carrying a Nachfinanzierung.
 	bookings := map[time.Month]int{time.November: 1823085, time.December: 312440, time.January: 0}
+	novFrom := time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)
+	novTo := time.Date(2024, 9, 1, 0, 0, 0, 0, time.UTC)
+	spanFrom := map[time.Month]*time.Time{time.November: &novFrom}
+	spanTo := map[time.Month]*time.Time{time.November: &novTo}
+	reasons := map[time.Month]string{time.November: "nachfinanzierung_i_status"}
 	for _, m := range []time.Month{time.November, time.December} {
 		to := time.Date(2025, m+1, 0, 0, 0, 0, 0, time.UTC)
 		if err := s.Create(ctx, &models.GovernmentFundingBillPeriod{
@@ -1308,7 +1313,12 @@ func TestGovernmentFundingBillPeriodStore_FindManualCorrectionTotalsByOrganizati
 			FacilityTotal:     500000,
 			ContractBooking:   500000,
 			CorrectionBooking: bookings[m],
-			CreatedBy:         &user.ID,
+			// Only November carries an attribution, so the test also covers a
+			// booking whose months could not be read.
+			CorrectionBookingFromMonth: spanFrom[m],
+			CorrectionBookingToMonth:   spanTo[m],
+			CorrectionBookingReason:    reasons[m],
+			CreatedBy:                  &user.ID,
 		}); err != nil {
 			t.Fatalf("setup: Create() error = %v", err)
 		}
@@ -1343,17 +1353,33 @@ func TestGovernmentFundingBillPeriodStore_FindManualCorrectionTotalsByOrganizati
 		t.Fatalf("FindManualCorrectionTotalsByOrganizationInDateRange() error = %v", err)
 	}
 	nov := time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC)
-	if result[nov] != 1823085 {
-		t.Errorf("Nov = %d, want 1823085", result[nov])
+	if result[nov].Amount != 1823085 {
+		t.Errorf("Nov = %d, want 1823085", result[nov].Amount)
+	}
+	// The span the booking settles comes back with it, which is the whole
+	// point of reading the Korrekturübersicht: November 2025 paid for months
+	// in 2023/24.
+	if got := result[nov].FromMonth; got == nil || !got.UTC().Equal(time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)) {
+		t.Errorf("Nov from_month = %v, want 2023-10-01", got)
+	}
+	if got := result[nov].ToMonth; got == nil || !got.UTC().Equal(time.Date(2024, 9, 1, 0, 0, 0, 0, time.UTC)) {
+		t.Errorf("Nov to_month = %v, want 2024-09-01", got)
+	}
+	if got := result[nov].Reason; got != "nachfinanzierung_i_status" {
+		t.Errorf("Nov reason = %q, want \"nachfinanzierung_i_status\"", got)
 	}
 	dec := time.Date(2025, 12, 1, 0, 0, 0, 0, time.UTC)
-	if result[dec] != 312440 {
-		t.Errorf("Dec = %d, want 312440", result[dec])
+	if result[dec].Amount != 312440 {
+		t.Errorf("Dec = %d, want 312440", result[dec].Amount)
+	}
+	// A booking whose attribution could not be read still reports its amount.
+	if result[dec].FromMonth != nil {
+		t.Errorf("Dec from_month = %v, want nil", result[dec].FromMonth)
 	}
 	// A bill with no manual booking is still a bill: present, reporting zero.
 	jan := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	if got, ok := result[jan]; !ok || got != 0 {
-		t.Errorf("Jan = (%d, %v), want (0, true)", got, ok)
+	if got, ok := result[jan]; !ok || got.Amount != 0 {
+		t.Errorf("Jan = (%d, %v), want (0, true)", got.Amount, ok)
 	}
 	if len(result) != 3 {
 		t.Errorf("len(result) = %d, want 3 — the other org must not leak in", len(result))

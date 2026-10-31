@@ -145,8 +145,17 @@ und die Buchungen betreffen Monate ein bis zwei Kita-Jahre zurück. Sie dem
 Eingangsjahr zuzurechnen würde dieses deutlich zu gut aussehen lassen.
 
 Welche Monate eine Buchung betrifft, steht ausschließlich im Blatt
-**Korrekturübersicht**, als Freitext. KitaManager weist den Betrag aus, nicht
-die Zuordnung.
+**Korrekturübersicht**, als Freitext. KitaManager liest daraus die Monate und die
+Art der Buchung und weist sie neben dem Betrag aus — eine Kita-Jahres-Zeile
+nennt dann „zzgl. 18.230,85 € manuelle Korrekturbuchung für 10/23 – 09/24“
+statt eines unerklärten Betrags, der wie Einnahme dieses Jahres aussieht.
+
+Nicht gespeichert wird der Freitext selbst. Der Korrekturgrund nennt Kind und
+Geburtsdatum; gespeichert werden ausschließlich die Monate und ein kurzer
+Grund-Code, und weder Datenbank noch API führen den Wortlaut. Ergeben die Zeilen
+des Blattes nicht die dort ausgewiesene Korrektursumme — ein Layout, das der
+Parser noch nicht kennt —, bleibt der Betrag bestehen und die Monate werden als
+unbekannt ausgewiesen, statt geraten zu werden.
 
 ## Ein Kind, zwei Gutscheinzeilen in einer Abrechnung
 

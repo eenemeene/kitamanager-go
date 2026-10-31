@@ -3,7 +3,11 @@
 // d3 through. The transform uses no Nivo APIs, so the stub is invisible here.
 jest.mock('@nivo/bar', () => ({ ResponsiveBar: () => null }));
 
-import { attributedActuals, buildKitaYearSummary } from '../funding-comparison-chart';
+import {
+  attributedActuals,
+  buildKitaYearSummary,
+  formatMonthSpan,
+} from '../funding-comparison-chart';
 import type { FinancialResponse } from '@/lib/api/types';
 
 type DataPoint = FinancialResponse['data_points'][0];
@@ -117,6 +121,45 @@ describe('buildKitaYearSummary', () => {
     // years back. Folding it in would invent a surplus the size of the booking.
     expect(year.difference).toBe(0);
     expect(year.correction).toBe(0);
+  });
+
+  // Without the span the amount reads as this Kita year's money, which is
+  // exactly backwards: these bookings settle months one or two years earlier.
+  it('carries the span the manual booking settles, unioned across the year', () => {
+    const rows = buildKitaYearSummary([
+      dp('2025-11-01', {
+        funding_income: 1000,
+        actual_funding: 1000,
+        actual_funding_regular: 1000,
+        actual_funding_manual_correction: 1823085,
+        actual_funding_manual_correction_from_month: '2023-10-01',
+        actual_funding_manual_correction_to_month: '2024-09-01',
+      }),
+      dp('2025-12-01', {
+        funding_income: 1000,
+        actual_funding: 1000,
+        actual_funding_regular: 1000,
+        actual_funding_manual_correction: 312440,
+        actual_funding_manual_correction_from_month: '2024-12-01',
+        actual_funding_manual_correction_to_month: '2024-12-01',
+      }),
+    ]);
+    // 10/23 from the first bill, 12/24 from the second: the union, not either
+    // bill's own span.
+    expect(rows[0]!.manualCorrectionSpan).toBe('10/23 \u2013 12/24');
+  });
+
+  it('reports no span when the attribution could not be read', () => {
+    const rows = buildKitaYearSummary([
+      dp('2025-11-01', {
+        funding_income: 1000,
+        actual_funding: 1000,
+        actual_funding_regular: 1000,
+        actual_funding_manual_correction: 1823085,
+      }),
+    ]);
+    expect(rows[0]!.manualCorrection).toBe(1823085);
+    expect(rows[0]!.manualCorrectionSpan).toBeNull();
   });
 
   it('reports no manual correction booking when the bills carry none', () => {
@@ -391,5 +434,30 @@ describe('buildKitaYearSummary with a pure Korrektur bill', () => {
     // against. Counted once, and only here.
     expect(row.orphanCorrection).toBe(102);
     expect(row.correction + row.orphanCorrection).toBe(102);
+  });
+});
+
+describe('formatMonthSpan', () => {
+  it('collapses a single month to one token', () => {
+    expect(formatMonthSpan('2024-12-01', '2024-12-01')).toBe('12/24');
+  });
+
+  it('writes a range the way the ISBJ sheet does', () => {
+    expect(formatMonthSpan('2023-10-01', '2024-09-01')).toBe('10/23 \u2013 09/24');
+  });
+
+  // Half a span says nothing, so it is not rendered at all.
+  it('returns null unless both ends are present', () => {
+    expect(formatMonthSpan('2023-10-01', null)).toBeNull();
+    expect(formatMonthSpan(null, '2024-09-01')).toBeNull();
+    expect(formatMonthSpan(null, null)).toBeNull();
+  });
+
+  it('returns null for an unparseable date rather than a half-formatted one', () => {
+    expect(formatMonthSpan('not-a-date', '2024-09-01')).toBeNull();
+  });
+
+  it('pads a single-digit month, so 01/25 never renders as 1/25', () => {
+    expect(formatMonthSpan('2025-01-01', '2025-01-01')).toBe('01/25');
   });
 });
