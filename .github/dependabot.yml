@@ -7,11 +7,15 @@ version: 2
 # behaviour, not provenance. A week is roughly the window in which the
 # npm compromises of recent years were spotted and yanked.
 #
-# The cost is real and worth stating: this also delays Dependabot's
-# *security* update PRs for these manifests, so a known CVE sits for up to a
-# week longer. That is the trade — slower patching of known-bad in exchange
-# for not auto-merging unknown-bad. Urgent CVEs can still be bumped by hand,
-# which is faster than waiting for Dependabot either way.
+# Dependabot applies a 3-day cooldown to version updates even with no
+# `cooldown` block at all, so this is 3 days to 7, not nothing to 7.
+#
+# It costs nothing in CVE patch latency, which is the thing you would expect it
+# to cost. `cooldown` governs *version* updates only. Dependabot's *security*
+# update PRs — the ones raised off an advisory against a version we already
+# ship — are exempt from both this block and the 3-day default, and arrive as
+# fast as they ever did. Do not weigh this setting against patch speed: the
+# two are not on the same scale.
 #
 # `default-days` is what every ecosystem here supports. gomod and npm also
 # accept semver-major-days/semver-minor-days/semver-patch-days; they are left
