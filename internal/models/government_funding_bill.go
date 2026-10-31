@@ -181,16 +181,34 @@ type BillAppearance struct {
 
 // FundingComparisonChild represents the comparison for one child.
 type FundingComparisonChild struct {
-	VoucherNumber   string                    `json:"voucher_number" example:"GB-12345678901-02"`
-	ChildName       string                    `json:"child_name" example:"Mustermann, Max"`
-	BirthDate       string                    `json:"birth_date,omitempty" example:"01.20"`
-	ChildID         *uint                     `json:"child_id,omitempty" example:"42"`
-	Age             *int                      `json:"age,omitempty" example:"3"`
-	BillTotal       int                       `json:"bill_total" example:"166847"`
-	CorrectionTotal int                       `json:"correction_total" example:"0"`
-	CalcTotal       *int                      `json:"calculated_total,omitempty" example:"166847"`
-	Difference      *int                      `json:"difference,omitempty" example:"0"`
-	Status          string                    `json:"status" example:"match"` // match|difference|bill_only|calc_only
+	// VoucherNumber is the Gutschein this comparison is filed under. Where a
+	// child held several in one bill it is the one that carried the month's
+	// regular row, because that is the Gutschein the money came in on; the
+	// full set is in VoucherNumbers.
+	VoucherNumber string `json:"voucher_number" example:"GB-12345678901-02"`
+	// VoucherNumbers lists every Gutschein of this child that appeared in the
+	// bill, in the order the bill listed them. Usually one. A renewal puts two
+	// in the same bill: the Senate reverses the months already paid on the old
+	// Gutschein and re-books them on the new one, so both carry rows for one
+	// enrolment. Present so the UI can show which Gutscheine a row stands for
+	// rather than appearing to lose one.
+	VoucherNumbers  []string `json:"voucher_numbers,omitempty" example:"GB-12345678901-02"`
+	ChildName       string   `json:"child_name" example:"Mustermann, Max"`
+	BirthDate       string   `json:"birth_date,omitempty" example:"01.20"`
+	ChildID         *uint    `json:"child_id,omitempty" example:"42"`
+	Age             *int     `json:"age,omitempty" example:"3"`
+	BillTotal       int      `json:"bill_total" example:"166847"`
+	CorrectionTotal int      `json:"correction_total" example:"0"`
+	CalcTotal       *int     `json:"calculated_total,omitempty" example:"166847"`
+	Difference      *int     `json:"difference,omitempty" example:"0"`
+	// Status is one of:
+	//   match             bill and contract agree to the cent
+	//   difference        both sides have figures and they differ
+	//   not_billed        contract active, bill carries no regular row for it
+	//   bill_only         in the bill, no contract active in the system
+	//   calc_only         contract active, the child is absent from the bill
+	//   no_funding_config matched, but no rate could be computed
+	Status          string                    `json:"status" example:"match"`
 	Properties      []FundingComparisonAmount `json:"properties"`
 	BillAppearances []BillAppearance          `json:"bill_appearances,omitempty"`
 	ContractFrom    *string                   `json:"contract_from,omitempty" example:"2024-01-01"`
@@ -199,22 +217,27 @@ type FundingComparisonChild struct {
 
 // FundingComparisonResponse is the top-level comparison result.
 type FundingComparisonResponse struct {
-	BillID          uint                     `json:"bill_id" example:"1"`
-	BillFrom        string                   `json:"bill_from" example:"2025-11-01"`
-	BillTo          string                   `json:"bill_to" example:"2025-11-30"`
-	FacilityName    string                   `json:"facility_name" example:"Kita Sonnenschein"`
-	BillTotal       int                      `json:"bill_total" example:"500000"`
-	CorrectionTotal int                      `json:"correction_total" example:"0"`
-	CalcTotal       int                      `json:"calculated_total" example:"498000"`
-	Difference      int                      `json:"difference" example:"2000"`
-	ChildrenCount   int                      `json:"children_count" example:"25"`
-	MatchCount      int                      `json:"match_count" example:"20"`
-	DifferenceCount int                      `json:"difference_count" example:"3"`
-	BillOnlyCount   int                      `json:"bill_only_count" example:"1"`
-	BillOnlyAmount  int                      `json:"bill_only_amount" example:"150000"`
-	CalcOnlyCount   int                      `json:"calc_only_count" example:"1"`
-	CalcOnlyAmount  int                      `json:"calc_only_amount" example:"80000"`
-	Children        []FundingComparisonChild `json:"children"`
+	BillID          uint   `json:"bill_id" example:"1"`
+	BillFrom        string `json:"bill_from" example:"2025-11-01"`
+	BillTo          string `json:"bill_to" example:"2025-11-30"`
+	FacilityName    string `json:"facility_name" example:"Kita Sonnenschein"`
+	BillTotal       int    `json:"bill_total" example:"500000"`
+	CorrectionTotal int    `json:"correction_total" example:"0"`
+	// ManualCorrectionTotal is the bill's "Korrekturbuchung manuell": a
+	// district-level booking with no child rows behind it, so it appears in
+	// none of the totals above. Carried here so it stops being invisible; it
+	// is not part of Difference, because it has no calculated counterpart.
+	ManualCorrectionTotal int                      `json:"manual_correction_total" example:"0"`
+	CalcTotal             int                      `json:"calculated_total" example:"498000"`
+	Difference            int                      `json:"difference" example:"2000"`
+	ChildrenCount         int                      `json:"children_count" example:"25"`
+	MatchCount            int                      `json:"match_count" example:"20"`
+	DifferenceCount       int                      `json:"difference_count" example:"3"`
+	BillOnlyCount         int                      `json:"bill_only_count" example:"1"`
+	BillOnlyAmount        int                      `json:"bill_only_amount" example:"150000"`
+	CalcOnlyCount         int                      `json:"calc_only_count" example:"1"`
+	CalcOnlyAmount        int                      `json:"calc_only_amount" example:"80000"`
+	Children              []FundingComparisonChild `json:"children"`
 }
 
 // ============================================================
@@ -255,6 +278,13 @@ type FundingComparisonSummary struct {
 	// window -- corrections that ARRIVED here, whichever month they
 	// are about.
 	TotalCorrections int `json:"total_corrections" example:"37114"`
+	// TotalManualCorrections sums the "Korrekturbuchung manuell" of the
+	// bills in this window. No child rows stand behind these, so they
+	// are in none of the three totals above and in no category bar:
+	// they cannot be set against a calculated figure, and in practice
+	// they settle months one or two Kita years back. Reported so that
+	// money the Senate paid is not simply absent from the screen.
+	TotalManualCorrections int `json:"total_manual_corrections" example:"2147350"`
 	// TotalCorrectionsAttributed sums the corrections that APPLY to
 	// this window's months, wherever their bill arrived -- counting
 	// only months that have a bill of their own. It is the figure

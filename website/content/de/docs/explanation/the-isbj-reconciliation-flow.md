@@ -75,10 +75,21 @@ Betrifft eine Korrektur einen Monat, für den gar kein Bescheid importiert wurde
 ## Abweichungsanalyse: woher die Differenz kommt
 
 Unter jeder Kita-Jahres-Zeile steht die **Abweichungsanalyse** mit einer
-Aufschlüsselung nach Kategorie: Satzdifferenzen, Eigenschaftsabweichungen, nur
-in der Abrechnung, nur im System. Die vier Kategorien sind überschneidungsfrei
-und vollständig — sie ergeben zusammen genau die Differenz aus regulärer
-Abrechnung und Berechnung.
+Aufschlüsselung nach Kategorie: Satzdifferenzen, Eigenschaftsabweichungen,
+Monat nicht abgerechnet, nur in der Abrechnung, nur im System. Die fünf
+Kategorien sind überschneidungsfrei und vollständig — sie ergeben zusammen
+genau die Differenz aus regulärer Abrechnung und Berechnung.
+
+**Monat nicht abgerechnet** ist die Kategorie, die man kennen sollte. Das Kind
+steht in der Abrechnung, aber nur mit Korrekturen für frühere Monate: für den
+eigenen Monat der Abrechnung gibt es keine reguläre Zeile. Der Betrag ist ein
+vollständiger Monatssatz, und er ist echt — dieser Monat wurde nicht gefördert.
+Was er *nicht* ist: ein Kostenblatt-Problem. Nach Eigenschaften aufgeschlüsselt
+las es sich als „care_type: ganztag — im Vertrag, aber nicht abgerechnet“, was
+Sie beim Senat über einen völlig korrekten Betreuungsumfang diskutieren lässt.
+Die richtige Frage ist, warum das Kind nicht abgerechnet wurde — meist eine noch
+laufende Registrierung, die ein oder zwei Monate später rückwirkend
+abgerechnet wird.
 
 Korrekturen gehören bewusst **nicht** dazu. Eine Korrektur ist kein Befund, den
 Sie beheben können, sondern eine bereits erfolgte Nachzahlung oder Rückforderung
@@ -103,5 +114,51 @@ im Kita-Jahr heraus, aus demselben Grund, aus dem die Kita-Jahres-Zeile sie
 nicht in ihre Korrektur-Spalte aufnimmt: diese Monate tragen nichts zur
 berechneten Seite bei, und ihre Korrekturen dagegen zu rechnen ergäbe eine
 Unterdeckung in der Größe eines Monats, die niemand schuldet.
+
+### Manuelle Korrekturbuchungen
+
+Die Abrechnungsübersicht führt eine zweite, eigenständige Größe: die
+**Korrekturbuchung manuell**. Das ist eine Buchung, die der Senat auf
+Bezirksebene von Hand vornimmt, und ihr liegen keine Kinderzeilen zugrunde —
+
+```
+tatsächlicher Zahlbetrag gesamt = Vertragsbuchung + Korrekturbuchung manuell
+```
+
+— wobei die kindbezogenen Zeilen der Vertragsübersicht genau die
+Vertragsbuchung ergeben. Jede kindbezogene Größe in KitaManager ist dafür also
+von Natur aus blind, und die Buchung braucht eine eigene Zeile:
+
+```
+Summe der Kategorien          + 430,09 €
+Korrekturen für diese Monate   − 30,00 €
+Korrekturbuchungen (manuell) + 18.230,85 €
+──────────────────────────────────────────
+Differenz im Kita-Jahr        + 400,09 €
+```
+
+Sie bleibt aus der Differenz im Kita-Jahr heraus, aus demselben Grund wie die
+Korrekturen ohne Abrechnung: es gibt keinen berechneten Wert, dem man sie
+gegenüberstellen könnte. In der Praxis handelt es sich um
+*Nachfinanzierung I-Status* — ein rückwirkend bewilligter Integrationsstatus —
+und die Buchungen betreffen Monate ein bis zwei Kita-Jahre zurück. Sie dem
+Eingangsjahr zuzurechnen würde dieses deutlich zu gut aussehen lassen.
+
+Welche Monate eine Buchung betrifft, steht ausschließlich im Blatt
+**Korrekturübersicht**, als Freitext. KitaManager weist den Betrag aus, nicht
+die Zuordnung.
+
+## Ein Kind, zwei Gutscheinzeilen in einer Abrechnung
+
+Bei einer Gutschein-Verlängerung stellt der Senat nicht einfach um. Er **storniert**
+die unter dem alten Gutschein bereits gezahlten Monate — als negative
+Korrekturzeilen — und **bucht sie neu** unter dem neuen Gutschein, der zugleich
+die reguläre Zeile für den eigenen Monat der Abrechnung trägt. Ein Kind
+erscheint damit zweimal in derselben Abrechnung, unter zwei Gutscheinnummern,
+und die beiden Zeilen sind ein einziges Betreuungsverhältnis.
+
+KitaManager vergleicht je Kind, nicht je Gutscheinzeile, sodass der berechnete
+Monatssatz genau einmal zählt. Der Vergleich nennt den Gutschein, auf dem das
+Geld tatsächlich eingegangen ist, und führt beide auf.
 
 Für die operative Triage-Matrix (welches Symptom auf welche Korrektur abbildet) siehe [Abweichung in einer Abrechnung untersuchen](../../how-to/use/investigate-a-bill-discrepancy/).

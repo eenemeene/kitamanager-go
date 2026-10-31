@@ -13131,6 +13131,11 @@
                     "type": "integer",
                     "example": 100000
                 },
+                "actual_funding_manual_correction": {
+                    "description": "ActualFundingManualCorrection is the Senate's \"Korrekturbuchung manuell\"\nfor the bill that arrived in this month: a district-level booking with no\nchild rows behind it, which every figure above is therefore blind to.\n\nIt is real money -- tatsächlicher Zahlbetrag gesamt = Vertragsbuchung +\nKorrekturbuchung manuell, and the child rows reproduce only the\nVertragsbuchung -- so leaving it out understated what the Kita received.\nReported on its own rather than added to the fields above because it\ncannot be attributed to a month without parsing the Korrekturübersicht\nsheet, and because it is not comparable with a calculated figure: in\npractice these bookings settle months one or two Kita years back.\n\nKeyed by arrival, and nil when no bill arrived in this month.",
+                    "type": "integer",
+                    "example": 2147350
+                },
                 "actual_funding_regular": {
                     "description": "cents, regular billing only",
                     "type": "integer",
@@ -13624,13 +13629,24 @@
                     }
                 },
                 "status": {
-                    "description": "match|difference|bill_only|calc_only",
+                    "description": "Status is one of:\n  match             bill and contract agree to the cent\n  difference        both sides have figures and they differ\n  not_billed        contract active, bill carries no regular row for it\n  bill_only         in the bill, no contract active in the system\n  calc_only         contract active, the child is absent from the bill\n  no_funding_config matched, but no rate could be computed",
                     "type": "string",
                     "example": "match"
                 },
                 "voucher_number": {
+                    "description": "VoucherNumber is the Gutschein this comparison is filed under. Where a\nchild held several in one bill it is the one that carried the month's\nregular row, because that is the Gutschein the money came in on; the\nfull set is in VoucherNumbers.",
                     "type": "string",
                     "example": "GB-12345678901-02"
+                },
+                "voucher_numbers": {
+                    "description": "VoucherNumbers lists every Gutschein of this child that appeared in the\nbill, in the order the bill listed them. Usually one. A renewal puts two\nin the same bill: the Senate reverses the months already paid on the old\nGutschein and re-books them on the new one, so both carry rows for one\nenrolment. Present so the UI can show which Gutscheine a row stands for\nrather than appearing to lose one.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "GB-12345678901-02"
+                    ]
                 }
             }
         },
@@ -13756,6 +13772,11 @@
                     "type": "string",
                     "example": "Kita Sonnenschein"
                 },
+                "manual_correction_total": {
+                    "description": "ManualCorrectionTotal is the bill's \"Korrekturbuchung manuell\": a\ndistrict-level booking with no child rows behind it, so it appears in\nnone of the totals above. Carried here so it stops being invisible; it\nis not part of Difference, because it has no calculated counterpart.",
+                    "type": "integer",
+                    "example": 0
+                },
                 "match_count": {
                     "type": "integer",
                     "example": 20
@@ -13807,6 +13828,11 @@
                 "total_difference": {
                     "type": "integer",
                     "example": -70840
+                },
+                "total_manual_corrections": {
+                    "description": "TotalManualCorrections sums the \"Korrekturbuchung manuell\" of the\nbills in this window. No child rows stand behind these, so they\nare in none of the three totals above and in no category bar:\nthey cannot be set against a calculated figure, and in practice\nthey settle months one or two Kita years back. Reported so that\nmoney the Senate paid is not simply absent from the screen.",
+                    "type": "integer",
+                    "example": 2147350
                 }
             }
         },

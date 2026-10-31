@@ -71,6 +71,7 @@ function makeSummary(overrides: Partial<FundingComparisonSummary> = {}): Funding
     total_billed: 0,
     total_calculated: 0,
     total_corrections: 0,
+    total_manual_corrections: 0,
     total_difference: 0,
     categories: [],
     issues: [],
@@ -130,6 +131,37 @@ describe('FundingDeficitAnalysis', () => {
       expect(screen.queryByText('deficitCategories')).not.toBeInTheDocument();
     });
 
+    it('starts expanded when a correction has to reconcile the bars with the row above', () => {
+      // The bars decompose total_difference, which counts regular billing
+      // only; the Kita year row above also carries the corrections. This block
+      // is the only place that says so, and collapsed by default it was a
+      // reconciliation nobody saw.
+      renderInTableBody(
+        <FundingDeficitAnalysis
+          summary={makeSummary({
+            categories: [makeCategory({ category: 'rate_difference', total_amount: -100 })],
+            total_corrections: 500,
+            total_corrections_attributed: 500,
+          })}
+          orgId="1"
+        />
+      );
+      expect(screen.getByText('deficitCategories')).toBeInTheDocument();
+    });
+
+    it('starts expanded when a manual correction booking has to be accounted for', () => {
+      renderInTableBody(
+        <FundingDeficitAnalysis
+          summary={makeSummary({
+            categories: [makeCategory({ category: 'rate_difference', total_amount: -100 })],
+            total_manual_corrections: 1823085,
+          })}
+          orgId="1"
+        />
+      );
+      expect(screen.getByText('deficitCategories')).toBeInTheDocument();
+    });
+
     it('starts expanded when forceExpanded is true (PDF/print path)', () => {
       // Print/PDF rendering needs everything visible without
       // simulating clicks — forceExpanded short-circuits both the
@@ -144,6 +176,43 @@ describe('FundingDeficitAnalysis', () => {
         />
       );
       expect(screen.getByText('deficitCategories')).toBeInTheDocument();
+    });
+  });
+
+  describe('manual correction booking', () => {
+    it('shows the district-level booking on its own line, out of the reconciled total', () => {
+      renderInTableBody(
+        <FundingDeficitAnalysis
+          summary={makeSummary({
+            categories: [makeCategory({ category: 'rate_difference', total_amount: -10000 })],
+            total_difference: -10000,
+            total_manual_corrections: 1823085,
+          })}
+          orgId="1"
+          forceExpanded
+        />
+      );
+      const manualLine = screen.getByText('deficitManualCorrections').parentElement;
+      // On its own line, with the sign spelled out.
+      expect(manualLine?.textContent).toContain('+18.230,85');
+      // The reconciled total stays -100,00: a manual booking has no calculated
+      // counterpart, so folding it in would invent a surplus.
+      const reconciled = screen.getByText('deficitReconciledTotal').parentElement;
+      expect(reconciled?.textContent).toContain('-100,00');
+    });
+
+    it('omits the line entirely when there is no manual booking', () => {
+      renderInTableBody(
+        <FundingDeficitAnalysis
+          summary={makeSummary({
+            categories: [makeCategory({ category: 'rate_difference', total_amount: -10000 })],
+            total_manual_corrections: 0,
+          })}
+          orgId="1"
+          forceExpanded
+        />
+      );
+      expect(screen.queryByText('deficitManualCorrections')).not.toBeInTheDocument();
     });
   });
 

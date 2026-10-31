@@ -1891,3 +1891,59 @@ func TestStatisticsService_GetFinancials_AttributedSetForEveryMonth(t *testing.T
 		t.Errorf("client-side total = %d, want 102 (the bill); 204 means the correction was counted twice", total)
 	}
 }
+
+// The Senate's "Korrekturbuchung manuell" is a district-level booking with no
+// child rows behind it, so every payment-row aggregation is blind to it. It is
+// money the Kita received -- tatsächlicher Zahlbetrag gesamt = Vertragsbuchung
+// + Korrekturbuchung manuell -- and it has to reach the financials.
+func TestStatisticsService_GetFinancials_ManualCorrectionBooking(t *testing.T) {
+	db := setupTestDB(t)
+	svc := createStatisticsService(db)
+	ctx := context.Background()
+
+	org := createTestOrganization(t, db, "Test Org")
+	user := createTestUser(t, db, "Bill User", "manualcorr@test.com", "password")
+
+	toNov := time.Date(2025, 11, 30, 0, 0, 0, 0, time.UTC)
+	bill := &models.GovernmentFundingBillPeriod{
+		OrganizationID:    org.ID,
+		Period:            models.Period{From: time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC), To: &toNov},
+		FileName:          "nov.xlsx",
+		FileSha256:        "hash-manual-corr",
+		FacilityName:      "Kita Test",
+		FacilityTotal:     4940653,
+		ContractBooking:   4940653,
+		CorrectionBooking: 1823085,
+		CreatedBy:         &user.ID,
+	}
+	if err := db.Create(bill).Error; err != nil {
+		t.Fatalf("create bill: %v", err)
+	}
+
+	from := time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2025, 12, 1, 0, 0, 0, 0, time.UTC)
+	result, err := svc.GetFinancials(ctx, org.ID, &from, &to)
+	if err != nil {
+		t.Fatalf("GetFinancials() error = %v", err)
+	}
+
+	novDP := findDataPoint(t, result.DataPoints, "2025-11-01")
+	if novDP.ActualFundingManualCorrection == nil {
+		t.Fatal("ActualFundingManualCorrection is nil; the manual booking never reaches the financials")
+	}
+	if *novDP.ActualFundingManualCorrection != 1823085 {
+		t.Errorf("ActualFundingManualCorrection = %d, want 1823085", *novDP.ActualFundingManualCorrection)
+	}
+	// It must stay out of the figures that only child rows feed, or it would
+	// be counted twice the moment the Korrekturübersicht sheet is parsed.
+	if novDP.ActualFunding == nil || *novDP.ActualFunding != 4940653 {
+		t.Errorf("ActualFunding = %v, want 4940653 (the Vertragsbuchung alone)", novDP.ActualFunding)
+	}
+
+	// A month with no bill has nothing to report, which is nil and not zero.
+	decDP := findDataPoint(t, result.DataPoints, "2025-12-01")
+	if decDP.ActualFundingManualCorrection != nil {
+		t.Errorf("ActualFundingManualCorrection = %d for a month with no bill, want nil",
+			*decDP.ActualFundingManualCorrection)
+	}
+}

@@ -35,7 +35,6 @@ export function FundingDeficitAnalysis({
   const fmt = useFormatters();
   const formatEur = (cents: number) => fmt.currency(cents);
   const [showAllIssues, setShowAllIssues] = useState(forceExpanded);
-  const [expanded, setExpanded] = useState(forceExpanded);
 
   const categories = summary.categories ?? [];
   const issues = summary.issues ?? [];
@@ -61,7 +60,22 @@ export function FundingDeficitAnalysis({
   const categoriesSum = categories.reduce((acc, c) => acc + (c.total_amount ?? 0), 0);
   const corrections = summary.total_corrections_attributed ?? summary.total_corrections ?? 0;
   const orphanCorrections = summary.total_corrections_orphan ?? 0;
+  // The Senate's district-level manual bookings. Held out of the reconciled
+  // total for the same reason as the orphans: no child rows stand behind them,
+  // so there is no calculated figure to set them against. Shown because the
+  // alternative is money the Kita received appearing nowhere at all.
+  const manualCorrections = summary.total_manual_corrections ?? 0;
   const reconciledTotal = categoriesSum + corrections;
+
+  // Open by default whenever the bars alone do not add up to the Kita year row
+  // above them. This block is the only thing on the page that says where the
+  // difference between the two comes from, and collapsed by default it was a
+  // reconciliation nobody saw: the row said one number, the bars another, and
+  // the explanation was behind a chevron. With every reconciling term at zero
+  // the bars and the row agree, and there is nothing to explain.
+  const [expanded, setExpanded] = useState(
+    forceExpanded || corrections !== 0 || orphanCorrections !== 0 || manualCorrections !== 0
+  );
 
   const visibleIssues = showAllIssues
     ? actionableIssues
@@ -174,6 +188,20 @@ export function FundingDeficitAnalysis({
                       <span data-visual-mask="currency" className="w-24 text-right tabular-nums">
                         {orphanCorrections >= 0 ? '+' : ''}
                         {formatEur(orphanCorrections)}
+                      </span>
+                      <span className="w-16" />
+                    </div>
+                  )}
+                  {manualCorrections !== 0 && (
+                    <div
+                      className="text-muted-foreground flex items-center gap-3 text-xs"
+                      title={t('deficitManualCorrectionsTooltip')}
+                    >
+                      <span className="w-36 truncate">{t('deficitManualCorrections')}</span>
+                      <div className="flex-1" />
+                      <span data-visual-mask="currency" className="w-24 text-right tabular-nums">
+                        {manualCorrections >= 0 ? '+' : ''}
+                        {formatEur(manualCorrections)}
                       </span>
                       <span className="w-16" />
                     </div>
