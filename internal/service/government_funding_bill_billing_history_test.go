@@ -1068,7 +1068,7 @@ func TestChildBillingHistory_CrossSuffixVoucherMatching(t *testing.T) {
 	createTestFundingProperty(t, db, fundingPeriod.ID, "care_type", "ganztag", 120000, -1, -1)
 
 	// Child has contract with voucher suffix -08
-	currentVoucher := "GB-56589936966-08"
+	currentVoucher := "GB-10000000008-08"
 	child, _ := createChildWithVoucher(t, db, "Cross", "Suffix", org.ID, section.ID, currentVoucher,
 		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
 		time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC), nil,
@@ -1076,8 +1076,8 @@ func TestChildBillingHistory_CrossSuffixVoucherMatching(t *testing.T) {
 	)
 
 	// Add older voucher suffixes to child_vouchers
-	oldVoucher := "GB-56589936966-02"
-	midVoucher := "GB-56589936966-04"
+	oldVoucher := "GB-10000000008-02"
+	midVoucher := "GB-10000000008-04"
 	db.Create(&models.ChildVoucher{ChildID: child.ID, VoucherNumber: oldVoucher, FirstSeen: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC)})
 	db.Create(&models.ChildVoucher{ChildID: child.ID, VoucherNumber: midVoucher, FirstSeen: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)})
 
