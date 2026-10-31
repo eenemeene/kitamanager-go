@@ -267,6 +267,7 @@
     "fundingCalculatedFullYear": "of {amount} across the full Kita year",
     "fundingCorrectionOrphan": "plus {amount} for months with no bill",
     "fundingManualCorrection": "plus {amount} manual correction booking",
+    "fundingManualCorrectionSpan": "plus {amount} manual correction booking, settling {span}",
     "fundingManualCorrectionTooltip": "The Senate's district-level \u201aKorrekturbuchung manuell\u2018 on the bills that arrived in this Kita year. It has no child rows behind it, so it is not part of the Difference \u2014 in practice these bookings settle months one or two Kita years back \u2014 but it is money the Kita received.",
     "fundingCorrectionOrphanTooltip": "Corrections that apply to months of this Kita year for which no bill was imported. They are not part of the difference, because those months have no calculated figure to compare against.",
     "fundingDifference": "Difference",

@@ -3,6 +3,7 @@ package isbj
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"math"
 	"regexp"
 	"strconv"
@@ -90,10 +91,14 @@ func (v Vertrag) String() string {
 }
 
 type SenatsabrechnungOutput struct {
-	Einrichtung  *Einrichtung `json:"einrichtung"`
-	Abrechnung   *Abrechnung  `json:"abrechnung"`
-	Vertrag      *Vertrag     `json:"vertrag"`
-	BillingMonth time.Time    `json:"billing_month"`
+	Einrichtung *Einrichtung `json:"einrichtung"`
+	Abrechnung  *Abrechnung  `json:"abrechnung"`
+	Vertrag     *Vertrag     `json:"vertrag"`
+	// Korrekturen is the per-row detail behind Abrechnung.KorrekturBuchung,
+	// or nil when the bill carries no manual booking -- which is the ordinary
+	// case -- or when the sheet could not be read as a whole.
+	Korrekturen  []Korrekturposten `json:"korrekturen,omitempty"`
+	BillingMonth time.Time         `json:"billing_month"`
 }
 
 func cellAsString(f *excelize.File, sheet, cell string) string {
@@ -325,10 +330,24 @@ func ParseFromReader(r io.Reader) (out *SenatsabrechnungOutput, err error) {
 		return nil, fmt.Errorf("parsing billing month: %w", err)
 	}
 
+	// Deliberately not fatal. The Korrekturübersicht has gone unread since the
+	// importer was written, and its layout has already moved once between file
+	// generations. A drift in it must not start rejecting uploads that worked
+	// yesterday, over detail that only adds context to a figure the
+	// Abrechnungsübersicht already states correctly. Warn, carry nothing, and
+	// let the aggregate stand.
+	korrekturen, kerr := ParseKorrektur(f)
+	if kerr != nil {
+		slog.Warn("could not read the Korrekturübersicht sheet; the manual correction booking will carry no month attribution",
+			"error", kerr)
+		korrekturen = nil
+	}
+
 	return &SenatsabrechnungOutput{
 		Einrichtung:  eu,
 		Abrechnung:   ar,
 		Vertrag:      v,
+		Korrekturen:  korrekturen,
 		BillingMonth: billingMonth,
 	}, nil
 }

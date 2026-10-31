@@ -375,7 +375,11 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 			// carry?", and for a month with no bill there is nothing to say.
 			if errManual == nil {
 				if manual, found := billManual[key]; found {
-					dp.ActualFundingManualCorrection = &manual
+					amount := manual.Amount
+					dp.ActualFundingManualCorrection = &amount
+					dp.ActualFundingManualCorrectionFromMonth = formatDatePtr(manual.FromMonth)
+					dp.ActualFundingManualCorrectionToMonth = formatDatePtr(manual.ToMonth)
+					dp.ActualFundingManualCorrectionReason = stringPtrOrNil(manual.Reason)
 				}
 			}
 		}
@@ -385,6 +389,16 @@ func (s *StatisticsService) GetFinancials(ctx context.Context, orgID uint, from,
 }
 
 // GetOccupancy calculates monthly occupancy data points broken down by age group, care type, and supplements.
+// formatDatePtr renders a nullable date as the wire format, or nil when there
+// is none.
+func formatDatePtr(t *time.Time) *string {
+	if t == nil {
+		return nil
+	}
+	v := t.Format(models.DateFormat)
+	return &v
+}
+
 func (s *StatisticsService) GetOccupancy(ctx context.Context, orgID uint, from, to *time.Time, sectionID *uint) (*models.OccupancyResponse, error) {
 	rangeStart, rangeEnd, err := snapAndValidateRange(from, to)
 	if err != nil {

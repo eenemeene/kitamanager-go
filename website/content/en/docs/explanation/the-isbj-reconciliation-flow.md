@@ -141,7 +141,17 @@ granted Integrationsstatus — and they settle months one or two Kita years back
 so crediting them to the year they arrived in would overstate it badly.
 
 Which months a booking settles is written only in the **Korrekturübersicht**
-sheet, as free text. KitaManager reports the amount but not the attribution.
+sheet, as free text. KitaManager reads the months and the kind of booking out of
+it, and reports them beside the amount — so a Kita year row reads "plus
+€18,230.85 manual correction booking, settling 10/23 – 09/24" rather than an
+unexplained figure that looks like this year's income.
+
+What it does **not** keep is the text itself. The Korrekturgrund names the child
+and its birthdate, so only the months and a short reason code are stored;
+nothing in the database or the API carries the wording. And if the sheet's rows
+do not add up to the Korrektursumme it states — a layout the parser has not seen
+before — the amount still stands and the months are simply reported as unknown,
+rather than attributed to a guess.
 
 ## One child, two Gutschein rows in one bill
 

@@ -104,6 +104,16 @@ export interface KitaYearSummaryRow {
    */
   manualCorrection: number;
   /**
+   * The months `manualCorrection` settles, formatted the way the ISBJ sheet
+   * writes them (MM/YY, or MM/YY – MM/YY for a range), or null when the bill
+   * carried no booking or its attribution could not be read.
+   *
+   * This is what stops the amount being read as this Kita year's money. In
+   * practice these bookings settle months one or two Kita years back, so a
+   * figure without its span invites exactly that mistake.
+   */
+  manualCorrectionSpan: string | null;
+  /**
    * (regular + correction) - calculatedWithBill: the net position after
    * retroactive adjustments, which is the question a year row answers. The
    * month rows answer a different one and use a different formula; see
@@ -150,6 +160,29 @@ export function attributedActuals(dp: FinancialResponse['data_points'][number]):
   return { regular, correction };
 }
 
+/**
+ * Formats a month span the way the ISBJ sheets write one: "12/24" for a single
+ * month, "10/23 – 09/24" for a range.
+ *
+ * MM/YY rather than a localised month name because that is the notation the
+ * operator reads in the Korrekturgrund column itself, and matching it makes the
+ * two line up without translation.
+ *
+ * Returns null unless both ends are present: half a span says nothing.
+ */
+export function formatMonthSpan(from: string | null, to: string | null): string | null {
+  if (!from || !to) return null;
+  const mm = (iso: string) => {
+    const d = new Date(iso + 'T00:00:00');
+    if (Number.isNaN(d.getTime())) return null;
+    return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getFullYear()).slice(2)}`;
+  };
+  const a = mm(from);
+  const b = mm(to);
+  if (!a || !b) return null;
+  return a === b ? a : `${a} \u2013 ${b}`;
+}
+
 export function buildKitaYearSummary(
   dataPoints: FinancialResponse['data_points'],
   compareData?: Map<string, FundingComparisonResponse>
@@ -163,6 +196,8 @@ export function buildKitaYearSummary(
       correction: number;
       orphanCorrection: number;
       manualCorrection: number;
+      manualCorrectionFrom: string | null;
+      manualCorrectionTo: string | null;
       actualMonths: number;
       totalMonths: number;
       months: KitaYearMonthRow[];
@@ -179,6 +214,8 @@ export function buildKitaYearSummary(
       correction: 0,
       orphanCorrection: 0,
       manualCorrection: 0,
+      manualCorrectionFrom: null,
+      manualCorrectionTo: null,
       actualMonths: 0,
       totalMonths: 0,
       months: [],
@@ -197,6 +234,17 @@ export function buildKitaYearSummary(
     // never imported a bill for -- and that money is held aside rather than
     // set against a calculated total that excludes its month.
     entry.manualCorrection += dp.actual_funding_manual_correction ?? 0;
+    // Union across the year's bills. Compared as ISO date strings, which sort
+    // lexicographically in date order, so no parsing is needed to pick the
+    // earliest and latest.
+    const mcFrom = dp.actual_funding_manual_correction_from_month ?? null;
+    const mcTo = dp.actual_funding_manual_correction_to_month ?? null;
+    if (mcFrom && (entry.manualCorrectionFrom === null || mcFrom < entry.manualCorrectionFrom)) {
+      entry.manualCorrectionFrom = mcFrom;
+    }
+    if (mcTo && (entry.manualCorrectionTo === null || mcTo > entry.manualCorrectionTo)) {
+      entry.manualCorrectionTo = mcTo;
+    }
     const hasActual = dp.actual_funding != null;
     if (hasActual) {
       entry.calculatedWithBill += dpFundingIncome;
@@ -228,6 +276,7 @@ export function buildKitaYearSummary(
     correction: v.correction,
     orphanCorrection: v.orphanCorrection,
     manualCorrection: v.manualCorrection,
+    manualCorrectionSpan: formatMonthSpan(v.manualCorrectionFrom, v.manualCorrectionTo),
     difference: v.regular + v.correction - v.calculatedWithBill,
     actualMonths: v.actualMonths,
     totalMonths: v.totalMonths,
@@ -755,9 +804,14 @@ export function FundingComparisonChart({
                               className="text-muted-foreground text-xs font-normal"
                               title={t('fundingManualCorrectionTooltip')}
                             >
-                              {t('fundingManualCorrection', {
-                                amount: formatEur(row.manualCorrection),
-                              })}
+                              {row.manualCorrectionSpan
+                                ? t('fundingManualCorrectionSpan', {
+                                    amount: formatEur(row.manualCorrection),
+                                    span: row.manualCorrectionSpan,
+                                  })
+                                : t('fundingManualCorrection', {
+                                    amount: formatEur(row.manualCorrection),
+                                  })}
                             </div>
                           )}
                         </TableCell>

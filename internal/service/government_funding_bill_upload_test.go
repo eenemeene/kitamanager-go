@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/eenemeene/kitamanager-go/internal/apperror"
+	"github.com/eenemeene/kitamanager-go/internal/isbj"
 	"github.com/eenemeene/kitamanager-go/internal/models"
 	"github.com/eenemeene/kitamanager-go/internal/store"
 )
@@ -295,5 +296,57 @@ func TestProcessISBJ_PersistsBillingMonth(t *testing.T) {
 			t.Fatalf("payment %d billing_month = %s, want %s",
 				p.ID, got.Format("2006-01-02"), want.Format("2006-01-02"))
 		}
+	}
+}
+
+// The manual Korrekturbuchung's months survive the whole import path, from the
+// Korrekturübersicht sheet to the persisted bill row.
+//
+// The real November bill settles months in 2023/24 and arrived in November
+// 2025, two Kita years later. Without the span, 18.230,85 EUR of real income
+// reads as that Kita year's money -- an error this investigation made before
+// the sheet was parsed.
+func TestProcessISBJ_PersistsManualCorrectionSpan(t *testing.T) {
+	db := setupTestDB(t)
+	svc := setupBillCompareService(t, db)
+	org := createTestOrganization(t, db, "Kita Sonnenschein")
+	user := createTestUser(t, db, "User", "korrspan@example.com", "password")
+	ctx := context.Background()
+
+	f, err := os.Open("../isbj/testdata/Abrechnung_11-25_0770_anonymized.xlsx")
+	if err != nil {
+		t.Fatalf("opening test file: %v", err)
+	}
+	defer func() { _ = f.Close() }()
+
+	if _, err := svc.ProcessISBJ(ctx, org.ID, f, "nov.xlsx", "korrspanhash", user.ID); err != nil {
+		t.Fatalf("ProcessISBJ() error = %v", err)
+	}
+
+	var period models.GovernmentFundingBillPeriod
+	if err := db.Where("organization_id = ?", org.ID).First(&period).Error; err != nil {
+		t.Fatalf("loading persisted period: %v", err)
+	}
+
+	if period.CorrectionBooking != 1823085 {
+		t.Errorf("correction_booking = %d, want 1823085", period.CorrectionBooking)
+	}
+	if got := period.CorrectionBookingFromMonth; got == nil ||
+		!got.UTC().Equal(time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)) {
+		t.Errorf("correction_booking_from_month = %v, want 2023-10-01", got)
+	}
+	if got := period.CorrectionBookingToMonth; got == nil ||
+		!got.UTC().Equal(time.Date(2024, 9, 1, 0, 0, 0, 0, time.UTC)) {
+		t.Errorf("correction_booking_to_month = %v, want 2024-09-01", got)
+	}
+	if period.CorrectionBookingReason != isbj.KorrekturReasonNachfinanzierungIStatus {
+		t.Errorf("correction_booking_reason = %q, want %q",
+			period.CorrectionBookingReason, isbj.KorrekturReasonNachfinanzierungIStatus)
+	}
+	// The span must precede the bill that paid it, which is the fact the whole
+	// feature exists to make visible.
+	if !period.CorrectionBookingToMonth.Before(period.From) {
+		t.Errorf("span ends %s but the bill is %s",
+			period.CorrectionBookingToMonth.Format("2006-01"), period.From.Format("2006-01"))
 	}
 }

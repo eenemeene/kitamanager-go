@@ -99,6 +99,22 @@ type FinancialDataPoint struct {
 	//
 	// Keyed by arrival, and nil when no bill arrived in this month.
 	ActualFundingManualCorrection *int `json:"actual_funding_manual_correction,omitempty" example:"2147350"` // cents
+	// The months that booking settles, read from the Korrekturübersicht sheet,
+	// and a short code for why.
+	//
+	// This is what makes the amount above readable. Every manual booking in
+	// the sample Kita year settled months one or two Kita years before the
+	// bill that paid it, so the amount on its own invites crediting it to the
+	// year it arrived in -- which overstates that year by the whole of it.
+	//
+	// Absent when the bill carried no booking, and also when its
+	// Korrekturübersicht did not reconcile with its own stated Korrektursumme:
+	// there the amount stands and only the attribution is unknown. The reason
+	// is a code, never the free text it came from -- that text carries
+	// children's names and birthdates.
+	ActualFundingManualCorrectionFromMonth *string `json:"actual_funding_manual_correction_from_month,omitempty" example:"2023-10-01"`
+	ActualFundingManualCorrectionToMonth   *string `json:"actual_funding_manual_correction_to_month,omitempty" example:"2024-09-01"`
+	ActualFundingManualCorrectionReason    *string `json:"actual_funding_manual_correction_reason,omitempty" example:"nachfinanzierung_i_status"`
 	// Counts
 	ChildCount int `json:"child_count" example:"45"`
 	StaffCount int `json:"staff_count" example:"12"`

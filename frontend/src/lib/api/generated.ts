@@ -3624,6 +3624,27 @@ export interface components {
        */
       actual_funding_manual_correction?: number;
       /**
+       * @description The months that booking settles, read from the Korrekturübersicht sheet,
+       *     and a short code for why.
+       *
+       *     This is what makes the amount above readable. Every manual booking in
+       *     the sample Kita year settled months one or two Kita years before the
+       *     bill that paid it, so the amount on its own invites crediting it to the
+       *     year it arrived in -- which overstates that year by the whole of it.
+       *
+       *     Absent when the bill carried no booking, and also when its
+       *     Korrekturübersicht did not reconcile with its own stated Korrektursumme:
+       *     there the amount stands and only the attribution is unknown. The reason
+       *     is a code, never the free text it came from -- that text carries
+       *     children's names and birthdates.
+       * @example 2023-10-01
+       */
+      actual_funding_manual_correction_from_month?: string;
+      /** @example nachfinanzierung_i_status */
+      actual_funding_manual_correction_reason?: string;
+      /** @example 2024-09-01 */
+      actual_funding_manual_correction_to_month?: string;
+      /**
        * @description cents, regular billing only
        * @example 5000000
        */
@@ -4135,6 +4156,21 @@ export interface components {
       contract_booking: number;
       /** @example 20000 */
       correction_booking: number;
+      /**
+       * @description The months CorrectionBooking settles, and why. Absent when the bill
+       *     carries no manual booking or its attribution could not be read.
+       * @example 2023-10-01
+       */
+      correction_booking_from_month?: string;
+      /**
+       * @description A pointer so that "no attribution" is absent on the wire rather than an
+       *     empty string, which is what keeps it optional in the generated client
+       *     types instead of a field every caller has to set.
+       * @example nachfinanzierung_i_status
+       */
+      correction_booking_reason?: string;
+      /** @example 2024-09-01 */
+      correction_booking_to_month?: string;
       /** Format: date-time */
       created_at: string;
       /**

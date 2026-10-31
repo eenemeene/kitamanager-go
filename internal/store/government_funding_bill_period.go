@@ -206,6 +206,21 @@ func (s *GovernmentFundingBillPeriodStore) FindFacilityTotalsByOrganizationInDat
 	return m, nil
 }
 
+// BillManualCorrection holds a bill month's manual correction booking: the
+// amount, and the span of months it settles.
+//
+// The span is what makes the amount readable. Every manual booking in the
+// sample Kita year settled months one or two Kita years before the bill that
+// paid it, so the amount on its own invites crediting it to the wrong year.
+// Nil when the bill carried no booking, or when its Korrekturübersicht did not
+// reconcile and the attribution is therefore unknown.
+type BillManualCorrection struct {
+	Amount    int
+	FromMonth *time.Time
+	ToMonth   *time.Time
+	Reason    string
+}
+
 // FindManualCorrectionTotalsByOrganizationInDateRange returns the manual
 // correction booking per bill month, keyed the way the facility totals above
 // are.
@@ -222,24 +237,44 @@ func (s *GovernmentFundingBillPeriodStore) FindFacilityTotalsByOrganizationInDat
 //
 // Keyed by arrival, deliberately: that is the only month known without parsing
 // that sheet, and it is the right key for the cash question.
-func (s *GovernmentFundingBillPeriodStore) FindManualCorrectionTotalsByOrganizationInDateRange(ctx context.Context, orgID uint, from, to time.Time) (map[time.Time]int, error) {
+func (s *GovernmentFundingBillPeriodStore) FindManualCorrectionTotalsByOrganizationInDateRange(ctx context.Context, orgID uint, from, to time.Time) (map[time.Time]BillManualCorrection, error) {
 	var results []struct {
-		FromDate          time.Time `gorm:"column:from_date"`
-		CorrectionBooking int       `gorm:"column:correction_booking"`
+		FromDate      time.Time  `gorm:"column:from_date"`
+		Booking       int        `gorm:"column:correction_booking"`
+		BookingFrom   *time.Time `gorm:"column:correction_booking_from_month"`
+		BookingTo     *time.Time `gorm:"column:correction_booking_to_month"`
+		BookingReason string     `gorm:"column:correction_booking_reason"`
 	}
 	err := DBFromContext(ctx, s.db).
 		Model(&models.GovernmentFundingBillPeriod{}).
-		Select("from_date, correction_booking").
+		Select("from_date, correction_booking, correction_booking_from_month, correction_booking_to_month, correction_booking_reason").
 		Where("organization_id = ? AND from_date >= ? AND from_date <= ?", orgID, from, to).
 		Order("from_date ASC").
 		Find(&results).Error
 	if err != nil {
 		return nil, err
 	}
-	m := make(map[time.Time]int, len(results))
+	m := make(map[time.Time]BillManualCorrection, len(results))
 	for _, r := range results {
 		key := time.Date(r.FromDate.Year(), r.FromDate.Month(), 1, 0, 0, 0, 0, time.UTC)
-		m[key] += r.CorrectionBooking
+		// A second bill for the same month is refused at import, so there is
+		// normally exactly one row per key. The aggregation is still written to
+		// survive two: amounts add, spans union, and the first reason stands.
+		// Collapsing disagreeing reasons would mean naming the "mixed" code
+		// here, and that would make the store depend on the parser package for
+		// one string -- not worth it for a state the importer forbids.
+		cur := m[key]
+		cur.Amount += r.Booking
+		if r.BookingFrom != nil && (cur.FromMonth == nil || r.BookingFrom.Before(*cur.FromMonth)) {
+			cur.FromMonth = r.BookingFrom
+		}
+		if r.BookingTo != nil && (cur.ToMonth == nil || r.BookingTo.After(*cur.ToMonth)) {
+			cur.ToMonth = r.BookingTo
+		}
+		if cur.Reason == "" {
+			cur.Reason = r.BookingReason
+		}
+		m[key] = cur
 	}
 	return m, nil
 }

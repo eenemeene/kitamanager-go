@@ -2477,6 +2477,19 @@
                         "example": 2147350,
                         "type": "integer"
                     },
+                    "actual_funding_manual_correction_from_month": {
+                        "description": "The months that booking settles, read from the Korrekturübersicht sheet,\nand a short code for why.\n\nThis is what makes the amount above readable. Every manual booking in\nthe sample Kita year settled months one or two Kita years before the\nbill that paid it, so the amount on its own invites crediting it to the\nyear it arrived in -- which overstates that year by the whole of it.\n\nAbsent when the bill carried no booking, and also when its\nKorrekturübersicht did not reconcile with its own stated Korrektursumme:\nthere the amount stands and only the attribution is unknown. The reason\nis a code, never the free text it came from -- that text carries\nchildren's names and birthdates.",
+                        "example": "2023-10-01",
+                        "type": "string"
+                    },
+                    "actual_funding_manual_correction_reason": {
+                        "example": "nachfinanzierung_i_status",
+                        "type": "string"
+                    },
+                    "actual_funding_manual_correction_to_month": {
+                        "example": "2024-09-01",
+                        "type": "string"
+                    },
                     "actual_funding_regular": {
                         "description": "cents, regular billing only",
                         "example": 5000000,
@@ -3453,6 +3466,20 @@
                     "correction_booking": {
                         "example": 20000,
                         "type": "integer"
+                    },
+                    "correction_booking_from_month": {
+                        "description": "The months CorrectionBooking settles, and why. Absent when the bill\ncarries no manual booking or its attribution could not be read.",
+                        "example": "2023-10-01",
+                        "type": "string"
+                    },
+                    "correction_booking_reason": {
+                        "description": "A pointer so that \"no attribution\" is absent on the wire rather than an\nempty string, which is what keeps it optional in the generated client\ntypes instead of a field every caller has to set.",
+                        "example": "nachfinanzierung_i_status",
+                        "type": "string"
+                    },
+                    "correction_booking_to_month": {
+                        "example": "2024-09-01",
+                        "type": "string"
                     },
                     "created_at": {
                         "format": "date-time",

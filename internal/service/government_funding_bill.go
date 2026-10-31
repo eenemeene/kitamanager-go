@@ -129,15 +129,24 @@ func (s *GovernmentFundingBillService) ProcessISBJ(ctx context.Context, orgID ui
 	// Build GORM model for persistence
 	lastDay := lastDayOfMonth(output.BillingMonth)
 	period := &models.GovernmentFundingBillPeriod{
-		OrganizationID:    orgID,
-		Period:            models.Period{From: output.BillingMonth, To: &lastDay},
-		FileName:          fileName,
-		FileSha256:        fileHash,
-		FacilityName:      converted.FacilityName,
-		FacilityTotal:     converted.FacilityTotal,
-		ContractBooking:   converted.ContractBooking,
-		CorrectionBooking: converted.CorrectionBooking,
-		CreatedBy:         &userID,
+		OrganizationID:          orgID,
+		Period:                  models.Period{From: output.BillingMonth, To: &lastDay},
+		FileName:                fileName,
+		FileSha256:              fileHash,
+		FacilityName:            converted.FacilityName,
+		FacilityTotal:           converted.FacilityTotal,
+		ContractBooking:         converted.ContractBooking,
+		CorrectionBooking:       converted.CorrectionBooking,
+		CorrectionBookingReason: converted.CorrectionBookingReason,
+		CreatedBy:               &userID,
+	}
+	// Set as a pair or not at all: a half-span is meaningless, and the schema
+	// rejects one anyway.
+	if !converted.CorrectionBookingFromMonth.IsZero() && !converted.CorrectionBookingToMonth.IsZero() {
+		from := converted.CorrectionBookingFromMonth
+		to := converted.CorrectionBookingToMonth
+		period.CorrectionBookingFromMonth = &from
+		period.CorrectionBookingToMonth = &to
 	}
 
 	for _, child := range converted.Children {
@@ -840,23 +849,26 @@ func (s *GovernmentFundingBillService) GetByID(ctx context.Context, id, orgID ui
 
 	childrenCount := len(period.Children)
 	return &models.GovernmentFundingBillPeriodResponse{
-		ID:                period.ID,
-		OrganizationID:    period.OrganizationID,
-		From:              period.From.Format(models.DateFormat),
-		To:                formatToDate(period.To),
-		FileName:          period.FileName,
-		FileSha256:        period.FileSha256,
-		FacilityName:      period.FacilityName,
-		FacilityTotal:     period.FacilityTotal,
-		ContractBooking:   period.ContractBooking,
-		CorrectionBooking: period.CorrectionBooking,
-		ChildrenCount:     childrenCount,
-		MatchedCount:      matchedCount,
-		UnmatchedCount:    childrenCount - matchedCount,
-		Surcharges:        surcharges,
-		Children:          children,
-		CreatedBy:         period.CreatedBy,
-		CreatedAt:         period.CreatedAt,
+		ID:                         period.ID,
+		OrganizationID:             period.OrganizationID,
+		From:                       period.From.Format(models.DateFormat),
+		To:                         formatToDate(period.To),
+		FileName:                   period.FileName,
+		FileSha256:                 period.FileSha256,
+		FacilityName:               period.FacilityName,
+		FacilityTotal:              period.FacilityTotal,
+		ContractBooking:            period.ContractBooking,
+		CorrectionBooking:          period.CorrectionBooking,
+		CorrectionBookingFromMonth: formatMonthPtr(period.CorrectionBookingFromMonth),
+		CorrectionBookingToMonth:   formatMonthPtr(period.CorrectionBookingToMonth),
+		CorrectionBookingReason:    stringPtrOrNil(period.CorrectionBookingReason),
+		ChildrenCount:              childrenCount,
+		MatchedCount:               matchedCount,
+		UnmatchedCount:             childrenCount - matchedCount,
+		Surcharges:                 surcharges,
+		Children:                   children,
+		CreatedBy:                  period.CreatedBy,
+		CreatedAt:                  period.CreatedAt,
 	}, nil
 }
 
@@ -2142,6 +2154,28 @@ func (s *GovernmentFundingBillService) buildResponse(ctx context.Context, orgID,
 		Surcharges:        convertBillAmounts(converted.Surcharges),
 		Children:          children,
 	}, nil
+}
+
+// stringPtrOrNil turns a stored empty string into an absent field. The reason
+// codes are stored as plain strings because the column is nullable and GORM
+// reads NULL as "", but on the wire absent and empty should not be two ways of
+// saying the same thing.
+func stringPtrOrNil(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+// formatMonthPtr renders a stored month as the wire date format, or nil when
+// there is none. Used for the manual correction booking's span, which is absent
+// far more often than it is present.
+func formatMonthPtr(t *time.Time) *string {
+	if t == nil {
+		return nil
+	}
+	v := t.Format(models.DateFormat)
+	return &v
 }
 
 func convertBillAmounts(amounts []isbj.SettlementAmount) []models.GovernmentFundingBillAmount {

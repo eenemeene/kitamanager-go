@@ -47,13 +47,26 @@ type ConvertedChild struct {
 
 // ConvertedSettlement represents the full converted settlement.
 type ConvertedSettlement struct {
-	FacilityName      string             `json:"facility_name"`
-	FacilityTotal     int                `json:"facility_total"`
-	ContractBooking   int                `json:"contract_booking"`
-	CorrectionBooking int                `json:"correction_booking"`
-	ChildrenCount     int                `json:"children_count"`
-	Surcharges        []SettlementAmount `json:"surcharges"`
-	Children          []ConvertedChild   `json:"children"`
+	FacilityName      string `json:"facility_name"`
+	FacilityTotal     int    `json:"facility_total"`
+	ContractBooking   int    `json:"contract_booking"`
+	CorrectionBooking int    `json:"correction_booking"`
+	// The months CorrectionBooking settles, and why, from the
+	// Korrekturübersicht sheet. Zero and empty when the bill carries no manual
+	// booking, or when the sheet's rows did not reconcile with the stated
+	// Korrektursumme -- in which case the amount above still stands and only
+	// its attribution is unknown.
+	//
+	// A span rather than the rows themselves: nobody decides anything per row,
+	// and the question the amount raises is which months it is about. A
+	// booking that arrives in November 2025 and settles months in 2023/24 is
+	// real money that must not be credited to 2025/26.
+	CorrectionBookingFromMonth time.Time          `json:"correction_booking_from_month,omitempty"`
+	CorrectionBookingToMonth   time.Time          `json:"correction_booking_to_month,omitempty"`
+	CorrectionBookingReason    string             `json:"correction_booking_reason,omitempty"`
+	ChildrenCount              int                `json:"children_count"`
+	Surcharges                 []SettlementAmount `json:"surcharges"`
+	Children                   []ConvertedChild   `json:"children"`
 }
 
 // SurchargeKeys are the ISBJ payment keys that represent surcharges (Zuschläge).
@@ -95,11 +108,15 @@ func integrationFlagToValue(flag string) string {
 // Convert translates raw SenatsabrechnungOutput into a ConvertedSettlement
 // with normalized key/value/amount triples.
 func Convert(output *SenatsabrechnungOutput) (*ConvertedSettlement, error) {
+	korrektur := SummarizeKorrektur(output.Korrekturen)
 	result := &ConvertedSettlement{
-		FacilityName:      output.Einrichtung.Name,
-		FacilityTotal:     output.Einrichtung.Summe,
-		ContractBooking:   output.Abrechnung.VertragsBuchung,
-		CorrectionBooking: output.Abrechnung.KorrekturBuchung,
+		FacilityName:               output.Einrichtung.Name,
+		FacilityTotal:              output.Einrichtung.Summe,
+		ContractBooking:            output.Abrechnung.VertragsBuchung,
+		CorrectionBooking:          output.Abrechnung.KorrekturBuchung,
+		CorrectionBookingFromMonth: korrektur.FromMonth,
+		CorrectionBookingToMonth:   korrektur.ToMonth,
+		CorrectionBookingReason:    korrektur.Reason,
 		Surcharges: []SettlementAmount{
 			{Key: "ndh", Value: "ndh", Amount: output.Einrichtung.ZuschlagNDH},
 			{Key: "qm/mss", Value: "qm/mss", Amount: output.Einrichtung.ZuschlagQM + output.Einrichtung.ZuschlagMSS},
