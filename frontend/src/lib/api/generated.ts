@@ -3970,7 +3970,15 @@ export interface components {
       bill_only_count: number;
       /** @example 2025-11-30 */
       bill_to: string;
-      /** @example 500000 */
+      /**
+       * @description BillTotal sums the regular billing of the children this comparison could
+       *     evaluate. Children whose rate could not be computed at all are left out
+       *     of it and of CalcTotal alike -- see NoFundingConfigCount -- so that
+       *     Difference stays BillTotal - CalcTotal, and with it the exhaustive
+       *     decomposition the summary is built on. For what the bill as a whole
+       *     carried, read ContractBooking on the bill itself.
+       * @example 500000
+       */
       bill_total: number;
       /** @example 80000 */
       calc_only_amount: number;
@@ -3999,6 +4007,14 @@ export interface components {
       manual_correction_total: number;
       /** @example 20 */
       match_count: number;
+      /**
+       * @description NoFundingConfigCount counts the children whose contract matched while no
+       *     calculated figure could be produced at all. They carry no difference, so
+       *     without a count of their own a bill nothing could be computed for looked
+       *     indistinguishable from one that reconciled perfectly.
+       * @example 0
+       */
+      no_funding_config_count: number;
     };
     FundingComparisonSummary: {
       categories: components['schemas']['FundingComparisonCategorySummary'][];

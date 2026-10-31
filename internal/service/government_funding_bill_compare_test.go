@@ -515,13 +515,30 @@ func TestGovernmentFundingBillService_Compare_NoFundingConfig(t *testing.T) {
 		t.Fatalf("Compare() error = %v", err)
 	}
 
-	// No funding config → calc amounts should be 0
+	// No funding config, so no calculated figure -- and that is reported as the
+	// absence of one, not as a zero.
+	//
+	// This test used to assert calc_total 0 and difference 120000, i.e. the
+	// whole bill as a surplus. That was the defect: a zero on the calculated
+	// side is what you get when nothing could be computed, and reporting it as
+	// a measurement told the operator they had been overpaid by exactly the
+	// amount they were paid. The billing-history path already answered
+	// correctly; only this one did not.
 	child := result.Children[0]
-	if child.CalcTotal == nil || *child.CalcTotal != 0 {
-		t.Errorf("expected calc_total 0 (no funding config), got %v", child.CalcTotal)
+	if child.Status != "no_funding_config" {
+		t.Errorf("status = %q, want \"no_funding_config\"", child.Status)
 	}
-	if child.Difference == nil || *child.Difference != 120000 {
-		t.Errorf("expected difference 120000, got %v", child.Difference)
+	if child.CalcTotal != nil {
+		t.Errorf("calculated_total = %d, want nil: no rate could be computed", *child.CalcTotal)
+	}
+	if child.Difference != nil {
+		t.Errorf("difference = %d, want nil", *child.Difference)
+	}
+	if result.NoFundingConfigCount != 1 {
+		t.Errorf("no_funding_config_count = %d, want 1", result.NoFundingConfigCount)
+	}
+	if result.Difference != 0 {
+		t.Errorf("difference = %d, want 0 — the bill is unmeasured, not a surplus", result.Difference)
 	}
 }
 
@@ -559,9 +576,18 @@ func TestGovernmentFundingBillService_Compare_NoFundingPeriod(t *testing.T) {
 		t.Fatalf("Compare() error = %v", err)
 	}
 
+	// Same as above, for a configuration that exists but whose periods stopped
+	// before this bill's month -- which is what closing the newest Fördersatz
+	// period does, and the one way this state is reachable in practice.
 	child := result.Children[0]
-	if child.CalcTotal == nil || *child.CalcTotal != 0 {
-		t.Errorf("expected calc_total 0 (no covering period), got %v", child.CalcTotal)
+	if child.Status != "no_funding_config" {
+		t.Errorf("status = %q, want \"no_funding_config\"", child.Status)
+	}
+	if child.CalcTotal != nil {
+		t.Errorf("calculated_total = %d, want nil: no period covers the bill's month", *child.CalcTotal)
+	}
+	if result.Difference != 0 {
+		t.Errorf("difference = %d, want 0", result.Difference)
 	}
 }
 

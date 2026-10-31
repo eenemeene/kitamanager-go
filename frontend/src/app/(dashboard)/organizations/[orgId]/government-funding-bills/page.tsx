@@ -162,7 +162,12 @@ export default function GovernmentFundingBillsPage() {
     let differenceCount = 0;
     let totalDifference = 0;
     for (const comp of comparison.comparisons) {
-      if (comp.difference_count === 0 && comp.bill_only_count === 0 && comp.calc_only_count === 0) {
+      if (
+        comp.difference_count === 0 &&
+        comp.bill_only_count === 0 &&
+        comp.calc_only_count === 0 &&
+        (comp.no_funding_config_count ?? 0) === 0
+      ) {
         matchCount++;
       } else {
         differenceCount++;
@@ -225,7 +230,12 @@ export default function GovernmentFundingBillsPage() {
   const rowStatusClass = (billId: number): string => {
     const comp = comparisonByBillId.get(billId);
     if (!comp) return '';
-    if (comp.difference_count === 0 && comp.bill_only_count === 0 && comp.calc_only_count === 0) {
+    if (
+      comp.difference_count === 0 &&
+      comp.bill_only_count === 0 &&
+      comp.calc_only_count === 0 &&
+      (comp.no_funding_config_count ?? 0) === 0
+    ) {
       return '';
     }
     return 'bg-destructive/5';

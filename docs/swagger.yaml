@@ -2172,6 +2172,13 @@ definitions:
         example: "2025-11-30"
         type: string
       bill_total:
+        description: |-
+          BillTotal sums the regular billing of the children this comparison could
+          evaluate. Children whose rate could not be computed at all are left out
+          of it and of CalcTotal alike -- see NoFundingConfigCount -- so that
+          Difference stays BillTotal - CalcTotal, and with it the exhaustive
+          decomposition the summary is built on. For what the bill as a whole
+          carried, read ContractBooking on the bill itself.
         example: 500000
         type: integer
       calc_only_amount:
@@ -2212,6 +2219,14 @@ definitions:
         type: integer
       match_count:
         example: 20
+        type: integer
+      no_funding_config_count:
+        description: |-
+          NoFundingConfigCount counts the children whose contract matched while no
+          calculated figure could be produced at all. They carry no difference, so
+          without a count of their own a bill nothing could be computed for looked
+          indistinguishable from one that reconciled perfectly.
+        example: 0
         type: integer
     type: object
   github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonSummary:

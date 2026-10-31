@@ -47,6 +47,7 @@ When the bill and KitaManager don't agree, every non-matching child falls into e
 | Total matches but property breakdown differs | Supplement out of sync | child contract supplements vs paper voucher |
 | "Month not billed" for a child who is plainly there | Registration still in progress at the district; the Senate settles the month retroactively, often one or two bills later | the child's billing history — the month usually reappears as a correction |
 | The bars don't add up to the Kita year row | Corrections, or a manual correction booking, which are not discrepancies | the reconciliation lines under the bars; expand the discrepancy analysis |
+| Children shown as "no funding configuration" and no difference at all | No Fördersatz period covers the bill's month, so no rate could be computed | [Update government funding rates](../../operate/update-government-funding-rates/) — the newest period must stay open-ended |
 
 ## Notes
 

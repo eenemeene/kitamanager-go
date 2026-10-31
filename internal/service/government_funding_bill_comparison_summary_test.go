@@ -141,8 +141,8 @@ func TestComputeChildComparison_NoFundingConfig(t *testing.T) {
 		LabelMap:       make(map[string]string),
 	})
 
-	if !result.NoFundingConfig {
-		t.Error("expected NoFundingConfig to be true")
+	if !result.CannotComputeCalc {
+		t.Error("expected CannotComputeCalc to be true")
 	}
 	// CalcTotal should be set to 0 (contract matched but no rates)
 	if result.CalcTotal == nil || *result.CalcTotal != 0 {
@@ -166,6 +166,41 @@ func TestComputeChildComparison_CorrectionSeparated(t *testing.T) {
 	}
 	if result.CorrectionTotal != 5000 {
 		t.Errorf("expected correction_total 5000, got %d", result.CorrectionTotal)
+	}
+}
+
+// A nil birthdate reaches the same branch as a missing funding configuration:
+// no age band, so no rate. It used to leave the flag false, which shipped a
+// calculated total of zero as though it were a measurement -- so the whole
+// bill read as that much overfunding, with nothing to say the figure was never
+// computed.
+func TestComputeChildComparison_MissingBirthdateCannotCompute(t *testing.T) {
+	funding := &models.GovernmentFundingPeriod{
+		Period: models.Period{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
+		Properties: []models.GovernmentFundingProperty{
+			{Key: "care_type", Value: "ganztag", Payment: 120000},
+		},
+	}
+	result := computeChildComparison(childComparisonInput{
+		BillPayments: []models.GovernmentFundingBillPayment{
+			{Key: "care_type", Value: "ganztag", Amount: 120000, RowType: models.RowTypeRegular},
+		},
+		Contract: &models.ChildContract{
+			BaseContract: models.BaseContract{
+				Properties: models.ContractProperties{"care_type": "ganztag"},
+			},
+		},
+		Birthdate:      nil,
+		BillDate:       time.Date(2025, 11, 1, 0, 0, 0, 0, time.UTC),
+		FundingPeriods: []models.GovernmentFundingPeriod{*funding},
+		LabelMap:       make(map[string]string),
+	})
+
+	if !result.CannotComputeCalc {
+		t.Error("a nil birthdate must set CannotComputeCalc; a calculated zero is not a measurement")
+	}
+	if result.Age != nil {
+		t.Errorf("age = %v, want nil with no birthdate", result.Age)
 	}
 }
 

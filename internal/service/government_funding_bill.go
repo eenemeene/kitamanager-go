@@ -1459,6 +1459,17 @@ func (s *GovernmentFundingBillService) comparePeriod(ctx context.Context, period
 			LabelMap:       labelMap,
 		})
 
+		// Honour the flag here too. Only the billing-history path ever read it,
+		// which is how a lapsed funding configuration came to book an entire
+		// bill as a deficit on the comparison page while the same child on the
+		// billing page correctly reported that nothing could be computed.
+		if comp.CannotComputeCalc {
+			comp.Status = statusNoFundingConfig
+			comp.CalcTotal = nil
+			comp.Difference = nil
+			comp.Properties = buildBillOnlyProperties(billChild.Payments, labelMap)
+		}
+
 		compChild.BillTotal = comp.BillTotal
 		compChild.CorrectionTotal = comp.CorrectionTotal
 		compChild.CalcTotal = comp.CalcTotal
@@ -1487,6 +1498,19 @@ func (s *GovernmentFundingBillService) comparePeriod(ctx context.Context, period
 			if comp.CalcTotal != nil {
 				response.CalcTotal += *comp.CalcTotal
 			}
+		case statusNoFundingConfig:
+			// Counted, and left out of both totals. Adding the billed side
+			// while the calculated side stays empty would report the whole of
+			// it as a surplus, which is the same falsehood one level up: the
+			// money is real, but "we were paid more than we were owed" and "we
+			// could not work out what we were owed" are different statements.
+			//
+			// Keeping it out of both preserves
+			// Difference == BillTotal - CalcTotal, and with it the exhaustive
+			// decomposition the summary is built on. The amount is still on
+			// the child's own row, and the count says how many rows the
+			// comparison could not evaluate.
+			response.NoFundingConfigCount++
 		default:
 			response.BillTotal += comp.BillTotal
 			if comp.CalcTotal != nil {
@@ -1669,6 +1693,13 @@ func mergeBillChildren(group []models.GovernmentFundingBillChild) (models.Govern
 	return merged, vouchers
 }
 
+// statusNoFundingConfig is the comparison status for a child whose contract
+// matched while no calculated figure could be produced -- no funding period
+// covers the bill's month, or the birthdate needed for the age band is missing.
+// Such a child carries no difference at all: a zero on the calculated side is
+// not a finding, it is the absence of one.
+const statusNoFundingConfig = "no_funding_config"
+
 // statusNotBilled is the comparison status for a child whose contract was
 // active in the bill's month while the bill carries no regular row for it, and
 // the name of the summary category those children are gathered under. One
@@ -1691,10 +1722,20 @@ type childComparisonResult struct {
 	CorrectionTotal int
 	CalcTotal       *int
 	Difference      *int
-	Status          string // match|difference|bill_only
+	Status          string // match|difference|not_billed|bill_only
 	Age             *int
 	Properties      []models.FundingComparisonAmount
-	NoFundingConfig bool // true when contract matched but no funding config/period available
+	// CannotComputeCalc is set when the contract matched but no calculated
+	// figure could be produced at all: no funding period covers the bill's
+	// month, or the child's birthdate is unknown so no age-banded rate can be
+	// looked up.
+	//
+	// It used to cover only the first cause, which left the second writing a
+	// calculated total of zero with nothing to say so. The whole bill then read
+	// as that much overfunding, and the comparison had no way to tell the
+	// difference between "we were paid more than we were owed" and "we could
+	// not work out what we were owed".
+	CannotComputeCalc bool
 }
 
 // computeChildComparison computes the property-level comparison for a single bill child entry.
@@ -1733,8 +1774,11 @@ func computeChildComparison(input childComparisonInput) childComparisonResult {
 	if fundingPeriod != nil && fundingAge != nil {
 		calcAmounts, calcTotal = calcAmountsFromFunding(*fundingAge, input.Contract.Properties, fundingPeriod)
 	} else {
+		// Both causes, not just the missing configuration. A nil birthdate took
+		// this branch too and left the flag false, so a calculated zero went out
+		// as a real figure.
 		calcAmounts = make(map[string]int)
-		result.NoFundingConfig = len(input.FundingPeriods) == 0 || fundingPeriod == nil
+		result.CannotComputeCalc = true
 	}
 	result.CalcTotal = &calcTotal
 
@@ -2238,8 +2282,8 @@ func (s *GovernmentFundingBillService) ChildBillingHistory(ctx context.Context, 
 		//   in billing history, this means we can't produce CalcTotal/Difference
 		if activeContract == nil {
 			comp.Status = "no_contract"
-		} else if comp.NoFundingConfig {
-			comp.Status = "no_funding_config"
+		} else if comp.CannotComputeCalc {
+			comp.Status = statusNoFundingConfig
 			comp.CalcTotal = nil
 			comp.Difference = nil
 			comp.Properties = buildBillOnlyProperties(entry.Child.Payments, labelMap)

@@ -217,27 +217,38 @@ type FundingComparisonChild struct {
 
 // FundingComparisonResponse is the top-level comparison result.
 type FundingComparisonResponse struct {
-	BillID          uint   `json:"bill_id" example:"1"`
-	BillFrom        string `json:"bill_from" example:"2025-11-01"`
-	BillTo          string `json:"bill_to" example:"2025-11-30"`
-	FacilityName    string `json:"facility_name" example:"Kita Sonnenschein"`
-	BillTotal       int    `json:"bill_total" example:"500000"`
-	CorrectionTotal int    `json:"correction_total" example:"0"`
+	BillID       uint   `json:"bill_id" example:"1"`
+	BillFrom     string `json:"bill_from" example:"2025-11-01"`
+	BillTo       string `json:"bill_to" example:"2025-11-30"`
+	FacilityName string `json:"facility_name" example:"Kita Sonnenschein"`
+	// BillTotal sums the regular billing of the children this comparison could
+	// evaluate. Children whose rate could not be computed at all are left out
+	// of it and of CalcTotal alike -- see NoFundingConfigCount -- so that
+	// Difference stays BillTotal - CalcTotal, and with it the exhaustive
+	// decomposition the summary is built on. For what the bill as a whole
+	// carried, read ContractBooking on the bill itself.
+	BillTotal       int `json:"bill_total" example:"500000"`
+	CorrectionTotal int `json:"correction_total" example:"0"`
 	// ManualCorrectionTotal is the bill's "Korrekturbuchung manuell": a
 	// district-level booking with no child rows behind it, so it appears in
 	// none of the totals above. Carried here so it stops being invisible; it
 	// is not part of Difference, because it has no calculated counterpart.
-	ManualCorrectionTotal int                      `json:"manual_correction_total" example:"0"`
-	CalcTotal             int                      `json:"calculated_total" example:"498000"`
-	Difference            int                      `json:"difference" example:"2000"`
-	ChildrenCount         int                      `json:"children_count" example:"25"`
-	MatchCount            int                      `json:"match_count" example:"20"`
-	DifferenceCount       int                      `json:"difference_count" example:"3"`
-	BillOnlyCount         int                      `json:"bill_only_count" example:"1"`
-	BillOnlyAmount        int                      `json:"bill_only_amount" example:"150000"`
-	CalcOnlyCount         int                      `json:"calc_only_count" example:"1"`
-	CalcOnlyAmount        int                      `json:"calc_only_amount" example:"80000"`
-	Children              []FundingComparisonChild `json:"children"`
+	ManualCorrectionTotal int `json:"manual_correction_total" example:"0"`
+	CalcTotal             int `json:"calculated_total" example:"498000"`
+	Difference            int `json:"difference" example:"2000"`
+	ChildrenCount         int `json:"children_count" example:"25"`
+	MatchCount            int `json:"match_count" example:"20"`
+	DifferenceCount       int `json:"difference_count" example:"3"`
+	BillOnlyCount         int `json:"bill_only_count" example:"1"`
+	BillOnlyAmount        int `json:"bill_only_amount" example:"150000"`
+	CalcOnlyCount         int `json:"calc_only_count" example:"1"`
+	CalcOnlyAmount        int `json:"calc_only_amount" example:"80000"`
+	// NoFundingConfigCount counts the children whose contract matched while no
+	// calculated figure could be produced at all. They carry no difference, so
+	// without a count of their own a bill nothing could be computed for looked
+	// indistinguishable from one that reconciled perfectly.
+	NoFundingConfigCount int                      `json:"no_funding_config_count" example:"0"`
+	Children             []FundingComparisonChild `json:"children"`
 }
 
 // ============================================================

@@ -13731,6 +13731,7 @@
                     "example": "2025-11-30"
                 },
                 "bill_total": {
+                    "description": "BillTotal sums the regular billing of the children this comparison could\nevaluate. Children whose rate could not be computed at all are left out\nof it and of CalcTotal alike -- see NoFundingConfigCount -- so that\nDifference stays BillTotal - CalcTotal, and with it the exhaustive\ndecomposition the summary is built on. For what the bill as a whole\ncarried, read ContractBooking on the bill itself.",
                     "type": "integer",
                     "example": 500000
                 },
@@ -13780,6 +13781,11 @@
                 "match_count": {
                     "type": "integer",
                     "example": 20
+                },
+                "no_funding_config_count": {
+                    "description": "NoFundingConfigCount counts the children whose contract matched while no\ncalculated figure could be produced at all. They carry no difference, so\nwithout a count of their own a bill nothing could be computed for looked\nindistinguishable from one that reconciled perfectly.",
+                    "type": "integer",
+                    "example": 0
                 }
             }
         },
