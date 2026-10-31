@@ -1033,17 +1033,22 @@ func (s *GovernmentFundingBillService) CompareRangeSummary(ctx context.Context, 
 
 // BuildComparisonSummary aggregates a slice of FundingComparisonResponse into a summary.
 // It decomposes the total difference into exhaustive, non-overlapping categories:
-// rate_difference + property_mismatch + bill_only + calc_only == total_difference.
-// Corrections are tracked separately and do not affect the difference.
+// rate_difference + property_mismatch + not_billed + bill_only + calc_only ==
+// total_difference.
+//
+// Corrections are tracked separately and do not affect the difference, and so
+// is the Korrekturbuchung manuell -- which no child row backs at all, so there
+// is nothing calculated to set it against.
 func BuildComparisonSummary(comparisons []models.FundingComparisonResponse) models.FundingComparisonSummary {
 	const (
-		catRateDiff = "rate_difference"
-		catMismatch = "property_mismatch"
-		catBillOnly = "bill_only"
-		catCalcOnly = "calc_only"
+		catRateDiff  = "rate_difference"
+		catMismatch  = "property_mismatch"
+		catBillOnly  = "bill_only"
+		catCalcOnly  = "calc_only"
+		catNotBilled = statusNotBilled
 	)
 
-	var totalBilled, totalCalculated, totalCorrections int
+	var totalBilled, totalCalculated, totalCorrections, totalManualCorrections int
 
 	// Category accumulators: amount + unique child set.
 	//
@@ -1056,10 +1061,11 @@ func BuildComparisonSummary(comparisons []models.FundingComparisonResponse) mode
 		children map[string]bool
 	}
 	cats := map[string]*catAccum{
-		catRateDiff: {children: make(map[string]bool)},
-		catMismatch: {children: make(map[string]bool)},
-		catBillOnly: {children: make(map[string]bool)},
-		catCalcOnly: {children: make(map[string]bool)},
+		catRateDiff:  {children: make(map[string]bool)},
+		catMismatch:  {children: make(map[string]bool)},
+		catBillOnly:  {children: make(map[string]bool)},
+		catCalcOnly:  {children: make(map[string]bool)},
+		catNotBilled: {children: make(map[string]bool)},
 	}
 
 	// Issue deduplication: (voucher, propertyKey, issueType) → accumulator
@@ -1087,6 +1093,7 @@ func BuildComparisonSummary(comparisons []models.FundingComparisonResponse) mode
 		totalBilled += comp.BillTotal
 		totalCalculated += comp.CalcTotal
 		totalCorrections += comp.CorrectionTotal
+		totalManualCorrections += comp.ManualCorrectionTotal
 		month := comp.BillFrom
 
 		for _, child := range comp.Children {
@@ -1142,6 +1149,42 @@ func BuildComparisonSummary(comparisons []models.FundingComparisonResponse) mode
 						issues[key] = acc
 					}
 					acc.total -= calcAmt
+					acc.months[month] = true
+				}
+
+			case catNotBilled:
+				// Taken whole, by the child's own difference, rather than
+				// decomposed per property. Every contract property is
+				// trivially "missing" here, and splitting the amount across
+				// them -- care_type into property_mismatch, the surcharges
+				// into rate_difference, which is not even flagged as
+				// actionable -- scattered one cause across two bars and named
+				// neither of them. The amount is identical either way, so the
+				// exhaustive decomposition still holds.
+				diff := 0
+				if child.Difference != nil {
+					diff = *child.Difference
+				}
+				cats[catNotBilled].amount += diff
+				cats[catNotBilled].children[childKeyFor(child)] = true
+				if diff != 0 {
+					key := issueKey{childKeyFor(child), "", catNotBilled}
+					acc := issues[key]
+					if acc == nil {
+						acc = &issueAccum{
+							issue: models.FundingComparisonIssueSummary{
+								VoucherNumber: vn,
+								ChildName:     child.ChildName,
+								ChildID:       child.ChildID,
+								Category:      catNotBilled,
+								Description:   "child has an active contract but this bill carries no billing row for it",
+								Actionable:    true,
+							},
+							months: make(map[string]bool),
+						}
+						issues[key] = acc
+					}
+					acc.total += diff
 					acc.months[month] = true
 				}
 
@@ -1206,6 +1249,7 @@ func BuildComparisonSummary(comparisons []models.FundingComparisonResponse) mode
 		actionable bool
 	}{
 		{catMismatch, true},
+		{catNotBilled, true},
 		{catBillOnly, true},
 		{catCalcOnly, true},
 		{catRateDiff, false},
@@ -1242,6 +1286,8 @@ func BuildComparisonSummary(comparisons []models.FundingComparisonResponse) mode
 		case issue.Category == catBillOnly:
 			// keep default
 		case issue.Category == catCalcOnly:
+			// keep default
+		case issue.Category == catNotBilled:
 			// keep default
 		case issue.IssueType == string(models.MismatchMissing):
 			issue.Description = issue.PropertyKey + ":" + issue.CalcValue + " — in contract but not billed"
@@ -1291,13 +1337,14 @@ func BuildComparisonSummary(comparisons []models.FundingComparisonResponse) mode
 	})
 
 	return models.FundingComparisonSummary{
-		TotalBilled:      totalBilled,
-		TotalCalculated:  totalCalculated,
-		TotalDifference:  totalBilled - totalCalculated,
-		TotalCorrections: totalCorrections,
-		MonthCount:       len(comparisons),
-		Categories:       categories,
-		Issues:           issueList,
+		TotalBilled:            totalBilled,
+		TotalCalculated:        totalCalculated,
+		TotalDifference:        totalBilled - totalCalculated,
+		TotalCorrections:       totalCorrections,
+		TotalManualCorrections: totalManualCorrections,
+		MonthCount:             len(comparisons),
+		Categories:             categories,
+		Issues:                 issueList,
 	}
 }
 
@@ -1345,11 +1392,12 @@ func (s *GovernmentFundingBillService) comparePeriod(ctx context.Context, period
 
 	// 6. Build comparison per bill child
 	response := &models.FundingComparisonResponse{
-		BillID:       period.ID,
-		BillFrom:     period.From.Format(models.DateFormat),
-		BillTo:       formatToDate(period.To),
-		FacilityName: period.FacilityName,
-		Children:     make([]models.FundingComparisonChild, 0, len(period.Children)),
+		BillID:                period.ID,
+		BillFrom:              period.From.Format(models.DateFormat),
+		BillTo:                formatToDate(period.To),
+		FacilityName:          period.FacilityName,
+		ManualCorrectionTotal: period.CorrectionBooking,
+		Children:              make([]models.FundingComparisonChild, 0, len(period.Children)),
 	}
 
 	// Build activeChildren lookup by ID for birthdate resolution
@@ -1366,11 +1414,25 @@ func (s *GovernmentFundingBillService) comparePeriod(ctx context.Context, period
 		fundingPeriods = funding.Periods
 	}
 
-	for _, billChild := range period.Children {
+	// Compare once per child, not once per bill row. A bill row is one
+	// Gutschein, and a child can hold two in the same bill: on a renewal the
+	// Senate reverses the months already paid under the old Gutschein and
+	// re-books them under the new one, which also carries the month's regular
+	// row. Row by row, the contract's calculated rate was charged once per row,
+	// so one enrolment was measured against two months of entitlement and the
+	// month came out a full rate short -- reported as the contract's properties
+	// being "in contract but not billed", for money that had been paid. A
+	// mid-month renewal that splits the month pro rata across two Gutscheine
+	// goes wrong the same way with no correction row in sight.
+	for _, group := range groupBillChildrenByChild(period.Children, childIDMap, contractByChildID) {
+		billChild, groupVouchers := mergeBillChildren(group)
 		compChild := models.FundingComparisonChild{
 			VoucherNumber: billChild.VoucherNumber,
 			ChildName:     billChild.ChildName,
 			BirthDate:     billChild.BirthDate,
+		}
+		if len(groupVouchers) > 1 {
+			compChild.VoucherNumbers = groupVouchers
 		}
 
 		// Resolve contract and birthdate for this bill child
@@ -1419,7 +1481,7 @@ func (s *GovernmentFundingBillService) comparePeriod(ctx context.Context, period
 			if comp.CalcTotal != nil {
 				response.CalcTotal += *comp.CalcTotal
 			}
-		case "difference":
+		case "difference", statusNotBilled:
 			response.DifferenceCount++
 			response.BillTotal += comp.BillTotal
 			if comp.CalcTotal != nil {
@@ -1535,6 +1597,84 @@ func (s *GovernmentFundingBillService) comparePeriod(ctx context.Context, period
 	return response, nil
 }
 
+// groupBillChildrenByChild groups a bill's rows by the child they belong to,
+// in first-appearance order, so that one enrolment is compared once however
+// many Gutscheine it was billed under.
+//
+// Rows whose Gutschein resolves to no child, or to a child with no contract
+// active on this bill's month, each stay a group of their own. There is nothing
+// to merge them on: the voucher is all we know, and merging on the bill's name
+// column would fuse two different children the moment a family shares a
+// surname.
+func groupBillChildrenByChild(
+	billChildren []models.GovernmentFundingBillChild,
+	childIDMap map[string]uint,
+	contractByChildID map[uint]models.ChildContract,
+) [][]models.GovernmentFundingBillChild {
+	groups := make([][]models.GovernmentFundingBillChild, 0, len(billChildren))
+	indexByChildID := make(map[uint]int, len(billChildren))
+	for _, billChild := range billChildren {
+		childID, ok := childIDMap[billChild.VoucherNumber]
+		if ok {
+			_, ok = contractByChildID[childID]
+		}
+		if !ok {
+			groups = append(groups, []models.GovernmentFundingBillChild{billChild})
+			continue
+		}
+		if at, seen := indexByChildID[childID]; seen {
+			groups[at] = append(groups[at], billChild)
+			continue
+		}
+		indexByChildID[childID] = len(groups)
+		groups = append(groups, []models.GovernmentFundingBillChild{billChild})
+	}
+	return groups
+}
+
+// mergeBillChildren folds one child's rows into a single row of the same type,
+// and returns every Gutschein the group covered in the order the bill listed
+// them.
+//
+// The merged row is filed under the Gutschein that carried the month's regular
+// money, falling back to the first. On a renewal that is the new Gutschein: the
+// old one holds only the reversal, and filing the month under it would name the
+// Gutschein the money left rather than the one it arrived on.
+func mergeBillChildren(group []models.GovernmentFundingBillChild) (models.GovernmentFundingBillChild, []string) {
+	vouchers := make([]string, 0, len(group))
+	for _, billChild := range group {
+		vouchers = append(vouchers, billChild.VoucherNumber)
+	}
+	if len(group) == 1 {
+		return group[0], vouchers
+	}
+
+	primary := 0
+	for i, billChild := range group {
+		if slices.ContainsFunc(billChild.Payments, func(p models.GovernmentFundingBillPayment) bool {
+			return p.RowType == models.RowTypeRegular
+		}) {
+			primary = i
+			break
+		}
+	}
+
+	// Payments are aggregated by key:value downstream, so bill order is kept
+	// rather than reordered around the primary row.
+	merged := group[primary]
+	merged.Payments = nil
+	for _, billChild := range group {
+		merged.Payments = append(merged.Payments, billChild.Payments...)
+	}
+	return merged, vouchers
+}
+
+// statusNotBilled is the comparison status for a child whose contract was
+// active in the bill's month while the bill carries no regular row for it, and
+// the name of the summary category those children are gathered under. One
+// constant for both, because the category exists to report exactly that status.
+const statusNotBilled = "not_billed"
+
 // childComparisonInput holds inputs for computing a per-child bill vs contract comparison.
 type childComparisonInput struct {
 	BillPayments   []models.GovernmentFundingBillPayment
@@ -1603,9 +1743,25 @@ func computeChildComparison(input childComparisonInput) childComparisonResult {
 
 	result.Properties = buildComparisonProperties(billAmounts, calcAmounts, input.LabelMap)
 
-	if diff == 0 {
+	switch {
+	case diff == 0:
 		result.Status = "match"
-	} else {
+	case len(billAmounts) == 0:
+		// A contract was active and the bill carries no regular row for it at
+		// all. Reported apart from "difference" because the two call for
+		// different work: a difference means the Senate billed this child on
+		// terms that do not match the contract, which is a Gutschein or
+		// Kostenblatt question, while this means the child was not billed this
+		// month, which is a registration question. Row-level classification
+		// could only ever say "every contract property is missing", and an
+		// operator reading that chases the wrong thing.
+		//
+		// Routine rather than exceptional: the Senate settles a new enrolment's
+		// first months retroactively, and a month paid later arrives as a
+		// correction filed against it, which the attributed correction totals
+		// pick up.
+		result.Status = statusNotBilled
+	default:
 		result.Status = "difference"
 	}
 
@@ -1956,6 +2112,27 @@ func convertBillAmounts(amounts []isbj.SettlementAmount) []models.GovernmentFund
 	return result
 }
 
+// groupChildEntriesByBill folds one child's bill entries so that each bill
+// contributes a single entry, merging the rows of every Gutschein the child was
+// billed under in it. First-appearance order is preserved, which the caller
+// relies on for the chronological running difference.
+func groupChildEntriesByBill(entries []models.GovernmentFundingBillChildWithPeriod) []models.GovernmentFundingBillChildWithPeriod {
+	merged := make([]models.GovernmentFundingBillChildWithPeriod, 0, len(entries))
+	indexByBill := make(map[uint]int, len(entries))
+	grouped := make(map[uint][]models.GovernmentFundingBillChild, len(entries))
+	for _, entry := range entries {
+		at, seen := indexByBill[entry.BillPeriodID]
+		if !seen {
+			at = len(merged)
+			indexByBill[entry.BillPeriodID] = at
+			merged = append(merged, entry)
+		}
+		grouped[entry.BillPeriodID] = append(grouped[entry.BillPeriodID], entry.Child)
+		merged[at].Child, _ = mergeBillChildren(grouped[entry.BillPeriodID])
+	}
+	return merged
+}
+
 // ChildBillingHistory returns the complete billing history for a child across all uploaded bills.
 func (s *GovernmentFundingBillService) ChildBillingHistory(ctx context.Context, childID, orgID uint) (*models.ChildBillingHistoryResponse, error) {
 	// 1. Fetch child with contracts
@@ -2026,7 +2203,13 @@ func (s *GovernmentFundingBillService) ChildBillingHistory(ctx context.Context, 
 		fundingPeriods = funding.Periods
 	}
 
-	for _, entry := range billEntries {
+	// One row per bill, not per Gutschein. Every entry here is already this
+	// one child -- they were looked up by this child's own voucher numbers --
+	// so two entries sharing a bill are two Gutscheine of one enrolment, which
+	// a renewal produces routinely. Left apart, the month appeared twice and
+	// its calculated rate was counted twice, so the running difference drifted
+	// by a full month's rate per renewal.
+	for _, entry := range groupChildEntriesByBill(billEntries) {
 		// Find the contract active on this bill date
 		var activeContract *models.ChildContract
 		for i := range child.Contracts {

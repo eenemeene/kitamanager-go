@@ -874,25 +874,54 @@ func buildBillPeriod(orgID uint, billDate time.Time, fundingPeriod *models.Gover
 
 	hashInput := fmt.Sprintf("seed-isbj-%s-%d", billDate.Format("2006-01"), orgID)
 	hash := fmt.Sprintf("%x", sha256.Sum256([]byte(hashInput)))
+	// The header, as a real Senatsabrechnung writes it. Measured across a full
+	// Kita year of real Abrechnungen:
+	//
+	//	Einrichtungssumme = Vertragsbuchung = SUM(all Vertragsübersicht rows)
+	//
+	// to the cent, correction rows included. The Korrekturbuchung manuell is
+	// NOT part of that sum and has no child rows behind it at all: it is a
+	// district-level booking the Senate makes by hand, and
+	//
+	//	tatsächlicher Zahlbetrag gesamt = Vertragsbuchung + Korrekturbuchung
+	//
+	// is the only place the two meet. In the sample year it was zero in 19 of
+	// 22 bills, and in the three that carried one it bore no relation to those
+	// bills' correction rows -- one had 34.777,38 EUR of corrections and no
+	// manual booking, another 18.230,85 EUR of manual booking and no
+	// corrections.
+	//
+	// This seeder used to set CorrectionBooking to the sum of the child
+	// correction rows and treat contract + correction = facility as the
+	// invariant. That double-counts the corrections the moment the manual
+	// booking is reported as the separate money it is, and it taught the demo
+	// data a header identity that no real file satisfies.
 	return &models.GovernmentFundingBillPeriod{
-		OrganizationID: orgID,
-		Period:         models.Period{From: billDate, To: &billEndDate},
-		FileName:       fmt.Sprintf("Senatsabrechnung_%s.xlsx", billDate.Format("2006-01")),
-		FileSha256:     hash,
-		FacilityName:   "Kita Sonnenschein",
-		// The three have to satisfy contract + correction = facility, the
-		// way a real Senatsabrechnung's Vertragsbuchung, Korrekturbuchung
-		// and Einrichtungssumme do. ContractBooking was facilityTotal minus
-		// the corrections, which is a sign slip: it left the header short by
-		// twice the correction, and the demo bill detail page contradicted
-		// its own total. Only visible now that the seeded corrections are
-		// real correction rows rather than regular ones.
-		FacilityTotal:     facilityTotal + correctionTotal,
-		ContractBooking:   facilityTotal,
-		CorrectionBooking: correctionTotal,
+		OrganizationID:  orgID,
+		Period:          models.Period{From: billDate, To: &billEndDate},
+		FileName:        fmt.Sprintf("Senatsabrechnung_%s.xlsx", billDate.Format("2006-01")),
+		FileSha256:      hash,
+		FacilityName:    "Kita Sonnenschein",
+		FacilityTotal:   facilityTotal + correctionTotal,
+		ContractBooking: facilityTotal + correctionTotal,
+		// One bill carries a manual booking, so the demo exercises the line
+		// that reports it. Shaped like the real thing: a Nachfinanzierung
+		// I-Status settling months well outside this Kita year, which is why
+		// it is money received but not a discrepancy anyone can act on.
+		CorrectionBooking: manualCorrectionBooking(monthsAgo),
 		CreatedBy:         models.UintPtr(1),
 		Children:          billChildren,
 	}
+}
+
+// manualCorrectionBooking returns the Korrekturbuchung manuell for the bill
+// that arrived monthsAgo months back. Only one bill carries one, the way only
+// three of twenty-two real bills in the sample year did.
+func manualCorrectionBooking(monthsAgo int) int {
+	if monthsAgo == 4 {
+		return 182308
+	}
+	return 0
 }
 
 // tvoedSuEEntries is the TVöD-SuE ladder the demo Kita pays on: four grades,

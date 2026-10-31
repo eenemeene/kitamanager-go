@@ -140,9 +140,21 @@ func TestBuildBillPeriod_CorrectionRowIsTypedAndAttributed(t *testing.T) {
 			correctionMonths[0].Format("2006-01"), wantMonth.Format("2006-01"))
 	}
 
-	// A header that claims a correction booking must be backed by rows.
-	if period.CorrectionBooking == 0 {
-		t.Error("CorrectionBooking is 0 but a correction row was emitted")
+	// The correction rows belong to the Vertragsbuchung, not to the
+	// Korrekturbuchung manuell. A bill can carry correction rows and no manual
+	// booking, and the sample year's bills mostly did -- one had 34.777,38 EUR
+	// of corrections against a manual booking of zero. Asserting the header
+	// "must be backed by rows" had it exactly backwards: the manual booking is
+	// the one thing in the header that never is.
+	rowSum := 0
+	for _, child := range period.Children {
+		for _, p := range child.Payments {
+			rowSum += p.Amount
+		}
+	}
+	if period.ContractBooking != rowSum {
+		t.Errorf("ContractBooking = %d, want %d: the correction rows are part of the Vertragsbuchung",
+			period.ContractBooking, rowSum)
 	}
 }
 
@@ -215,23 +227,75 @@ func TestBuildBillPeriod_CorrectionForChildWithoutRegularRow(t *testing.T) {
 	}
 }
 
-// TestBuildBillPeriod_HeaderBookingsAddUp pins the invariant a real
-// Senatsabrechnung satisfies: Vertragsbuchung + Korrekturbuchung equals the
-// Einrichtungssumme. The seeder subtracted the corrections from the contract
-// booking instead of leaving it alone, so the header was short by twice them.
+// TestBuildBillPeriod_HeaderBookingsAddUp pins the header identity a real
+// Senatsabrechnung satisfies, which is NOT contract + correction = facility.
+// Measured across a full Kita year of real bills:
+//
+//	Einrichtungssumme = Vertragsbuchung = SUM(all rows, corrections included)
+//
+// and the Korrekturbuchung manuell stands outside that sum entirely, with no
+// child rows behind it. The seeder used to set it to the sum of the child
+// correction rows, which made the demo double-count them as soon as the manual
+// booking was reported as the separate money it is.
 func TestBuildBillPeriod_HeaderBookingsAddUp(t *testing.T) {
 	billDate := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
 
-	for _, monthsAgo := range []int{1, 2, 5} {
+	for _, monthsAgo := range []int{1, 2, 4, 5} {
 		period := buildBillPeriod(1, billDate, billFundingPeriod(),
 			billSeededChildren(t, billDate), monthsAgo)
 		if period == nil {
 			t.Fatalf("monthsAgo %d: buildBillPeriod returned nil", monthsAgo)
 		}
-		if got := period.ContractBooking + period.CorrectionBooking; got != period.FacilityTotal {
-			t.Errorf("monthsAgo %d: contract %d + correction %d = %d, want facility total %d",
-				monthsAgo, period.ContractBooking, period.CorrectionBooking,
-				got, period.FacilityTotal)
+
+		rowSum := 0
+		for _, child := range period.Children {
+			for _, p := range child.Payments {
+				rowSum += p.Amount
+			}
 		}
+		if period.FacilityTotal != rowSum {
+			t.Errorf("monthsAgo %d: facility total %d != sum of all rows %d",
+				monthsAgo, period.FacilityTotal, rowSum)
+		}
+		if period.ContractBooking != rowSum {
+			t.Errorf("monthsAgo %d: contract booking %d != sum of all rows %d",
+				monthsAgo, period.ContractBooking, rowSum)
+		}
+		// The manual booking is independent of the rows, so it must not be
+		// derivable from them -- which is exactly what the old seeder did.
+		correctionRows := 0
+		for _, child := range period.Children {
+			for _, p := range child.Payments {
+				if p.RowType == models.RowTypeCorrection {
+					correctionRows += p.Amount
+				}
+			}
+		}
+		if correctionRows != 0 && period.CorrectionBooking == correctionRows {
+			t.Errorf("monthsAgo %d: correction booking %d equals the child correction rows; "+
+				"the Korrekturbuchung manuell has no child rows behind it",
+				monthsAgo, period.CorrectionBooking)
+		}
+	}
+}
+
+// Exactly one of the seeded bills carries a manual booking, so the demo
+// exercises the line that reports it without making it look routine.
+func TestBuildBillPeriod_OneBillCarriesAManualBooking(t *testing.T) {
+	billDate := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
+
+	withBooking := 0
+	for monthsAgo := range 12 {
+		period := buildBillPeriod(1, billDate, billFundingPeriod(),
+			billSeededChildren(t, billDate), monthsAgo)
+		if period == nil {
+			continue
+		}
+		if period.CorrectionBooking != 0 {
+			withBooking++
+		}
+	}
+	if withBooking != 1 {
+		t.Errorf("%d seeded bills carry a Korrekturbuchung manuell, want exactly 1", withBooking)
 	}
 }

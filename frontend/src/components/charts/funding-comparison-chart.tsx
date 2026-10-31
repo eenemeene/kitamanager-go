@@ -93,6 +93,17 @@ export interface KitaYearSummaryRow {
    */
   orphanCorrection: number;
   /**
+   * The Senate's district-level "Korrekturbuchung manuell" on the bills that
+   * arrived in this Kita year. No child rows stand behind it, so no attributed
+   * figure can see it, and it is kept out of `difference` for the same reason
+   * `orphanCorrection` is: there is no calculated counterpart to set it
+   * against, and in practice it settles months one or two Kita years back.
+   *
+   * Tracked because it is money the Kita received. Left out entirely, the bills
+   * added up to less than the bank did.
+   */
+  manualCorrection: number;
+  /**
    * (regular + correction) - calculatedWithBill: the net position after
    * retroactive adjustments, which is the question a year row answers. The
    * month rows answer a different one and use a different formula; see
@@ -151,6 +162,7 @@ export function buildKitaYearSummary(
       regular: number;
       correction: number;
       orphanCorrection: number;
+      manualCorrection: number;
       actualMonths: number;
       totalMonths: number;
       months: KitaYearMonthRow[];
@@ -166,6 +178,7 @@ export function buildKitaYearSummary(
       regular: 0,
       correction: 0,
       orphanCorrection: 0,
+      manualCorrection: 0,
       actualMonths: 0,
       totalMonths: 0,
       months: [],
@@ -183,6 +196,7 @@ export function buildKitaYearSummary(
     // money can land on a month without one -- a correction for a month we
     // never imported a bill for -- and that money is held aside rather than
     // set against a calculated total that excludes its month.
+    entry.manualCorrection += dp.actual_funding_manual_correction ?? 0;
     const hasActual = dp.actual_funding != null;
     if (hasActual) {
       entry.calculatedWithBill += dpFundingIncome;
@@ -213,6 +227,7 @@ export function buildKitaYearSummary(
     regular: v.regular,
     correction: v.correction,
     orphanCorrection: v.orphanCorrection,
+    manualCorrection: v.manualCorrection,
     difference: v.regular + v.correction - v.calculatedWithBill,
     actualMonths: v.actualMonths,
     totalMonths: v.totalMonths,
@@ -726,6 +741,22 @@ export function FundingComparisonChart({
                             >
                               {t('fundingCorrectionOrphan', {
                                 amount: formatEur(row.orphanCorrection),
+                              })}
+                            </div>
+                          )}
+                          {/* The district-level manual booking. Held out of the
+                              Correction cell for the same reason as the
+                              orphans -- no child rows, so nothing calculated to
+                              set it against -- but it has to appear somewhere,
+                              or the bills add up to less than the bank did. */}
+                          {row.manualCorrection !== 0 && (
+                            <div
+                              data-visual-mask="currency"
+                              className="text-muted-foreground text-xs font-normal"
+                              title={t('fundingManualCorrectionTooltip')}
+                            >
+                              {t('fundingManualCorrection', {
+                                amount: formatEur(row.manualCorrection),
                               })}
                             </div>
                           )}
