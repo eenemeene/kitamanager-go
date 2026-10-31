@@ -1,7 +1,5 @@
 # public.budget_item_entries
 
-## Description
-
 ## Columns
 
 | Name           | Type                     | Default                                         | Nullable | Children | Parents                                       | Comment |
@@ -17,22 +15,25 @@
 
 ## Constraints
 
-| Name                                        | Type        | Definition                                                                 |
-| ------------------------------------------- | ----------- | -------------------------------------------------------------------------- |
-| budget_item_entries_amount_cents_not_null   | n           | NOT NULL amount_cents                                                      |
-| budget_item_entries_budget_item_id_not_null | n           | NOT NULL budget_item_id                                                    |
-| budget_item_entries_from_date_not_null      | n           | NOT NULL from_date                                                         |
-| budget_item_entries_id_not_null             | n           | NOT NULL id                                                                |
-| budget_item_entries_budget_item_id_fkey     | FOREIGN KEY | FOREIGN KEY (budget_item_id) REFERENCES budget_items(id) ON DELETE CASCADE |
-| budget_item_entries_pkey                    | PRIMARY KEY | PRIMARY KEY (id)                                                           |
+| Name                                        | Type        | Definition                                                                                                                      |
+| ------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| budget_item_entries_amount_cents_not_null   | n           | NOT NULL amount_cents                                                                                                           |
+| budget_item_entries_amount_nonneg           | CHECK       | CHECK ((amount_cents >= 0))                                                                                                     |
+| budget_item_entries_budget_item_id_not_null | n           | NOT NULL budget_item_id                                                                                                         |
+| budget_item_entries_from_date_not_null      | n           | NOT NULL from_date                                                                                                              |
+| budget_item_entries_id_not_null             | n           | NOT NULL id                                                                                                                     |
+| budget_item_entries_budget_item_id_fkey     | FOREIGN KEY | FOREIGN KEY (budget_item_id) REFERENCES budget_items(id) ON DELETE CASCADE                                                      |
+| budget_item_entries_pkey                    | PRIMARY KEY | PRIMARY KEY (id)                                                                                                                |
+| budget_item_entries_no_overlap              | x           | EXCLUDE USING gist (budget_item_id WITH =, daterange(from_date, COALESCE((to_date + 1), 'infinity'::date), '[)'::text) WITH &&) |
 
 ## Indexes
 
-| Name                                   | Definition                                                                                                        |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| budget_item_entries_pkey               | CREATE UNIQUE INDEX budget_item_entries_pkey ON public.budget_item_entries USING btree (id)                       |
-| idx_budget_item_entries_budget_item_id | CREATE INDEX idx_budget_item_entries_budget_item_id ON public.budget_item_entries USING btree (budget_item_id)    |
-| idx_budget_item_entries_period         | CREATE INDEX idx_budget_item_entries_period ON public.budget_item_entries USING btree (budget_item_id, from_date) |
+| Name                                   | Definition                                                                                                                                                                         |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| budget_item_entries_pkey               | CREATE UNIQUE INDEX budget_item_entries_pkey ON public.budget_item_entries USING btree (id)                                                                                        |
+| idx_budget_item_entries_budget_item_id | CREATE INDEX idx_budget_item_entries_budget_item_id ON public.budget_item_entries USING btree (budget_item_id)                                                                     |
+| idx_budget_item_entries_period         | CREATE INDEX idx_budget_item_entries_period ON public.budget_item_entries USING btree (budget_item_id, from_date)                                                                  |
+| budget_item_entries_no_overlap         | CREATE INDEX budget_item_entries_no_overlap ON public.budget_item_entries USING gist (budget_item_id, daterange(from_date, COALESCE((to_date + 1), 'infinity'::date), '[)'::text)) |
 
 ## Relations
 
@@ -69,6 +70,7 @@ erDiagram
   timestamp_with_time_zone created_at
   varchar_255_ created_by
   timestamp_with_time_zone updated_at
+  timestamp_with_time_zone deleted_at
 }
 ```
 

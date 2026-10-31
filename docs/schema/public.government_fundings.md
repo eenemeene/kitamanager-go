@@ -1,7 +1,5 @@
 # public.government_fundings
 
-## Description
-
 ## Columns
 
 | Name       | Type                     | Default                                         | Nullable | Children                                                                  | Parents | Comment |
@@ -52,6 +50,7 @@ erDiagram
   varchar_1000_ comment
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  jsonb required_keys
 }
 "public.government_funding_properties" {
   bigint id

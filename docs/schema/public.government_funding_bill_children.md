@@ -1,7 +1,5 @@
 # public.government_funding_bill_children
 
-## Description
-
 ## Columns
 
 | Name           | Type         | Default                                                      | Nullable | Children                                                                              | Parents                                                                             | Comment |
@@ -40,8 +38,8 @@ erDiagram
 
 "public.government_funding_bill_payments" }o--|| "public.government_funding_bill_children" : "FOREIGN KEY (child_id) REFERENCES government_funding_bill_children(id) ON DELETE CASCADE"
 "public.government_funding_bill_children" }o--|| "public.government_funding_bill_periods" : "FOREIGN KEY (period_id) REFERENCES government_funding_bill_periods(id) ON DELETE CASCADE"
-"public.government_funding_bill_periods" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id)"
-"public.government_funding_bill_periods" }o--|| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id)"
+"public.government_funding_bill_periods" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
+"public.government_funding_bill_periods" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
 
 "public.government_funding_bill_children" {
   bigint id
@@ -59,6 +57,7 @@ erDiagram
   integer amount
   bigint row_index
   varchar_20_ row_type
+  date billing_month
 }
 "public.government_funding_bill_periods" {
   bigint id
@@ -74,6 +73,9 @@ erDiagram
   bigint created_by FK
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  date correction_booking_from_month
+  date correction_booking_to_month
+  varchar_64_ correction_booking_reason
 }
 "public.organizations" {
   bigint id
@@ -83,6 +85,7 @@ erDiagram
   timestamp_with_time_zone created_at
   varchar_255_ created_by
   timestamp_with_time_zone updated_at
+  timestamp_with_time_zone deleted_at
 }
 "public.users" {
   bigint id
@@ -95,6 +98,7 @@ erDiagram
   timestamp_with_time_zone created_at
   varchar_255_ created_by
   timestamp_with_time_zone updated_at
+  timestamp_with_time_zone deleted_at
 }
 ```
 

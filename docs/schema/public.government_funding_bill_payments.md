@@ -1,18 +1,17 @@
 # public.government_funding_bill_payments
 
-## Description
-
 ## Columns
 
-| Name      | Type         | Default                                                      | Nullable | Children | Parents                                                                               | Comment |
-| --------- | ------------ | ------------------------------------------------------------ | -------- | -------- | ------------------------------------------------------------------------------------- | ------- |
-| id        | bigint       | nextval('government_funding_bill_payments_id_seq'::regclass) | false    |          |                                                                                       |         |
-| child_id  | bigint       |                                                              | false    |          | [public.government_funding_bill_children](public.government_funding_bill_children.md) |         |
-| key       | varchar(100) |                                                              | false    |          |                                                                                       |         |
-| value     | varchar(255) |                                                              | false    |          |                                                                                       |         |
-| amount    | integer      |                                                              | false    |          |                                                                                       |         |
-| row_index | bigint       | 0                                                            | false    |          |                                                                                       |         |
-| row_type  | varchar(20)  | 'regular'::character varying                                 | false    |          |                                                                                       |         |
+| Name          | Type         | Default                                                      | Nullable | Children | Parents                                                                               | Comment                                                                                                                                           |
+| ------------- | ------------ | ------------------------------------------------------------ | -------- | -------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id            | bigint       | nextval('government_funding_bill_payments_id_seq'::regclass) | false    |          |                                                                                       |                                                                                                                                                   |
+| child_id      | bigint       |                                                              | false    |          | [public.government_funding_bill_children](public.government_funding_bill_children.md) |                                                                                                                                                   |
+| key           | varchar(100) |                                                              | false    |          |                                                                                       |                                                                                                                                                   |
+| value         | varchar(255) |                                                              | false    |          |                                                                                       |                                                                                                                                                   |
+| amount        | integer      |                                                              | false    |          |                                                                                       |                                                                                                                                                   |
+| row_index     | bigint       | 0                                                            | false    |          |                                                                                       |                                                                                                                                                   |
+| row_type      | varchar(20)  | 'regular'::character varying                                 | false    |          |                                                                                       |                                                                                                                                                   |
+| billing_month | date         |                                                              | true     |          |                                                                                       | Month this row applies to (first of month), from the ISBJ "Monat/ Typ" column. NULL = unknown; read path falls back to the bill period from_date. |
 
 ## Constraints
 
@@ -51,6 +50,7 @@ erDiagram
   integer amount
   bigint row_index
   varchar_20_ row_type
+  date billing_month
 }
 "public.government_funding_bill_children" {
   bigint id
@@ -74,6 +74,9 @@ erDiagram
   bigint created_by FK
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  date correction_booking_from_month
+  date correction_booking_to_month
+  varchar_64_ correction_booking_reason
 }
 ```
 

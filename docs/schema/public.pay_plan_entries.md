@@ -1,7 +1,5 @@
 # public.pay_plan_entries
 
-## Description
-
 ## Columns
 
 | Name           | Type                     | Default                                      | Nullable | Children | Parents                                               | Comment |

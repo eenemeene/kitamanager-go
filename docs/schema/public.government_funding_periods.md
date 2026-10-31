@@ -1,7 +1,5 @@
 # public.government_funding_periods
 
-## Description
-
 ## Columns
 
 | Name                   | Type                     | Default                                                | Nullable | Children                                                                        | Parents                                                     | Comment |
@@ -14,6 +12,7 @@
 | comment                | varchar(1000)            |                                                        | true     |                                                                                 |                                                             |         |
 | created_at             | timestamp with time zone |                                                        | true     |                                                                                 |                                                             |         |
 | updated_at             | timestamp with time zone |                                                        | true     |                                                                                 |                                                             |         |
+| required_keys          | jsonb                    | '[]'::jsonb                                            | false    |                                                                                 |                                                             |         |
 
 ## Constraints
 
@@ -23,6 +22,7 @@
 | government_funding_periods_full_time_weekly_hours_not_null | n           | NOT NULL full_time_weekly_hours                                                          |
 | government_funding_periods_government_funding_id_not_null  | n           | NOT NULL government_funding_id                                                           |
 | government_funding_periods_id_not_null                     | n           | NOT NULL id                                                                              |
+| government_funding_periods_required_keys_not_null          | n           | NOT NULL required_keys                                                                   |
 | government_funding_periods_government_funding_id_fkey      | FOREIGN KEY | FOREIGN KEY (government_funding_id) REFERENCES government_fundings(id) ON DELETE CASCADE |
 | government_funding_periods_pkey                            | PRIMARY KEY | PRIMARY KEY (id)                                                                         |
 
@@ -51,6 +51,7 @@ erDiagram
   varchar_1000_ comment
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  jsonb required_keys
 }
 "public.government_funding_properties" {
   bigint id

@@ -1,7 +1,5 @@
 # public.child_attendances
 
-## Description
-
 ## Columns
 
 | Name            | Type                     | Default                                       | Nullable | Children | Parents                                         | Comment |
@@ -14,24 +12,24 @@
 | check_out_time  | timestamp with time zone |                                               | true     |          |                                                 |         |
 | status          | varchar(20)              | 'present'::character varying                  | false    |          |                                                 |         |
 | note            | varchar(500)             |                                               | true     |          |                                                 |         |
-| recorded_by     | bigint                   |                                               | false    |          | [public.users](public.users.md)                 |         |
+| recorded_by     | bigint                   |                                               | true     |          | [public.users](public.users.md)                 |         |
 | created_at      | timestamp with time zone |                                               | true     |          |                                                 |         |
 | updated_at      | timestamp with time zone |                                               | true     |          |                                                 |         |
 
 ## Constraints
 
-| Name                                       | Type        | Definition                                                                   |
-| ------------------------------------------ | ----------- | ---------------------------------------------------------------------------- |
-| child_attendances_child_id_not_null        | n           | NOT NULL child_id                                                            |
-| child_attendances_date_not_null            | n           | NOT NULL date                                                                |
-| child_attendances_id_not_null              | n           | NOT NULL id                                                                  |
-| child_attendances_organization_id_not_null | n           | NOT NULL organization_id                                                     |
-| child_attendances_recorded_by_not_null     | n           | NOT NULL recorded_by                                                         |
-| child_attendances_status_not_null          | n           | NOT NULL status                                                              |
-| child_attendances_organization_id_fkey     | FOREIGN KEY | FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE |
-| child_attendances_recorded_by_fkey         | FOREIGN KEY | FOREIGN KEY (recorded_by) REFERENCES users(id)                               |
-| child_attendances_child_id_fkey            | FOREIGN KEY | FOREIGN KEY (child_id) REFERENCES children(id) ON DELETE CASCADE             |
-| child_attendances_pkey                     | PRIMARY KEY | PRIMARY KEY (id)                                                             |
+| Name                                       | Type        | Definition                                                                                                                                                            |
+| ------------------------------------------ | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| child_attendances_child_id_not_null        | n           | NOT NULL child_id                                                                                                                                                     |
+| child_attendances_date_not_null            | n           | NOT NULL date                                                                                                                                                         |
+| child_attendances_id_not_null              | n           | NOT NULL id                                                                                                                                                           |
+| child_attendances_organization_id_not_null | n           | NOT NULL organization_id                                                                                                                                              |
+| child_attendances_status_check             | CHECK       | CHECK (((status)::text = ANY ((ARRAY['present'::character varying, 'absent'::character varying, 'sick'::character varying, 'vacation'::character varying])::text[]))) |
+| child_attendances_status_not_null          | n           | NOT NULL status                                                                                                                                                       |
+| child_attendances_organization_id_fkey     | FOREIGN KEY | FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE                                                                                          |
+| child_attendances_recorded_by_fkey         | FOREIGN KEY | FOREIGN KEY (recorded_by) REFERENCES users(id) ON DELETE SET NULL                                                                                                     |
+| child_attendances_child_id_fkey            | FOREIGN KEY | FOREIGN KEY (child_id) REFERENCES children(id) ON DELETE CASCADE                                                                                                      |
+| child_attendances_pkey                     | PRIMARY KEY | PRIMARY KEY (id)                                                                                                                                                      |
 
 ## Indexes
 
@@ -57,14 +55,15 @@ erDiagram
 "public.user_organizations" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.sections" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.employees" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
-"public.pay_plans" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id)"
+"public.pay_plans" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.budget_items" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.audit_logs" }o--o| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL"
-"public.government_funding_bill_periods" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id)"
-"public.child_attendances" }o--|| "public.users" : "FOREIGN KEY (recorded_by) REFERENCES users(id)"
+"public.government_funding_bill_periods" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
+"public.child_attendances" }o--o| "public.users" : "FOREIGN KEY (recorded_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.user_organizations" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-"public.revoked_tokens" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-"public.government_funding_bill_periods" }o--|| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id)"
+"public.government_funding_bill_periods" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.sessions" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.factors" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 
 "public.child_attendances" {
   bigint id
@@ -88,6 +87,7 @@ erDiagram
   date birthdate
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  date school_entry_date
 }
 "public.child_contracts" {
   bigint id
@@ -98,6 +98,7 @@ erDiagram
   jsonb properties
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  bigint version
 }
 "public.child_vouchers" {
   bigint id
@@ -114,6 +115,7 @@ erDiagram
   timestamp_with_time_zone created_at
   varchar_255_ created_by
   timestamp_with_time_zone updated_at
+  timestamp_with_time_zone deleted_at
 }
 "public.user_organizations" {
   bigint user_id FK
@@ -132,6 +134,7 @@ erDiagram
   timestamp_with_time_zone created_at
   varchar_255_ created_by
   timestamp_with_time_zone updated_at
+  timestamp_with_time_zone deleted_at
 }
 "public.employees" {
   bigint id
@@ -172,6 +175,7 @@ erDiagram
   text details
   boolean success
   bigint organization_id FK
+  varchar_64_ request_id
 }
 "public.government_funding_bill_periods" {
   bigint id
@@ -187,6 +191,9 @@ erDiagram
   bigint created_by FK
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  date correction_booking_from_month
+  date correction_booking_to_month
+  varchar_64_ correction_booking_reason
 }
 "public.users" {
   bigint id
@@ -199,13 +206,31 @@ erDiagram
   timestamp_with_time_zone created_at
   varchar_255_ created_by
   timestamp_with_time_zone updated_at
+  timestamp_with_time_zone deleted_at
 }
-"public.revoked_tokens" {
+"public.sessions" {
+  character_64_ id
+  bigint user_id FK
+  timestamp_with_time_zone created_at
+  timestamp_with_time_zone expires_at
+  varchar_45_ created_ip
+  text created_user_agent
+  varchar_32_ kind
+  bigint mfa_challenge_failures
+  timestamp_with_time_zone password_verified_at
+  bytea challenge_nonce
+}
+"public.factors" {
   bigint id
   bigint user_id FK
-  varchar_64_ token_hash
-  timestamp_with_time_zone expires_at
+  varchar_32_ type
+  varchar_100_ label
+  timestamp_with_time_zone enabled_at
+  timestamp_with_time_zone last_used_at
+  bigint activation_failures
   timestamp_with_time_zone created_at
+  bytea registration_challenge
+  timestamp_with_time_zone registration_challenge_expires_at
 }
 ```
 

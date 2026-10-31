@@ -100,6 +100,11 @@
           "name": "updated_at",
           "type": "timestamp with time zone",
           "nullable": true
+        },
+        {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "nullable": true
         }
       ],
       "indexes": [
@@ -112,8 +117,16 @@
           ]
         },
         {
+          "name": "idx_organizations_deleted_at",
+          "def": "CREATE INDEX idx_organizations_deleted_at ON public.organizations USING btree (deleted_at) WHERE (deleted_at IS NOT NULL)",
+          "table": "public.organizations",
+          "columns": [
+            "deleted_at"
+          ]
+        },
+        {
           "name": "idx_organizations_name",
-          "def": "CREATE UNIQUE INDEX idx_organizations_name ON public.organizations USING btree (name)",
+          "def": "CREATE UNIQUE INDEX idx_organizations_name ON public.organizations USING btree (name) WHERE (deleted_at IS NULL)",
           "table": "public.organizations",
           "columns": [
             "name"
@@ -219,6 +232,11 @@
           "name": "updated_at",
           "type": "timestamp with time zone",
           "nullable": true
+        },
+        {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "nullable": true
         }
       ],
       "indexes": [
@@ -231,11 +249,19 @@
           ]
         },
         {
-          "name": "idx_users_email",
-          "def": "CREATE UNIQUE INDEX idx_users_email ON public.users USING btree (email)",
+          "name": "idx_users_deleted_at",
+          "def": "CREATE INDEX idx_users_deleted_at ON public.users USING btree (deleted_at) WHERE (deleted_at IS NOT NULL)",
           "table": "public.users",
           "columns": [
-            "email"
+            "deleted_at"
+          ]
+        },
+        {
+          "name": "idx_users_email_lower",
+          "def": "CREATE UNIQUE INDEX idx_users_email_lower ON public.users USING btree (lower((email)::text)) WHERE (deleted_at IS NULL)",
+          "table": "public.users",
+          "columns": [
+            "lower"
           ]
         }
       ],
@@ -381,7 +407,7 @@
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
           "table": "public.user_organizations",
-          "referenced_table": "organizations",
+          "referenced_table": "public.organizations",
           "columns": [
             "organization_id"
           ],
@@ -394,7 +420,7 @@
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
           "table": "public.user_organizations",
-          "referenced_table": "users",
+          "referenced_table": "public.users",
           "columns": [
             "user_id"
           ],
@@ -465,6 +491,11 @@
           "name": "updated_at",
           "type": "timestamp with time zone",
           "nullable": true
+        },
+        {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "nullable": true
         }
       ],
       "indexes": [
@@ -485,16 +516,43 @@
           ]
         },
         {
-          "name": "idx_section_org_name",
-          "def": "CREATE UNIQUE INDEX idx_section_org_name ON public.sections USING btree (name, organization_id)",
+          "name": "idx_sections_deleted_at",
+          "def": "CREATE INDEX idx_sections_deleted_at ON public.sections USING btree (deleted_at) WHERE (deleted_at IS NOT NULL)",
           "table": "public.sections",
           "columns": [
-            "name",
+            "deleted_at"
+          ]
+        },
+        {
+          "name": "idx_section_one_default_per_org",
+          "def": "CREATE UNIQUE INDEX idx_section_one_default_per_org ON public.sections USING btree (organization_id) WHERE ((is_default = true) AND (deleted_at IS NULL))",
+          "table": "public.sections",
+          "columns": [
             "organization_id"
+          ]
+        },
+        {
+          "name": "idx_section_org_name",
+          "def": "CREATE UNIQUE INDEX idx_section_org_name ON public.sections USING btree (organization_id, lower(TRIM(BOTH FROM name))) WHERE (deleted_at IS NULL)",
+          "table": "public.sections",
+          "columns": [
+            "organization_id",
+            "lower"
           ]
         }
       ],
       "constraints": [
+        {
+          "name": "sections_age_range_valid",
+          "type": "CHECK",
+          "def": "CHECK ((((min_age_months IS NULL) OR (min_age_months \u003e= 0)) AND ((max_age_months IS NULL) OR (max_age_months \u003e= 0)) AND ((min_age_months IS NULL) OR (max_age_months IS NULL) OR (min_age_months \u003c max_age_months))))",
+          "table": "public.sections",
+          "referenced_table": "",
+          "columns": [
+            "min_age_months",
+            "max_age_months"
+          ]
+        },
         {
           "name": "sections_id_not_null",
           "type": "n",
@@ -530,7 +588,7 @@
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
           "table": "public.sections",
-          "referenced_table": "organizations",
+          "referenced_table": "public.organizations",
           "columns": [
             "organization_id"
           ],
@@ -680,7 +738,7 @@
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
           "table": "public.employees",
-          "referenced_table": "organizations",
+          "referenced_table": "public.organizations",
           "columns": [
             "organization_id"
           ],
@@ -792,9 +850,9 @@
         {
           "name": "pay_plans_organization_id_fkey",
           "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (organization_id) REFERENCES organizations(id)",
+          "def": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
           "table": "public.pay_plans",
-          "referenced_table": "organizations",
+          "referenced_table": "public.organizations",
           "columns": [
             "organization_id"
           ],
@@ -889,6 +947,16 @@
       ],
       "constraints": [
         {
+          "name": "pay_plan_periods_employer_contribution_rate_valid",
+          "type": "CHECK",
+          "def": "CHECK (((employer_contribution_rate \u003e= 0) AND (employer_contribution_rate \u003c= 10000)))",
+          "table": "public.pay_plan_periods",
+          "referenced_table": "",
+          "columns": [
+            "employer_contribution_rate"
+          ]
+        },
+        {
           "name": "pay_plan_periods_from_date_not_null",
           "type": "n",
           "def": "NOT NULL from_date",
@@ -929,11 +997,21 @@
           ]
         },
         {
+          "name": "pay_plan_periods_weekly_hours_valid",
+          "type": "CHECK",
+          "def": "CHECK (((weekly_hours \u003e (0)::double precision) AND (weekly_hours \u003c= (168)::double precision)))",
+          "table": "public.pay_plan_periods",
+          "referenced_table": "",
+          "columns": [
+            "weekly_hours"
+          ]
+        },
+        {
           "name": "pay_plan_periods_pay_plan_id_fkey",
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (pay_plan_id) REFERENCES pay_plans(id) ON DELETE CASCADE",
           "table": "public.pay_plan_periods",
-          "referenced_table": "pay_plans",
+          "referenced_table": "public.pay_plans",
           "columns": [
             "pay_plan_id"
           ],
@@ -1083,7 +1161,7 @@
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (period_id) REFERENCES pay_plan_periods(id) ON DELETE CASCADE",
           "table": "public.pay_plan_entries",
-          "referenced_table": "pay_plan_periods",
+          "referenced_table": "public.pay_plan_periods",
           "columns": [
             "period_id"
           ],
@@ -1173,6 +1251,12 @@
           "name": "updated_at",
           "type": "timestamp with time zone",
           "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "bigint",
+          "nullable": false,
+          "default": "1"
         }
       ],
       "indexes": [
@@ -1216,6 +1300,15 @@
             "employee_id",
             "from_date",
             "to_date"
+          ]
+        },
+        {
+          "name": "employee_contracts_no_overlap",
+          "def": "CREATE INDEX employee_contracts_no_overlap ON public.employee_contracts USING gist (employee_id, daterange(from_date, COALESCE((to_date + 1), 'infinity'::date), '[)'::text))",
+          "table": "public.employee_contracts",
+          "columns": [
+            "employee_id",
+            "daterange"
           ]
         }
       ],
@@ -1281,11 +1374,51 @@
           ]
         },
         {
+          "name": "employee_contracts_staff_category_valid",
+          "type": "CHECK",
+          "def": "CHECK (((staff_category)::text = ANY ((ARRAY['qualified'::character varying, 'supplementary'::character varying, 'non_pedagogical'::character varying])::text[])))",
+          "table": "public.employee_contracts",
+          "referenced_table": "",
+          "columns": [
+            "staff_category"
+          ]
+        },
+        {
+          "name": "employee_contracts_step_valid",
+          "type": "CHECK",
+          "def": "CHECK (((step IS NULL) OR ((step \u003e= 0) AND (step \u003c= 10))))",
+          "table": "public.employee_contracts",
+          "referenced_table": "",
+          "columns": [
+            "step"
+          ]
+        },
+        {
+          "name": "employee_contracts_version_not_null",
+          "type": "n",
+          "def": "NOT NULL version",
+          "table": "public.employee_contracts",
+          "referenced_table": "",
+          "columns": [
+            "version"
+          ]
+        },
+        {
+          "name": "employee_contracts_weekly_hours_valid",
+          "type": "CHECK",
+          "def": "CHECK (((weekly_hours IS NULL) OR ((weekly_hours \u003e= (0)::double precision) AND (weekly_hours \u003c= (168)::double precision))))",
+          "table": "public.employee_contracts",
+          "referenced_table": "",
+          "columns": [
+            "weekly_hours"
+          ]
+        },
+        {
           "name": "employee_contracts_section_id_fkey",
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (section_id) REFERENCES sections(id)",
           "table": "public.employee_contracts",
-          "referenced_table": "sections",
+          "referenced_table": "public.sections",
           "columns": [
             "section_id"
           ],
@@ -1298,7 +1431,7 @@
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE",
           "table": "public.employee_contracts",
-          "referenced_table": "employees",
+          "referenced_table": "public.employees",
           "columns": [
             "employee_id"
           ],
@@ -1311,7 +1444,7 @@
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (pay_plan_id) REFERENCES pay_plans(id)",
           "table": "public.employee_contracts",
-          "referenced_table": "pay_plans",
+          "referenced_table": "public.pay_plans",
           "columns": [
             "pay_plan_id"
           ],
@@ -1327,6 +1460,16 @@
           "referenced_table": "",
           "columns": [
             "id"
+          ]
+        },
+        {
+          "name": "employee_contracts_no_overlap",
+          "type": "x",
+          "def": "EXCLUDE USING gist (employee_id WITH =, daterange(from_date, COALESCE((to_date + 1), 'infinity'::date), '[)'::text) WITH \u0026\u0026) DEFERRABLE INITIALLY DEFERRED",
+          "table": "public.employee_contracts",
+          "referenced_table": "",
+          "columns": [
+            "employee_id"
           ]
         }
       ]
@@ -1374,6 +1517,11 @@
         {
           "name": "updated_at",
           "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "school_entry_date",
+          "type": "date",
           "nullable": true
         }
       ],
@@ -1461,7 +1609,7 @@
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
           "table": "public.children",
-          "referenced_table": "organizations",
+          "referenced_table": "public.organizations",
           "columns": [
             "organization_id"
           ],
@@ -1525,6 +1673,12 @@
           "name": "updated_at",
           "type": "timestamp with time zone",
           "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "bigint",
+          "nullable": false,
+          "default": "1"
         }
       ],
       "indexes": [
@@ -1560,6 +1714,15 @@
             "child_id",
             "from_date",
             "to_date"
+          ]
+        },
+        {
+          "name": "child_contracts_no_overlap",
+          "def": "CREATE INDEX child_contracts_no_overlap ON public.child_contracts USING gist (child_id, daterange(from_date, COALESCE((to_date + 1), 'infinity'::date), '[)'::text))",
+          "table": "public.child_contracts",
+          "columns": [
+            "child_id",
+            "daterange"
           ]
         }
       ],
@@ -1605,11 +1768,21 @@
           ]
         },
         {
+          "name": "child_contracts_version_not_null",
+          "type": "n",
+          "def": "NOT NULL version",
+          "table": "public.child_contracts",
+          "referenced_table": "",
+          "columns": [
+            "version"
+          ]
+        },
+        {
           "name": "child_contracts_section_id_fkey",
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (section_id) REFERENCES sections(id)",
           "table": "public.child_contracts",
-          "referenced_table": "sections",
+          "referenced_table": "public.sections",
           "columns": [
             "section_id"
           ],
@@ -1622,7 +1795,7 @@
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (child_id) REFERENCES children(id) ON DELETE CASCADE",
           "table": "public.child_contracts",
-          "referenced_table": "children",
+          "referenced_table": "public.children",
           "columns": [
             "child_id"
           ],
@@ -1638,6 +1811,16 @@
           "referenced_table": "",
           "columns": [
             "id"
+          ]
+        },
+        {
+          "name": "child_contracts_no_overlap",
+          "type": "x",
+          "def": "EXCLUDE USING gist (child_id WITH =, daterange(from_date, COALESCE((to_date + 1), 'infinity'::date), '[)'::text) WITH \u0026\u0026) DEFERRABLE INITIALLY DEFERRED",
+          "table": "public.child_contracts",
+          "referenced_table": "",
+          "columns": [
+            "child_id"
           ]
         }
       ]
@@ -1778,6 +1961,12 @@
           "name": "updated_at",
           "type": "timestamp with time zone",
           "nullable": true
+        },
+        {
+          "name": "required_keys",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'[]'::jsonb"
         }
       ],
       "indexes": [
@@ -1849,11 +2038,21 @@
           ]
         },
         {
+          "name": "government_funding_periods_required_keys_not_null",
+          "type": "n",
+          "def": "NOT NULL required_keys",
+          "table": "public.government_funding_periods",
+          "referenced_table": "",
+          "columns": [
+            "required_keys"
+          ]
+        },
+        {
           "name": "government_funding_periods_government_funding_id_fkey",
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (government_funding_id) REFERENCES government_fundings(id) ON DELETE CASCADE",
           "table": "public.government_funding_periods",
-          "referenced_table": "government_fundings",
+          "referenced_table": "public.government_fundings",
           "columns": [
             "government_funding_id"
           ],
@@ -2044,7 +2243,7 @@
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (period_id) REFERENCES government_funding_periods(id) ON DELETE CASCADE",
           "table": "public.government_funding_properties",
-          "referenced_table": "government_funding_periods",
+          "referenced_table": "public.government_funding_periods",
           "columns": [
             "period_id"
           ],
@@ -2113,7 +2312,7 @@
         {
           "name": "recorded_by",
           "type": "bigint",
-          "nullable": false
+          "nullable": true
         },
         {
           "name": "created_at",
@@ -2220,13 +2419,13 @@
           ]
         },
         {
-          "name": "child_attendances_recorded_by_not_null",
-          "type": "n",
-          "def": "NOT NULL recorded_by",
+          "name": "child_attendances_status_check",
+          "type": "CHECK",
+          "def": "CHECK (((status)::text = ANY ((ARRAY['present'::character varying, 'absent'::character varying, 'sick'::character varying, 'vacation'::character varying])::text[])))",
           "table": "public.child_attendances",
           "referenced_table": "",
           "columns": [
-            "recorded_by"
+            "status"
           ]
         },
         {
@@ -2244,7 +2443,7 @@
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
           "table": "public.child_attendances",
-          "referenced_table": "organizations",
+          "referenced_table": "public.organizations",
           "columns": [
             "organization_id"
           ],
@@ -2255,9 +2454,9 @@
         {
           "name": "child_attendances_recorded_by_fkey",
           "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (recorded_by) REFERENCES users(id)",
+          "def": "FOREIGN KEY (recorded_by) REFERENCES users(id) ON DELETE SET NULL",
           "table": "public.child_attendances",
-          "referenced_table": "users",
+          "referenced_table": "public.users",
           "columns": [
             "recorded_by"
           ],
@@ -2270,7 +2469,7 @@
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (child_id) REFERENCES children(id) ON DELETE CASCADE",
           "table": "public.child_attendances",
-          "referenced_table": "children",
+          "referenced_table": "public.children",
           "columns": [
             "child_id"
           ],
@@ -2343,11 +2542,11 @@
         },
         {
           "name": "idx_budget_item_org_name",
-          "def": "CREATE UNIQUE INDEX idx_budget_item_org_name ON public.budget_items USING btree (organization_id, name)",
+          "def": "CREATE UNIQUE INDEX idx_budget_item_org_name ON public.budget_items USING btree (organization_id, lower(TRIM(BOTH FROM name)))",
           "table": "public.budget_items",
           "columns": [
             "organization_id",
-            "name"
+            "lower"
           ]
         }
       ],
@@ -2356,6 +2555,16 @@
           "name": "budget_items_category_not_null",
           "type": "n",
           "def": "NOT NULL category",
+          "table": "public.budget_items",
+          "referenced_table": "",
+          "columns": [
+            "category"
+          ]
+        },
+        {
+          "name": "budget_items_category_valid",
+          "type": "CHECK",
+          "def": "CHECK (((category)::text = ANY ((ARRAY['income'::character varying, 'expense'::character varying])::text[])))",
           "table": "public.budget_items",
           "referenced_table": "",
           "columns": [
@@ -2407,7 +2616,7 @@
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
           "table": "public.budget_items",
-          "referenced_table": "organizations",
+          "referenced_table": "public.organizations",
           "columns": [
             "organization_id"
           ],
@@ -2498,6 +2707,15 @@
             "budget_item_id",
             "from_date"
           ]
+        },
+        {
+          "name": "budget_item_entries_no_overlap",
+          "def": "CREATE INDEX budget_item_entries_no_overlap ON public.budget_item_entries USING gist (budget_item_id, daterange(from_date, COALESCE((to_date + 1), 'infinity'::date), '[)'::text))",
+          "table": "public.budget_item_entries",
+          "columns": [
+            "budget_item_id",
+            "daterange"
+          ]
         }
       ],
       "constraints": [
@@ -2505,6 +2723,16 @@
           "name": "budget_item_entries_amount_cents_not_null",
           "type": "n",
           "def": "NOT NULL amount_cents",
+          "table": "public.budget_item_entries",
+          "referenced_table": "",
+          "columns": [
+            "amount_cents"
+          ]
+        },
+        {
+          "name": "budget_item_entries_amount_nonneg",
+          "type": "CHECK",
+          "def": "CHECK ((amount_cents \u003e= 0))",
           "table": "public.budget_item_entries",
           "referenced_table": "",
           "columns": [
@@ -2546,7 +2774,7 @@
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (budget_item_id) REFERENCES budget_items(id) ON DELETE CASCADE",
           "table": "public.budget_item_entries",
-          "referenced_table": "budget_items",
+          "referenced_table": "public.budget_items",
           "columns": [
             "budget_item_id"
           ],
@@ -2562,6 +2790,16 @@
           "referenced_table": "",
           "columns": [
             "id"
+          ]
+        },
+        {
+          "name": "budget_item_entries_no_overlap",
+          "type": "x",
+          "def": "EXCLUDE USING gist (budget_item_id WITH =, daterange(from_date, COALESCE((to_date + 1), 'infinity'::date), '[)'::text) WITH \u0026\u0026)",
+          "table": "public.budget_item_entries",
+          "referenced_table": "",
+          "columns": [
+            "budget_item_id"
           ]
         }
       ]
@@ -2630,6 +2868,11 @@
           "name": "organization_id",
           "type": "bigint",
           "nullable": true
+        },
+        {
+          "name": "request_id",
+          "type": "varchar(64)",
+          "nullable": true
         }
       ],
       "indexes": [
@@ -2672,6 +2915,14 @@
           "columns": [
             "organization_id",
             "timestamp"
+          ]
+        },
+        {
+          "name": "idx_audit_logs_request_id",
+          "def": "CREATE INDEX idx_audit_logs_request_id ON public.audit_logs USING btree (request_id) WHERE (request_id IS NOT NULL)",
+          "table": "public.audit_logs",
+          "columns": [
+            "request_id"
           ]
         }
       ],
@@ -2721,7 +2972,7 @@
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL",
           "table": "public.audit_logs",
-          "referenced_table": "organizations",
+          "referenced_table": "public.organizations",
           "columns": [
             "organization_id"
           ],
@@ -2734,137 +2985,6 @@
           "type": "PRIMARY KEY",
           "def": "PRIMARY KEY (id)",
           "table": "public.audit_logs",
-          "referenced_table": "",
-          "columns": [
-            "id"
-          ]
-        }
-      ]
-    },
-    {
-      "name": "public.revoked_tokens",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "id",
-          "type": "bigint",
-          "nullable": false,
-          "default": "nextval('revoked_tokens_id_seq'::regclass)"
-        },
-        {
-          "name": "user_id",
-          "type": "bigint",
-          "nullable": false
-        },
-        {
-          "name": "token_hash",
-          "type": "varchar(64)",
-          "nullable": false
-        },
-        {
-          "name": "expires_at",
-          "type": "timestamp with time zone",
-          "nullable": false
-        },
-        {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "nullable": true
-        }
-      ],
-      "indexes": [
-        {
-          "name": "revoked_tokens_pkey",
-          "def": "CREATE UNIQUE INDEX revoked_tokens_pkey ON public.revoked_tokens USING btree (id)",
-          "table": "public.revoked_tokens",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "idx_revoked_tokens_token_hash",
-          "def": "CREATE UNIQUE INDEX idx_revoked_tokens_token_hash ON public.revoked_tokens USING btree (token_hash)",
-          "table": "public.revoked_tokens",
-          "columns": [
-            "token_hash"
-          ]
-        },
-        {
-          "name": "idx_revoked_tokens_user_id",
-          "def": "CREATE INDEX idx_revoked_tokens_user_id ON public.revoked_tokens USING btree (user_id)",
-          "table": "public.revoked_tokens",
-          "columns": [
-            "user_id"
-          ]
-        },
-        {
-          "name": "idx_revoked_tokens_expires_at",
-          "def": "CREATE INDEX idx_revoked_tokens_expires_at ON public.revoked_tokens USING btree (expires_at)",
-          "table": "public.revoked_tokens",
-          "columns": [
-            "expires_at"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "revoked_tokens_expires_at_not_null",
-          "type": "n",
-          "def": "NOT NULL expires_at",
-          "table": "public.revoked_tokens",
-          "referenced_table": "",
-          "columns": [
-            "expires_at"
-          ]
-        },
-        {
-          "name": "revoked_tokens_id_not_null",
-          "type": "n",
-          "def": "NOT NULL id",
-          "table": "public.revoked_tokens",
-          "referenced_table": "",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "revoked_tokens_token_hash_not_null",
-          "type": "n",
-          "def": "NOT NULL token_hash",
-          "table": "public.revoked_tokens",
-          "referenced_table": "",
-          "columns": [
-            "token_hash"
-          ]
-        },
-        {
-          "name": "revoked_tokens_user_id_not_null",
-          "type": "n",
-          "def": "NOT NULL user_id",
-          "table": "public.revoked_tokens",
-          "referenced_table": "",
-          "columns": [
-            "user_id"
-          ]
-        },
-        {
-          "name": "revoked_tokens_user_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
-          "table": "public.revoked_tokens",
-          "referenced_table": "users",
-          "columns": [
-            "user_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "revoked_tokens_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "public.revoked_tokens",
           "referenced_table": "",
           "columns": [
             "id"
@@ -2930,7 +3050,7 @@
         {
           "name": "created_by",
           "type": "bigint",
-          "nullable": false
+          "nullable": true
         },
         {
           "name": "created_at",
@@ -2940,6 +3060,21 @@
         {
           "name": "updated_at",
           "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "correction_booking_from_month",
+          "type": "date",
+          "nullable": true
+        },
+        {
+          "name": "correction_booking_to_month",
+          "type": "date",
+          "nullable": true
+        },
+        {
+          "name": "correction_booking_reason",
+          "type": "varchar(64)",
           "nullable": true
         }
       ],
@@ -2981,6 +3116,28 @@
       ],
       "constraints": [
         {
+          "name": "correction_booking_span_complete",
+          "type": "CHECK",
+          "def": "CHECK (((correction_booking_from_month IS NULL) = (correction_booking_to_month IS NULL)))",
+          "table": "public.government_funding_bill_periods",
+          "referenced_table": "",
+          "columns": [
+            "correction_booking_from_month",
+            "correction_booking_to_month"
+          ]
+        },
+        {
+          "name": "correction_booking_span_ordered",
+          "type": "CHECK",
+          "def": "CHECK (((correction_booking_from_month IS NULL) OR (correction_booking_from_month \u003c= correction_booking_to_month)))",
+          "table": "public.government_funding_bill_periods",
+          "referenced_table": "",
+          "columns": [
+            "correction_booking_from_month",
+            "correction_booking_to_month"
+          ]
+        },
+        {
           "name": "government_funding_bill_periods_contract_booking_not_null",
           "type": "n",
           "def": "NOT NULL contract_booking",
@@ -2998,16 +3155,6 @@
           "referenced_table": "",
           "columns": [
             "correction_booking"
-          ]
-        },
-        {
-          "name": "government_funding_bill_periods_created_by_not_null",
-          "type": "n",
-          "def": "NOT NULL created_by",
-          "table": "public.government_funding_bill_periods",
-          "referenced_table": "",
-          "columns": [
-            "created_by"
           ]
         },
         {
@@ -3083,9 +3230,9 @@
         {
           "name": "government_funding_bill_periods_organization_id_fkey",
           "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (organization_id) REFERENCES organizations(id)",
+          "def": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE",
           "table": "public.government_funding_bill_periods",
-          "referenced_table": "organizations",
+          "referenced_table": "public.organizations",
           "columns": [
             "organization_id"
           ],
@@ -3096,9 +3243,9 @@
         {
           "name": "government_funding_bill_periods_created_by_fkey",
           "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (created_by) REFERENCES users(id)",
+          "def": "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL",
           "table": "public.government_funding_bill_periods",
-          "referenced_table": "users",
+          "referenced_table": "public.users",
           "columns": [
             "created_by"
           ],
@@ -3238,7 +3385,7 @@
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (period_id) REFERENCES government_funding_bill_periods(id) ON DELETE CASCADE",
           "table": "public.government_funding_bill_children",
-          "referenced_table": "government_funding_bill_periods",
+          "referenced_table": "public.government_funding_bill_periods",
           "columns": [
             "period_id"
           ],
@@ -3299,6 +3446,12 @@
           "type": "varchar(20)",
           "nullable": false,
           "default": "'regular'::character varying"
+        },
+        {
+          "name": "billing_month",
+          "type": "date",
+          "nullable": true,
+          "comment": "Month this row applies to (first of month), from the ISBJ \"Monat/ Typ\" column. NULL = unknown; read path falls back to the bill period from_date."
         }
       ],
       "indexes": [
@@ -3395,7 +3548,7 @@
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (child_id) REFERENCES government_funding_bill_children(id) ON DELETE CASCADE",
           "table": "public.government_funding_bill_payments",
-          "referenced_table": "government_funding_bill_children",
+          "referenced_table": "public.government_funding_bill_children",
           "columns": [
             "child_id"
           ],
@@ -3518,7 +3671,7 @@
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (child_id) REFERENCES children(id) ON DELETE CASCADE",
           "table": "public.child_vouchers",
-          "referenced_table": "children",
+          "referenced_table": "public.children",
           "columns": [
             "child_id"
           ],
@@ -3549,94 +3702,761 @@
       ]
     },
     {
-      "name": "public.casbin_rule",
+      "name": "public.sessions",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "character(64)",
+          "nullable": false
+        },
+        {
+          "name": "user_id",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "nullable": false
+        },
+        {
+          "name": "created_ip",
+          "type": "varchar(45)",
+          "nullable": true
+        },
+        {
+          "name": "created_user_agent",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "kind",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": "'regular'::character varying"
+        },
+        {
+          "name": "mfa_challenge_failures",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "password_verified_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "challenge_nonce",
+          "type": "bytea",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "sessions_pkey",
+          "def": "CREATE UNIQUE INDEX sessions_pkey ON public.sessions USING btree (id)",
+          "table": "public.sessions",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "idx_sessions_user_id",
+          "def": "CREATE INDEX idx_sessions_user_id ON public.sessions USING btree (user_id)",
+          "table": "public.sessions",
+          "columns": [
+            "user_id"
+          ]
+        },
+        {
+          "name": "idx_sessions_expires_at",
+          "def": "CREATE INDEX idx_sessions_expires_at ON public.sessions USING btree (expires_at)",
+          "table": "public.sessions",
+          "columns": [
+            "expires_at"
+          ]
+        },
+        {
+          "name": "idx_sessions_kind_expires",
+          "def": "CREATE INDEX idx_sessions_kind_expires ON public.sessions USING btree (kind, expires_at)",
+          "table": "public.sessions",
+          "columns": [
+            "kind",
+            "expires_at"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "sessions_created_at_not_null",
+          "type": "n",
+          "def": "NOT NULL created_at",
+          "table": "public.sessions",
+          "referenced_table": "",
+          "columns": [
+            "created_at"
+          ]
+        },
+        {
+          "name": "sessions_expires_at_not_null",
+          "type": "n",
+          "def": "NOT NULL expires_at",
+          "table": "public.sessions",
+          "referenced_table": "",
+          "columns": [
+            "expires_at"
+          ]
+        },
+        {
+          "name": "sessions_id_not_null",
+          "type": "n",
+          "def": "NOT NULL id",
+          "table": "public.sessions",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sessions_kind_check",
+          "type": "CHECK",
+          "def": "CHECK (((kind)::text = ANY ((ARRAY['regular'::character varying, 'pending_mfa'::character varying])::text[])))",
+          "table": "public.sessions",
+          "referenced_table": "",
+          "columns": [
+            "kind"
+          ]
+        },
+        {
+          "name": "sessions_kind_not_null",
+          "type": "n",
+          "def": "NOT NULL kind",
+          "table": "public.sessions",
+          "referenced_table": "",
+          "columns": [
+            "kind"
+          ]
+        },
+        {
+          "name": "sessions_mfa_challenge_failures_not_null",
+          "type": "n",
+          "def": "NOT NULL mfa_challenge_failures",
+          "table": "public.sessions",
+          "referenced_table": "",
+          "columns": [
+            "mfa_challenge_failures"
+          ]
+        },
+        {
+          "name": "sessions_user_id_not_null",
+          "type": "n",
+          "def": "NOT NULL user_id",
+          "table": "public.sessions",
+          "referenced_table": "",
+          "columns": [
+            "user_id"
+          ]
+        },
+        {
+          "name": "sessions_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.sessions",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sessions_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.sessions",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.factors",
       "type": "BASE TABLE",
       "columns": [
         {
           "name": "id",
           "type": "bigint",
           "nullable": false,
-          "default": "nextval('casbin_rule_id_seq'::regclass)"
+          "default": "nextval('factors_id_seq'::regclass)"
         },
         {
-          "name": "ptype",
+          "name": "user_id",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "type",
+          "type": "varchar(32)",
+          "nullable": false
+        },
+        {
+          "name": "label",
           "type": "varchar(100)",
           "nullable": true
         },
         {
-          "name": "v0",
-          "type": "varchar(100)",
+          "name": "enabled_at",
+          "type": "timestamp with time zone",
           "nullable": true
         },
         {
-          "name": "v1",
-          "type": "varchar(100)",
+          "name": "last_used_at",
+          "type": "timestamp with time zone",
           "nullable": true
         },
         {
-          "name": "v2",
-          "type": "varchar(100)",
+          "name": "activation_failures",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false
+        },
+        {
+          "name": "registration_challenge",
+          "type": "bytea",
           "nullable": true
         },
         {
-          "name": "v3",
-          "type": "varchar(100)",
-          "nullable": true
-        },
-        {
-          "name": "v4",
-          "type": "varchar(100)",
-          "nullable": true
-        },
-        {
-          "name": "v5",
-          "type": "varchar(100)",
+          "name": "registration_challenge_expires_at",
+          "type": "timestamp with time zone",
           "nullable": true
         }
       ],
       "indexes": [
         {
-          "name": "casbin_rule_pkey",
-          "def": "CREATE UNIQUE INDEX casbin_rule_pkey ON public.casbin_rule USING btree (id)",
-          "table": "public.casbin_rule",
+          "name": "factors_pkey",
+          "def": "CREATE UNIQUE INDEX factors_pkey ON public.factors USING btree (id)",
+          "table": "public.factors",
           "columns": [
             "id"
           ]
         },
         {
-          "name": "idx_casbin_rule",
-          "def": "CREATE UNIQUE INDEX idx_casbin_rule ON public.casbin_rule USING btree (ptype, v0, v1, v2, v3, v4, v5)",
-          "table": "public.casbin_rule",
+          "name": "idx_factors_user_id",
+          "def": "CREATE INDEX idx_factors_user_id ON public.factors USING btree (user_id)",
+          "table": "public.factors",
           "columns": [
-            "ptype",
-            "v0",
-            "v1",
-            "v2",
-            "v3",
-            "v4",
-            "v5"
+            "user_id"
+          ]
+        },
+        {
+          "name": "idx_factors_user_enabled",
+          "def": "CREATE INDEX idx_factors_user_enabled ON public.factors USING btree (user_id, enabled_at) WHERE (enabled_at IS NOT NULL)",
+          "table": "public.factors",
+          "columns": [
+            "user_id",
+            "enabled_at"
+          ]
+        },
+        {
+          "name": "idx_factors_user_singleton_backup",
+          "def": "CREATE UNIQUE INDEX idx_factors_user_singleton_backup ON public.factors USING btree (user_id) WHERE ((type)::text = 'backup_codes'::text)",
+          "table": "public.factors",
+          "columns": [
+            "user_id"
           ]
         }
       ],
       "constraints": [
         {
-          "name": "casbin_rule_id_not_null",
+          "name": "factors_activation_failures_not_null",
+          "type": "n",
+          "def": "NOT NULL activation_failures",
+          "table": "public.factors",
+          "referenced_table": "",
+          "columns": [
+            "activation_failures"
+          ]
+        },
+        {
+          "name": "factors_created_at_not_null",
+          "type": "n",
+          "def": "NOT NULL created_at",
+          "table": "public.factors",
+          "referenced_table": "",
+          "columns": [
+            "created_at"
+          ]
+        },
+        {
+          "name": "factors_id_not_null",
           "type": "n",
           "def": "NOT NULL id",
-          "table": "public.casbin_rule",
+          "table": "public.factors",
           "referenced_table": "",
           "columns": [
             "id"
           ]
         },
         {
-          "name": "casbin_rule_pkey",
+          "name": "factors_type_check",
+          "type": "CHECK",
+          "def": "CHECK (((type)::text = ANY ((ARRAY['totp'::character varying, 'backup_codes'::character varying, 'webauthn'::character varying])::text[])))",
+          "table": "public.factors",
+          "referenced_table": "",
+          "columns": [
+            "type"
+          ]
+        },
+        {
+          "name": "factors_type_not_null",
+          "type": "n",
+          "def": "NOT NULL type",
+          "table": "public.factors",
+          "referenced_table": "",
+          "columns": [
+            "type"
+          ]
+        },
+        {
+          "name": "factors_user_id_not_null",
+          "type": "n",
+          "def": "NOT NULL user_id",
+          "table": "public.factors",
+          "referenced_table": "",
+          "columns": [
+            "user_id"
+          ]
+        },
+        {
+          "name": "factors_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.factors",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "factors_pkey",
           "type": "PRIMARY KEY",
           "def": "PRIMARY KEY (id)",
-          "table": "public.casbin_rule",
+          "table": "public.factors",
           "referenced_table": "",
           "columns": [
             "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.factor_totp_secrets",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "factor_id",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "secret_ciphertext",
+          "type": "bytea",
+          "nullable": false
+        },
+        {
+          "name": "secret_nonce",
+          "type": "bytea",
+          "nullable": false
+        },
+        {
+          "name": "last_used_step",
+          "type": "bigint",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "factor_totp_secrets_pkey",
+          "def": "CREATE UNIQUE INDEX factor_totp_secrets_pkey ON public.factor_totp_secrets USING btree (factor_id)",
+          "table": "public.factor_totp_secrets",
+          "columns": [
+            "factor_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "factor_totp_secrets_factor_id_not_null",
+          "type": "n",
+          "def": "NOT NULL factor_id",
+          "table": "public.factor_totp_secrets",
+          "referenced_table": "",
+          "columns": [
+            "factor_id"
+          ]
+        },
+        {
+          "name": "factor_totp_secrets_secret_ciphertext_not_null",
+          "type": "n",
+          "def": "NOT NULL secret_ciphertext",
+          "table": "public.factor_totp_secrets",
+          "referenced_table": "",
+          "columns": [
+            "secret_ciphertext"
+          ]
+        },
+        {
+          "name": "factor_totp_secrets_secret_nonce_not_null",
+          "type": "n",
+          "def": "NOT NULL secret_nonce",
+          "table": "public.factor_totp_secrets",
+          "referenced_table": "",
+          "columns": [
+            "secret_nonce"
+          ]
+        },
+        {
+          "name": "factor_totp_secrets_factor_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (factor_id) REFERENCES factors(id) ON DELETE CASCADE",
+          "table": "public.factor_totp_secrets",
+          "referenced_table": "public.factors",
+          "columns": [
+            "factor_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "factor_totp_secrets_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (factor_id)",
+          "table": "public.factor_totp_secrets",
+          "referenced_table": "",
+          "columns": [
+            "factor_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.factor_backup_codes",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": "nextval('factor_backup_codes_id_seq'::regclass)"
+        },
+        {
+          "name": "factor_id",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "code_hash",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "used_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "factor_backup_codes_pkey",
+          "def": "CREATE UNIQUE INDEX factor_backup_codes_pkey ON public.factor_backup_codes USING btree (id)",
+          "table": "public.factor_backup_codes",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "idx_factor_backup_codes_factor_id",
+          "def": "CREATE INDEX idx_factor_backup_codes_factor_id ON public.factor_backup_codes USING btree (factor_id)",
+          "table": "public.factor_backup_codes",
+          "columns": [
+            "factor_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "factor_backup_codes_code_hash_not_null",
+          "type": "n",
+          "def": "NOT NULL code_hash",
+          "table": "public.factor_backup_codes",
+          "referenced_table": "",
+          "columns": [
+            "code_hash"
+          ]
+        },
+        {
+          "name": "factor_backup_codes_created_at_not_null",
+          "type": "n",
+          "def": "NOT NULL created_at",
+          "table": "public.factor_backup_codes",
+          "referenced_table": "",
+          "columns": [
+            "created_at"
+          ]
+        },
+        {
+          "name": "factor_backup_codes_factor_id_not_null",
+          "type": "n",
+          "def": "NOT NULL factor_id",
+          "table": "public.factor_backup_codes",
+          "referenced_table": "",
+          "columns": [
+            "factor_id"
+          ]
+        },
+        {
+          "name": "factor_backup_codes_id_not_null",
+          "type": "n",
+          "def": "NOT NULL id",
+          "table": "public.factor_backup_codes",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "factor_backup_codes_factor_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (factor_id) REFERENCES factors(id) ON DELETE CASCADE",
+          "table": "public.factor_backup_codes",
+          "referenced_table": "public.factors",
+          "columns": [
+            "factor_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "factor_backup_codes_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.factor_backup_codes",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.factor_webauthn_credentials",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "factor_id",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "credential_id",
+          "type": "bytea",
+          "nullable": false
+        },
+        {
+          "name": "public_key",
+          "type": "bytea",
+          "nullable": false
+        },
+        {
+          "name": "aaguid",
+          "type": "bytea",
+          "nullable": true
+        },
+        {
+          "name": "sign_count",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "transports",
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        {
+          "name": "attestation_format",
+          "type": "varchar(64)",
+          "nullable": true
+        },
+        {
+          "name": "backup_eligible",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "backup_state",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "uv_initialized",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "factor_webauthn_credentials_pkey",
+          "def": "CREATE UNIQUE INDEX factor_webauthn_credentials_pkey ON public.factor_webauthn_credentials USING btree (factor_id)",
+          "table": "public.factor_webauthn_credentials",
+          "columns": [
+            "factor_id"
+          ]
+        },
+        {
+          "name": "idx_factor_webauthn_credential_id",
+          "def": "CREATE UNIQUE INDEX idx_factor_webauthn_credential_id ON public.factor_webauthn_credentials USING btree (credential_id)",
+          "table": "public.factor_webauthn_credentials",
+          "columns": [
+            "credential_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "factor_webauthn_credentials_backup_eligible_not_null",
+          "type": "n",
+          "def": "NOT NULL backup_eligible",
+          "table": "public.factor_webauthn_credentials",
+          "referenced_table": "",
+          "columns": [
+            "backup_eligible"
+          ]
+        },
+        {
+          "name": "factor_webauthn_credentials_backup_state_not_null",
+          "type": "n",
+          "def": "NOT NULL backup_state",
+          "table": "public.factor_webauthn_credentials",
+          "referenced_table": "",
+          "columns": [
+            "backup_state"
+          ]
+        },
+        {
+          "name": "factor_webauthn_credentials_created_at_not_null",
+          "type": "n",
+          "def": "NOT NULL created_at",
+          "table": "public.factor_webauthn_credentials",
+          "referenced_table": "",
+          "columns": [
+            "created_at"
+          ]
+        },
+        {
+          "name": "factor_webauthn_credentials_credential_id_not_null",
+          "type": "n",
+          "def": "NOT NULL credential_id",
+          "table": "public.factor_webauthn_credentials",
+          "referenced_table": "",
+          "columns": [
+            "credential_id"
+          ]
+        },
+        {
+          "name": "factor_webauthn_credentials_factor_id_not_null",
+          "type": "n",
+          "def": "NOT NULL factor_id",
+          "table": "public.factor_webauthn_credentials",
+          "referenced_table": "",
+          "columns": [
+            "factor_id"
+          ]
+        },
+        {
+          "name": "factor_webauthn_credentials_public_key_not_null",
+          "type": "n",
+          "def": "NOT NULL public_key",
+          "table": "public.factor_webauthn_credentials",
+          "referenced_table": "",
+          "columns": [
+            "public_key"
+          ]
+        },
+        {
+          "name": "factor_webauthn_credentials_sign_count_not_null",
+          "type": "n",
+          "def": "NOT NULL sign_count",
+          "table": "public.factor_webauthn_credentials",
+          "referenced_table": "",
+          "columns": [
+            "sign_count"
+          ]
+        },
+        {
+          "name": "factor_webauthn_credentials_uv_initialized_not_null",
+          "type": "n",
+          "def": "NOT NULL uv_initialized",
+          "table": "public.factor_webauthn_credentials",
+          "referenced_table": "",
+          "columns": [
+            "uv_initialized"
+          ]
+        },
+        {
+          "name": "factor_webauthn_credentials_factor_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (factor_id) REFERENCES factors(id) ON DELETE CASCADE",
+          "table": "public.factor_webauthn_credentials",
+          "referenced_table": "public.factors",
+          "columns": [
+            "factor_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "factor_webauthn_credentials_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (factor_id)",
+          "table": "public.factor_webauthn_credentials",
+          "referenced_table": "",
+          "columns": [
+            "factor_id"
           ]
         }
       ]
@@ -3706,7 +4526,7 @@
         "id"
       ],
       "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (organization_id) REFERENCES organizations(id)"
+      "def": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
     },
     {
       "table": "public.pay_plan_periods",
@@ -3861,8 +4681,8 @@
       "parent_columns": [
         "id"
       ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (recorded_by) REFERENCES users(id)"
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (recorded_by) REFERENCES users(id) ON DELETE SET NULL"
     },
     {
       "table": "public.child_attendances",
@@ -3917,19 +4737,6 @@
       "def": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL"
     },
     {
-      "table": "public.revoked_tokens",
-      "columns": [
-        "user_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.users",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-    },
-    {
       "table": "public.government_funding_bill_periods",
       "columns": [
         "organization_id"
@@ -3940,7 +4747,7 @@
         "id"
       ],
       "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (organization_id) REFERENCES organizations(id)"
+      "def": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
     },
     {
       "table": "public.government_funding_bill_periods",
@@ -3952,8 +4759,8 @@
       "parent_columns": [
         "id"
       ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (created_by) REFERENCES users(id)"
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
     },
     {
       "table": "public.government_funding_bill_children",
@@ -3993,6 +4800,1345 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (child_id) REFERENCES children(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.sessions",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.factors",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.factor_totp_secrets",
+      "columns": [
+        "factor_id"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "public.factors",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (factor_id) REFERENCES factors(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.factor_backup_codes",
+      "columns": [
+        "factor_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.factors",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (factor_id) REFERENCES factors(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.factor_webauthn_credentials",
+      "columns": [
+        "factor_id"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "public.factors",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (factor_id) REFERENCES factors(id) ON DELETE CASCADE"
+    }
+  ],
+  "functions": [
+    {
+      "name": "public.gbtreekey4_in",
+      "return_type": "gbtreekey4",
+      "arguments": "cstring",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbtreekey4_out",
+      "return_type": "cstring",
+      "arguments": "gbtreekey4",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbtreekey8_in",
+      "return_type": "gbtreekey8",
+      "arguments": "cstring",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbtreekey8_out",
+      "return_type": "cstring",
+      "arguments": "gbtreekey8",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbtreekey16_in",
+      "return_type": "gbtreekey16",
+      "arguments": "cstring",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbtreekey16_out",
+      "return_type": "cstring",
+      "arguments": "gbtreekey16",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbtreekey32_in",
+      "return_type": "gbtreekey32",
+      "arguments": "cstring",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbtreekey32_out",
+      "return_type": "cstring",
+      "arguments": "gbtreekey32",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbtreekey_var_in",
+      "return_type": "gbtreekey_var",
+      "arguments": "cstring",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbtreekey_var_out",
+      "return_type": "cstring",
+      "arguments": "gbtreekey_var",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.cash_dist",
+      "return_type": "money",
+      "arguments": "money, money",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.date_dist",
+      "return_type": "int4",
+      "arguments": "date, date",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.float4_dist",
+      "return_type": "float4",
+      "arguments": "real, real",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.float8_dist",
+      "return_type": "float8",
+      "arguments": "double precision, double precision",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.int2_dist",
+      "return_type": "int2",
+      "arguments": "smallint, smallint",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.int4_dist",
+      "return_type": "int4",
+      "arguments": "integer, integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.int8_dist",
+      "return_type": "int8",
+      "arguments": "bigint, bigint",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.interval_dist",
+      "return_type": "interval",
+      "arguments": "interval, interval",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.oid_dist",
+      "return_type": "oid",
+      "arguments": "oid, oid",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.time_dist",
+      "return_type": "interval",
+      "arguments": "time without time zone, time without time zone",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.ts_dist",
+      "return_type": "interval",
+      "arguments": "timestamp without time zone, timestamp without time zone",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.tstz_dist",
+      "return_type": "interval",
+      "arguments": "timestamp with time zone, timestamp with time zone",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_oid_consistent",
+      "return_type": "bool",
+      "arguments": "internal, oid, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_oid_distance",
+      "return_type": "float8",
+      "arguments": "internal, oid, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_oid_fetch",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_oid_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_decompress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_var_decompress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_var_fetch",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_oid_penalty",
+      "return_type": "internal",
+      "arguments": "internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_oid_picksplit",
+      "return_type": "internal",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_oid_union",
+      "return_type": "gbtreekey8",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_oid_same",
+      "return_type": "internal",
+      "arguments": "gbtreekey8, gbtreekey8, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int2_consistent",
+      "return_type": "bool",
+      "arguments": "internal, smallint, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int2_distance",
+      "return_type": "float8",
+      "arguments": "internal, smallint, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int2_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int2_fetch",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int2_penalty",
+      "return_type": "internal",
+      "arguments": "internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int2_picksplit",
+      "return_type": "internal",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int2_union",
+      "return_type": "gbtreekey4",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int2_same",
+      "return_type": "internal",
+      "arguments": "gbtreekey4, gbtreekey4, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int4_consistent",
+      "return_type": "bool",
+      "arguments": "internal, integer, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int4_distance",
+      "return_type": "float8",
+      "arguments": "internal, integer, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int4_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int4_fetch",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int4_penalty",
+      "return_type": "internal",
+      "arguments": "internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int4_picksplit",
+      "return_type": "internal",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int4_union",
+      "return_type": "gbtreekey8",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int4_same",
+      "return_type": "internal",
+      "arguments": "gbtreekey8, gbtreekey8, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int8_consistent",
+      "return_type": "bool",
+      "arguments": "internal, bigint, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int8_distance",
+      "return_type": "float8",
+      "arguments": "internal, bigint, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int8_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int8_fetch",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int8_penalty",
+      "return_type": "internal",
+      "arguments": "internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int8_picksplit",
+      "return_type": "internal",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int8_union",
+      "return_type": "gbtreekey16",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int8_same",
+      "return_type": "internal",
+      "arguments": "gbtreekey16, gbtreekey16, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_float4_consistent",
+      "return_type": "bool",
+      "arguments": "internal, real, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_float4_distance",
+      "return_type": "float8",
+      "arguments": "internal, real, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_float4_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_float4_fetch",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_float4_penalty",
+      "return_type": "internal",
+      "arguments": "internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_float4_picksplit",
+      "return_type": "internal",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_float4_union",
+      "return_type": "gbtreekey8",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_float4_same",
+      "return_type": "internal",
+      "arguments": "gbtreekey8, gbtreekey8, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_float8_consistent",
+      "return_type": "bool",
+      "arguments": "internal, double precision, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_float8_distance",
+      "return_type": "float8",
+      "arguments": "internal, double precision, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_float8_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_float8_fetch",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_float8_penalty",
+      "return_type": "internal",
+      "arguments": "internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_float8_picksplit",
+      "return_type": "internal",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_float8_union",
+      "return_type": "gbtreekey16",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_float8_same",
+      "return_type": "internal",
+      "arguments": "gbtreekey16, gbtreekey16, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_ts_consistent",
+      "return_type": "bool",
+      "arguments": "internal, timestamp without time zone, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_ts_distance",
+      "return_type": "float8",
+      "arguments": "internal, timestamp without time zone, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_tstz_consistent",
+      "return_type": "bool",
+      "arguments": "internal, timestamp with time zone, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_tstz_distance",
+      "return_type": "float8",
+      "arguments": "internal, timestamp with time zone, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_ts_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_tstz_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_ts_fetch",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_ts_penalty",
+      "return_type": "internal",
+      "arguments": "internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_ts_picksplit",
+      "return_type": "internal",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_ts_union",
+      "return_type": "gbtreekey16",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_ts_same",
+      "return_type": "internal",
+      "arguments": "gbtreekey16, gbtreekey16, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_time_consistent",
+      "return_type": "bool",
+      "arguments": "internal, time without time zone, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_time_distance",
+      "return_type": "float8",
+      "arguments": "internal, time without time zone, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_timetz_consistent",
+      "return_type": "bool",
+      "arguments": "internal, time with time zone, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_time_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_timetz_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_time_fetch",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_time_penalty",
+      "return_type": "internal",
+      "arguments": "internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_time_picksplit",
+      "return_type": "internal",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_time_union",
+      "return_type": "gbtreekey16",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_time_same",
+      "return_type": "internal",
+      "arguments": "gbtreekey16, gbtreekey16, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_date_consistent",
+      "return_type": "bool",
+      "arguments": "internal, date, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_date_distance",
+      "return_type": "float8",
+      "arguments": "internal, date, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_date_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_date_fetch",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_date_penalty",
+      "return_type": "internal",
+      "arguments": "internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_date_picksplit",
+      "return_type": "internal",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_date_union",
+      "return_type": "gbtreekey8",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_date_same",
+      "return_type": "internal",
+      "arguments": "gbtreekey8, gbtreekey8, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_intv_consistent",
+      "return_type": "bool",
+      "arguments": "internal, interval, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_intv_distance",
+      "return_type": "float8",
+      "arguments": "internal, interval, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_intv_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_intv_decompress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_intv_fetch",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_intv_penalty",
+      "return_type": "internal",
+      "arguments": "internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_intv_picksplit",
+      "return_type": "internal",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_intv_union",
+      "return_type": "gbtreekey32",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_intv_same",
+      "return_type": "internal",
+      "arguments": "gbtreekey32, gbtreekey32, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_cash_consistent",
+      "return_type": "bool",
+      "arguments": "internal, money, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_cash_distance",
+      "return_type": "float8",
+      "arguments": "internal, money, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_cash_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_cash_fetch",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_cash_penalty",
+      "return_type": "internal",
+      "arguments": "internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_cash_picksplit",
+      "return_type": "internal",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_cash_union",
+      "return_type": "gbtreekey16",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_cash_same",
+      "return_type": "internal",
+      "arguments": "gbtreekey16, gbtreekey16, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_macad_consistent",
+      "return_type": "bool",
+      "arguments": "internal, macaddr, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_macad_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_macad_fetch",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_macad_penalty",
+      "return_type": "internal",
+      "arguments": "internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_macad_picksplit",
+      "return_type": "internal",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_macad_union",
+      "return_type": "gbtreekey16",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_macad_same",
+      "return_type": "internal",
+      "arguments": "gbtreekey16, gbtreekey16, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_text_consistent",
+      "return_type": "bool",
+      "arguments": "internal, text, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bpchar_consistent",
+      "return_type": "bool",
+      "arguments": "internal, character, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_text_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bpchar_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_text_penalty",
+      "return_type": "internal",
+      "arguments": "internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_text_picksplit",
+      "return_type": "internal",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_text_union",
+      "return_type": "gbtreekey_var",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_text_same",
+      "return_type": "internal",
+      "arguments": "gbtreekey_var, gbtreekey_var, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bytea_consistent",
+      "return_type": "bool",
+      "arguments": "internal, bytea, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bytea_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bytea_penalty",
+      "return_type": "internal",
+      "arguments": "internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bytea_picksplit",
+      "return_type": "internal",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bytea_union",
+      "return_type": "gbtreekey_var",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bytea_same",
+      "return_type": "internal",
+      "arguments": "gbtreekey_var, gbtreekey_var, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_numeric_consistent",
+      "return_type": "bool",
+      "arguments": "internal, numeric, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_numeric_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_numeric_penalty",
+      "return_type": "internal",
+      "arguments": "internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_numeric_picksplit",
+      "return_type": "internal",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_numeric_union",
+      "return_type": "gbtreekey_var",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_numeric_same",
+      "return_type": "internal",
+      "arguments": "gbtreekey_var, gbtreekey_var, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bit_consistent",
+      "return_type": "bool",
+      "arguments": "internal, bit, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bit_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bit_penalty",
+      "return_type": "internal",
+      "arguments": "internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bit_picksplit",
+      "return_type": "internal",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bit_union",
+      "return_type": "gbtreekey_var",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bit_same",
+      "return_type": "internal",
+      "arguments": "gbtreekey_var, gbtreekey_var, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_inet_consistent",
+      "return_type": "bool",
+      "arguments": "internal, inet, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_inet_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_inet_penalty",
+      "return_type": "internal",
+      "arguments": "internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_inet_picksplit",
+      "return_type": "internal",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_inet_union",
+      "return_type": "gbtreekey16",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_inet_same",
+      "return_type": "internal",
+      "arguments": "gbtreekey16, gbtreekey16, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_uuid_consistent",
+      "return_type": "bool",
+      "arguments": "internal, uuid, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_uuid_fetch",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_uuid_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_uuid_penalty",
+      "return_type": "internal",
+      "arguments": "internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_uuid_picksplit",
+      "return_type": "internal",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_uuid_union",
+      "return_type": "gbtreekey32",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_uuid_same",
+      "return_type": "internal",
+      "arguments": "gbtreekey32, gbtreekey32, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_macad8_consistent",
+      "return_type": "bool",
+      "arguments": "internal, macaddr8, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_macad8_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_macad8_fetch",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_macad8_penalty",
+      "return_type": "internal",
+      "arguments": "internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_macad8_picksplit",
+      "return_type": "internal",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_macad8_union",
+      "return_type": "gbtreekey16",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_macad8_same",
+      "return_type": "internal",
+      "arguments": "gbtreekey16, gbtreekey16, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_enum_consistent",
+      "return_type": "bool",
+      "arguments": "internal, anyenum, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_enum_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_enum_fetch",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_enum_penalty",
+      "return_type": "internal",
+      "arguments": "internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_enum_picksplit",
+      "return_type": "internal",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_enum_union",
+      "return_type": "gbtreekey8",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_enum_same",
+      "return_type": "internal",
+      "arguments": "gbtreekey8, gbtreekey8, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbtreekey2_in",
+      "return_type": "gbtreekey2",
+      "arguments": "cstring",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbtreekey2_out",
+      "return_type": "cstring",
+      "arguments": "gbtreekey2",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bool_consistent",
+      "return_type": "bool",
+      "arguments": "internal, boolean, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bool_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bool_fetch",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bool_penalty",
+      "return_type": "internal",
+      "arguments": "internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bool_picksplit",
+      "return_type": "internal",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bool_union",
+      "return_type": "gbtreekey2",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bool_same",
+      "return_type": "internal",
+      "arguments": "gbtreekey2, gbtreekey2, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bit_sortsupport",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_varbit_sortsupport",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bool_sortsupport",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bytea_sortsupport",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_cash_sortsupport",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_date_sortsupport",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_enum_sortsupport",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_float4_sortsupport",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_float8_sortsupport",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_inet_sortsupport",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int2_sortsupport",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int4_sortsupport",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_int8_sortsupport",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_intv_sortsupport",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_macaddr_sortsupport",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_macad8_sortsupport",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_numeric_sortsupport",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_oid_sortsupport",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_text_sortsupport",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_bpchar_sortsupport",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_time_sortsupport",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_ts_sortsupport",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gbt_uuid_sortsupport",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gist_translate_cmptype_btree",
+      "return_type": "int2",
+      "arguments": "integer",
+      "type": "FUNCTION"
     }
   ],
   "driver": {

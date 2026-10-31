@@ -1,7 +1,5 @@
 # public.child_vouchers
 
-## Description
-
 ## Columns
 
 | Name           | Type                     | Default                                    | Nullable | Children | Parents                               | Comment |
@@ -58,6 +56,7 @@ erDiagram
   date birthdate
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  date school_entry_date
 }
 "public.child_contracts" {
   bigint id
@@ -68,6 +67,7 @@ erDiagram
   jsonb properties
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  bigint version
 }
 "public.child_attendances" {
   bigint id
@@ -90,6 +90,7 @@ erDiagram
   timestamp_with_time_zone created_at
   varchar_255_ created_by
   timestamp_with_time_zone updated_at
+  timestamp_with_time_zone deleted_at
 }
 ```
 

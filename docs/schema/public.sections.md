@@ -1,7 +1,5 @@
 # public.sections
 
-## Description
-
 ## Columns
 
 | Name            | Type                     | Default                              | Nullable | Children                                                                                                      | Parents                                         | Comment |
@@ -15,24 +13,28 @@
 | created_at      | timestamp with time zone |                                      | true     |                                                                                                               |                                                 |         |
 | created_by      | varchar(255)             |                                      | true     |                                                                                                               |                                                 |         |
 | updated_at      | timestamp with time zone |                                      | true     |                                                                                                               |                                                 |         |
+| deleted_at      | timestamp with time zone |                                      | true     |                                                                                                               |                                                 |         |
 
 ## Constraints
 
-| Name                              | Type        | Definition                                                                   |
-| --------------------------------- | ----------- | ---------------------------------------------------------------------------- |
-| sections_id_not_null              | n           | NOT NULL id                                                                  |
-| sections_name_not_null            | n           | NOT NULL name                                                                |
-| sections_organization_id_not_null | n           | NOT NULL organization_id                                                     |
-| sections_organization_id_fkey     | FOREIGN KEY | FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE |
-| sections_pkey                     | PRIMARY KEY | PRIMARY KEY (id)                                                             |
+| Name                              | Type        | Definition                                                                                                                                                                                                            |
+| --------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| sections_age_range_valid          | CHECK       | CHECK ((((min_age_months IS NULL) OR (min_age_months >= 0)) AND ((max_age_months IS NULL) OR (max_age_months >= 0)) AND ((min_age_months IS NULL) OR (max_age_months IS NULL) OR (min_age_months < max_age_months)))) |
+| sections_id_not_null              | n           | NOT NULL id                                                                                                                                                                                                           |
+| sections_name_not_null            | n           | NOT NULL name                                                                                                                                                                                                         |
+| sections_organization_id_not_null | n           | NOT NULL organization_id                                                                                                                                                                                              |
+| sections_organization_id_fkey     | FOREIGN KEY | FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE                                                                                                                                          |
+| sections_pkey                     | PRIMARY KEY | PRIMARY KEY (id)                                                                                                                                                                                                      |
 
 ## Indexes
 
-| Name                         | Definition                                                                                      |
-| ---------------------------- | ----------------------------------------------------------------------------------------------- |
-| sections_pkey                | CREATE UNIQUE INDEX sections_pkey ON public.sections USING btree (id)                           |
-| idx_sections_organization_id | CREATE INDEX idx_sections_organization_id ON public.sections USING btree (organization_id)      |
-| idx_section_org_name         | CREATE UNIQUE INDEX idx_section_org_name ON public.sections USING btree (name, organization_id) |
+| Name                            | Definition                                                                                                                                                |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| sections_pkey                   | CREATE UNIQUE INDEX sections_pkey ON public.sections USING btree (id)                                                                                     |
+| idx_sections_organization_id    | CREATE INDEX idx_sections_organization_id ON public.sections USING btree (organization_id)                                                                |
+| idx_sections_deleted_at         | CREATE INDEX idx_sections_deleted_at ON public.sections USING btree (deleted_at) WHERE (deleted_at IS NOT NULL)                                           |
+| idx_section_one_default_per_org | CREATE UNIQUE INDEX idx_section_one_default_per_org ON public.sections USING btree (organization_id) WHERE ((is_default = true) AND (deleted_at IS NULL)) |
+| idx_section_org_name            | CREATE UNIQUE INDEX idx_section_org_name ON public.sections USING btree (organization_id, lower(TRIM(BOTH FROM name))) WHERE (deleted_at IS NULL)         |
 
 ## Relations
 
@@ -47,12 +49,12 @@ erDiagram
 "public.sections" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.user_organizations" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.employees" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
-"public.pay_plans" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id)"
+"public.pay_plans" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.children" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.child_attendances" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.budget_items" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 "public.audit_logs" }o--o| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL"
-"public.government_funding_bill_periods" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id)"
+"public.government_funding_bill_periods" }o--|| "public.organizations" : "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
 
 "public.sections" {
   bigint id
@@ -64,6 +66,7 @@ erDiagram
   timestamp_with_time_zone created_at
   varchar_255_ created_by
   timestamp_with_time_zone updated_at
+  timestamp_with_time_zone deleted_at
 }
 "public.employee_contracts" {
   bigint id
@@ -79,6 +82,7 @@ erDiagram
   bigint pay_plan_id FK
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  bigint version
 }
 "public.employees" {
   bigint id
@@ -106,6 +110,7 @@ erDiagram
   jsonb properties
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  bigint version
 }
 "public.children" {
   bigint id
@@ -116,6 +121,7 @@ erDiagram
   date birthdate
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  date school_entry_date
 }
 "public.organizations" {
   bigint id
@@ -125,6 +131,7 @@ erDiagram
   timestamp_with_time_zone created_at
   varchar_255_ created_by
   timestamp_with_time_zone updated_at
+  timestamp_with_time_zone deleted_at
 }
 "public.user_organizations" {
   bigint user_id FK
@@ -168,6 +175,7 @@ erDiagram
   text details
   boolean success
   bigint organization_id FK
+  varchar_64_ request_id
 }
 "public.government_funding_bill_periods" {
   bigint id
@@ -183,6 +191,9 @@ erDiagram
   bigint created_by FK
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  date correction_booking_from_month
+  date correction_booking_to_month
+  varchar_64_ correction_booking_reason
 }
 ```
 
