@@ -30,6 +30,56 @@ func assertNoAmount(t *testing.T, amounts []SettlementAmount, key string) {
 	}
 }
 
+// fixtureMealShareCents is the parent meal share the Senate waives for a child
+// holding a berlinpass-BuT. The sheet never shows it in a column; it only nets
+// it into the row total.
+const fixtureMealShareCents = 2300
+
+// recomputeRowTotals rewrites a fixture row's "Anteil Bezirk" and
+// "Abrechn.-summe" from its own components, using the Senate's documented
+// formula:
+//
+//	Anteil Bezirk    = Basisentgeld + AoM - (Elternanteil Betreuung + Essen)
+//	Abrechnungssumme = Anteil Bezirk + QM + MSS + ndH + SpH
+//
+// plus `BuT - meal share` where a BuT amount is present. Validated against all
+// 1393 rows of the sample bills: 1380 fit the formula exactly and the 13 BuT
+// rows fit it with that addition, no exceptions.
+//
+// Tests call this after changing a component so they do not have to restate the
+// row total -- and, more to the point, so they cannot assert against a row that
+// could never come out of ISBJ. Convert now reconciles the two, so a fixture
+// whose parts disagree with its whole is rejected rather than quietly measured.
+func recomputeRowTotals(k *Kind) {
+	bezirk := k.Basisentgeld + k.AbzugOM - (k.ElternBetreuung + k.ElternEssen)
+	if k.BuT != 0 {
+		// Where the subsidy is paid the share is waived; where it is clawed
+		// back the waiver is reversed, so the share term follows the subsidy's
+		// sign. Getting this backwards is what made a negative-BuT fixture
+		// look like a renamed column.
+		if k.BuT > 0 {
+			bezirk += k.BuT - fixtureMealShareCents
+		} else {
+			bezirk += k.BuT + fixtureMealShareCents
+		}
+	}
+	k.AnteilBezirk = bezirk
+	k.Summe = bezirk + k.ZuschlagQM + k.ZuschlagMSS + k.ZuschlagNDH + k.ZuschlagIntegration
+}
+
+// convertFixture recomputes every row's totals and then converts, failing the
+// test on error. It is the way these tests should reach Convert: it keeps the
+// fixture internally consistent no matter which component a test changed.
+func convertFixture(t *testing.T, out *SenatsabrechnungOutput) *ConvertedSettlement {
+	t.Helper()
+	for i := range out.Vertrag.Kinder {
+		recomputeRowTotals(&out.Vertrag.Kinder[i])
+	}
+	result, err := Convert(out)
+	require.NoError(t, err)
+	return result
+}
+
 func makeTestOutput() *SenatsabrechnungOutput {
 	return &SenatsabrechnungOutput{
 		Einrichtung: &Einrichtung{
@@ -61,12 +111,15 @@ func makeTestOutput() *SenatsabrechnungOutput {
 					ElternBetreuung:     5000,
 					ElternEssen:         2300,
 					BuT:                 0,
-					AnteilBezirk:        45000,
+					AnteilBezirk:        81200,
 					ZuschlagQM:          5531,
 					ZuschlagMSS:         0,
 					ZuschlagNDH:         0,
 					ZuschlagIntegration: 0,
-					Summe:               141331,
+					// Abrechn.-summe as the Senate computes it:
+					// Basisentgeld + AoM - (Betreuung + Essen) + Zuschlaege
+					// = 89000 - 500 - (5000 + 2300) + 5531.
+					Summe: 86731,
 				},
 			},
 		},
@@ -76,8 +129,7 @@ func makeTestOutput() *SenatsabrechnungOutput {
 func TestConvert_HappyPath(t *testing.T) {
 	output := makeTestOutput()
 
-	result, err := Convert(output)
-	require.NoError(t, err)
+	result := convertFixture(t, output)
 
 	assert.Equal(t, "Kita Sonnenschein", result.FacilityName)
 	assert.Equal(t, 500000, result.FacilityTotal)
@@ -91,14 +143,17 @@ func TestConvert_HappyPath(t *testing.T) {
 	assert.Equal(t, "Musterkind, Max", child.ChildName)
 	assert.Equal(t, "01.20", child.BirthDate)
 	assert.Equal(t, int64(1), child.District)
-	assert.Equal(t, 141331, child.TotalAmount)
+	assert.Equal(t, 86731, child.TotalAmount)
 
-	// ndh (HS=D, amount=0) and integration (N, amount=0) are filtered out
-	require.Len(t, child.Rows[0].Amounts, 4)
+	// ndh (HS=D, amount=0), integration (N, amount=0) and but (0) are filtered
+	// out. "abzug" is here because this fixture carries a non-zero Abzug o.M.;
+	// on a row where it is zero it is filtered out the same way.
+	require.Len(t, child.Rows[0].Amounts, 5)
 	assert.Equal(t, SettlementAmount{Key: "care_type", Value: "ganztag", Amount: 89000}, child.Rows[0].Amounts[0])
-	assert.Equal(t, SettlementAmount{Key: "qm/mss", Value: "qm/mss", Amount: 5531}, child.Rows[0].Amounts[1])
-	assert.Equal(t, SettlementAmount{Key: "parent", Value: "care", Amount: -5000}, child.Rows[0].Amounts[2])
-	assert.Equal(t, SettlementAmount{Key: "parent", Value: "meals", Amount: -2300}, child.Rows[0].Amounts[3])
+	assert.Equal(t, SettlementAmount{Key: "abzug", Value: "ohne_mittagessen", Amount: -500}, child.Rows[0].Amounts[1])
+	assert.Equal(t, SettlementAmount{Key: "qm/mss", Value: "qm/mss", Amount: 5531}, child.Rows[0].Amounts[2])
+	assert.Equal(t, SettlementAmount{Key: "parent", Value: "care", Amount: -5000}, child.Rows[0].Amounts[3])
+	assert.Equal(t, SettlementAmount{Key: "parent", Value: "meals", Amount: -2300}, child.Rows[0].Amounts[4])
 }
 
 func TestConvert_CareTypeTranslation(t *testing.T) {
@@ -117,8 +172,7 @@ func TestConvert_CareTypeTranslation(t *testing.T) {
 			output := makeTestOutput()
 			output.Vertrag.Kinder[0].Betreuungsumfang = tt.betreuungsumfang
 
-			result, err := Convert(output)
-			require.NoError(t, err)
+			result := convertFixture(t, output)
 
 			careAmount := result.Children[0].Rows[0].Amounts[0]
 			assert.Equal(t, "care_type", careAmount.Key)
@@ -145,8 +199,7 @@ func TestConvert_FlagToValue(t *testing.T) {
 		output.Vertrag.Kinder[0].ZuschlagQM = 5000
 		output.Vertrag.Kinder[0].ZuschlagMSS = 0
 
-		result, err := Convert(output)
-		require.NoError(t, err)
+		result := convertFixture(t, output)
 
 		qmAmount := findAmount(t, result.Children[0].Rows[0].Amounts, "qm/mss")
 		assert.Equal(t, "qm/mss", qmAmount.Value)
@@ -160,8 +213,7 @@ func TestConvert_FlagToValue(t *testing.T) {
 		output.Vertrag.Kinder[0].ZuschlagQM = 0
 		output.Vertrag.Kinder[0].ZuschlagMSS = 3000
 
-		result, err := Convert(output)
-		require.NoError(t, err)
+		result := convertFixture(t, output)
 
 		qmAmount := findAmount(t, result.Children[0].Rows[0].Amounts, "qm/mss")
 		assert.Equal(t, "qm/mss", qmAmount.Value)
@@ -175,8 +227,7 @@ func TestConvert_FlagToValue(t *testing.T) {
 		output.Vertrag.Kinder[0].ZuschlagQM = 0
 		output.Vertrag.Kinder[0].ZuschlagMSS = 0
 
-		result, err := Convert(output)
-		require.NoError(t, err)
+		result := convertFixture(t, output)
 
 		// Both inactive and zero → filtered out
 		assertNoAmount(t, result.Children[0].Rows[0].Amounts, "qm/mss")
@@ -187,8 +238,7 @@ func TestConvert_FlagToValue(t *testing.T) {
 		output.Vertrag.Kinder[0].HS = "D"
 		output.Vertrag.Kinder[0].ZuschlagNDH = 0
 
-		result, err := Convert(output)
-		require.NoError(t, err)
+		result := convertFixture(t, output)
 
 		// Inactive and zero → filtered out
 		assertNoAmount(t, result.Children[0].Rows[0].Amounts, "ndh")
@@ -199,8 +249,7 @@ func TestConvert_FlagToValue(t *testing.T) {
 		output.Vertrag.Kinder[0].HS = "ND"
 		output.Vertrag.Kinder[0].ZuschlagNDH = 10116
 
-		result, err := Convert(output)
-		require.NoError(t, err)
+		result := convertFixture(t, output)
 
 		ndhAmount := findAmount(t, result.Children[0].Rows[0].Amounts, "ndh")
 		assert.Equal(t, "ndh", ndhAmount.Value)
@@ -212,8 +261,7 @@ func TestConvert_FlagToValue(t *testing.T) {
 		output.Vertrag.Kinder[0].Integration = "N"
 		output.Vertrag.Kinder[0].ZuschlagIntegration = 0
 
-		result, err := Convert(output)
-		require.NoError(t, err)
+		result := convertFixture(t, output)
 
 		// Inactive and zero → filtered out
 		assertNoAmount(t, result.Children[0].Rows[0].Amounts, "integration")
@@ -224,8 +272,7 @@ func TestConvert_FlagToValue(t *testing.T) {
 		output.Vertrag.Kinder[0].Integration = "A"
 		output.Vertrag.Kinder[0].ZuschlagIntegration = 165680
 
-		result, err := Convert(output)
-		require.NoError(t, err)
+		result := convertFixture(t, output)
 
 		intAmount := findAmount(t, result.Children[0].Rows[0].Amounts, "integration")
 		assert.Equal(t, "integration a", intAmount.Value)
@@ -237,8 +284,7 @@ func TestConvert_FlagToValue(t *testing.T) {
 		output.Vertrag.Kinder[0].Integration = "B"
 		output.Vertrag.Kinder[0].ZuschlagIntegration = 330641
 
-		result, err := Convert(output)
-		require.NoError(t, err)
+		result := convertFixture(t, output)
 
 		intAmount := findAmount(t, result.Children[0].Rows[0].Amounts, "integration")
 		assert.Equal(t, "integration b", intAmount.Value)
@@ -253,8 +299,7 @@ func TestConvert_FlagActiveAmountZeroAllowed(t *testing.T) {
 		output.Vertrag.Kinder[0].ZuschlagQM = 0
 		output.Vertrag.Kinder[0].ZuschlagMSS = 0
 
-		result, err := Convert(output)
-		require.NoError(t, err)
+		result := convertFixture(t, output)
 
 		qm := findAmount(t, result.Children[0].Rows[0].Amounts, "qm/mss")
 		assert.Equal(t, "qm/mss", qm.Value)
@@ -266,8 +311,7 @@ func TestConvert_FlagActiveAmountZeroAllowed(t *testing.T) {
 		output.Vertrag.Kinder[0].HS = "ND"
 		output.Vertrag.Kinder[0].ZuschlagNDH = 0
 
-		result, err := Convert(output)
-		require.NoError(t, err)
+		result := convertFixture(t, output)
 
 		ndh := findAmount(t, result.Children[0].Rows[0].Amounts, "ndh")
 		assert.Equal(t, "ndh", ndh.Value)
@@ -279,8 +323,7 @@ func TestConvert_FlagActiveAmountZeroAllowed(t *testing.T) {
 		output.Vertrag.Kinder[0].Integration = "A"
 		output.Vertrag.Kinder[0].ZuschlagIntegration = 0
 
-		result, err := Convert(output)
-		require.NoError(t, err)
+		result := convertFixture(t, output)
 
 		intg := findAmount(t, result.Children[0].Rows[0].Amounts, "integration")
 		assert.Equal(t, "integration a", intg.Value)
@@ -295,8 +338,7 @@ func TestConvert_InactiveFlagWithNonZeroAmount(t *testing.T) {
 		output.Vertrag.Kinder[0].MSS = "nein"
 		output.Vertrag.Kinder[0].ZuschlagQM = 5000
 
-		result, err := Convert(output)
-		require.NoError(t, err)
+		result := convertFixture(t, output)
 
 		qmmss := findAmount(t, result.Children[0].Rows[0].Amounts, "qm/mss")
 		assert.Equal(t, "qm/mss", qmmss.Value, "value should be set when amount is non-zero")
@@ -308,8 +350,7 @@ func TestConvert_InactiveFlagWithNonZeroAmount(t *testing.T) {
 		output.Vertrag.Kinder[0].HS = "D"
 		output.Vertrag.Kinder[0].ZuschlagNDH = 10000
 
-		result, err := Convert(output)
-		require.NoError(t, err)
+		result := convertFixture(t, output)
 
 		ndh := findAmount(t, result.Children[0].Rows[0].Amounts, "ndh")
 		assert.Equal(t, "ndh", ndh.Value, "value should be set when amount is non-zero")
@@ -321,8 +362,7 @@ func TestConvert_InactiveFlagWithNonZeroAmount(t *testing.T) {
 		output.Vertrag.Kinder[0].Integration = "N"
 		output.Vertrag.Kinder[0].ZuschlagIntegration = 165680
 
-		result, err := Convert(output)
-		require.NoError(t, err)
+		result := convertFixture(t, output)
 
 		intg := findAmount(t, result.Children[0].Rows[0].Amounts, "integration")
 		assert.Equal(t, "integration", intg.Value, "generic value when flag is N but amount is non-zero")
@@ -334,8 +374,7 @@ func TestConvert_InactiveFlagWithNonZeroAmount(t *testing.T) {
 		output.Vertrag.Kinder[0].Integration = "N"
 		output.Vertrag.Kinder[0].ZuschlagIntegration = 0
 
-		result, err := Convert(output)
-		require.NoError(t, err)
+		result := convertFixture(t, output)
 
 		assertNoAmount(t, result.Children[0].Rows[0].Amounts, "integration")
 	})
@@ -344,8 +383,7 @@ func TestConvert_InactiveFlagWithNonZeroAmount(t *testing.T) {
 func TestConvert_FacilitySurcharges(t *testing.T) {
 	output := makeTestOutput()
 
-	result, err := Convert(output)
-	require.NoError(t, err)
+	result := convertFixture(t, output)
 
 	require.Len(t, result.Surcharges, 3)
 	assert.Equal(t, SettlementAmount{Key: "ndh", Value: "ndh", Amount: 20000}, result.Surcharges[0])
@@ -356,15 +394,14 @@ func TestConvert_FacilitySurcharges(t *testing.T) {
 func TestConvert_OtherLineItems(t *testing.T) {
 	output := makeTestOutput()
 
-	result, err := Convert(output)
-	require.NoError(t, err)
+	result := convertFixture(t, output)
 
 	child := result.Children[0]
 
 	// parent care
-	assert.Equal(t, SettlementAmount{Key: "parent", Value: "care", Amount: -5000}, child.Rows[0].Amounts[2])
+	assert.Equal(t, SettlementAmount{Key: "parent", Value: "care", Amount: -5000}, child.Rows[0].Amounts[3])
 	// parent meals
-	assert.Equal(t, SettlementAmount{Key: "parent", Value: "meals", Amount: -2300}, child.Rows[0].Amounts[3])
+	assert.Equal(t, SettlementAmount{Key: "parent", Value: "meals", Amount: -2300}, child.Rows[0].Amounts[4])
 }
 
 func TestConvert_MultipleChildren(t *testing.T) {
@@ -384,16 +421,15 @@ func TestConvert_MultipleChildren(t *testing.T) {
 		ElternBetreuung:     3000,
 		ElternEssen:         1500,
 		BuT:                 800,
-		AnteilBezirk:        30000,
+		AnteilBezirk:        60500,
 		ZuschlagQM:          0,
 		ZuschlagMSS:         4000,
 		ZuschlagNDH:         10116,
 		ZuschlagIntegration: 165680,
-		Summe:               114416,
+		Summe:               241096,
 	})
 
-	result, err := Convert(output)
-	require.NoError(t, err)
+	result := convertFixture(t, output)
 
 	assert.Equal(t, 2, result.ChildrenCount)
 	require.Len(t, result.Children, 2)
@@ -465,8 +501,7 @@ func TestConvert_EmptyChildrenList(t *testing.T) {
 	output := makeTestOutput()
 	output.Vertrag.Kinder = []Kind{}
 
-	result, err := Convert(output)
-	require.NoError(t, err)
+	result := convertFixture(t, output)
 
 	assert.Equal(t, 0, result.ChildrenCount)
 	assert.Empty(t, result.Children)
@@ -482,8 +517,7 @@ func TestConvert_BothQMAndMSSActive(t *testing.T) {
 	output.Vertrag.Kinder[0].ZuschlagQM = 3000
 	output.Vertrag.Kinder[0].ZuschlagMSS = 2000
 
-	result, err := Convert(output)
-	require.NoError(t, err)
+	result := convertFixture(t, output)
 
 	qm := findAmount(t, result.Children[0].Rows[0].Amounts, "qm/mss")
 	assert.Equal(t, "qm/mss", qm.Value)
@@ -502,8 +536,7 @@ func TestConvert_AllFlagsActive(t *testing.T) {
 	k.ZuschlagNDH = 10116
 	k.ZuschlagIntegration = 330641
 
-	result, err := Convert(output)
-	require.NoError(t, err)
+	result := convertFixture(t, output)
 
 	child := result.Children[0]
 	ndh := findAmount(t, child.Rows[0].Amounts, "ndh")
@@ -529,8 +562,7 @@ func TestConvert_AllFlagsInactive(t *testing.T) {
 	k.ZuschlagNDH = 0
 	k.ZuschlagIntegration = 0
 
-	result, err := Convert(output)
-	require.NoError(t, err)
+	result := convertFixture(t, output)
 
 	child := result.Children[0]
 	assertNoAmount(t, child.Rows[0].Amounts, "ndh")
@@ -548,8 +580,7 @@ func TestConvert_QMCaseInsensitiveThroughConvert(t *testing.T) {
 			output.Vertrag.Kinder[0].ZuschlagQM = 4000
 			output.Vertrag.Kinder[0].ZuschlagMSS = 0
 
-			result, err := Convert(output)
-			require.NoError(t, err)
+			result := convertFixture(t, output)
 
 			qm := findAmount(t, result.Children[0].Rows[0].Amounts, "qm/mss")
 			assert.Equal(t, "qm/mss", qm.Value)
@@ -565,8 +596,7 @@ func TestConvert_ZeroFacilitySurcharges(t *testing.T) {
 	output.Einrichtung.ZuschlagNDH = 0
 	output.Einrichtung.ZuschlagIntegration = 0
 
-	result, err := Convert(output)
-	require.NoError(t, err)
+	result := convertFixture(t, output)
 
 	assert.Equal(t, SettlementAmount{Key: "ndh", Value: "ndh", Amount: 0}, result.Surcharges[0])
 	assert.Equal(t, SettlementAmount{Key: "qm/mss", Value: "qm/mss", Amount: 0}, result.Surcharges[1])
@@ -601,8 +631,7 @@ func TestConvert_SecondChildInactiveFlagWithAmount(t *testing.T) {
 		ZuschlagIntegration: 0,
 	})
 
-	result, err := Convert(output)
-	require.NoError(t, err)
+	result := convertFixture(t, output)
 	require.Len(t, result.Children, 2)
 
 	qmmss := findAmount(t, result.Children[1].Rows[0].Amounts, "qm/mss")
@@ -619,8 +648,7 @@ func TestConvert_QMActiveAmountOnlyInMSSSurcharge(t *testing.T) {
 	output.Vertrag.Kinder[0].ZuschlagQM = 0
 	output.Vertrag.Kinder[0].ZuschlagMSS = 5000
 
-	result, err := Convert(output)
-	require.NoError(t, err)
+	result := convertFixture(t, output)
 
 	qm := findAmount(t, result.Children[0].Rows[0].Amounts, "qm/mss")
 	assert.Equal(t, "qm/mss", qm.Value)
@@ -637,8 +665,7 @@ func TestConvert_MultipleInactiveFlagsWithAmountsPassThrough(t *testing.T) {
 	k.ZuschlagMSS = 0
 	k.ZuschlagNDH = 3000
 
-	result, err := Convert(output)
-	require.NoError(t, err)
+	result := convertFixture(t, output)
 
 	ndh := findAmount(t, result.Children[0].Rows[0].Amounts, "ndh")
 	assert.Equal(t, "ndh", ndh.Value)
@@ -665,11 +692,10 @@ func TestConvert_GroupsByVoucherNumber(t *testing.T) {
 		Basisentgeld:     -89000,
 		ElternBetreuung:  -5000,
 		ElternEssen:      -2300,
-		Summe:            -96300,
+		Summe:            -81700,
 	})
 
-	result, err := Convert(output)
-	require.NoError(t, err)
+	result := convertFixture(t, output)
 
 	// Two Excel rows with the same voucher → one ConvertedChild with 2 rows.
 	assert.Equal(t, 1, result.ChildrenCount)
@@ -680,9 +706,9 @@ func TestConvert_GroupsByVoucherNumber(t *testing.T) {
 	require.Len(t, child.Rows, 2)
 
 	// TotalAmount = sum of both row totals
-	assert.Equal(t, 141331+(-96300), child.TotalAmount)
-	assert.Equal(t, 141331, child.Rows[0].TotalRowAmount)
-	assert.Equal(t, -96300, child.Rows[1].TotalRowAmount)
+	assert.Equal(t, 86731+(-81700), child.TotalAmount)
+	assert.Equal(t, 86731, child.Rows[0].TotalRowAmount)
+	assert.Equal(t, -81700, child.Rows[1].TotalRowAmount)
 }
 
 func TestConvert_GroupsPreservesDifferentVouchers(t *testing.T) {
@@ -701,11 +727,10 @@ func TestConvert_GroupsPreservesDifferentVouchers(t *testing.T) {
 		Basisentgeld:     50000,
 		ElternBetreuung:  2000,
 		ElternEssen:      1000,
-		Summe:            53000,
+		Summe:            47000,
 	})
 
-	result, err := Convert(output)
-	require.NoError(t, err)
+	result := convertFixture(t, output)
 
 	// Two different vouchers → two ConvertedChild entries.
 	assert.Equal(t, 2, result.ChildrenCount)
@@ -720,8 +745,7 @@ func TestConvert_BuTIncluded(t *testing.T) {
 	output := makeTestOutput()
 	output.Vertrag.Kinder[0].BuT = 1500 // 15.00 EUR
 
-	result, err := Convert(output)
-	require.NoError(t, err)
+	result := convertFixture(t, output)
 
 	child := result.Children[0]
 	// Should now have 5 amounts: care_type, qm/mss, but, parent:care, parent:meals
@@ -738,8 +762,7 @@ func TestConvert_BuTZeroExcluded(t *testing.T) {
 	output := makeTestOutput()
 	output.Vertrag.Kinder[0].BuT = 0
 
-	result, err := Convert(output)
-	require.NoError(t, err)
+	result := convertFixture(t, output)
 
 	child := result.Children[0]
 	for _, a := range child.Rows[0].Amounts {
@@ -754,8 +777,7 @@ func TestConvert_BuTNegative(t *testing.T) {
 	output := makeTestOutput()
 	output.Vertrag.Kinder[0].BuT = -500
 
-	result, err := Convert(output)
-	require.NoError(t, err)
+	result := convertFixture(t, output)
 
 	child := result.Children[0]
 	found := false
@@ -800,8 +822,7 @@ func TestConvert_BillingMonthCarriedThrough(t *testing.T) {
 
 	output.Vertrag.Kinder = []Kind{korrJan, korrFeb, regular}
 
-	result, err := Convert(output)
-	require.NoError(t, err)
+	result := convertFixture(t, output)
 
 	// All three rows carry the same voucher, so they group onto one child.
 	require.Len(t, result.Children, 1)
@@ -826,8 +847,7 @@ func TestConvert_BillingMonthZeroWhenAbsent(t *testing.T) {
 	// what the parser produces for a file without the merged header cell.
 	require.True(t, output.Vertrag.Kinder[0].Abrechnungsmonat.IsZero())
 
-	result, err := Convert(output)
-	require.NoError(t, err)
+	result := convertFixture(t, output)
 
 	require.Len(t, result.Children, 1)
 	require.Len(t, result.Children[0].Rows, 1)
@@ -846,8 +866,7 @@ func TestConvert_RegularRowCanPredateItsBill(t *testing.T) {
 	output.Vertrag.Kinder[0].Typ = "A"
 	output.Vertrag.Kinder[0].Abrechnungsmonat = mar
 
-	result, err := Convert(output)
-	require.NoError(t, err)
+	result := convertFixture(t, output)
 
 	row := result.Children[0].Rows[0]
 	assert.False(t, row.IsCorrection)

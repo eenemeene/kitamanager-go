@@ -330,6 +330,10 @@ func ParseFromReader(r io.Reader) (out *SenatsabrechnungOutput, err error) {
 		return nil, fmt.Errorf("parsing billing month: %w", err)
 	}
 
+	if err := reconcileVertragAgainstHeader(v, ar); err != nil {
+		return nil, err
+	}
+
 	// Deliberately not fatal. The Korrekturübersicht has gone unread since the
 	// importer was written, and its layout has already moved once between file
 	// generations. A drift in it must not start rejecting uploads that worked
@@ -350,6 +354,42 @@ func ParseFromReader(r io.Reader) (out *SenatsabrechnungOutput, err error) {
 		Korrekturen:  korrekturen,
 		BillingMonth: billingMonth,
 	}, nil
+}
+
+// reconcileVertragAgainstHeader checks the contract rows against the figure the
+// Abrechnungsübersicht states for them.
+//
+// The Senate defines the two as the same number -- "Vertragsbuchungen –
+// Abrechnungssumme aller für diesen Träger registrierten Verträge"
+// (Dokumentation Abrechnungsübersicht, Abrechnungsübersicht §5) -- and it holds
+// to the cent on all 21 sample bills and on all 80 bills of the production
+// instance, including ones whose correction rows net negative.
+//
+// It is the one check that catches a whole class of silent failure at once,
+// because the two sides are read through completely different code: the header
+// figure comes through getValueByHeaderName, which refuses a header it cannot
+// find exactly once, while the rows come through the much more forgiving column
+// map. So a dropped row, a truncated table, or a sheet that parsed as empty
+// shows up here as an arithmetic disagreement rather than as a plausible-looking
+// import.
+//
+// Not covered by it: a renamed *component* column, because Kind.Summe is read
+// from "Abrechn.-summe" and not computed from the parts. That case is caught
+// per row in Convert instead.
+func reconcileVertragAgainstHeader(v *Vertrag, ar *Abrechnung) error {
+	sum := 0
+	for i := range v.Kinder {
+		sum += v.Kinder[i].Summe
+	}
+	if sum == ar.VertragsBuchung {
+		return nil
+	}
+	return fmt.Errorf(
+		"sheet %q: the %d contract row(s) total %d cents but the Abrechnungsübersicht "+
+			"states a Vertragsbuchung of %d cents (difference %+d). The Senate defines "+
+			"these as the same figure, so one of them was not read correctly -- most "+
+			"likely rows were missed",
+		SheetVertrag, len(v.Kinder), sum, ar.VertragsBuchung, sum-ar.VertragsBuchung)
 }
 
 // ParseBillingMonth extracts the billing month from the Einrichtungsübersicht sheet.
@@ -746,6 +786,10 @@ func discoverVertragColumns(f *excelize.File) (*vertragColumns, error) {
 		vc.but = butCols[0]
 	}
 
+	if err := vc.validate(); err != nil {
+		return nil, err
+	}
+
 	// Data starts 2 rows after header (header row + sub-header row + section header = +3,
 	// but section header is variable). Find first voucher row.
 	for i := row; i < len(rows); i++ {
@@ -758,6 +802,80 @@ func discoverVertragColumns(f *excelize.File) (*vertragColumns, error) {
 	}
 
 	return nil, fmt.Errorf("no voucher data rows found after header row %d", row)
+}
+
+// validate refuses a layout in which any column the row parser reads could not
+// be located.
+//
+// Without this, an unresolved column is the empty string, `cellAsString`
+// swallows excelize's invalid-reference error and returns "", and
+// `cellAsCents("")` returns 0 with no error -- so a renamed header does not
+// fail, it silently zeroes a figure. Measured on a real bill: renaming
+// "Basis-entgelt" imported all 41 children with a base entitlement of 0,00 EUR
+// and reported success, and renaming the "Essen" sub-header dropped 943,00 EUR
+// of parent contributions the same way.
+//
+// Every column below resolves in all 21 sample bills, across all three layout
+// generations in them -- including the two whose sheet is shifted two columns
+// to the left -- so requiring the full set rejects nothing the Senate has
+// actually sent. The headers move; their names do not.
+func (vc *vertragColumns) validate() error {
+	// Header name as an operator would find it in the sheet, so the error
+	// names the thing to go and look at rather than a Go field.
+	// "Monat/ Typ" is deliberately NOT required. It arrived with a later file
+	// generation, parseKindWithColumns already treats an absent one as "month
+	// unknown", and the aggregation SQL COALESCEs such rows to their bill's own
+	// month -- so an older file without it still imports correctly, just
+	// without per-row attribution. Requiring it would reject those files to
+	// guard against a rename, which is the wrong trade. Warned about instead,
+	// so it is visible rather than silent.
+	if vc.monat == "" || vc.typ == "" {
+		slog.Warn("Vertragsübersicht has no \"Monat/ Typ\" column; correction rows will be attributed to the bill's own month rather than the month they correct",
+			"sheet", SheetVertrag, "header_row", vc.headerRow)
+	}
+
+	required := []struct {
+		header string
+		col    string
+	}{
+		{"GutscheinNr.", vc.gutscheinNr},
+		{"Name des Kindes", vc.nameDerKinder},
+		{"Geb.-datum", vc.gebDatum},
+		{"QM", vc.qm},
+		{"MSS", vc.mss},
+		{"Hs", vc.hs},
+		{"SpH (integration flag)", vc.integration},
+		{"Registr. ab", vc.registrAb},
+		{"Betreu.-umfang", vc.betreuUmfang},
+		{"Be-zirk", vc.bezirk},
+		{"Basis-entgelt", vc.basisEntgelt},
+		{"Abzug o.M.", vc.abzugOM},
+		{"Anteil Eltern / Betreuung", vc.elternBetreuung},
+		{"Anteil Eltern / Essen", vc.elternEssen},
+		{"BuT (amount)", vc.but},
+		{"Anteil Bezirk", vc.anteilBezirk},
+		{"Zuschläge / QM", vc.zuschlagQM},
+		{"Zuschläge / MSS", vc.zuschlagMSS},
+		{"Zuschläge / ndH", vc.zuschlagNDH},
+		{"Zuschläge / SpH", vc.zuschlagIntegration},
+		{"Abrechn.-summe", vc.abrechnSumme},
+	}
+	var missing []string
+	for _, r := range required {
+		if r.col == "" {
+			missing = append(missing, r.header)
+		}
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf(
+			"sheet %q: could not locate %d of %d required columns by header name: %s. "+
+				"The header row (row %d) was found, so the sheet is recognisable but its "+
+				"column headings have changed. Columns moving is handled; columns being "+
+				"renamed is not, because reading the wrong cell would be worse than "+
+				"refusing the file",
+			SheetVertrag, len(missing), len(required), strings.Join(missing, ", "), vc.headerRow)
+	}
+	return nil
 }
 
 // parseMonatTyp parses "MM.YY" format into a time.Time (first of month, UTC).
@@ -957,8 +1075,14 @@ func ParseKind(f *excelize.File, row int) (*Kind, error) {
 func ParseVertrag(f *excelize.File) (*Vertrag, error) {
 	vc, err := discoverVertragColumns(f)
 	if err != nil {
-		// If the sheet is missing or has no recognizable headers, return empty vertrag
-		return &Vertrag{Kinder: []Kind{}}, nil
+		// Propagated, not swallowed. This used to return an empty Vertrag and
+		// a nil error, which is the worst of the three possible outcomes:
+		// measured on a real bill, renaming the "GutscheinNr." header imported
+		// the file successfully with zero children while the Abrechnungsübersicht
+		// still reported a Vertragsbuchung of 58.033,99 EUR. A bill that
+		// silently contains nobody is not a degraded import, it is a missing
+		// one that looks complete.
+		return nil, err
 	}
 
 	vertrag := &Vertrag{
@@ -969,14 +1093,36 @@ func ParseVertrag(f *excelize.File) (*Vertrag, error) {
 	for {
 		voucher := cellAsString(f, SheetVertrag, fmt.Sprintf("%s%d", vc.gutscheinNr, row))
 
-		// Stop if empty or contains "Abrechnungssumme"
-		if voucher == "" || strings.Contains(voucher, "Abrechnungssumme") {
+		// "Abrechnungssumme" is the table's own terminator row.
+		if strings.Contains(voucher, "Abrechnungssumme") {
 			break
 		}
 
-		// Validate voucher pattern
-		if !voucherPattern.MatchString(voucher) {
+		// A blank voucher is how the table ends when it has no terminator --
+		// but it is also what a hole in the middle of one looks like, and the
+		// two used to be indistinguishable. Blanking one voucher cell on a
+		// real bill imported 5 children instead of 41 and reported success,
+		// because the loop simply stopped there. So before accepting a blank
+		// as the end, look at what follows it.
+		if voucher == "" {
+			if rest, rerr := remainingVoucherRows(f, vc, row); rerr != nil {
+				return nil, rerr
+			} else if rest > 0 {
+				return nil, fmt.Errorf(
+					"sheet %q: row %d has no Gutschein number but %d further contract row(s) follow it. "+
+						"Stopping here would silently import only the %d row(s) above",
+					SheetVertrag, row, rest, len(vertrag.Kinder))
+			}
 			break
+		}
+
+		// Content that is neither a Gutschein number nor the terminator. Used
+		// to break out of the loop, which discarded every row below it.
+		if !voucherPattern.MatchString(voucher) {
+			return nil, fmt.Errorf(
+				"sheet %q: row %d has %q in the GutscheinNr. column, which is neither a "+
+					"Gutschein number (GB-DDDDDDDDDDD-NN) nor the %q terminator",
+				SheetVertrag, row, voucher, "Abrechnungssumme")
 		}
 
 		kind, err := parseKindWithColumns(f, row, vc)
@@ -989,4 +1135,34 @@ func ParseVertrag(f *excelize.File) (*Vertrag, error) {
 	}
 
 	return vertrag, nil
+}
+
+// remainingVoucherRows counts the contract rows below `from` that still carry a
+// Gutschein number, stopping at the table's "Abrechnungssumme" terminator.
+//
+// It exists to tell the end of the table apart from a hole in it. Zero means
+// `from` really is the end.
+func remainingVoucherRows(f *excelize.File, vc *vertragColumns, from int) (int, error) {
+	rows, err := f.GetRows(SheetVertrag)
+	if err != nil {
+		return 0, fmt.Errorf("sheet %q: reading rows: %w", SheetVertrag, err)
+	}
+	colNum, err := excelize.ColumnNameToNumber(vc.gutscheinNr)
+	if err != nil {
+		return 0, fmt.Errorf("sheet %q: column %q: %w", SheetVertrag, vc.gutscheinNr, err)
+	}
+	count := 0
+	for i := from; i < len(rows); i++ { // rows is 0-indexed, `from` is 1-indexed
+		if colNum-1 >= len(rows[i]) {
+			continue
+		}
+		cell := strings.TrimSpace(rows[i][colNum-1])
+		if strings.Contains(cell, "Abrechnungssumme") {
+			break
+		}
+		if voucherPattern.MatchString(cell) {
+			count++
+		}
+	}
+	return count, nil
 }

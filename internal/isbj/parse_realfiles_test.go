@@ -6,13 +6,43 @@ import (
 	"testing"
 )
 
-const realFilesDir = "/home/tom/Downloads/eenemeene-abrechnungen"
+// realFilesDirs are the local directories this test will look for real
+// Abrechnungen in, first match wins. ISBJ_REAL_FILES_DIR overrides them.
+//
+// A single hard-coded path meant this test skipped silently for however long
+// the directory had been named something else -- which is the same failure mode
+// as the parser quietly reading the wrong cell, one level up. The env var is
+// the supported way in; the paths are a convenience.
+var realFilesDirs = []string{
+	"/home/tom/Downloads/kita-abrechnungen",
+	"/home/tom/Downloads/eenemeene-abrechnungen",
+}
 
-// TestParseAllRealFiles iterates over all .xlsx files in the real files directory
-// and verifies each one parses without error. Skipped when the directory is absent.
+func findRealFilesDir() string {
+	if d := os.Getenv("ISBJ_REAL_FILES_DIR"); d != "" {
+		return d
+	}
+	for _, d := range realFilesDirs {
+		if info, err := os.Stat(d); err == nil && info.IsDir() {
+			return d
+		}
+	}
+	return ""
+}
+
+// TestParseAllRealFiles iterates over all .xlsx files in the real files
+// directory and verifies each one parses AND converts without error, with its
+// contract rows reconciling against the figure the Abrechnungsübersicht states
+// for them. Skipped when no such directory is present, which is the case in CI
+// -- real bills are never committed.
+//
+// Deliberately logs no facility name, no child name, no birthdate and no
+// Gutschein number: test output ends up in terminals, CI logs and pasted
+// snippets. Months and totals are enough to tell which file failed.
 func TestParseAllRealFiles(t *testing.T) {
-	if _, err := os.Stat(realFilesDir); os.IsNotExist(err) {
-		t.Skipf("skipping: real files directory %s not found", realFilesDir)
+	realFilesDir := findRealFilesDir()
+	if realFilesDir == "" {
+		t.Skipf("skipping: no real-files directory found (tried $ISBJ_REAL_FILES_DIR and %v)", realFilesDirs)
 	}
 
 	var files []string
@@ -61,10 +91,21 @@ func TestParseAllRealFiles(t *testing.T) {
 				t.Error("BillingMonth is zero")
 			}
 
-			t.Logf("%s: %s — %d children, total %.2f EUR",
+			// Convert as well as parse: the per-row reconciliation lives there,
+			// and it is the half that catches a renamed component column.
+			conv, err := Convert(output)
+			if err != nil {
+				t.Fatalf("Convert failed: %v", err)
+			}
+			rows := 0
+			for _, c := range conv.Children {
+				rows += len(c.Rows)
+			}
+
+			t.Logf("%s: %d children, %d rows, total %.2f EUR",
 				output.BillingMonth.Format("01/06"),
-				output.Einrichtung.Name,
 				len(output.Vertrag.Kinder),
+				rows,
 				float64(output.Einrichtung.Summe)/100,
 			)
 		})
