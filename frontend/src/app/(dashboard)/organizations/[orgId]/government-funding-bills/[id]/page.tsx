@@ -371,7 +371,7 @@ export default function GovernmentFundingBillDetailPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
+          <Table scrollRegionLabel={t('childrenInBill')}>
             <TableHeader>
               <TableRow>
                 <TableHead>{t('voucherNumber')}</TableHead>
@@ -566,7 +566,7 @@ export default function GovernmentFundingBillDetailPage() {
                             {/* Comparison properties table */}
                             {comp?.properties && comp.properties.length > 0 && (
                               <div className={hasMultipleRows ? 'mt-3 border-t pt-3' : ''}>
-                                <Table>
+                                <Table scrollRegionLabel={t('surcharges')}>
                                   <TableHeader>
                                     <TableRow>
                                       <TableHead className="text-xs">{t('surcharges')}</TableHead>
@@ -648,7 +648,7 @@ export default function GovernmentFundingBillDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Table>
+                <Table scrollRegionLabel={t('systemOnlyChildren')}>
                   <TableHeader>
                     <TableRow>
                       <TableHead>{t('childName')}</TableHead>
