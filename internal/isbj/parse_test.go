@@ -510,13 +510,27 @@ func TestSenatsabrechnungOutputStruct(t *testing.T) {
 
 // --- Malformed-input tests using in-memory Excel files ---
 
+// TestParseVertragMissingSheet and TestParseVertragEmptySheet pin a refusal
+// that these two tests used to pin the opposite of.
+//
+// Returning an empty Vertrag and a nil error was the worst available outcome.
+// Measured on a real bill: renaming the "GutscheinNr." header imported the file
+// successfully, with zero children, while the Abrechnungsübersicht went on
+// reporting a Vertragsbuchung of 58.033,99 EUR. Nothing downstream could tell
+// that apart from a bill that genuinely had no contracts, so the money simply
+// disappeared from every per-child figure while the header totals still showed
+// it. A bill that silently contains nobody is not a degraded import, it is a
+// missing one wearing the clothes of a complete one.
 func TestParseVertragMissingSheet(t *testing.T) {
 	f := excelize.NewFile()
 	defer func() { _ = f.Close() }()
 
 	_, err := ParseVertrag(f)
-	if err != nil {
-		t.Fatalf("ParseVertrag() unexpected error for missing sheet: %v", err)
+	if err == nil {
+		t.Fatal("ParseVertrag() returned no error for a workbook with no Vertragsübersicht sheet")
+	}
+	if !strings.Contains(err.Error(), SheetVertrag) {
+		t.Errorf("error should name the sheet it could not read, got: %v", err)
 	}
 }
 
@@ -525,12 +539,14 @@ func TestParseVertragEmptySheet(t *testing.T) {
 	defer func() { _ = f.Close() }()
 	_, _ = f.NewSheet(SheetVertrag)
 
-	v, err := ParseVertrag(f)
-	if err != nil {
-		t.Fatalf("ParseVertrag() error = %v", err)
+	_, err := ParseVertrag(f)
+	if err == nil {
+		t.Fatal("ParseVertrag() returned no error for a Vertragsübersicht with no header row")
 	}
-	if len(v.Kinder) != 0 {
-		t.Errorf("ParseVertrag() got %d children, expected 0 for empty sheet", len(v.Kinder))
+	// The anchor header is what the whole column discovery hangs on, so the
+	// message has to say that is what is missing rather than something vaguer.
+	if !strings.Contains(err.Error(), "GutscheinNr") {
+		t.Errorf("error should name the missing anchor header, got: %v", err)
 	}
 }
 
