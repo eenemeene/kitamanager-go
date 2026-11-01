@@ -256,7 +256,7 @@ export default function OrgDashboardPage() {
             <CardDescription>{t('dashboard.childrenWithoutVouchersDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
+            <Table scrollRegionLabel={t('dashboard.childrenWithoutVouchers')}>
               <TableBody>
                 {childrenWithoutVouchers.map((child) => (
                   <TableRow key={child.id}>
@@ -330,7 +330,7 @@ export default function OrgDashboardPage() {
             <CardDescription>{t('dashboard.unmatchedBillChildrenDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
+            <Table scrollRegionLabel={t('dashboard.unmatchedBillChildren')}>
               <TableHeader>
                 <TableRow>
                   <TableHead>{t('common.name')}</TableHead>
@@ -429,7 +429,7 @@ export default function OrgDashboardPage() {
             <CardDescription>{t('dashboard.propertyMismatchesDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
+            <Table scrollRegionLabel={t('dashboard.propertyMismatches')}>
               <TableHeader>
                 <TableRow>
                   <TableHead>{t('children.title')}</TableHead>

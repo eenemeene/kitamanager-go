@@ -169,7 +169,7 @@ function BillingRow({
         <TableRow>
           <TableCell colSpan={10} className="p-0">
             <div className="bg-muted/30 p-3 md:p-4">
-              <Table>
+              <Table scrollRegionLabel={t('surcharges')}>
                 <TableHeader>
                   <TableRow>
                     <TableHead>{tCommon('name')}</TableHead>
@@ -324,7 +324,7 @@ export default function ChildBillingHistoryPage() {
                     {tChildren('noBillingEntries')}
                   </div>
                 ) : (
-                  <Table>
+                  <Table scrollRegionLabel={tChildren('billingHistory')}>
                     <TableHeader>
                       <TableRow>
                         <TableHead>{t('billingMonth')}</TableHead>

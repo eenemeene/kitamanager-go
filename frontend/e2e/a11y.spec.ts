@@ -35,8 +35,70 @@ const RADIX_FOCUS_GUARDS = 'aria-hidden-focus';
 /** The conformance target. Excludes axe's opinionated best-practice rules. */
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
+/**
+ * axe refuses to run a rule it also tags `experimental` unless that rule is
+ * asked for by name, and four such rules are *inside* the conformance target
+ * above. So `withTags(WCAG_TAGS)` alone covers four fewer WCAG rules than its
+ * own tag list claims, and the gap is invisible: the rules do not fail, they
+ * do not run.
+ *
+ * It stays invisible until axe drops the tag, and then it lands on whatever
+ * unrelated PR happens to bump `@axe-core/playwright`. That is exactly how
+ * `label-content-name-mismatch` arrived in 4.14 — seven tests red across three
+ * shards, over markup that had been wrong since the day it was written.
+ *
+ * Naming them here closes the gap and makes the graduation a non-event.
+ * Measured before switching them on, against a production build at all three
+ * project widths: the four report nothing on any surface this spec scans, so
+ * this buys four more WCAG rules at no cost. Checked in the other direction
+ * too, with throwaway markup that genuinely fails `td-has-header`: under the
+ * old configuration axe did not run the rule against it at all, so these were
+ * being skipped rather than passing quietly.
+ *
+ * `focus-order-semantics` is the fifth, and the odd one out: axe tags it
+ * best-practice rather than WCAG, so it would never have reached this suite by
+ * tag at all. It is here because it found something real — the table scroll
+ * container was `tabindex=0` with no role and no name, a tab stop that
+ * announced nothing on five of the pages below — and because a fix nothing
+ * watches is a fix that comes undone. `ui/table.tsx` now gives it
+ * `role="region"` and a label; this is what keeps it that way.
+ *
+ * The sixth experimental rule, `hidden-content`, is left out on purpose. It is
+ * a `review-item`: it reports what a human should look at rather than what is
+ * wrong, so it yields `incomplete` and never a violation, and this spec
+ * asserts only on violations.
+ *
+ * Deliberately a list of ids and not `'experimental'` as a sixth tag.
+ * `withTags` is a union, so the tag would pull in every future experimental
+ * rule as well — putting rules nobody has looked at yet in a position to red
+ * CI, which is the same surprise in a new costume.
+ */
+const EXPERIMENTAL_RULES = [
+  'css-orientation-lock',
+  'focus-order-semantics',
+  'p-as-heading',
+  'table-fake-caption',
+  'td-has-header',
+];
+
+/**
+ * One `options()` call rather than `withTags().disableRules()`, because those
+ * two clobber each other: `disableRules` assigns `option.rules` wholesale and
+ * `options` assigns the whole object, so whichever runs last wins and the
+ * other's half is silently dropped.
+ */
 async function scan(page: Page) {
-  return new AxeBuilder({ page }).withTags(WCAG_TAGS).disableRules([RADIX_FOCUS_GUARDS]).analyze();
+  return new AxeBuilder({ page })
+    .options({
+      runOnly: { type: 'tag', values: WCAG_TAGS },
+      rules: {
+        [RADIX_FOCUS_GUARDS]: { enabled: false },
+        // `enabled: true` overrides the `runOnly` filter above -- verified,
+        // since the reverse would mean this block quietly did nothing.
+        ...Object.fromEntries(EXPERIMENTAL_RULES.map((id) => [id, { enabled: true }])),
+      },
+    })
+    .analyze();
 }
 
 /** Reports every violation at once, with the offending markup. */

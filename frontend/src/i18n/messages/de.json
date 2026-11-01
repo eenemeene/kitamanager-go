@@ -71,7 +71,8 @@
     "openMenu": "Menü öffnen",
     "mainNavigation": "Hauptnavigation",
     "toggleSubmenu": "Untermenü {name} umschalten",
-    "exportSvg": "Als SVG exportieren"
+    "exportSvg": "Als SVG exportieren",
+    "tableScrollRegion": "Tabelle, horizontal scrollbar"
   },
   "pagination": {
     "navigation": "Seitennavigation",

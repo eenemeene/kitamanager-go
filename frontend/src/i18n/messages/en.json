@@ -71,7 +71,8 @@
     "openMenu": "Open menu",
     "mainNavigation": "Main navigation",
     "toggleSubmenu": "Toggle {name} submenu",
-    "exportSvg": "Export as SVG"
+    "exportSvg": "Export as SVG",
+    "tableScrollRegion": "Table, scrollable horizontally"
   },
   "pagination": {
     "navigation": "Pagination",
