@@ -258,7 +258,7 @@
     "fundingIncomeSub": "Zuschüsse (Berechnet)",
     "fundingIncomeSubTooltip": "Erwartete staatliche Förderung basierend auf Kinderverträgen und Fördersätzen",
     "fundingActualSub": "Zuschüsse (Tatsächlich)",
-    "fundingActualSubTooltip": "Tatsächliche Beträge aus hochgeladenen Abrechnungen. Die Jahressumme umfasst nur Monate mit hochgeladener Abrechnung und ist daher nicht direkt mit der berechneten Jahressumme vergleichbar.",
+    "fundingActualSubTooltip": "Tatsächliche Beträge aus hochgeladenen Abrechnungen: die Vertragsbuchung zuzüglich der manuellen Korrekturbuchung auf Bezirksebene \u2014 zusammen der tatsächliche Zahlbetrag des Senats für diesen Monat. Die Jahressumme umfasst nur Monate mit hochgeladener Abrechnung und ist daher nicht direkt mit der berechneten Jahressumme vergleichbar.",
     "fundingActualVsCalculated": "Soll-Ist-Vergleich Förderung",
     "fundingActualVsCalculatedDescription": "Vergleich der tatsächlichen Abrechnungen mit den berechneten Förderbeträgen",
     "fundingActual": "Tatsächlich (Abrechnung)",

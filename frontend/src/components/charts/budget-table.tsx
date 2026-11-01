@@ -61,10 +61,25 @@ export function BudgetTable({ data }: BudgetTableProps) {
       for (const item of dp.budget_item_details ?? []) {
         budgetMap.set(item.name ?? '', item.amount_cents ?? 0);
       }
+      // What the Senate actually paid is the Vertragsbuchung plus its
+      // district-level "Korrekturbuchung manuell" -- the Abrechnungsübersicht
+      // states the sum of the two as the tatsächlicher Zahlbetrag.
+      // `actual_funding` is the Vertragsbuchung alone, so this column used to
+      // report less than was paid, and a negative booking (the Senate does
+      // send those) went missing altogether.
+      //
+      // Only where a bill exists. Without one there is nothing to add to, and
+      // the backend leaves both fields unset together, so the month must keep
+      // reading as unbilled rather than becoming a 0 that counts towards the
+      // covered-months tally.
+      const actualFunding =
+        dp.actual_funding != null
+          ? dp.actual_funding + (dp.actual_funding_manual_correction ?? 0)
+          : null;
       return {
         date: dp.date ?? '',
         fundingIncome: dp.funding_income ?? 0,
-        actualFunding: dp.actual_funding ?? null,
+        actualFunding,
         incomeItemValues: incomeItems.map((name) => budgetMap.get(name) ?? 0),
         totalIncome: dp.total_income ?? 0,
         salaries: (dp.gross_salary ?? 0) + (dp.employer_costs ?? 0),

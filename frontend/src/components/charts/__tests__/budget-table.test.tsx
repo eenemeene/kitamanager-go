@@ -259,6 +259,72 @@ describe('BudgetTable annual total coverage', () => {
     expect(container.textContent).not.toContain('fundingMonthsCovered');
   });
 
+  // The Senate pays the Vertragsbuchung plus its district-level
+  // "Korrekturbuchung manuell"; the Abrechnungsübersicht calls the sum of the
+  // two the tatsächlicher Zahlbetrag. `actual_funding` is the first alone, so
+  // reporting it as the actual column understated what arrived -- across the
+  // sample Kita years by a five-figure amount, and a negative booking vanished
+  // entirely.
+  it('adds the manual correction booking to the actual funding column', () => {
+    const data: FinancialResponse = {
+      data_points: [
+        makeDataPoint('2026-01-01', {
+          actual_funding: 490000,
+          actual_funding_regular: 490000,
+          actual_funding_manual_correction: 182308,
+        }),
+      ],
+      warnings: [],
+    };
+    renderWithProviders(<BudgetTable data={data} />);
+    // 490000 + 182308 = 672308 cents -> "6.723,08 €", in the month row and the
+    // annual total.
+    expect(screen.getAllByText(/6\.723,08/).length).toBeGreaterThanOrEqual(1);
+    // And the Vertragsbuchung alone must no longer be what the column shows.
+    expect(screen.queryByText(/4\.900,00/)).not.toBeInTheDocument();
+  });
+
+  // The Senate does send negative bookings -- one of the sample bills claws
+  // back 2.296,11 EUR. Folded in with the wrong sign, or dropped, that month
+  // reads as better than it was.
+  it('subtracts a negative manual correction booking', () => {
+    const data: FinancialResponse = {
+      data_points: [
+        makeDataPoint('2026-01-01', {
+          actual_funding: 490000,
+          actual_funding_regular: 490000,
+          actual_funding_manual_correction: -229611,
+        }),
+      ],
+      warnings: [],
+    };
+    renderWithProviders(<BudgetTable data={data} />);
+    // 490000 - 229611 = 260389 cents -> "2.603,89 €"
+    expect(screen.getAllByText(/2\.603,89/).length).toBeGreaterThanOrEqual(1);
+  });
+
+  // A month with no bill has nothing to add the booking to, and must keep
+  // reading as unbilled rather than turning into a 0 that counts towards the
+  // covered-months tally.
+  it('leaves a month with no bill unbilled even if a correction field is present', () => {
+    const data: FinancialResponse = {
+      data_points: [
+        makeDataPoint('2026-01-01', { actual_funding: 490000, actual_funding_regular: 490000 }),
+        makeDataPoint('2026-02-01', {
+          actual_funding: undefined,
+          actual_funding_manual_correction: 5000,
+        }),
+      ],
+      warnings: [],
+    };
+    const { container } = renderWithProviders(<BudgetTable data={data} />);
+    const totalRow = container.querySelectorAll('tbody tr')[2];
+    expect(totalRow?.textContent).toContain('1/2');
+    // The annual actual total is the one billed month, untouched by the
+    // correction field on the unbilled one.
+    expect(screen.getAllByText(/4\.900,00/).length).toBeGreaterThanOrEqual(1);
+  });
+
   it('shows no actual column at all when no month has a bill', () => {
     const data: FinancialResponse = {
       data_points: [unbilled('2026-01-01'), unbilled('2026-02-01')],
