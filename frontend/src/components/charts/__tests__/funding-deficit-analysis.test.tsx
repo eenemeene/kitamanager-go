@@ -57,6 +57,7 @@ function makeIssue(
     child_name: 'Bagus, Nathan',
     voucher_number: 'GB-1',
     description: 'integration:b — in contract but not billed',
+    settled_amount: 0,
     amount_per_month: -33064,
     month_count: 12,
     total_amount: -396768,
@@ -105,6 +106,81 @@ describe('FundingDeficitAnalysis', () => {
         />
       );
       expect(container.querySelector('button')).toBeNull();
+    });
+  });
+
+  // A month the Senate settled with a later bill is history, not work. It
+  // stays on screen -- hiding it would leave the category bars counting
+  // children the list below never mentions -- but it must be out of the
+  // "fixable" count and in its own group, because that count is what sent an
+  // operator after money already received.
+  describe('issues already settled by a later bill', () => {
+    const settled = () =>
+      makeIssue({
+        category: 'calc_only',
+        child_id: 88,
+        child_name: 'Beispiel, Lena',
+        description: 'child has contract but does not appear in bill',
+        total_amount: -1348258,
+        settled_amount: 1347336,
+        actionable: false,
+        month_count: 7,
+      });
+
+    it('lists a settled issue in its own group, not among the fixable ones', async () => {
+      const user = userEvent.setup();
+      renderInTableBody(
+        <FundingDeficitAnalysis
+          summary={makeSummary({
+            categories: [makeCategory({ category: 'calc_only', total_amount: -1348258 })],
+            issues: [settled()],
+          })}
+          orgId="1"
+        />
+      );
+      await user.click(screen.getByRole('button', { name: /deficitAnalysis/ }));
+
+      expect(screen.getByText('deficitSettledIssues')).toBeInTheDocument();
+      expect(screen.getByText('Beispiel, Lena')).toBeInTheDocument();
+      // Not in the fixable table, and not counted as fixable.
+      expect(screen.queryByText('deficitIssues')).not.toBeInTheDocument();
+      expect(screen.queryByText(/deficitActionableCount/)).not.toBeInTheDocument();
+    });
+
+    it('keeps an actionable issue in the fixable table alongside a settled one', async () => {
+      const user = userEvent.setup();
+      renderInTableBody(
+        <FundingDeficitAnalysis
+          summary={makeSummary({
+            categories: [makeCategory({ category: 'calc_only', total_amount: -1348258 })],
+            issues: [settled(), makeIssue({ child_name: 'Mustermann, Max', actionable: true })],
+          })}
+          orgId="1"
+        />
+      );
+      await user.click(screen.getByRole('button', { name: /deficitAnalysis/ }));
+
+      expect(screen.getByText('deficitIssues')).toBeInTheDocument();
+      expect(screen.getByText('deficitSettledIssues')).toBeInTheDocument();
+      expect(screen.getByText('Mustermann, Max')).toBeInTheDocument();
+      expect(screen.getByText('Beispiel, Lena')).toBeInTheDocument();
+    });
+
+    it('leaves a non-actionable issue with nothing settled out of both tables', async () => {
+      const user = userEvent.setup();
+      renderInTableBody(
+        <FundingDeficitAnalysis
+          summary={makeSummary({
+            categories: [makeCategory({ category: 'rate_difference', total_amount: -100 })],
+            issues: [makeIssue({ actionable: false, settled_amount: 0 })],
+          })}
+          orgId="1"
+        />
+      );
+      await user.click(screen.getByRole('button', { name: /deficitAnalysis/ }));
+
+      expect(screen.queryByText('deficitSettledIssues')).not.toBeInTheDocument();
+      expect(screen.queryByText('deficitIssues')).not.toBeInTheDocument();
     });
   });
 

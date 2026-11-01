@@ -350,6 +350,75 @@ func (s *GovernmentFundingBillPeriodStore) billTotalsByMonth(ctx context.Context
 	return m, nil
 }
 
+// SettledLater is money that other bills attributed to one month, for one
+// child: the amount, and which bills it came from.
+//
+// It exists because "this child has a contract and does not appear in this
+// month's bill" and "this month was never funded" are different statements,
+// and the comparison could only make the first one. The Senate settles a
+// lapsed Gutschein by paying the whole gap in one later bill, as correction
+// rows carrying the months they settle -- so a month can be fully paid and
+// still carry no row of its own.
+type SettledLater struct {
+	Amount     int
+	BillMonths []time.Time
+}
+
+// FindSettledLaterByChildForMonth returns, per child, the money that bills
+// OTHER than the given month attributed to that month.
+//
+// Deliberately not scoped to any date window. A month can be settled by a bill
+// outside whichever range is being compared, and limiting the search to the
+// window would reproduce, one level up, exactly the blindness this is for.
+//
+// Any row type, not only corrections. A late regular row is possible in
+// principle; across 1393 rows of the sample bills every regular row belonged
+// to its own month, but that is an observation about the data rather than
+// something the importer enforces.
+//
+// Rows whose billing_month is NULL -- every bill imported before the column
+// was populated -- COALESCE to their own bill's month and so can never settle
+// an earlier one. The failure mode is therefore always "no settlement found",
+// never a settlement invented.
+//
+// The organisation filter runs through `children` rather than resting on the
+// bill alone: `child_vouchers` carries no organisation of its own, and
+// `children` is not soft-deleted, so no tombstone filter is needed here --
+// unlike a join through `organizations` or `users`.
+func (s *GovernmentFundingBillPeriodStore) FindSettledLaterByChildForMonth(ctx context.Context, orgID uint, month time.Time) (map[uint]SettledLater, error) {
+	var results []struct {
+		ChildID   uint      `gorm:"column:child_id"`
+		BillMonth time.Time `gorm:"column:bill_month"`
+		Total     int       `gorm:"column:total"`
+	}
+	const query = `SELECT cv.child_id AS child_id,
+				p.from_date AS bill_month,
+				SUM(pay.amount) AS total
+			FROM government_funding_bill_periods p
+			JOIN government_funding_bill_children c ON c.period_id = p.id
+			JOIN government_funding_bill_payments pay ON pay.child_id = c.id
+			JOIN child_vouchers cv ON cv.voucher_number = c.voucher_number
+			JOIN children ch ON ch.id = cv.child_id AND ch.organization_id = ?
+			WHERE p.organization_id = ?
+				AND COALESCE(pay.billing_month, p.from_date) = ?
+				AND p.from_date <> ?
+			GROUP BY cv.child_id, p.from_date
+			ORDER BY p.from_date`
+	if err := DBFromContext(ctx, s.db).Raw(query, orgID, orgID, month, month).Scan(&results).Error; err != nil {
+		return nil, err
+	}
+
+	m := make(map[uint]SettledLater, len(results))
+	for _, r := range results {
+		entry := m[r.ChildID]
+		entry.Amount += r.Total
+		entry.BillMonths = append(entry.BillMonths, time.Date(
+			r.BillMonth.Year(), r.BillMonth.Month(), 1, 0, 0, 0, 0, time.UTC))
+		m[r.ChildID] = entry
+	}
+	return m, nil
+}
+
 // FindBillTotalsByRowTypeInDateRange returns per-month regular and correction
 // totals for an org, keyed by the month each bill ARRIVED in.
 //

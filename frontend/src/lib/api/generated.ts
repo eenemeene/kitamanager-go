@@ -3921,6 +3921,34 @@ export interface components {
       difference?: number;
       properties: components['schemas']['FundingComparisonAmount'][];
       /**
+       * @description SettledByBillMonths names the bills the money came from, earliest
+       *     first, so the figure can be traced rather than merely asserted.
+       * @example [
+       *       "2026-04-01"
+       *     ]
+       */
+      settled_by_bill_months?: string[];
+      /**
+       * @description SettledLaterAmount is money that OTHER bills attributed to this month
+       *     for this child, set only on the two statuses that mean "this month
+       *     carries no billing row": not_billed and calc_only.
+       *
+       *     The Senate settles a lapsed Gutschein by paying the whole gap in one
+       *     later bill, as correction rows carrying the months they settle. Such a
+       *     month is fully funded and still has no row of its own, so without this
+       *     it was reported as a full-rate shortfall and marked as work to do --
+       *     in the sample data, 13.473,36 EUR of one child's back-payment read as
+       *     seven months of deficit.
+       *
+       *     Deliberately does NOT change Difference or any category amount.
+       *     Corrections never offset the difference anywhere in this comparison,
+       *     for any status, and two tests assert that the five categories still sum
+       *     to it. What the settlement changes is whether the month is actionable,
+       *     not what it is worth.
+       * @example 192608
+       */
+      settled_later_amount?: number;
+      /**
        * @description Status is one of:
        *       match             bill and contract agree to the cent
        *       difference        both sides have figures and they differ
@@ -3953,7 +3981,12 @@ export interface components {
       voucher_numbers?: string[];
     };
     FundingComparisonIssueSummary: {
-      /** @example true */
+      /**
+       * @description Actionable is false once a settlement covers the whole amount. The UI
+       *     counts actionable issues in its "fixable" badge, so leaving a settled
+       *     month in that count is what sent an operator after money already paid.
+       * @example true
+       */
       actionable: boolean;
       /** @example -33064 */
       amount_per_month: number;
@@ -3975,6 +4008,14 @@ export interface components {
       month_count: number;
       /** @example integration */
       property_key: string;
+      /**
+       * @description SettledAmount is how much of TotalAmount later bills have already paid,
+       *     summed over the same months. TotalAmount is left alone: the money owed
+       *     for those months has not changed, only whether anybody still needs to
+       *     chase it.
+       * @example 396768
+       */
+      settled_amount: number;
       /** @example -396768 */
       total_amount: number;
       /** @example GB-12345678901-02 */

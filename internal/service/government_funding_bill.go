@@ -1085,6 +1085,11 @@ func BuildComparisonSummary(comparisons []models.FundingComparisonResponse) mode
 		issue  models.FundingComparisonIssueSummary
 		months map[string]bool
 		total  int
+		// settled sums, across the same months, what later bills already
+		// paid. Kept apart from total so the category arithmetic is
+		// untouched: the five categories still sum to the difference, which
+		// two tests assert.
+		settled int
 	}
 	type issueKey struct {
 		childKey    string // child_id if available, else voucher_number
@@ -1162,6 +1167,9 @@ func BuildComparisonSummary(comparisons []models.FundingComparisonResponse) mode
 					}
 					acc.total -= calcAmt
 					acc.months[month] = true
+					if child.SettledLaterAmount != nil {
+						acc.settled += *child.SettledLaterAmount
+					}
 				}
 
 			case catNotBilled:
@@ -1198,6 +1206,9 @@ func BuildComparisonSummary(comparisons []models.FundingComparisonResponse) mode
 					}
 					acc.total += diff
 					acc.months[month] = true
+					if child.SettledLaterAmount != nil {
+						acc.settled += *child.SettledLaterAmount
+					}
 				}
 
 			case "match", "difference":
@@ -1292,6 +1303,19 @@ func BuildComparisonSummary(comparisons []models.FundingComparisonResponse) mode
 		issue.MonthCount = len(acc.months)
 		if issue.MonthCount > 0 {
 			issue.AmountPerMonth = acc.total / issue.MonthCount
+		}
+		// What later bills already paid for these months, and whether
+		// anything is left to chase. TotalAmount is deliberately untouched --
+		// the months were still underfunded at the time, and the category
+		// bars have to keep summing to the difference.
+		//
+		// `!= 0` rather than `>= 0`: a settlement can overshoot, and being
+		// paid too much for a month is also work. A clawback attributed to
+		// the month makes the remainder larger and keeps it actionable, which
+		// is why the sign is not assumed either way.
+		if acc.settled != 0 {
+			issue.SettledAmount = acc.settled
+			issue.Actionable = acc.total+acc.settled != 0
 		}
 		// Generate description
 		switch {
@@ -1402,6 +1426,46 @@ func (s *GovernmentFundingBillService) comparePeriod(ctx context.Context, period
 		billVoucherSet[child.VoucherNumber] = true
 	}
 
+	// Money other bills attributed to this month, per child. Fetched once for
+	// the whole bill rather than per child, and non-fatal: without it the two
+	// no-row statuses simply stay as actionable as they were before, which is
+	// the old behaviour rather than a wrong one.
+	// Guarded rather than assumed: comparePeriod is reachable with no bill
+	// store at all -- a comparison driven purely from contracts and a funding
+	// configuration needs none, and a test pins that. A nil store, like a
+	// failed query, degrades to "no settlement found", which leaves the month
+	// exactly as actionable as it was before this existed.
+	var settledByChild map[uint]store.SettledLater
+	if s.billPeriodStore != nil {
+		found, settledErr := s.billPeriodStore.FindSettledLaterByChildForMonth(ctx, orgID, period.From)
+		if settledErr != nil {
+			slog.Warn("could not look up money other bills attributed to this month; a retroactively settled month will still read as unfunded",
+				"org_id", orgID, "month", period.From.Format(models.DateFormat), "error", settledErr)
+		} else {
+			settledByChild = found
+		}
+	}
+	// applySettlement records what later bills already paid for this month.
+	// Only for the two statuses that mean "this month carries no billing row"
+	// -- for every other status the month has its own row and the question
+	// does not arise.
+	applySettlement := func(compChild *models.FundingComparisonChild, childID *uint) {
+		if childID == nil || (compChild.Status != statusNotBilled && compChild.Status != "calc_only") {
+			return
+		}
+		entry, ok := settledByChild[*childID]
+		if !ok || entry.Amount == 0 {
+			return
+		}
+		amount := entry.Amount
+		compChild.SettledLaterAmount = &amount
+		months := make([]string, 0, len(entry.BillMonths))
+		for _, m := range entry.BillMonths {
+			months = append(months, m.Format(models.DateFormat))
+		}
+		compChild.SettledByBillMonths = months
+	}
+
 	// 6. Build comparison per bill child
 	response := &models.FundingComparisonResponse{
 		BillID:                period.ID,
@@ -1505,6 +1569,7 @@ func (s *GovernmentFundingBillService) comparePeriod(ctx context.Context, period
 		compChild.Age = comp.Age
 		compChild.Status = comp.Status
 		compChild.Properties = comp.Properties
+		applySettlement(&compChild, compChild.ChildID)
 
 		// Aggregate response totals
 		switch comp.Status {
@@ -1636,6 +1701,8 @@ func (s *GovernmentFundingBillService) comparePeriod(ctx context.Context, period
 				compChild.BillAppearances = filtered
 			}
 		}
+
+		applySettlement(&compChild, &ac.ID)
 
 		response.Children = append(response.Children, compChild)
 		response.CalcOnlyCount++

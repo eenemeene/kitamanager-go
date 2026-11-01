@@ -400,6 +400,10 @@ type GovernmentFundingBillPeriodStorer interface {
 	FindManualCorrectionTotalsByOrganizationInDateRange(ctx context.Context, orgID uint, from, to time.Time) (map[time.Time]BillManualCorrection, error)
 	FindBillTotalsByRowTypeInDateRange(ctx context.Context, orgID uint, from, to time.Time) (map[time.Time]BillTotalsByRowType, error)
 	FindBillTotalsByRowTypeAttributed(ctx context.Context, orgID uint, from, to time.Time) (map[time.Time]BillTotalsByRowType, error)
+	// FindSettledLaterByChildForMonth returns, per child, money that bills
+	// other than `month` attributed to `month`. Not window-scoped: a month can
+	// be settled by a bill outside whichever range is being compared.
+	FindSettledLaterByChildForMonth(ctx context.Context, orgID uint, month time.Time) (map[uint]SettledLater, error)
 	FindLatestByOrganization(ctx context.Context, orgID uint) (*models.GovernmentFundingBillPeriod, error)
 	FindByOrgAndMonth(ctx context.Context, orgID uint, from time.Time) (*models.GovernmentFundingBillPeriod, error)
 	// FindUnmatchedBillChildren returns one row per voucher_number that

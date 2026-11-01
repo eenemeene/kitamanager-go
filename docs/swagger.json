@@ -13641,6 +13641,21 @@
                         "$ref": "#/definitions/github_com_eenemeene_kitamanager-go_internal_models.FundingComparisonAmount"
                     }
                 },
+                "settled_by_bill_months": {
+                    "description": "SettledByBillMonths names the bills the money came from, earliest\nfirst, so the figure can be traced rather than merely asserted.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "2026-04-01"
+                    ]
+                },
+                "settled_later_amount": {
+                    "description": "SettledLaterAmount is money that OTHER bills attributed to this month\nfor this child, set only on the two statuses that mean \"this month\ncarries no billing row\": not_billed and calc_only.\n\nThe Senate settles a lapsed Gutschein by paying the whole gap in one\nlater bill, as correction rows carrying the months they settle. Such a\nmonth is fully funded and still has no row of its own, so without this\nit was reported as a full-rate shortfall and marked as work to do --\nin the sample data, 13.473,36 EUR of one child's back-payment read as\nseven months of deficit.\n\nDeliberately does NOT change Difference or any category amount.\nCorrections never offset the difference anywhere in this comparison,\nfor any status, and two tests assert that the five categories still sum\nto it. What the settlement changes is whether the month is actionable,\nnot what it is worth.",
+                    "type": "integer",
+                    "example": 192608
+                },
                 "status": {
                     "description": "Status is one of:\n  match             bill and contract agree to the cent\n  difference        both sides have figures and they differ\n  not_billed        contract active, bill carries no regular row for it\n  bill_only         in the bill, no contract active in the system\n  calc_only         contract active, the child is absent from the bill\n  no_funding_config matched, but no rate could be computed",
                     "type": "string",
@@ -13667,6 +13682,7 @@
             "type": "object",
             "properties": {
                 "actionable": {
+                    "description": "Actionable is false once a settlement covers the whole amount. The UI\ncounts actionable issues in its \"fixable\" badge, so leaving a settled\nmonth in that count is what sent an operator after money already paid.",
                     "type": "boolean",
                     "example": true
                 },
@@ -13709,6 +13725,11 @@
                 "property_key": {
                     "type": "string",
                     "example": "integration"
+                },
+                "settled_amount": {
+                    "description": "SettledAmount is how much of TotalAmount later bills have already paid,\nsummed over the same months. TotalAmount is left alone: the money owed\nfor those months has not changed, only whether anybody still needs to\nchase it.",
+                    "type": "integer",
+                    "example": 396768
                 },
                 "total_amount": {
                     "type": "integer",

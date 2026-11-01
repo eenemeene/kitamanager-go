@@ -39,6 +39,11 @@ export function FundingDeficitAnalysis({
   const categories = summary.categories ?? [];
   const issues = summary.issues ?? [];
   const actionableIssues = issues.filter((i) => i.actionable);
+  // Months a later bill has already paid for. They stay on screen -- they are
+  // real history, and hiding them would leave the category bars above counting
+  // children the list below does not mention -- but they are not work, so they
+  // are out of the "fixable" count and stand in their own group.
+  const settledIssues = issues.filter((i) => !i.actionable && (i.settled_amount ?? 0) !== 0);
   const maxCategoryAbs = Math.max(...categories.map((c) => Math.abs(c.total_amount ?? 0)), 1);
 
   // The bars are an exhaustive decomposition of total_difference, which counts
@@ -306,6 +311,65 @@ export function FundingDeficitAnalysis({
                         : t('deficitShowAll', { count: actionableIssues.length })}
                     </button>
                   )}
+                </div>
+              )}
+
+              {/* Already settled by a later bill */}
+              {settledIssues.length > 0 && (
+                <div className="space-y-2">
+                  <h5 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                    {t('deficitSettledIssues')}
+                  </h5>
+                  <div className="overflow-x-auto">
+                    <Table scrollRegionLabel={t('deficitSettledIssues')}>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">{t('deficitIssueChild')}</TableHead>
+                          <TableHead className="hidden text-xs md:table-cell">
+                            {t('deficitIssueDescription')}
+                          </TableHead>
+                          <TableHead className="text-right text-xs">
+                            {t('deficitIssueSettled')}
+                          </TableHead>
+                          <TableHead className="text-right text-xs">
+                            {t('deficitIssueAmount')}
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {settledIssues.map((issue, idx) => (
+                          <TableRow key={`settled-${idx}`} className="text-sm">
+                            <TableCell>
+                              <div>
+                                {issue.child_id ? (
+                                  <Link
+                                    href={`/organizations/${orgId}/children/${issue.child_id}/billing`}
+                                    className="text-primary hover:underline"
+                                  >
+                                    {issue.child_name}
+                                  </Link>
+                                ) : (
+                                  <span>{issue.child_name}</span>
+                                )}
+                              </div>
+                              <div className="text-muted-foreground text-xs md:hidden">
+                                {issue.description}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground hidden text-xs md:table-cell">
+                              {issue.description}
+                            </TableCell>
+                            <TableCell className="text-success text-right font-medium tabular-nums">
+                              +{formatEur(issue.settled_amount ?? 0)}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-right tabular-nums">
+                              {formatEur(issue.total_amount ?? 0)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               )}
 
