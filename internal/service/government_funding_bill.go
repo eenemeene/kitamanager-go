@@ -1457,6 +1457,22 @@ func (s *GovernmentFundingBillService) comparePeriod(ctx context.Context, period
 				matchedChildIDs[c.ChildID] = true
 				if ac, ok := activeChildByID[c.ChildID]; ok {
 					birthdate = &ac.Birthdate
+					// Once the row is tied to a KitaManager child, show that
+					// child's name rather than the one the Senate typed.
+					//
+					// The two differ: ISBJ writes "Nachname,Vorname" with no
+					// space, KitaManager composes "Nachname, Vorname" with
+					// one. Rows for a single child come from both sides of the
+					// comparison -- a month with no bill row is built from the
+					// contract, a month with one is built from the bill -- so
+					// the same child appeared in the issue list under two
+					// spellings and read as two different children. The
+					// grouping was never wrong (it keys on child_id); only the
+					// name was.
+					//
+					// bill_only rows keep the Senate's spelling, because for
+					// those there is no KitaManager child to prefer.
+					compChild.ChildName = kitaManagerChildName(ac)
 				}
 			}
 		}
@@ -1590,7 +1606,7 @@ func (s *GovernmentFundingBillService) comparePeriod(ctx context.Context, period
 
 		compChild := models.FundingComparisonChild{
 			VoucherNumber: voucherDisplay,
-			ChildName:     ac.LastName + ", " + ac.FirstName,
+			ChildName:     kitaManagerChildName(&ac),
 			ChildID:       &ac.ID,
 			Age:           &displayAge,
 			CalcTotal:     &calcTotal,
@@ -2160,6 +2176,18 @@ func (s *GovernmentFundingBillService) buildResponse(ctx context.Context, orgID,
 // codes are stored as plain strings because the column is nullable and GORM
 // reads NULL as "", but on the wire absent and empty should not be two ways of
 // saying the same thing.
+// kitaManagerChildName renders a child the way the comparison displays one:
+// "Nachname, Vorname".
+//
+// One function rather than the expression written out at each site, because
+// the two sites that needed it drifted: the contract side composed the name
+// and the bill side took whatever string the Senate had typed, so a child with
+// an issue on both sides appeared twice under spellings that differed by a
+// single space.
+func kitaManagerChildName(c *models.Child) string {
+	return c.LastName + ", " + c.FirstName
+}
+
 func stringPtrOrNil(s string) *string {
 	if s == "" {
 		return nil
