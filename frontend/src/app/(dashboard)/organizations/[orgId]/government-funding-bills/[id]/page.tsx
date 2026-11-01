@@ -121,6 +121,16 @@ function DifferenceReason({
   if (comp.status === 'bill_only') {
     return <span className="text-muted-foreground text-xs">{t('mismatchReasonBillOnly')}</span>;
   }
+  // A month with no billing row that a later bill has already paid for. Saying
+  // only "does not appear in bill" here is true and misleading in the same
+  // breath: the Senate settles a lapsed Gutschein by paying the whole gap in
+  // one later bill, and the operator has nothing to chase.
+  if (
+    (comp.status === 'calc_only' || comp.status === 'not_billed') &&
+    (comp.settled_later_amount ?? 0) !== 0
+  ) {
+    return <span className="text-muted-foreground text-xs">{t('mismatchReasonSettledLater')}</span>;
+  }
   if (comp.status === 'calc_only') {
     return <span className="text-muted-foreground text-xs">{t('mismatchReasonCalcOnly')}</span>;
   }
