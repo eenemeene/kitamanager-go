@@ -2,7 +2,7 @@
 	api-build api-run api-lint api-test-all api-test-unit api-test-integration api-test-contract api-test-fuzz api-test-coverage api-test-backup api-test-race \
 	web-install web-dev web-build web-lint web-format web-format-check web-type-check web-test web-test-coverage web-test-e2e web-test-e2e-fresh web-test-e2e-demo web-test-e2e-headed web-playwright-install \
 	web-visual-baselines web-visual-baselines-stop screenshots \
-	docs schema-docs swagger-docs swagger-check api-types api-types-check docker-up docker-down docker-rebuild docker-reset install-hooks uninstall-hooks pre-commit \
+	docs schema-docs swagger-docs swagger-check api-types api-types-check docker-up docker-down docker-rebuild docker-reset docker-dev install-hooks uninstall-hooks pre-commit \
 	report-pdf-build report-pdf
 
 # =============================================================================
@@ -41,7 +41,17 @@ ci: lint test build
 	@echo "This is not the full CI suite — see the comment above this target."
 
 # Reset everything and start fresh development environment
-dev-fresh: docker-reset clean dev
+dev-fresh: .env docker-reset clean dev
+
+# Create .env from .env.dev.example on first use, with fresh dev-only keys.
+# A real file target, so it only runs when .env is missing.
+.env:
+	@echo "No .env found — creating from .env.dev.example"
+	@cp .env.dev.example .env
+	@CSRF=$$(openssl rand -hex 32); \
+	TOTP=$$(openssl rand -hex 32); \
+	sed -i.bak "s|^CSRF_HMAC_KEY=.*|CSRF_HMAC_KEY=$$CSRF|; s|^TOTP_ENCRYPTION_KEY=.*|TOTP_ENCRYPTION_KEY=$$TOTP|" .env && rm .env.bak
+	@echo "Generated dev-only CSRF_HMAC_KEY and TOTP_ENCRYPTION_KEY in .env"
 
 # Start full development environment (database + API + web with hot reload)
 # Prerequisites: Docker for database, Go and Node.js installed
@@ -49,14 +59,6 @@ dev-fresh: docker-reset clean dev
 # API will be available at http://localhost:8080
 dev: api-build web-install
 	@echo "Starting development environment..."
-	@if [ ! -f .env ]; then \
-		echo "0. No .env found — creating from .env.dev.example"; \
-		cp .env.dev.example .env; \
-		CSRF=$$(openssl rand -hex 32); \
-		TOTP=$$(openssl rand -hex 32); \
-		sed -i.bak "s|^CSRF_HMAC_KEY=.*|CSRF_HMAC_KEY=$$CSRF|; s|^TOTP_ENCRYPTION_KEY=.*|TOTP_ENCRYPTION_KEY=$$TOTP|" .env && rm .env.bak; \
-		echo "   Generated dev-only CSRF_HMAC_KEY and TOTP_ENCRYPTION_KEY in .env"; \
-	fi
 	@echo "1. Starting database..."
 	@docker compose up -d db
 	@echo "2. Waiting for database to be healthy..."
@@ -509,7 +511,7 @@ docs: swagger-docs schema-docs
 # =============================================================================
 
 # Start docker containers (API + web + DB)
-docker-up:
+docker-up: .env
 	docker compose up -d
 
 # Stop docker containers
@@ -517,13 +519,18 @@ docker-down:
 	docker compose down
 
 # Rebuild and restart docker containers
-docker-rebuild:
+docker-rebuild: .env
 	docker compose up -d --build
 
 # Reset database (removes all data)
 docker-reset:
 	docker compose down -v
 	@echo "Database volume removed. Run 'make dev' to start fresh."
+
+# Full stack in Docker with hot reload (Ctrl+C to stop watching).
+# Frontend: next dev + file sync. API: sync + restart, incremental `go run`.
+docker-dev: .env
+	docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch
 
 # =============================================================================
 # Git hooks targets

@@ -20,6 +20,19 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo \
     -ldflags "-X github.com/eenemeene/kitamanager-go/internal/version.GitVersion=${GIT_VERSION} -X github.com/eenemeene/kitamanager-go/internal/version.GitCommit=${GIT_COMMIT} -X github.com/eenemeene/kitamanager-go/internal/version.BuildTime=${BUILD_TIME}" \
     -o main ./cmd/api
 
+# Dev stage: compiles and runs from source so compose watch can sync + restart.
+# Independent of go-builder on purpose, so `--target dev` skips the slow `-a` build.
+FROM cgr.dev/chainguard/go:latest AS dev
+WORKDIR /app
+ENV CGO_ENABLED=0
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+# Warm the build cache so the first start and later restarts compile incrementally
+RUN go build -o /dev/null ./cmd/api
+# The Chainguard go image's entrypoint is the go binary itself; set it explicitly
+ENTRYPOINT ["go", "run", "./cmd/api"]
+
 # Stage 2: Final minimal image (distroless)
 FROM cgr.dev/chainguard/static:latest
 
