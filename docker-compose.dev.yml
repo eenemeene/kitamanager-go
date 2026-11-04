@@ -54,3 +54,4 @@ services:
             - playwright-report/
             - package.json
             - package-lock.json
+            - .npmrc
