@@ -26,7 +26,15 @@ cp .env.dev.example .env
 docker compose up -d --build
 ```
 
-Both paths read config from `.env`. Docker compose overrides `DB_HOST` to the in-network service name (`db`) so you can use the same `.env` for running the binary directly and inside compose.
+Or run the full stack in Docker with hot reload:
+
+```
+make docker-dev
+```
+
+Frontend changes hot-reload, and API changes are synced in and recompiled on restart. Changes to `go.mod`, `go.sum`, `package.json`, `package-lock.json` or `.npmrc` rebuild the image. Requires Docker Compose 2.24.4 or later.
+
+All three paths read config from `.env`. Docker compose overrides `DB_HOST` to the in-network service name (`db`) so you can use the same `.env` for running the binary directly and inside compose.
 
 - **Web UI:** http://localhost:3000
 - **API:** http://localhost:8080
@@ -54,6 +62,7 @@ Anything missing or invalid fails startup with an explicit error.
 |---|---|
 | `make dev` | Database + API + hot-reloaded frontend |
 | `make dev-fresh` | Same, but wipes the DB volume first |
+| `make docker-dev` | Full stack in Docker with hot reload |
 | `make test` | Web + API unit tests |
 | `make ci` | Lint, test, and build — everything CI runs except integration/e2e |
 | `make api-test-integration` | Integration tests against Postgres |

@@ -27,6 +27,14 @@ This starts:
 
 Press `Ctrl+C` to stop all services.
 
+To run everything in Docker instead, without Go or Node.js installed locally:
+
+```bash
+make docker-dev
+```
+
+Source changes are synced into the containers and reloaded automatically. Requires Docker Compose 2.24.4 or later.
+
 ## Test Data Seeding
 
 When `SEED_TEST_DATA=true` (enabled by default in `make dev`), the following test data is created:
@@ -98,6 +106,7 @@ See the [RBAC reference](website/content/en/docs/reference/rbac.md) for the deta
 | `make docker-up` | Start docker containers |
 | `make docker-down` | Stop docker containers |
 | `make docker-rebuild` | Rebuild and restart containers |
+| `make docker-dev` | Full stack in Docker with hot reload |
 
 ### Documentation
 
