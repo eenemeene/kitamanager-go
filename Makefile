@@ -57,7 +57,7 @@ dev-fresh: .env docker-reset clean dev
 # Prerequisites: Docker for database, Go and Node.js installed
 # Web UI will be available at http://localhost:3000 with hot reload
 # API will be available at http://localhost:8080
-dev: api-build web-install
+dev: .env api-build web-install
 	@echo "Starting development environment..."
 	@echo "1. Starting database..."
 	@docker compose up -d db
