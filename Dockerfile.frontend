@@ -8,6 +8,26 @@ WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
 RUN npm ci
 
+# Stage 1b: Development server with hot reload (opt-in via `target: dev`).
+# Placed before the production stages on purpose: `docker build` without
+# --target builds the LAST stage, so production builds are unaffected.
+FROM cgr.dev/chainguard/node:latest-dev AS dev
+WORKDIR /app
+COPY --from=deps --chown=node:node /app/node_modules ./node_modules
+# Baseline copy of the source; compose watch syncs changes on top of it.
+COPY --chown=node:node frontend/ .
+
+# In dev, next.config is evaluated when the dev server starts, so the
+# rewrite target is picked up at runtime (compose can override it).
+ARG BACKEND_URL=http://api:8080
+ENV BACKEND_URL=${BACKEND_URL}
+ENV APP_VERSION=dev APP_COMMIT=unknown APP_BUILD_TIME=unknown
+
+EXPOSE 3000
+# Chainguard images default to a node entrypoint, so override it explicitly.
+# Same command as `make dev`, so Docker and local dev behave identically.
+ENTRYPOINT ["/app/node_modules/.bin/next", "dev", "-H", "0.0.0.0", "-p", "3000"]
+
 # Stage 2: Build the Next.js application
 FROM cgr.dev/chainguard/node:latest-dev AS builder
 

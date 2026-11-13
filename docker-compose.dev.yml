@@ -1,0 +1,57 @@
+# Dev override: hot reload for the full Docker stack.
+#   make docker-dev
+# Requires Docker Compose >= 2.24.4 (for !override and up --watch).
+services:
+  api:
+    build:
+      target: dev
+    develop:
+      watch:
+        # Dependency changes need `go mod download` → rebuild the image
+        - action: rebuild
+          path: ./go.mod
+        - action: rebuild
+          path: ./go.sum
+        # Source changes: sync, then restart → `go run` recompiles incrementally
+        - action: sync+restart
+          path: ./cmd
+          target: /app/cmd
+        - action: sync+restart
+          path: ./internal
+          target: /app/internal
+        - action: sync+restart
+          path: ./docs          # swag output, typically imported by cmd/api
+          target: /app/docs
+        - action: sync+restart
+          path: ./configs
+          target: /app/configs
+
+  frontend:
+    build:
+      target: dev
+    # Replace (not merge) the base list: drops NEXT_PUBLIC_API_URL, which
+    # `next dev` would inline into the browser bundle as an unreachable host.
+    environment: !override
+      - BACKEND_URL=http://api:8080
+    develop:
+      watch:
+        # Dependency changes need a fresh `npm ci` → rebuild the image
+        - action: rebuild
+          path: ./frontend/package.json
+        - action: rebuild
+          path: ./frontend/package-lock.json
+        - action: rebuild
+          path: ./frontend/.npmrc
+        # Everything else is synced; next dev's watcher handles HMR
+        - action: sync
+          path: ./frontend
+          target: /app
+          ignore:
+            - node_modules/
+            - .next/
+            - out/
+            - test-results/
+            - playwright-report/
+            - package.json
+            - package-lock.json
+            - .npmrc
